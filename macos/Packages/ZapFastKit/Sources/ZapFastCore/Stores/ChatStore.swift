@@ -146,6 +146,30 @@ public final class ChatStore {
         return names.joined(separator: ", ")
     }
 
+    /// A group's members for its info panel (upstream's `participant_list`):
+    /// named people alphabetically, then bare numbers, then us last.
+    public func members(of chat: ChatSummary) -> [(id: String, name: String)] {
+        var named: [(id: String, name: String)] = []
+        var numbers: [(id: String, name: String)] = []
+        for id in chat.participants where !session.isOurs(id) {
+            let name = personName(id, hint: nil)
+            if name.hasPrefix("+") || name == String(localized: "Unknown") {
+                numbers.append((id, name))
+            } else {
+                named.append((id, name))
+            }
+        }
+        named.sort { a, b in
+            let left = a.name.trimmingPrefix("~").lowercased(), right = b.name.trimmingPrefix("~").lowercased()
+            return left != right ? left < right : a.id < b.id
+        }
+        numbers.sort { $0.name < $1.name }
+        if let me = chat.participants.first(where: session.isOurs) {
+            numbers.append((me, String(localized: "You")))
+        }
+        return named + numbers
+    }
+
     // MARK: Applying events
 
     func replaceAll(_ list: [ChatSummary]) {

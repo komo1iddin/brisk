@@ -28,6 +28,7 @@ public final class AppModel {
             if voice.current?.chat != selectedChatID { voice.stop() }
             if recorder.isRecording { recorder.cancel() }
             if search.chat?.chat != selectedChatID { search.chat = nil }
+            infoShown = false
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if let oldValue {
                 // An unfinished edit is dropped, not kept as a draft.
@@ -49,6 +50,9 @@ public final class AppModel {
 
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
+
+    /// The open chat's info panel is showing.
+    public private(set) var infoShown = false
 
     /// Polls whose vote is on its way.
     public private(set) var pollVoting: Set<MessageKey> = []
@@ -226,6 +230,29 @@ public final class AppModel {
         cancelEditing(in: message.chat)
         replyingTo[message.chat] = message
         composerFocusRequests += 1
+    }
+
+    // MARK: Intents: chat info
+
+    /// Shows the open chat's info in place of its search, which shares the
+    /// same side of the window.
+    public func showInfo() {
+        guard selectedChatID != nil else { return }
+        closeChatSearch()
+        infoShown = true
+    }
+
+    public func closeInfo() {
+        infoShown = false
+    }
+
+    /// Opens the chat with a person, creating it in the archive first when
+    /// there is none yet (upstream's `StartChat`).
+    public func startChat(with id: String) {
+        if chats.chat(id) == nil {
+            backend.send(.ensureChat(chat: id, name: chats.personName(id, hint: nil)))
+        }
+        selectedChatID = id
     }
 
     // MARK: Intents: polls
@@ -543,6 +570,7 @@ public final class AppModel {
     /// and puts the cursor in its field.
     public func openChatSearch() {
         guard let chat = selectedChatID else { return }
+        infoShown = false
         if search.chat?.chat != chat { search.chat = ChatSearch(chat: chat) }
         chatSearchFocusRequests += 1
     }

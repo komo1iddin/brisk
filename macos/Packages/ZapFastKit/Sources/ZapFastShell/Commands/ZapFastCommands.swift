@@ -19,6 +19,10 @@ struct ZapFastCommands: Commands {
             .keyboardShortcut("u", modifiers: [.command, .shift])
             .disabled(model.selectedChatID == nil)
 
+            Button("Show Chat Info") { model.showInfo() }
+                .keyboardShortcut("i")
+                .disabled(model.selectedChatID == nil)
+
             Divider()
 
             Button("Close Chat") { model.selectedChatID = nil }

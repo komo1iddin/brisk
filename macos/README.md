@@ -71,6 +71,7 @@ drain, and a one-second timeout backs it up.
 | Return / ⇧Return | Send / new line in the composer |
 | ↑ in an empty composer | Edit your newest message (up to 15 minutes old); Esc cancels |
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
+| ⌘I | Chat info: picture, number, members, mute / pin / archive |
 
 Picking a match scrolls to it, loading older history from the archive
 first when needed, and marks it for a moment.

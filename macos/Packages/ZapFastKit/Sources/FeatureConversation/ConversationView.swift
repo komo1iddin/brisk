@@ -63,18 +63,26 @@ public struct ConversationView: View {
         .sheet(item: pollResults) { key in
             PollResultsSheet(key: key, model: model)
         }
-        .inspector(isPresented: searchPresented) {
+        .inspector(isPresented: inspectorPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
                     ChatSearchPanel(search: search, model: model)
+                } else if model.infoShown {
+                    ChatInfoPanel(chatID: chatID, model: model)
                 }
             }
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
         .toolbar {
             ToolbarItem {
+                Button("Chat Info", systemImage: "info.circle") {
+                    if model.infoShown { model.closeInfo() } else { model.showInfo() }
+                }
+                .help("Show chat info (⌘I)")
+            }
+            ToolbarItem {
                 Button("Search in Chat", systemImage: "magnifyingglass") {
-                    if searchPresented.wrappedValue {
+                    if model.search.chat?.chat == chatID {
                         model.closeChatSearch()
                     } else {
                         model.openChatSearch()
@@ -109,11 +117,14 @@ public struct ConversationView: View {
         )
     }
 
-    private var searchPresented: Binding<Bool> {
+    /// The inspector holds either the chat's search or its info.
+    private var inspectorPresented: Binding<Bool> {
         Binding(
-            get: { model.search.chat?.chat == chatID },
+            get: { model.search.chat?.chat == chatID || model.infoShown },
             set: { presented in
-                if presented { model.openChatSearch() } else { model.closeChatSearch() }
+                guard !presented else { return }
+                model.closeChatSearch()
+                model.closeInfo()
             }
         )
     }

@@ -42,11 +42,13 @@ public final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
     }
 
-    public func post(chat: String, message: String, title: String, body: String, picture: URL?) {
+    public func post(
+        chat: String, message: String, title: String, body: String, picture: URL?, sound: UNNotificationSound?
+    ) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        content.sound = sound
         content.threadIdentifier = chat
         content.categoryIdentifier = Self.category
         content.userInfo = ["chat": chat, "message": message]

@@ -98,6 +98,13 @@ controls (full screen and Picture in Picture included); round video
 messages play in their circle. GIFs and animated stickers move while the
 pointer is over them, as upstream's do.
 
+Notifications sound as upstream's do: its receive sound for new
+messages and its alert for a mention of you or a reply to you (Pidgin's
+sounds, GPL-2.0 data files bundled from `assets/sounds`), the system's,
+none, or a file of yours, chosen in Settings › Chats. Group messages can
+stay quiet while mentions still sound, and a chat's menu gives it its
+own sound.
+
 A message of yours has Info in its menu: when it was delivered and read,
 and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,

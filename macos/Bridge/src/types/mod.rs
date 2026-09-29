@@ -14,7 +14,9 @@ mod privacy;
 mod receipts;
 mod sticker;
 
-pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState, LabelInfo};
+pub use chat::{
+    ChatKind, ChatPreview, ChatSummary, DeliveryState, LabelInfo, NotificationSoundInfo,
+};
 pub use contact::ContactRecord;
 pub use interactive::{
     CarouselCardInfo, InteractiveActionInfo, InteractiveButtonInfo, InteractiveCardInfo,

@@ -2,6 +2,7 @@ import SwiftUI
 import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
+import ZapFastSharedUI
 
 /// The Settings window. A grouped `Form` is the platform's own shape for
 /// preferences, so it stays one.
@@ -152,6 +153,18 @@ private struct ChatSettings: View {
                     .disabled(!preferences.notifications)
             }
             Section {
+                SoundPicker(title: "New message", sound: $preferences.messageSound)
+                SoundPicker(title: "Mention or reply to you", sound: $preferences.mentionSound)
+                Toggle("Sounds for group messages", isOn: $preferences.groupSounds)
+            } header: {
+                Text("Sounds")
+            } footer: {
+                Text("A chat can have its own sound, from its menu. Mentions of you sound even in quiet groups.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .disabled(!preferences.notifications)
+            Section {
                 Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
             } footer: {
                 Text("When off, people don't see blue ticks or played voice messages from this Mac.")
@@ -200,5 +213,50 @@ private struct AdvancedSettings: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One notification sound: the named ones, a chosen file, and a preview.
+private struct SoundPicker: View {
+    let title: LocalizedStringKey
+    @Binding var sound: NotificationSoundInfo
+
+    var body: some View {
+        HStack {
+            Picker(title, selection: selection) {
+                ForEach(SoundChoice.named, id: \.self) { named in
+                    Text(SoundChoice.title(named)).tag(Optional(named))
+                }
+                if case .custom = sound {
+                    Text(SoundChoice.title(sound)).tag(Optional(sound))
+                }
+                Divider()
+                Text("Choose File…").tag(NotificationSoundInfo?.none)
+            }
+            Button {
+                SoundPlayer.shared.preview(sound)
+            } label: {
+                Image(systemName: "play.circle")
+            }
+            .buttonStyle(.borderless)
+            .disabled(sound == .none || sound == .system)
+            .help("Play")
+            .accessibilityLabel("Play sound")
+        }
+    }
+
+    /// Nil stands for "Choose File…", which asks and keeps the old sound
+    /// when cancelled.
+    private var selection: Binding<NotificationSoundInfo?> {
+        Binding(
+            get: { sound },
+            set: { picked in
+                if let picked {
+                    sound = picked
+                } else if let chosen = SoundChoice.chooseFile() {
+                    sound = chosen
+                }
+            }
+        )
     }
 }

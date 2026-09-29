@@ -61,6 +61,8 @@ public struct ChatActions: View {
             Button("Always") { model.setMuted(until: 0, chat: chat.id) }
         }
 
+        ChatSoundMenu(chat: chat, model: model)
+
         Divider()
 
         if chat.locked {

@@ -32,6 +32,10 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Resources
+      # Upstream's notification sounds (Pidgin's), read in place.
+      - path: ../assets/sounds
+        includes: ["*.wav"]
+        buildPhase: resources
     dependencies:
       - package: ZapFastKit
         product: ZapFastShell

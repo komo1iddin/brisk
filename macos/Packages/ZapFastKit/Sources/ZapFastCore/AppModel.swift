@@ -1615,18 +1615,43 @@ public final class AppModel {
         guard !reading else { return }
 
         // A locked app says nothing about who wrote or what.
+        let isGroup = chat.kind == .group
+        // A locked app's chat or mention sound would tell who wrote, so only
+        // the message sound plays, as upstream's `notify_while_locked` does.
         guard preferences.notificationPreviews, !appLock.isLocked else {
+            let sound = notificationSound(chat: nil, forUs: false, isGroup: isGroup, preferences: preferences)
             notifier?.post(chat: id, message: message.id, title: "ZapFast",
-                           body: String(localized: "New message"), picture: nil)
+                           body: String(localized: "New message"), picture: nil,
+                           sound: SoundPlayer.shared.notificationSound(for: sound))
             return
         }
+        let sound = notificationSound(
+            chat: chat.notificationSound, forUs: isGroup && addressesUs(message), isGroup: isGroup,
+            preferences: preferences
+        )
         let title = chats.title(for: chat)
         let text = messageText(message)
         let body = chat.kind == .group
             ? "\(chats.displayName(message.sender, hint: message.senderName)): \(text)"
             : text
         let picture = avatars.url(for: id) ?? avatars.url(for: message.sender)
-        notifier?.post(chat: id, message: message.id, title: title, body: body, picture: picture)
+        notifier?.post(chat: id, message: message.id, title: title, body: body, picture: picture,
+                       sound: SoundPlayer.shared.notificationSound(for: sound))
+    }
+
+    /// Upstream's `addresses_us`: a mention of one of our ids, or a reply
+    /// to one of our messages.
+    func addressesUs(_ message: MessageRecord) -> Bool {
+        let ours = ourIDs
+        let mentioned = message.mentions.contains { mention in
+            ours.contains(mention.id) || ours.contains { $0.split(separator: "@").first.map(String.init) == mention.user }
+        }
+        return mentioned || message.quoted.map { ours.contains($0.sender) } == true
+    }
+
+    /// A chat's own notification sound, or nil to follow Settings.
+    public func setChatSound(_ sound: NotificationSoundInfo?, chat: String) {
+        backend.send(.setChatSound(chat: chat, sound: sound))
     }
 
     /// A message's summary with `@number` mention tokens shown as names.

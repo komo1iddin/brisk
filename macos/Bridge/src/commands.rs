@@ -9,7 +9,9 @@ use std::path::PathBuf;
 
 use zapfast::backend::Command;
 
-use crate::types::{GifInfo, PageKey, PollDraftInfo, PrivacyChoiceInfo, PrivacyKindInfo};
+use crate::types::{
+    GifInfo, NotificationSoundInfo, PageKey, PollDraftInfo, PrivacyChoiceInfo, PrivacyKindInfo,
+};
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCommand {
@@ -194,6 +196,12 @@ pub enum BridgeCommand {
     SetFavorite {
         chat: String,
         favorite: bool,
+    },
+    /// A chat's own notification sound, kept in the archive; `None`
+    /// follows Settings again.
+    SetChatSound {
+        chat: String,
+        sound: Option<NotificationSoundInfo>,
     },
     /// WhatsApp's chat lock, synced with the phone.
     SetLocked {
@@ -507,6 +515,10 @@ impl BridgeCommand {
             Self::SetArchived { chat, archived } => Command::SetArchived(chat, archived),
             Self::SetPinned { chat, pinned } => Command::SetPinned(chat, pinned),
             Self::SetFavorite { chat, favorite } => Command::SetFavorite(chat, favorite),
+            Self::SetChatSound { chat, sound } => Command::SetChatSound {
+                chat,
+                sound: sound.map(Into::into),
+            },
             Self::SetLocked { chat, locked } => Command::SetLocked(chat, locked),
             Self::SetMuted { chat, until } => Command::SetMuted(chat, until),
             Self::ClearChat { chat } => Command::ClearChat(chat),

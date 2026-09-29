@@ -1,4 +1,47 @@
 use zapfast::model::{self, Chat, LastMessage};
+use zapfast::settings::NotificationSound;
+
+/// The sound a notification makes (upstream's `NotificationSound`).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum NotificationSoundInfo {
+    /// Pidgin's message sound, upstream's default for new messages.
+    Receive,
+    /// Pidgin's alert sound, the default for mentions and replies to us.
+    Alert,
+    /// What the system plays for notifications.
+    System,
+    None,
+    /// An audio file.
+    Custom {
+        path: String,
+    },
+}
+
+impl From<NotificationSound> for NotificationSoundInfo {
+    fn from(sound: NotificationSound) -> Self {
+        match sound {
+            NotificationSound::Receive => Self::Receive,
+            NotificationSound::Alert => Self::Alert,
+            NotificationSound::System => Self::System,
+            NotificationSound::None => Self::None,
+            NotificationSound::Custom(path) => Self::Custom {
+                path: super::path_string(path),
+            },
+        }
+    }
+}
+
+impl From<NotificationSoundInfo> for NotificationSound {
+    fn from(sound: NotificationSoundInfo) -> Self {
+        match sound {
+            NotificationSoundInfo::Receive => Self::Receive,
+            NotificationSoundInfo::Alert => Self::Alert,
+            NotificationSoundInfo::System => Self::System,
+            NotificationSoundInfo::None => Self::None,
+            NotificationSoundInfo::Custom { path } => Self::Custom(path.into()),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum ChatKind {
@@ -124,6 +167,9 @@ pub struct ChatSummary {
     pub looks_unread: bool,
     /// Formatted phone number for a direct chat.
     pub phone: Option<String>,
+    /// The chat's own notification sound; `None` follows Settings.
+    #[uniffi(default = None)]
+    pub notification_sound: Option<NotificationSoundInfo>,
 }
 
 impl From<Chat> for ChatSummary {
@@ -180,6 +226,7 @@ impl From<Chat> for ChatSummary {
             ephemeral_expiration,
             labels,
             has_custom_sound: notification_sound.is_some(),
+            notification_sound: notification_sound.map(Into::into),
             is_channel,
             looks_unread,
             phone,

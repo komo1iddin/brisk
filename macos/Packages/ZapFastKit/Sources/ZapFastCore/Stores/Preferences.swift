@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ZapFastBridge
 
 /// Interface preferences kept in `UserDefaults`. Settings that change what
 /// the backend does live with the backend instead.
@@ -43,6 +44,21 @@ public final class Preferences {
         didSet { defaults.set(giphyKey, forKey: Key.giphyKey) }
     }
 
+    /// What a new message sounds like (upstream's default: its receive sound).
+    public var messageSound: NotificationSoundInfo {
+        didSet { defaults.set(messageSound.storageValue, forKey: Key.messageSound) }
+    }
+
+    /// What a mention of us or a reply to us sounds like.
+    public var mentionSound: NotificationSoundInfo {
+        didSet { defaults.set(mentionSound.storageValue, forKey: Key.mentionSound) }
+    }
+
+    /// Group messages make a sound; mentions of us always do.
+    public var groupSounds: Bool {
+        didSet { defaults.set(groupSounds, forKey: Key.groupSounds) }
+    }
+
     /// The app lock's password verifier (upstream's salted PBKDF2); nil
     /// leaves the lock off. The password itself is never kept.
     public var appLockVerifier: String? {
@@ -74,6 +90,9 @@ public final class Preferences {
             Key.notificationPreviews: true,
             Key.saveContactsToPhone: true,
             Key.appLockAfter: AutoLock.fifteenMinutes.rawValue,
+            Key.messageSound: NotificationSoundInfo.receive.storageValue,
+            Key.mentionSound: NotificationSoundInfo.alert.storageValue,
+            Key.groupSounds: true,
             Key.unlockWithTouchID: true,
         ])
         autoDownload = defaults.bool(forKey: Key.autoDownload)
@@ -83,6 +102,9 @@ public final class Preferences {
         notificationPreviews = defaults.bool(forKey: Key.notificationPreviews)
         saveContactsToPhone = defaults.bool(forKey: Key.saveContactsToPhone)
         giphyKey = defaults.string(forKey: Key.giphyKey) ?? ""
+        messageSound = defaults.string(forKey: Key.messageSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .receive
+        mentionSound = defaults.string(forKey: Key.mentionSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .alert
+        groupSounds = defaults.bool(forKey: Key.groupSounds)
         appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
         unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
@@ -97,6 +119,9 @@ public final class Preferences {
         static let notificationPreviews = "notificationPreviews"
         static let saveContactsToPhone = "saveContactsToPhone"
         static let giphyKey = "giphyKey"
+        static let messageSound = "messageSound"
+        static let mentionSound = "mentionSound"
+        static let groupSounds = "groupSounds"
         static let appLockVerifier = "appLockVerifier"
         static let appLockAfter = "appLockAfter"
         static let unlockWithTouchID = "unlockWithTouchID"

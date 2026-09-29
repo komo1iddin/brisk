@@ -37,6 +37,8 @@ public final class AppModel {
             if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if let oldValue {
+                // Staged attachments belong to the chat left, as upstream's do.
+                attachments[oldValue] = nil
                 // An unfinished edit is dropped, not kept as a draft.
                 cancelEditing(in: oldValue)
                 flushDraft(for: oldValue)
@@ -56,6 +58,9 @@ public final class AppModel {
 
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
+
+    /// Files and pasted images waiting above the composer, per chat.
+    public private(set) var attachments: [String: [Attachment]] = [:]
 
     /// Members picked from the `@` suggestions, per chat, until sent.
     public private(set) var composerMentions: [String: [ComposerMention]] = [:]
@@ -301,8 +306,14 @@ public final class AppModel {
         }
     }
 
+    /// Sends what the composer holds: its attachments with the text as
+    /// their caption, or the text alone.
     public func sendText(in chat: String) {
         let text = (composerText[chat] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if editing[chat] == nil, !(attachments[chat] ?? []).isEmpty {
+            sendAttachments(in: chat, caption: text)
+            return
+        }
         guard !text.isEmpty else { return }
         if let message = editing[chat] {
             finishEditing(message, with: text)
@@ -698,15 +709,61 @@ public final class AppModel {
         replyingTo[chat] = nil
     }
 
-    public func sendFiles(_ urls: [URL], in chat: String, caption: String? = nil) {
-        guard !urls.isEmpty else { return }
-        backend.send(.sendFiles(
-            chat: chat,
-            paths: urls.map { $0.path(percentEncoded: false) },
-            caption: caption,
-            mentions: [],
-            quoting: nil
-        ))
+    // MARK: Intents: attachments
+
+    /// Stages files above the composer (picked, dropped or pasted); they go
+    /// with the next send. An edit in progress gives way to them.
+    public func stage(files urls: [URL], in chat: String) {
+        let files = urls.filter(\.isFileURL)
+        guard !files.isEmpty else { return }
+        cancelEditing(in: chat)
+        attachments[chat, default: []] += files.map { Attachment(.file($0)) }
+        composerFocusRequests += 1
+    }
+
+    /// Stages a pasted picture.
+    public func stage(image: PastedImage, in chat: String) {
+        cancelEditing(in: chat)
+        attachments[chat, default: []].append(Attachment(.image(image)))
+        composerFocusRequests += 1
+    }
+
+    public func removeAttachment(_ id: Attachment.ID, in chat: String) {
+        attachments[chat]?.removeAll { $0.id == id }
+        if attachments[chat]?.isEmpty == true { attachments[chat] = nil }
+    }
+
+    /// Upstream's `send_pending`: the caption, its mentions and the reply
+    /// travel with the first attachment; pasted images go one by one, the
+    /// files together.
+    private func sendAttachments(in chat: String, caption text: String) {
+        guard let staged = attachments.removeValue(forKey: chat), !staged.isEmpty else { return }
+        let (encoded, encodedMentions) = encodeMentions(text, in: chat)
+        var caption = encoded.isEmpty ? nil : encoded
+        var mentions = encodedMentions
+        var quoting = replyingTo.removeValue(forKey: chat)?.id
+        composerText[chat] = ""
+        chats.setDraft("", for: chat)
+        backend.send(.saveDraft(chat: chat, text: ""))
+        stopComposing(in: chat)
+        var files: [String] = []
+        for attachment in staged {
+            switch attachment.kind {
+            case .image(let image):
+                backend.send(.sendImage(
+                    chat: chat, width: image.width, height: image.height, rgba: image.rgba,
+                    caption: caption, mentions: mentions, quoting: quoting
+                ))
+                caption = nil
+                mentions = []
+                quoting = nil
+            case .file(let url):
+                files.append(url.path(percentEncoded: false))
+            }
+        }
+        if !files.isEmpty {
+            backend.send(.sendFiles(chat: chat, paths: files, caption: caption, mentions: mentions, quoting: quoting))
+        }
     }
 
     /// The composer changed: tell the chat we are typing, and that we
@@ -1264,9 +1321,15 @@ public final class AppModel {
             guard let watched = receiptsWatch, watched.chat == receipts.chat,
                   watched.message == receipts.message else { break }
             self.receipts = receipts
-        case let .sendRefused(chat, _, reason, text):
-            if let text, (composerText[chat] ?? "").isEmpty {
-                composerText[chat] = text
+        case let .sendRefused(chat, _, reason, text, files, image, caption):
+            // What was refused comes back to the composer, as upstream does.
+            if let restored = text ?? caption, (composerText[chat] ?? "").isEmpty {
+                composerText[chat] = restored
+            }
+            if chat == selectedChatID {
+                let returned = files.map { Attachment(.file(URL(filePath: $0))) }
+                    + (image.map { [Attachment(.image($0))] } ?? [])
+                if !returned.isEmpty { attachments[chat, default: []] += returned }
             }
             post(.error, reason == .offline
                 ? String(localized: "Not sent: you are offline.")
@@ -1313,6 +1376,7 @@ public final class AppModel {
     private func forgetComposer(of chat: String) {
         composerText[chat] = nil
         composerMentions[chat] = nil
+        attachments[chat] = nil
         replyingTo[chat] = nil
         editing[chat] = nil
         textBeforeEdit[chat] = nil
@@ -1334,6 +1398,7 @@ public final class AppModel {
             avatars.clear()
             composerText = [:]
             composerMentions = [:]
+            attachments = [:]
             replyingTo = [:]
             editing = [:]
             textBeforeEdit = [:]

@@ -28,6 +28,15 @@ impl From<Refusal> for SendRefusal {
     }
 }
 
+/// A pasted image that was not sent, to stage again.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct PastedImage {
+    pub width: u32,
+    pub height: u32,
+    /// Straight-alpha RGBA.
+    pub rgba: Vec<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct Draft {
     pub chat: String,
@@ -178,13 +187,17 @@ pub enum BridgeEvent {
     Receipts {
         receipts: MessageReceiptsInfo,
     },
-    /// A send was refused before leaving this computer. `text` is the
-    /// composer text to restore, when it was a text message.
+    /// A send was refused before leaving this computer. What it carried
+    /// comes back to the composer: `text` for a text message, or the
+    /// attachments (`files`, `image`) with their `caption`.
     SendRefused {
         chat: String,
         quoting: Option<String>,
         reason: SendRefusal,
         text: Option<String>,
+        files: Vec<String>,
+        image: Option<PastedImage>,
+        caption: Option<String>,
     },
     Info {
         message: String,
@@ -360,19 +373,42 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             quoting,
             unsent,
             reason,
-        } => Some(B::SendRefused {
-            chat,
-            quoting,
-            reason: reason.into(),
-            text: match unsent {
-                Unsent::Text(text) => Some(text),
-                Unsent::Voice(_)
-                | Unsent::Files { .. }
-                | Unsent::Image { .. }
-                | Unsent::Sticker
-                | Unsent::Gif => None,
-            },
-        }),
+        } => {
+            let (mut text, mut files, mut image, mut caption) = (None, Vec::new(), None, None);
+            match unsent {
+                Unsent::Text(unsent) => text = Some(unsent),
+                Unsent::Files {
+                    paths,
+                    caption: unsent,
+                } => {
+                    files = paths.into_iter().map(path_string).collect();
+                    caption = unsent;
+                }
+                Unsent::Image {
+                    width,
+                    height,
+                    rgba,
+                    caption: unsent,
+                } => {
+                    image = Some(PastedImage {
+                        width,
+                        height,
+                        rgba,
+                    });
+                    caption = unsent;
+                }
+                Unsent::Voice(_) | Unsent::Sticker | Unsent::Gif => {}
+            }
+            Some(B::SendRefused {
+                chat,
+                quoting,
+                reason: reason.into(),
+                text,
+                files,
+                image,
+                caption,
+            })
+        }
         Event::Receipts(receipts) => Some(B::Receipts {
             receipts: receipts.into(),
         }),

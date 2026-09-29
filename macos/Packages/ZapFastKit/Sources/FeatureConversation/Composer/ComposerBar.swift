@@ -33,6 +33,13 @@ struct ComposerBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            if let staged = model.attachments[chatID], !staged.isEmpty, !model.recorder.isRecording {
+                AttachmentStrip(attachments: staged) { id in
+                    withAnimation(.zf(reduceMotion)) { model.removeAttachment(id, in: chatID) }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             if model.recorder.isRecording {
                 RecordingBar(recorder: model.recorder) {
                     model.cancelRecording()
@@ -51,7 +58,7 @@ struct ComposerBar: View {
             CreatePollSheet(chatID: chatID, model: model)
         }
         .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-            if case .success(let urls) = result { model.sendFiles(urls, in: chatID) }
+            if case .success(let urls) = result { model.stage(files: urls, in: chatID) }
         }
         .onAppear(perform: bindMentions)
         .onChange(of: chatID) {
@@ -69,7 +76,7 @@ struct ComposerBar: View {
     private var editor: some View {
             HStack(alignment: .bottom, spacing: Metrics.s) {
                 Menu {
-                    Button("Send Files…", systemImage: "paperclip") { choosingFiles = true }
+                    Button("Attach Files…", systemImage: "paperclip") { choosingFiles = true }
                     Button("Create Poll…", systemImage: "chart.bar.doc.horizontal") {
                         model.pollComposerChat = chatID
                     }
@@ -102,7 +109,7 @@ struct ComposerBar: View {
 
                 ZStack(alignment: .topLeading) {
                     if text.isEmpty {
-                        Text("Message")
+                        Text(hasAttachments ? "Add a caption" : "Message")
                             .foregroundStyle(.tertiary)
                             .padding(.top, 4)
                             .allowsHitTesting(false)
@@ -114,7 +121,10 @@ struct ComposerBar: View {
                         maxHeight: 180,
                         onSubmit: { model.sendText(in: chatID) },
                         onEdit: { model.composerEdited(in: chatID) },
-                        onPasteFiles: { model.sendFiles($0, in: chatID) },
+                        onPasteFiles: { model.stage(files: $0, in: chatID) },
+                        onPasteImage: { picture in
+                            if let image = PastedImage(picture) { model.stage(image: image, in: chatID) }
+                        },
                         onUpInEmpty: { model.editLastMessage(in: chatID) },
                         mentions: mentions,
                         mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)
@@ -138,7 +148,7 @@ struct ComposerBar: View {
                     .disabled(isBlank)
                     .help("Save changes")
                     .accessibilityLabel("Save changes")
-                } else if isBlank {
+                } else if isBlank, !hasAttachments {
                     Button {
                         model.startRecording()
                     } label: {
@@ -177,6 +187,10 @@ struct ComposerBar: View {
 
     private var isBlank: Bool {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasAttachments: Bool {
+        !(model.attachments[chatID] ?? []).isEmpty
     }
 
     private var isEditing: Bool {

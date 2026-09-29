@@ -77,6 +77,11 @@ drain, and a one-second timeout backs it up.
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 | ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
+Files picked with +, dropped on the chat, or pasted (⌘V, including a
+copied picture or screenshot) wait above the field with a Quick Look
+thumbnail; the text typed goes with them as the caption, and the reply
+with the first. A send refused offline puts them back.
+
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video
 messages play in their circle. GIFs and animated stickers move while the

@@ -14,6 +14,8 @@ struct ComposerTextView: NSViewRepresentable {
     let onSubmit: () -> Void
     let onEdit: () -> Void
     let onPasteFiles: ([URL]) -> Void
+    /// A picture pasted without a file (a screenshot, a copied image).
+    var onPasteImage: (CGImage) -> Void = { _ in }
     /// Up Arrow in an empty field; returns whether it was used.
     var onUpInEmpty: () -> Bool = { false }
     /// Follows `@` queries and takes the keys while suggestions show.
@@ -35,6 +37,7 @@ struct ComposerTextView: NSViewRepresentable {
 
         let textView = ComposerNSTextView()
         textView.onPasteFiles = onPasteFiles
+        textView.onPasteImage = onPasteImage
         textView.delegate = context.coordinator
         textView.isRichText = false
         textView.importsGraphics = false
@@ -153,9 +156,11 @@ struct ComposerTextView: NSViewRepresentable {
     }
 }
 
-/// Pasting files (a Finder copy) attaches them instead of pasting their names.
+/// Pasting files (a Finder copy) attaches them instead of pasting their
+/// names, and a copied picture is attached as an image; text pastes plain.
 private final class ComposerNSTextView: NSTextView {
     var onPasteFiles: ([URL]) -> Void = { _ in }
+    var onPasteImage: (CGImage) -> Void = { _ in }
 
     override func paste(_ sender: Any?) {
         let board = NSPasteboard.general
@@ -164,6 +169,20 @@ private final class ComposerNSTextView: NSTextView {
             onPasteFiles(urls)
             return
         }
+        // Text wins over a picture a rich copy also carries (a web page).
+        let hasText = board.availableType(from: [.string]) != nil
+        if !hasText, let image = NSImage(pasteboard: board),
+           let picture = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+            onPasteImage(picture)
+            return
+        }
         pasteAsPlainText(sender)
+    }
+
+    override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(paste(_:)), NSImage.canInit(with: NSPasteboard.general) {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
     }
 }

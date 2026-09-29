@@ -104,6 +104,17 @@ pub enum BridgeCommand {
         mentions: Vec<String>,
         quoting: Option<String>,
     },
+    /// A pasted image as straight-alpha RGBA, `width * height * 4` bytes;
+    /// the worker encodes it as a JPEG photo.
+    SendImage {
+        chat: String,
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+        caption: Option<String>,
+        mentions: Vec<String>,
+        quoting: Option<String>,
+    },
     /// A recorded voice message: mono samples at `voice_sample_rate()`.
     /// The worker encodes it and draws its waveform.
     SendVoice {
@@ -378,6 +389,23 @@ impl BridgeCommand {
             } => Command::SendFiles {
                 chat,
                 paths: paths.into_iter().map(PathBuf::from).collect(),
+                caption,
+                mentions,
+                quoting,
+            },
+            Self::SendImage {
+                chat,
+                width,
+                height,
+                rgba,
+                caption,
+                mentions,
+                quoting,
+            } => Command::SendImage {
+                chat,
+                width,
+                height,
+                rgba,
                 caption,
                 mentions,
                 quoting,

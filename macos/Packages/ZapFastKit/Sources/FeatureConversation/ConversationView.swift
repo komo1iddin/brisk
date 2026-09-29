@@ -52,7 +52,7 @@ public struct ConversationView: View {
         .dropDestination(for: URL.self) { urls, _ in
             let files = urls.filter(\.isFileURL)
             guard !files.isEmpty, chat.map(canSend) ?? true else { return false }
-            model.sendFiles(files, in: chatID)
+            model.stage(files: files, in: chatID)
             return true
         }
         .navigationTitle(chat.map(model.chats.title(for:)) ?? "")

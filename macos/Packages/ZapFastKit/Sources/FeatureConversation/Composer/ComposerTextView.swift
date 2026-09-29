@@ -14,6 +14,8 @@ struct ComposerTextView: NSViewRepresentable {
     let onSubmit: () -> Void
     let onEdit: () -> Void
     let onPasteFiles: ([URL]) -> Void
+    /// Up Arrow in an empty field; returns whether it was used.
+    var onUpInEmpty: () -> Bool = { false }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -85,6 +87,9 @@ struct ComposerTextView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            if selector == #selector(NSResponder.moveUp(_:)), textView.string.isEmpty {
+                return parent.onUpInEmpty()
+            }
             guard selector == #selector(NSResponder.insertNewline(_:)) else { return false }
             let flags = NSApp.currentEvent?.modifierFlags ?? []
             if flags.contains(.shift) || flags.contains(.option) {

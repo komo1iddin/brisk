@@ -25,6 +25,10 @@ struct MessageActions: View {
             }
         }
 
+        if model.canEdit(message) {
+            Button("Edit", systemImage: "pencil") { model.startEditing(message) }
+        }
+
         if let text = copyableText {
             Button("Copy", systemImage: "doc.on.doc") {
                 NSPasteboard.general.clearContents()
@@ -47,7 +51,7 @@ struct MessageActions: View {
         Divider()
 
         Button("Delete for Me", systemImage: "trash", role: .destructive) { model.deleteForMe(message) }
-        if message.fromMe, isLive {
+        if model.canRevoke(message) {
             Button("Delete for Everyone", systemImage: "trash", role: .destructive) {
                 model.deleteForEveryone(message)
             }

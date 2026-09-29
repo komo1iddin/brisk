@@ -29,7 +29,11 @@ public final class AppModel {
             if recorder.isRecording { recorder.cancel() }
             if search.chat?.chat != selectedChatID { search.chat = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
-            if let oldValue { flushDraft(for: oldValue) }
+            if let oldValue {
+                // An unfinished edit is dropped, not kept as a draft.
+                cancelEditing(in: oldValue)
+                flushDraft(for: oldValue)
+            }
             if let selectedChatID { opened(selectedChatID) }
         }
     }
@@ -45,6 +49,11 @@ public final class AppModel {
 
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
+
+    /// The message the composer is editing, per chat.
+    public private(set) var editing: [String: MessageRecord] = [:]
+    /// Bumped to put the cursor back in the composer.
+    public private(set) var composerFocusRequests = 0
 
     /// A message the timeline should scroll to; the token tells a second
     /// jump to the same message apart from the first.
@@ -76,6 +85,8 @@ public final class AppModel {
     @ObservationIgnored private var jumpAskedArchive = false
     @ObservationIgnored private var highlightTask: Task<Void, Never>?
     @ObservationIgnored private var messageSearchTask: Task<Void, Never>?
+    /// What the composer held before an edit took it over, per chat.
+    @ObservationIgnored private var textBeforeEdit: [String: String] = [:]
     /// The query the sidebar's message hits should answer.
     @ObservationIgnored private var wantedMessageQuery = ""
     @ObservationIgnored private var chatSearchTask: Task<Void, Never>?
@@ -186,6 +197,10 @@ public final class AppModel {
     public func sendText(in chat: String) {
         let text = (composerText[chat] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        if let message = editing[chat] {
+            finishEditing(message, with: text)
+            return
+        }
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         composerText[chat] = ""
         chats.setDraft("", for: chat)
@@ -195,7 +210,69 @@ public final class AppModel {
     }
 
     public func reply(to message: MessageRecord) {
+        // Replying while editing starts a new message: the edited text
+        // must not go out as the reply.
+        cancelEditing(in: message.chat)
         replyingTo[message.chat] = message
+        composerFocusRequests += 1
+    }
+
+    // MARK: Intents: editing
+
+    /// Upstream's `EDIT_WINDOW` and `REVOKE_WINDOW`, in seconds.
+    public static let editWindow: Int64 = 15 * 60
+    public static let revokeWindow: Int64 = 2 * 24 * 60 * 60
+
+    /// Upstream's `can_edit`: our own text messages, for fifteen minutes.
+    public func canEdit(_ message: MessageRecord, now: Date = .now) -> Bool {
+        guard message.fromMe, case .text = message.content else { return false }
+        return Int64(now.timeIntervalSince1970) - message.timestamp <= Self.editWindow
+    }
+
+    /// Upstream's `can_revoke`: our own messages, for two days.
+    public func canRevoke(_ message: MessageRecord, now: Date = .now) -> Bool {
+        guard message.fromMe else { return false }
+        if case .revoked = message.content { return false }
+        return Int64(now.timeIntervalSince1970) - message.timestamp <= Self.revokeWindow
+    }
+
+    /// Puts a message's text in the composer to be changed; what was being
+    /// typed comes back when the edit ends.
+    public func startEditing(_ message: MessageRecord) {
+        guard canEdit(message), case let .text(text, _) = message.content else { return }
+        let chat = message.chat
+        if editing[chat] == nil { textBeforeEdit[chat] = composerText[chat] ?? "" }
+        replyingTo[chat] = nil
+        editing[chat] = message
+        composerText[chat] = text
+        composerFocusRequests += 1
+    }
+
+    /// Up Arrow in an empty composer edits the newest message that still
+    /// can be, as upstream does. Returns whether there was one.
+    @discardableResult
+    public func editLastMessage(in chat: String) -> Bool {
+        guard editing[chat] == nil,
+              let message = conversations.conversation(chat).messages.last(where: { canEdit($0) })
+        else { return false }
+        startEditing(message)
+        return true
+    }
+
+    public func cancelEditing(in chat: String) {
+        guard editing.removeValue(forKey: chat) != nil else { return }
+        composerText[chat] = textBeforeEdit.removeValue(forKey: chat) ?? ""
+    }
+
+    /// Sends the changed text; the worker files it and sends the message
+    /// back updated. Mentions still named in the text are kept.
+    private func finishEditing(_ message: MessageRecord, with text: String) {
+        let chat = message.chat
+        cancelEditing(in: chat)
+        stopComposing(in: chat)
+        guard case let .text(original, _) = message.content, text != original else { return }
+        let mentions = message.mentions.filter { text.contains("@\($0.user)") }.map(\.id)
+        backend.send(.editText(chat: chat, id: message.id, text: text, mentions: mentions))
     }
 
     public func cancelReply(in chat: String) {
@@ -628,6 +705,8 @@ public final class AppModel {
             avatars.clear()
             composerText = [:]
             replyingTo = [:]
+            editing = [:]
+            textBeforeEdit = [:]
             notifier?.clearAll()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))

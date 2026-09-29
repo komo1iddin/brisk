@@ -14,7 +14,12 @@ struct ComposerBar: View {
 
     var body: some View {
         VStack(spacing: Metrics.s) {
-            if let reply = model.replyingTo[chatID] {
+            if let message = model.editing[chatID] {
+                EditPreview(message: message) {
+                    withAnimation(.zf(reduceMotion)) { model.cancelEditing(in: chatID) }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let reply = model.replyingTo[chatID] {
                 ReplyPreview(message: reply, model: model) {
                     withAnimation(.zf(reduceMotion)) { model.cancelReply(in: chatID) }
                 }
@@ -63,11 +68,12 @@ struct ComposerBar: View {
                     ComposerTextView(
                         text: textBinding,
                         height: $fieldHeight,
-                        focusToken: chatID,
+                        focusToken: "\(chatID)#\(model.composerFocusRequests)",
                         maxHeight: 180,
                         onSubmit: { model.sendText(in: chatID) },
                         onEdit: { model.composerEdited(in: chatID) },
-                        onPasteFiles: { model.sendFiles($0, in: chatID) }
+                        onPasteFiles: { model.sendFiles($0, in: chatID) },
+                        onUpInEmpty: { model.editLastMessage(in: chatID) }
                     )
                     .frame(height: fieldHeight)
                 }
@@ -76,7 +82,19 @@ struct ComposerBar: View {
                 .background(.background, in: .rect(cornerRadius: 17))
                 .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(.separator))
 
-                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if isEditing {
+                    Button {
+                        model.sendText(in: chatID)
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 26))
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isBlank)
+                    .help("Save changes")
+                    .accessibilityLabel("Save changes")
+                } else if isBlank {
                     Button {
                         model.startRecording()
                     } label: {
@@ -104,6 +122,14 @@ struct ComposerBar: View {
 
     private var text: String {
         model.composerText[chatID] ?? ""
+    }
+
+    private var isBlank: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var isEditing: Bool {
+        model.editing[chatID] != nil
     }
 
     private var textBinding: Binding<String> {
@@ -199,6 +225,40 @@ private struct Pulse: ViewModifier {
                 guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { dim = true }
             }
+    }
+}
+
+/// Above the field while a message is being edited: its old text, and a
+/// button (or Escape) to leave it as it was.
+private struct EditPreview: View {
+    let message: MessageRecord
+    let cancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: Metrics.s) {
+            Image(systemName: "pencil")
+                .foregroundStyle(.tint)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Editing message")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tint)
+                Text(message.summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button(action: cancel) {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help("Cancel editing")
+            .accessibilityLabel("Cancel editing")
+        }
+        .frame(height: 36)
+        .padding(.horizontal, Metrics.xs)
     }
 }
 

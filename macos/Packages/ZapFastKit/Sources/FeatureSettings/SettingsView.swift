@@ -81,6 +81,11 @@ private struct ChatSettings: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Section("Notifications") {
+                Toggle("Show notifications for new messages", isOn: $preferences.notifications)
+                Toggle("Show sender and message", isOn: $preferences.notificationPreviews)
+                    .disabled(!preferences.notifications)
+            }
             Section {
                 Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
             } footer: {

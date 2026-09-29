@@ -19,6 +19,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         let verbose = ProcessInfo.processInfo.environment["ZAPFAST_VERBOSE"] != nil
+        model.bringToFront = {
+            NSApp.activate()
+            NSApp.windows.first(where: \.canBecomeMain)?.makeKeyAndOrderFront(nil)
+        }
         model.start(verbose: verbose)
         observeBadge()
         #if DEBUG

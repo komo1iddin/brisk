@@ -28,6 +28,9 @@ public final class AppModel {
         }
     }
 
+    /// Brings the app's window forward; the shell provides it.
+    @ObservationIgnored public var bringToFront: () -> Void = {}
+
     /// Transient messages for the notice banner, oldest first.
     public private(set) var notices: [Notice] = []
 
@@ -46,6 +49,10 @@ public final class AppModel {
     @ObservationIgnored private var composingIn: [String: Task<Void, Never>] = [:]
     /// Voice messages we already sent a played receipt for.
     @ObservationIgnored private var playedTold: Set<String> = []
+    /// Created on start: Notification Center needs a real app bundle.
+    @ObservationIgnored private var notifier: Notifier?
+    /// The person is looking at the app.
+    @ObservationIgnored private var isActive = true
 
     public init(
         backend: Backend = LiveBackend(),
@@ -68,6 +75,10 @@ public final class AppModel {
     public func start(verbose: Bool = false) {
         guard !started else { return }
         started = true
+        let notifier = Notifier()
+        notifier.onResponse = { [weak self] response in self?.handle(response) }
+        notifier.requestAuthorization()
+        self.notifier = notifier
         do {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
@@ -110,8 +121,10 @@ public final class AppModel {
     /// Whether the person is looking at the app; the phone keeps its push
     /// notifications while they are not.
     public func setActive(_ active: Bool) {
+        isActive = active
         guard started else { return }
         backend.send(.setOnline(online: active))
+        if active, let selectedChatID { notifier?.clear(chat: selectedChatID) }
     }
 
     // MARK: Intents: conversation
@@ -340,6 +353,7 @@ public final class AppModel {
             chats.replaceAll(list)
         case .chatUpdated(let chat):
             chats.upsert(chat)
+            if !chat.looksUnread { notifier?.clear(chat: chat.id) }
             // An open chat that turns unread was read by the person looking at it.
             if chat.id == selectedChatID, chat.looksUnread, !chat.markedUnread {
                 markRead(chat.id)
@@ -361,9 +375,8 @@ public final class AppModel {
             conversations.applyUpdated(message)
         case let .messageDeleted(chat, id):
             conversations.applyDeleted(chat: chat, id: id)
-        case .incoming:
-            // Desktop notifications arrive with the notifications feature.
-            break
+        case let .incoming(chat, message):
+            maybeNotify(chat: chat, message: message)
         case .contacts(let contacts):
             chats.replaceContacts(contacts)
         case .searchHits, .chatHits:
@@ -417,6 +430,7 @@ public final class AppModel {
             avatars.clear()
             composerText = [:]
             replyingTo = [:]
+            notifier?.clearAll()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))
         case .failed(let message):
@@ -425,6 +439,52 @@ public final class AppModel {
             break
         }
         session.link = state
+    }
+
+    // MARK: Notifications (upstream's `maybe_notify`)
+
+    private func maybeNotify(chat id: String, message: MessageRecord) {
+        guard preferences.notifications, !message.fromMe, let chat = chats.chat(id) else { return }
+        let now = Int64(Date.now.timeIntervalSince1970)
+        guard !chat.archived, chat.unread > 0, !chats.isMuted(chat), !chat.locked,
+              now - message.timestamp <= 60 else { return }
+        let reading = isActive && selectedChatID == id
+        guard !reading else { return }
+
+        guard preferences.notificationPreviews else {
+            notifier?.post(chat: id, message: message.id, title: "ZapFast",
+                           body: String(localized: "New message"), picture: nil)
+            return
+        }
+        let title = chats.title(for: chat)
+        let text = messageText(message)
+        let body = chat.kind == .group
+            ? "\(chats.displayName(message.sender, hint: message.senderName)): \(text)"
+            : text
+        let picture = avatars.url(for: id) ?? avatars.url(for: message.sender)
+        notifier?.post(chat: id, message: message.id, title: title, body: body, picture: picture)
+    }
+
+    /// A message's summary with `@number` mention tokens shown as names.
+    public func messageText(_ message: MessageRecord) -> String {
+        message.mentions.reduce(message.summary) { text, mention in
+            text.replacingOccurrences(of: "@\(mention.user)", with: "@\(chats.displayName(mention.id))")
+        }
+    }
+
+    private func handle(_ response: Notifier.Response) {
+        switch response {
+        case let .open(chat, _):
+            selectedChatID = chat
+            bringToFront()
+        case let .reply(chat, message, text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            backend.send(.sendText(chat: chat, text: trimmed, quoting: message, mentions: []))
+            markRead(chat)
+        case .markRead(let chat):
+            markRead(chat)
+        }
     }
 
     private func post(_ kind: Notice.Kind, _ text: String) {

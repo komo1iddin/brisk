@@ -15,25 +15,45 @@ use crate::types::PageKey;
 pub enum BridgeCommand {
     // Link
     /// Pair by phone number instead of QR; the phone shows a code prompt.
-    PairWithPhone { phone: String },
+    PairWithPhone {
+        phone: String,
+    },
     Reconnect,
     /// Unlink this device here and on the phone.
     Unlink,
     /// Set aside an unreadable archive and start over with a new link.
     StartOverArchive,
     /// Whether the person is looking at the app.
-    SetOnline { online: bool },
+    SetOnline {
+        online: bool,
+    },
     /// Empty follows the system.
-    SetProxy { proxy: String },
+    SetProxy {
+        proxy: String,
+    },
 
     // Reading
     /// Archived messages before `before`, or the newest page.
-    LoadChat { chat: String, before: Option<PageKey> },
+    LoadChat {
+        chat: String,
+        before: Option<PageKey>,
+    },
     /// Ask the phone for messages older than the archive has.
-    FetchOlder { chat: String },
-    MarkRead { chat: String, receipts: bool },
-    MarkUnread { chat: String },
-    Download { chat: String, message: String, card: Option<u32> },
+    FetchOlder {
+        chat: String,
+    },
+    MarkRead {
+        chat: String,
+        receipts: bool,
+    },
+    MarkUnread {
+        chat: String,
+    },
+    Download {
+        chat: String,
+        message: String,
+        card: Option<u32>,
+    },
     /// A voice message was played: the blue microphone for its sender.
     MarkPlayed {
         chat: String,
@@ -41,8 +61,13 @@ pub enum BridgeCommand {
         sender: String,
         receipts: bool,
     },
-    FetchAvatar { id: String, full: bool },
-    SearchMessages { query: String },
+    FetchAvatar {
+        id: String,
+        full: bool,
+    },
+    SearchMessages {
+        query: String,
+    },
     SearchChatMessages {
         chat: String,
         query: String,
@@ -77,29 +102,64 @@ pub enum BridgeCommand {
         text: String,
         mentions: Vec<String>,
     },
-    React { chat: String, message: String, emoji: String },
+    React {
+        chat: String,
+        message: String,
+        emoji: String,
+    },
     /// Delete for everyone.
-    Revoke { chat: String, id: String },
+    Revoke {
+        chat: String,
+        id: String,
+    },
     /// Delete for me.
-    DeleteLocal { chat: String, id: String },
+    DeleteLocal {
+        chat: String,
+        id: String,
+    },
     Forward {
         from_chat: String,
         messages: Vec<String>,
         to_chat: String,
     },
-    Composing { chat: String, composing: bool },
-    SaveDraft { chat: String, text: String },
+    Composing {
+        chat: String,
+        composing: bool,
+    },
+    SaveDraft {
+        chat: String,
+        text: String,
+    },
 
     // Chat management
-    SetArchived { chat: String, archived: bool },
-    SetPinned { chat: String, pinned: bool },
-    SetFavorite { chat: String, favorite: bool },
+    SetArchived {
+        chat: String,
+        archived: bool,
+    },
+    SetPinned {
+        chat: String,
+        pinned: bool,
+    },
+    SetFavorite {
+        chat: String,
+        favorite: bool,
+    },
     /// Mute end in Unix seconds, `Some(0)` indefinitely, `None` unmutes.
-    SetMuted { chat: String, until: Option<i64> },
-    ClearChat { chat: String },
-    DeleteChat { chat: String },
+    SetMuted {
+        chat: String,
+        until: Option<i64>,
+    },
+    ClearChat {
+        chat: String,
+    },
+    DeleteChat {
+        chat: String,
+    },
     /// Create an archive chat before its first message.
-    EnsureChat { chat: String, name: String },
+    EnsureChat {
+        chat: String,
+        name: String,
+    },
 }
 
 impl BridgeCommand {

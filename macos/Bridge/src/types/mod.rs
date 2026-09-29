@@ -14,8 +14,8 @@ pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState};
 pub use contact::ContactRecord;
 pub use link::LinkState;
 pub use message::{
-    LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind,
-    PageKey, PollSummary, QuotedMessage, ReactionInfo,
+    LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,
+    PollSummary, QuotedMessage, ReactionInfo,
 };
 
 pub(crate) fn path_string(path: std::path::PathBuf) -> String {

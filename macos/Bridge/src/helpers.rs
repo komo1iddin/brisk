@@ -43,14 +43,19 @@ mod tests {
             .map(|i| (i as f32 * 440.0 * std::f32::consts::TAU / rate as f32).sin() * 0.3)
             .collect();
         let bytes = zapfast::voice::encode(&tone).unwrap();
-        let path = std::env::temp_dir().join(format!("zapfast-bridge-voice-{}.ogg", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("zapfast-bridge-voice-{}.ogg", std::process::id()));
         std::fs::write(&path, bytes).unwrap();
 
         let decoded = decode_voice(path.to_string_lossy().into_owned()).unwrap();
         std::fs::remove_file(&path).ok();
 
         // One second in, one second out, give or take Opus framing.
-        assert!((decoded.len() as i64 - rate as i64).abs() < rate as i64 / 10, "{}", decoded.len());
+        assert!(
+            (decoded.len() as i64 - rate as i64).abs() < rate as i64 / 10,
+            "{}",
+            decoded.len()
+        );
     }
 
     #[test]
@@ -63,7 +68,10 @@ mod tests {
 
     #[test]
     fn formats_phone_ids_like_upstream() {
-        assert_eq!(phone_of("998901234567@s.whatsapp.net".into()).as_deref(), Some("+99 890 123 456 7"));
+        assert_eq!(
+            phone_of("998901234567@s.whatsapp.net".into()).as_deref(),
+            Some("+99 890 123 456 7")
+        );
         assert_eq!(phone_of("123@g.us".into()), None);
     }
 }

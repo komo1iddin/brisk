@@ -75,18 +75,13 @@ impl Pump {
     }
 }
 
-fn run(
-    backend: &Mutex<Backend>,
-    signal: &Signal,
-    listener: &dyn EventListener,
-    stop: &AtomicBool,
-) {
+fn run(backend: &Mutex<Backend>, signal: &Signal, listener: &dyn EventListener, stop: &AtomicBool) {
     let rearm = egui::RawInput::default();
-    loop {
-        match signal.wakes.recv_timeout(SAFETY_POLL) {
-            Ok(()) | Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => break,
-        }
+    // A wake or the safety poll runs a drain; only a dropped sender ends it.
+    while !matches!(
+        signal.wakes.recv_timeout(SAFETY_POLL),
+        Err(RecvTimeoutError::Disconnected)
+    ) {
         if stop.load(Ordering::SeqCst) {
             break;
         }

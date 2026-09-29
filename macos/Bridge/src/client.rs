@@ -123,10 +123,7 @@ impl BridgeClient {
             .take();
         if let Some(Running { backend, pump, .. }) = running {
             pump.stop();
-            backend
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .shutdown();
+            backend.lock().unwrap_or_else(|p| p.into_inner()).shutdown();
             log::info!("bridge stopped");
         }
     }
@@ -196,13 +193,22 @@ mod tests {
         std::fs::remove_dir_all(&root).ok();
         let dirs = dirs_in(&root);
         dirs.ensure().unwrap();
-        assert!(!dirs.runtime.exists(), "upstream's ensure() does not create it");
+        assert!(
+            !dirs.runtime.exists(),
+            "upstream's ensure() does not create it"
+        );
 
         let held = lock_instance(&dirs).expect("a fresh profile can be locked");
-        assert!(matches!(lock_instance(&dirs), Err(BridgeError::AnotherInstance)));
+        assert!(matches!(
+            lock_instance(&dirs),
+            Err(BridgeError::AnotherInstance)
+        ));
 
         drop(held);
-        assert!(lock_instance(&dirs).is_ok(), "the lock is released with its file");
+        assert!(
+            lock_instance(&dirs).is_ok(),
+            "the lock is released with its file"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 }

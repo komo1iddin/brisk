@@ -1,6 +1,7 @@
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastDesign
 
 /// The chat's context menu, also offered by the conversation's menu.
 public struct ChatActions: View {
@@ -31,6 +32,23 @@ public struct ChatActions: View {
             ) {
                 model.setFavorite(!chat.favorite, chat: chat.id)
             }
+        }
+
+        Menu("Labels", systemImage: "tag") {
+            ForEach(model.chats.labels, id: \.id) { label in
+                Toggle(isOn: Binding(
+                    get: { chat.labels.contains(label.id) },
+                    set: { _ in model.toggleLabel(label.id, on: chat) }
+                )) {
+                    Label {
+                        Text(verbatim: label.name)
+                    } icon: {
+                        ColorSwatch.image(hex: label.colorHex)
+                    }
+                }
+            }
+            if !model.chats.labels.isEmpty { Divider() }
+            Button("Manage Labels…") { model.labelsManagerShown = true }
         }
 
         Menu("Mute", systemImage: "bell.slash") {

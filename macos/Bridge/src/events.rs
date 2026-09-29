@@ -7,8 +7,8 @@
 use zapfast::backend::{Event, Refusal, Unsent};
 
 use crate::types::{
-    ChatSummary, ContactRecord, GifFailure, GifInfo, LinkState, MessageRecord, StickerLibrary,
-    count, path_string,
+    ChatSummary, ContactRecord, GifFailure, GifInfo, LabelInfo, LinkState, MessageRecord,
+    StickerLibrary, count, path_string,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -130,6 +130,10 @@ pub enum BridgeEvent {
     ContactReady {
         id: String,
         name: Option<String>,
+    },
+    /// Every label, in creation order. Chats carry the ids they wear.
+    Labels {
+        labels: Vec<LabelInfo>,
     },
     Typing {
         chat: String,
@@ -296,6 +300,9 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             },
         }),
         Event::ContactReady { id, name } => Some(B::ContactReady { id, name }),
+        Event::Labels(labels) => Some(B::Labels {
+            labels: labels.into_iter().map(Into::into).collect(),
+        }),
         Event::Typing {
             chat,
             sender,
@@ -367,7 +374,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
 
         // Not bridged yet. Each moves up when its feature lands on macOS.
         Event::InteractiveReplyState { .. } => not_bridged("InteractiveReplyState"),
-        Event::Labels(_) => not_bridged("Labels"),
         Event::Picked { .. } => not_bridged("Picked"),
         Event::StickerPicture { .. } => not_bridged("StickerPicture"),
         Event::StickerPackPreview(_) => not_bridged("StickerPackPreview"),

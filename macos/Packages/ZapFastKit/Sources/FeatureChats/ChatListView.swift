@@ -10,6 +10,8 @@ public struct ChatListView: View {
 
     @State private var query = ""
     @State private var filter: ChatFilter = .all
+    /// A label chosen in place of a built-in filter.
+    @State private var label: String?
     @State private var showingArchived = false
     @FocusState private var searchFocused: Bool
 
@@ -18,11 +20,13 @@ public struct ChatListView: View {
     }
 
     public var body: some View {
-        let chats = model.chats.visibleChats(filter: filter, query: query, archived: showingArchived)
+        let chats = model.chats.visibleChats(
+            filter: filter, query: query, archived: showingArchived, label: label
+        )
         let hits = messageHits
         List(selection: $model.selectedChatID) {
             if hits.isEmpty {
-                if query.isEmpty, !showingArchived, filter == .all, model.chats.archivedCount > 0 {
+                if query.isEmpty, !showingArchived, filter == .all, label == nil, model.chats.archivedCount > 0 {
                     ArchivedRow(unread: model.chats.archivedUnread) { showingArchived = true }
                         .selectionDisabled()
                 }
@@ -46,7 +50,7 @@ public struct ChatListView: View {
         .onChange(of: model.sidebarSearchRequests) { searchFocused = true }
         .overlay {
             if chats.isEmpty, hits.isEmpty {
-                EmptyState(query: query, filter: filter, archived: showingArchived)
+                EmptyState(query: query, filter: filter, archived: showingArchived, labeled: label != nil)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -60,7 +64,7 @@ public struct ChatListView: View {
                 }
             } else {
                 ToolbarItem {
-                    FilterMenu(selection: $filter)
+                    FilterMenu(selection: $filter, label: $label, model: model)
                 }
                 ToolbarItem {
                     Button("New Chat", systemImage: "square.and.pencil") { model.newChatShown = true }
@@ -70,6 +74,13 @@ public struct ChatListView: View {
         }
         .sheet(isPresented: $model.newChatShown) {
             NewChatSheet(model: model)
+        }
+        .sheet(isPresented: $model.labelsManagerShown) {
+            LabelManagerSheet(model: model)
+        }
+        // A deleted label stops filtering.
+        .onChange(of: model.chats.labels.map(\.id)) { _, ids in
+            if let label, !ids.contains(label) { self.label = nil }
         }
     }
 }
@@ -93,33 +104,66 @@ extension ChatListView {
 
     private var title: Text {
         if showingArchived { return Text("Archived") }
+        if let label, let name = model.chats.labels.first(where: { $0.id == label })?.name {
+            return Text(verbatim: name)
+        }
         return filter == .all ? Text("Chats") : Text(filter.title)
     }
 }
 
 // MARK: - Filter
 
-/// Mail-style filter button: filled while a filter is on.
+/// Mail-style filter button: filled while a filter is on. A label is one
+/// more choice beside the built-in filters, as upstream's chips are.
 private struct FilterMenu: View {
     @Binding var selection: ChatFilter
+    @Binding var label: String?
+    let model: AppModel
 
     var body: some View {
         Menu {
-            Picker("Show", selection: $selection) {
+            Picker("Show", selection: builtIn) {
                 ForEach(ChatFilter.allCases) { filter in
-                    Text(filter.title).tag(filter)
+                    Text(filter.title).tag(Optional(filter))
                 }
             }
             .pickerStyle(.inline)
+
+            Section("Labels") {
+                ForEach(model.chats.labels, id: \.id) { item in
+                    Toggle(isOn: Binding(
+                        get: { label == item.id },
+                        set: { if $0 { label = item.id } else { label = nil; selection = .all } }
+                    )) {
+                        Label {
+                            Text(verbatim: item.name)
+                        } icon: {
+                            ColorSwatch.image(hex: item.colorHex)
+                        }
+                    }
+                }
+                Button("Manage Labels…") { model.labelsManagerShown = true }
+            }
         } label: {
             Label(
                 "Filter",
-                systemImage: selection == .all
+                systemImage: selection == .all && label == nil
                     ? "line.3.horizontal.decrease.circle"
                     : "line.3.horizontal.decrease.circle.fill"
             )
         }
         .help("Filter chats")
+    }
+
+    /// The built-in filter, shown unchosen while a label filters instead.
+    private var builtIn: Binding<ChatFilter?> {
+        Binding(
+            get: { label == nil ? selection : nil },
+            set: { filter in
+                label = nil
+                if let filter { selection = filter }
+            }
+        )
     }
 }
 
@@ -128,6 +172,7 @@ extension ChatFilter {
         switch self {
         case .all: "All"
         case .unread: "Unread"
+        case .direct: "Private"
         case .favorites: "Favorites"
         case .groups: "Groups"
         case .channels: "Channels"
@@ -165,10 +210,17 @@ private struct EmptyState: View {
     let query: String
     let filter: ChatFilter
     let archived: Bool
+    let labeled: Bool
 
     var body: some View {
         if !query.isEmpty {
             ContentUnavailableView.search(text: query)
+        } else if labeled {
+            ContentUnavailableView(
+                "No chats with this label",
+                systemImage: "tag",
+                description: Text("Add chats to it from their right-click menu.")
+            )
         } else if archived {
             ContentUnavailableView("No archived chats", systemImage: "archivebox")
         } else if filter != .all {

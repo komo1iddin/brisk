@@ -184,6 +184,27 @@ pub enum BridgeCommand {
         name: String,
     },
 
+    // Labels (on this computer only)
+    CreateLabel {
+        name: String,
+        color_hex: String,
+    },
+    /// Renames and recolours a label.
+    UpdateLabel {
+        id: String,
+        name: String,
+        color_hex: String,
+    },
+    /// Deletes a label and takes it off every chat.
+    DeleteLabel {
+        id: String,
+    },
+    /// Replaces the labels one chat wears.
+    SetChatLabels {
+        chat: String,
+        labels: Vec<String>,
+    },
+
     // Stickers and GIFs
     /// Loads the picker's stickers; answered by `Stickers`.
     RecentStickers,
@@ -410,6 +431,19 @@ impl BridgeCommand {
             Self::ClearChat { chat } => Command::ClearChat(chat),
             Self::DeleteChat { chat } => Command::DeleteChat(chat),
             Self::EnsureChat { chat, name } => Command::EnsureChat { chat, name },
+
+            Self::CreateLabel { name, color_hex } => Command::CreateLabel { name, color_hex },
+            Self::UpdateLabel {
+                id,
+                name,
+                color_hex,
+            } => Command::UpdateLabel {
+                id,
+                name,
+                color_hex,
+            },
+            Self::DeleteLabel { id } => Command::DeleteLabel(id),
+            Self::SetChatLabels { chat, labels } => Command::SetChatLabels { chat, labels },
 
             Self::RecentStickers => Command::RecentStickers,
             Self::SendSticker {

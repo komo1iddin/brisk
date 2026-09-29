@@ -55,6 +55,9 @@ public final class AppModel {
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
+    /// The label manager is open.
+    public var labelsManagerShown = false
+
     /// The New Chat sheet is open.
     public var newChatShown = false
     /// A number is being checked with WhatsApp.
@@ -289,6 +292,49 @@ public final class AppModel {
             backend.send(.ensureChat(chat: id, name: name ?? chats.personName(id, hint: nil)))
         }
         selectedChatID = id
+    }
+
+    // MARK: Intents: labels
+
+    /// Upstream's limits and colours for labels.
+    public let labelRules = ZapFastBridge.labelRules()
+
+    /// Why a label cannot have `name`, or nil (upstream's refusals: the
+    /// label limit, and a name another label already has).
+    public func labelProblem(name: String, except id: String? = nil) -> String? {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if id == nil, chats.labels.count >= Int(labelRules.limit) {
+            return String(localized: "You have \(labelRules.limit) labels, the most ZapFast keeps.")
+        }
+        if chats.labels.contains(where: { $0.id != id && $0.name.lowercased() == name.lowercased() }) {
+            return String(localized: "A label named “\(name)” already exists.")
+        }
+        return nil
+    }
+
+    public func createLabel(name: String, colorHex: String) {
+        let name = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Int(labelRules.nameLimit)))
+        guard !name.isEmpty else { return }
+        if let problem = labelProblem(name: name) { return post(.error, problem) }
+        backend.send(.createLabel(name: name, colorHex: colorHex))
+    }
+
+    public func updateLabel(_ label: LabelInfo, name: String, colorHex: String) {
+        let name = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Int(labelRules.nameLimit)))
+        guard !name.isEmpty, name != label.name || colorHex != label.colorHex else { return }
+        if let problem = labelProblem(name: name, except: label.id) { return post(.error, problem) }
+        backend.send(.updateLabel(id: label.id, name: name, colorHex: colorHex))
+    }
+
+    public func deleteLabel(_ label: LabelInfo) {
+        backend.send(.deleteLabel(id: label.id))
+    }
+
+    /// Puts a label on a chat, or takes it off.
+    public func toggleLabel(_ label: String, on chat: ChatSummary) {
+        var worn = chat.labels
+        if let index = worn.firstIndex(of: label) { worn.remove(at: index) } else { worn.append(label) }
+        backend.send(.setChatLabels(chat: chat.id, labels: worn))
     }
 
     // MARK: Intents: stickers and GIFs
@@ -915,6 +961,8 @@ public final class AppModel {
             // one was asked for by something else.
             guard from == nil, until == nil else { break }
             search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
+        case .labels(let labels):
+            chats.replaceLabels(labels)
         case .stickers(let library):
             stickers.apply(library)
         case let .gifs(query, gifs, error):

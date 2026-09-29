@@ -186,3 +186,30 @@ impl From<Chat> for ChatSummary {
         }
     }
 }
+
+/// A label, kept on this computer only.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct LabelInfo {
+    pub id: String,
+    pub name: String,
+    /// `#rrggbb`, lower case.
+    pub color_hex: String,
+    pub created_at: i64,
+}
+
+impl From<zapfast::model::Label> for LabelInfo {
+    fn from(label: zapfast::model::Label) -> Self {
+        let zapfast::model::Label {
+            id,
+            name,
+            color_hex,
+            created_at,
+        } = label;
+        Self {
+            id,
+            name,
+            color_hex,
+            created_at,
+        }
+    }
+}

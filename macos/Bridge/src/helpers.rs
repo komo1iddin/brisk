@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::client::BridgeError;
-use crate::types::{PollDraftInfo, StickerLibrary, path_string};
+use crate::types::{PollDraftInfo, StickerLibrary, count, path_string};
 
 /// Accent- and case-insensitive key for matching search text.
 #[uniffi::export]
@@ -44,6 +44,27 @@ pub fn poll_draft_problem(draft: PollDraftInfo) -> Option<String> {
         .validated()
         .err()
         .map(str::to_owned)
+}
+
+/// Upstream's label limits: how many labels, and how long a name.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct LabelRules {
+    pub limit: u32,
+    pub name_limit: u32,
+    /// The colours offered, `#rrggbb`; the first is the default.
+    pub colors: Vec<String>,
+}
+
+#[uniffi::export]
+pub fn label_rules() -> LabelRules {
+    LabelRules {
+        limit: count(zapfast::archive::LABEL_LIMIT),
+        name_limit: count(zapfast::archive::NAME_LIMIT),
+        colors: zapfast::ui::labels::PRESET_COLORS
+            .iter()
+            .map(|color| color.to_string())
+            .collect(),
+    }
 }
 
 /// Stickers matching `query` (upstream's `sticker_search::search`): by

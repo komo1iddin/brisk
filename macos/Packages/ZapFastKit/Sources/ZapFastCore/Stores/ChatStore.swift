@@ -9,6 +9,8 @@ public final class ChatStore {
     public private(set) var contacts: [String: ContactRecord] = [:]
     /// Unsent composer text per chat, as the backend stored it.
     public private(set) var drafts: [String: String] = [:]
+    /// Labels in creation order; kept on this computer only.
+    public private(set) var labels: [LabelInfo] = []
 
     private let session: SessionStore
 
@@ -24,7 +26,14 @@ public final class ChatStore {
 
     /// Chats for the sidebar, in upstream's order: pinned first (newest pin
     /// first), then by latest activity.
-    public func visibleChats(filter: ChatFilter, query: String, archived: Bool) -> [ChatSummary] {
+    /// A label lists every chat wearing it, channels included, because
+    /// someone put each of them there.
+    public func visibleChats(
+        filter: ChatFilter,
+        query: String,
+        archived: Bool,
+        label: String? = nil
+    ) -> [ChatSummary] {
         let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
         let searching = !needle.isEmpty
         let filtered = chats.values.filter { chat in
@@ -32,9 +41,12 @@ public final class ChatStore {
             if searching {
                 return matches(chat, needle: needle)
             }
-            return chat.archived == archived && (archived || filter.matches(chat))
+            guard chat.archived == archived else { return false }
+            if archived { return true }
+            if let label { return chat.labels.contains(label) }
+            return filter.matches(chat)
         }
-        let favoritesOrder = !searching && !archived && filter == .favorites
+        let favoritesOrder = !searching && !archived && label == nil && filter == .favorites
         return filtered.sorted { a, b in
             if a.pinned != b.pinned { return a.pinned }
             if a.pinned {
@@ -224,6 +236,10 @@ public final class ChatStore {
         }
     }
 
+    func replaceLabels(_ list: [LabelInfo]) {
+        labels = list
+    }
+
     func replaceDrafts(_ list: [Draft]) {
         drafts = Dictionary(list.map { ($0.chat, $0.text) }, uniquingKeysWith: { _, new in new })
     }
@@ -236,6 +252,7 @@ public final class ChatStore {
         chats = [:]
         contacts = [:]
         drafts = [:]
+        labels = []
     }
 }
 

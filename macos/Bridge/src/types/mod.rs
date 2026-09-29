@@ -11,7 +11,7 @@ mod link;
 mod message;
 mod sticker;
 
-pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState};
+pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState, LabelInfo};
 pub use contact::ContactRecord;
 pub use link::LinkState;
 pub use message::{

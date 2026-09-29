@@ -4,6 +4,8 @@ import ZapFastBridge
 public enum ChatFilter: String, CaseIterable, Identifiable, Sendable {
     case all
     case unread
+    /// One-to-one chats: neither groups nor broadcasts.
+    case direct
     case favorites
     case groups
     /// Followed channels, which the other filters leave out.
@@ -15,6 +17,7 @@ public enum ChatFilter: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .all: !chat.isChannel
         case .unread: chat.looksUnread && !chat.isChannel
+        case .direct: chat.kind == .direct
         case .favorites: chat.favorite && !chat.isChannel
         case .groups: chat.kind == .group
         case .channels: chat.isChannel

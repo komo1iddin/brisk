@@ -20,3 +20,52 @@ public enum Palette {
         return colors[Int(hash % UInt64(colors.count))]
     }
 }
+
+extension Color {
+    /// A colour from `#rrggbb` data, such as a label's; grey when unreadable.
+    public init(hex: String) {
+        let digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else {
+            self = .gray
+            return
+        }
+        self.init(
+            .sRGB,
+            red: Double((value >> 16) & 0xff) / 255,
+            green: Double((value >> 8) & 0xff) / 255,
+            blue: Double(value & 0xff) / 255
+        )
+    }
+}
+
+/// A small filled circle of a data colour, as an image menus keep in
+/// colour (they draw symbols as monochrome templates).
+public enum ColorSwatch {
+    public static func image(hex: String, diameter: CGFloat = 12) -> Image {
+        let color = NSColor(Color(hex: hex))
+        let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
+            color.setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5)).fill()
+            return true
+        }
+        image.isTemplate = false
+        return Image(nsImage: image)
+    }
+
+    /// Upstream's names for its preset label colours.
+    public static func name(hex: String) -> String {
+        switch hex.lowercased() {
+        case "#3b82f6": String(localized: "Blue")
+        case "#22c55e": String(localized: "Green")
+        case "#eab308": String(localized: "Yellow")
+        case "#f97316": String(localized: "Orange")
+        case "#ef4444": String(localized: "Red")
+        case "#ec4899": String(localized: "Pink")
+        case "#a855f7": String(localized: "Purple")
+        case "#14b8a6": String(localized: "Teal")
+        case "#64748b": String(localized: "Grey")
+        case "#0ea5e9": String(localized: "Sky blue")
+        default: String(localized: "Colour")
+        }
+    }
+}

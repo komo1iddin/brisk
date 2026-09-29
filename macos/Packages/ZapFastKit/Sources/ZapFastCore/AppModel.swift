@@ -52,6 +52,9 @@ public final class AppModel {
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
 
+    /// Members picked from the `@` suggestions, per chat, until sent.
+    public private(set) var composerMentions: [String: [ComposerMention]] = [:]
+
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
@@ -119,6 +122,7 @@ public final class AppModel {
     @ObservationIgnored private var pollRefreshAsked: Set<MessageKey> = []
     /// What the composer held before an edit took it over, per chat.
     @ObservationIgnored private var textBeforeEdit: [String: String] = [:]
+    @ObservationIgnored private var mentionsBeforeEdit: [String: [ComposerMention]?] = [:]
     @ObservationIgnored private var gifSearchTask: Task<Void, Never>?
     @ObservationIgnored private var wantedGifQuery: String?
     /// The query the sidebar's message hits should answer.
@@ -235,12 +239,46 @@ public final class AppModel {
             finishEditing(message, with: text)
             return
         }
+        let (encoded, mentions) = encodeMentions(text, in: chat)
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         composerText[chat] = ""
         chats.setDraft("", for: chat)
         backend.send(.saveDraft(chat: chat, text: ""))
         stopComposing(in: chat)
-        backend.send(.sendText(chat: chat, text: text, quoting: quoting, mentions: []))
+        backend.send(.sendText(chat: chat, text: encoded, quoting: quoting, mentions: mentions))
+    }
+
+    // MARK: Intents: mentions
+
+    /// Group members matching what follows an `@` in the composer
+    /// (upstream's `mention_candidates`): by name, or by digits of their
+    /// number; never us, and only in groups.
+    public func mentionCandidates(in chat: String, query: String) -> [MentionCandidate] {
+        guard let summary = chats.chat(chat), summary.kind == .group else { return [] }
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let digits = query.filter { $0.isASCII && $0.isNumber }
+        return chats.members(of: summary)
+            .filter { member in
+                guard !session.isOurs(member.id) else { return false }
+                if needle.isEmpty { return true }
+                return member.name.trimmingPrefix("~").lowercased().contains(needle)
+                    || (!digits.isEmpty && (MentionEncoding.user(of: member.id)?.contains(digits) ?? false))
+            }
+            .map { MentionCandidate(id: $0.id, name: $0.name, phone: phoneOf(id: $0.id)) }
+    }
+
+    /// A member was picked; the composer now holds `@name` for them.
+    public func addMention(_ candidate: MentionCandidate, in chat: String) {
+        guard chats.chat(chat)?.participants.contains(candidate.id) == true else { return }
+        composerMentions[chat, default: []].append(ComposerMention(id: candidate.id, name: candidate.name))
+    }
+
+    /// The composer's text with picked names as `@user` tokens, and whom
+    /// it mentions. The picks are used up.
+    private func encodeMentions(_ text: String, in chat: String) -> (String, [String]) {
+        let picked = composerMentions.removeValue(forKey: chat) ?? []
+        let participants = chats.chat(chat)?.participants ?? []
+        return MentionEncoding.encode(text, picked: picked, participants: participants)
     }
 
     public func reply(to message: MessageRecord) {
@@ -545,7 +583,10 @@ public final class AppModel {
     public func startEditing(_ message: MessageRecord) {
         guard canEdit(message), case let .text(text, _) = message.content else { return }
         let chat = message.chat
-        if editing[chat] == nil { textBeforeEdit[chat] = composerText[chat] ?? "" }
+        if editing[chat] == nil {
+            textBeforeEdit[chat] = composerText[chat] ?? ""
+            mentionsBeforeEdit[chat] = composerMentions.removeValue(forKey: chat)
+        }
         replyingTo[chat] = nil
         editing[chat] = message
         composerText[chat] = text
@@ -566,17 +607,22 @@ public final class AppModel {
     public func cancelEditing(in chat: String) {
         guard editing.removeValue(forKey: chat) != nil else { return }
         composerText[chat] = textBeforeEdit.removeValue(forKey: chat) ?? ""
+        composerMentions[chat] = mentionsBeforeEdit.removeValue(forKey: chat) ?? nil
     }
 
     /// Sends the changed text; the worker files it and sends the message
-    /// back updated. Mentions still named in the text are kept.
+    /// back updated. Mentions still named in the text are kept, and new
+    /// ones picked while editing are added.
     private func finishEditing(_ message: MessageRecord, with text: String) {
         let chat = message.chat
+        let (text, picked) = encodeMentions(text, in: chat)
         cancelEditing(in: chat)
         stopComposing(in: chat)
         guard case let .text(original, _) = message.content, text != original else { return }
-        let mentions = message.mentions.filter { text.contains("@\($0.user)") }.map(\.id)
-        backend.send(.editText(chat: chat, id: message.id, text: text, mentions: mentions))
+        let kept = message.mentions
+            .filter { MentionEncoding.containsToken(text, user: $0.user) && !picked.contains($0.id) }
+            .map(\.id)
+        backend.send(.editText(chat: chat, id: message.id, text: text, mentions: picked + kept))
     }
 
     public func cancelReply(in chat: String) {
@@ -1041,9 +1087,11 @@ public final class AppModel {
             stickers.clear()
             avatars.clear()
             composerText = [:]
+            composerMentions = [:]
             replyingTo = [:]
             editing = [:]
             textBeforeEdit = [:]
+            mentionsBeforeEdit = [:]
             forwarding = nil
             pollVoting = []
             pollComposerChat = nil

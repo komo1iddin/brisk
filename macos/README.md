@@ -71,6 +71,7 @@ drain, and a one-second timeout backs it up.
 | ↑ ↓ Return | Walk the matches from the search field; Esc closes it |
 | Return / ⇧Return | Send / new line in the composer |
 | ↑ in an empty composer | Edit your newest message (up to 15 minutes old); Esc cancels |
+| @ in a group's composer | Suggest members to mention; ↑ ↓ choose, Return or Tab picks, Esc closes |
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 

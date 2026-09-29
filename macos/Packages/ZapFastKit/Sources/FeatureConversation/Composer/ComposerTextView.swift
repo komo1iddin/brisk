@@ -16,6 +16,10 @@ struct ComposerTextView: NSViewRepresentable {
     let onPasteFiles: ([URL]) -> Void
     /// Up Arrow in an empty field; returns whether it was used.
     var onUpInEmpty: () -> Bool = { false }
+    /// Follows `@` queries and takes the keys while suggestions show.
+    var mentions: MentionTracker?
+    /// Picked `@name`s, drawn in the accent colour.
+    var mentionNames: [String] = []
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -50,6 +54,7 @@ struct ComposerTextView: NSViewRepresentable {
         scrollView.documentView = textView
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
+        mentions?.textView = textView
         return scrollView
     }
 
@@ -58,8 +63,11 @@ struct ComposerTextView: NSViewRepresentable {
         guard let textView = context.coordinator.textView else { return }
         if textView.string != text {
             textView.string = text
+            mentions?.cancel()
             context.coordinator.measure()
         }
+        mentions?.textView = textView
+        context.coordinator.highlightMentions()
         if context.coordinator.focusedToken != focusToken {
             context.coordinator.focusedToken = focusToken
             DispatchQueue.main.async {
@@ -83,10 +91,19 @@ struct ComposerTextView: NSViewRepresentable {
             guard let textView else { return }
             parent.text = textView.string
             parent.onEdit()
+            parent.mentions?.textChanged(in: textView)
             measure()
         }
 
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView else { return }
+            parent.mentions?.selectionChanged(in: textView)
+        }
+
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            if !textView.hasMarkedText(), parent.mentions?.handle(selector) == true {
+                return true
+            }
             if selector == #selector(NSResponder.moveUp(_:)), textView.string.isEmpty {
                 return parent.onUpInEmpty()
             }
@@ -100,6 +117,25 @@ struct ComposerTextView: NSViewRepresentable {
                 return false
             }
             return true
+        }
+
+        /// Colours each picked `@name` still in the text. Temporary
+        /// attributes stay out of the text itself, which remains plain.
+        func highlightMentions() {
+            guard let textView, let layout = textView.layoutManager else { return }
+            let text = textView.string as NSString
+            let whole = NSRange(location: 0, length: text.length)
+            layout.removeTemporaryAttribute(.foregroundColor, forCharacterRange: whole)
+            for name in Set(parent.mentionNames) {
+                var searched = whole
+                while searched.length > 0 {
+                    let found = text.range(of: "@\(name)", options: [], range: searched)
+                    guard found.location != NSNotFound else { break }
+                    layout.addTemporaryAttribute(.foregroundColor, value: NSColor.controlAccentColor, forCharacterRange: found)
+                    let next = found.location + found.length
+                    searched = NSRange(location: next, length: text.length - next)
+                }
+            }
         }
 
         func measure() {

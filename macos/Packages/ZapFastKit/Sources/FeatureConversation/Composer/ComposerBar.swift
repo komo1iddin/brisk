@@ -11,17 +11,23 @@ struct ComposerBar: View {
     @State private var fieldHeight: CGFloat = 22
     @State private var choosingFiles = false
     @State private var pickingSticker = false
+    @State private var mentions = MentionTracker()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let suggesting = !mentions.suggestions.isEmpty
         VStack(spacing: Metrics.s) {
+            if suggesting {
+                MentionSuggestions(tracker: mentions, model: model)
+                    .transition(.opacity)
+            }
             if let message = model.editing[chatID] {
-                EditPreview(message: message) {
+                EditPreview(message: message, escapes: !suggesting) {
                     withAnimation(.zf(reduceMotion)) { model.cancelEditing(in: chatID) }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if let reply = model.replyingTo[chatID] {
-                ReplyPreview(message: reply, model: model) {
+                ReplyPreview(message: reply, model: model, escapes: !suggesting) {
                     withAnimation(.zf(reduceMotion)) { model.cancelReply(in: chatID) }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -47,6 +53,17 @@ struct ComposerBar: View {
         .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { model.sendFiles(urls, in: chatID) }
         }
+        .onAppear(perform: bindMentions)
+        .onChange(of: chatID) {
+            mentions.cancel()
+            bindMentions()
+        }
+    }
+
+    private func bindMentions() {
+        let chat = chatID, model = model
+        mentions.candidates = { model.mentionCandidates(in: chat, query: $0) }
+        mentions.onPick = { model.addMention($0, in: chat) }
     }
 
     private var editor: some View {
@@ -98,7 +115,9 @@ struct ComposerBar: View {
                         onSubmit: { model.sendText(in: chatID) },
                         onEdit: { model.composerEdited(in: chatID) },
                         onPasteFiles: { model.sendFiles($0, in: chatID) },
-                        onUpInEmpty: { model.editLastMessage(in: chatID) }
+                        onUpInEmpty: { model.editLastMessage(in: chatID) },
+                        mentions: mentions,
+                        mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)
                     )
                     .frame(height: fieldHeight)
                 }
@@ -264,6 +283,8 @@ private struct Pulse: ViewModifier {
 /// button (or Escape) to leave it as it was.
 private struct EditPreview: View {
     let message: MessageRecord
+    /// Escape cancels, unless mention suggestions have it.
+    let escapes: Bool
     let cancel: () -> Void
 
     var body: some View {
@@ -285,7 +306,7 @@ private struct EditPreview: View {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
+            .keyboardShortcut(escapes ? .cancelAction : nil)
             .help("Cancel editing")
             .accessibilityLabel("Cancel editing")
         }
@@ -297,6 +318,8 @@ private struct EditPreview: View {
 private struct ReplyPreview: View {
     let message: MessageRecord
     let model: AppModel
+    /// Escape cancels, unless mention suggestions have it.
+    let escapes: Bool
     let cancel: () -> Void
 
     var body: some View {
@@ -318,7 +341,7 @@ private struct ReplyPreview: View {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
+            .keyboardShortcut(escapes ? .cancelAction : nil)
             .accessibilityLabel("Cancel reply")
         }
         .frame(height: 36)

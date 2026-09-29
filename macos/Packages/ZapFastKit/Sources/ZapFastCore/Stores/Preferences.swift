@@ -38,6 +38,11 @@ public final class Preferences {
         didSet { defaults.set(saveContactsToPhone, forKey: Key.saveContactsToPhone) }
     }
 
+    /// Our own GIPHY key for GIF search; blank uses one built in, if any.
+    public var giphyKey: String {
+        didSet { defaults.set(giphyKey, forKey: Key.giphyKey) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -54,6 +59,7 @@ public final class Preferences {
         notifications = defaults.bool(forKey: Key.notifications)
         notificationPreviews = defaults.bool(forKey: Key.notificationPreviews)
         saveContactsToPhone = defaults.bool(forKey: Key.saveContactsToPhone)
+        giphyKey = defaults.string(forKey: Key.giphyKey) ?? ""
     }
 
     private enum Key {
@@ -63,5 +69,6 @@ public final class Preferences {
         static let notifications = "notifications"
         static let notificationPreviews = "notificationPreviews"
         static let saveContactsToPhone = "saveContactsToPhone"
+        static let giphyKey = "giphyKey"
     }
 }

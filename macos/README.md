@@ -73,6 +73,13 @@ drain, and a one-second timeout backs it up.
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 
+The smiley button in the composer opens stickers (favorites, recent,
+packs, and ones sent to you, searchable by emoji or its name) and GIFs.
+GIF search is the only feature that talks to a third party: it asks
+GIPHY, with your own key from Settings or one built in at compile time
+through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
+system's Character Viewer (⌃⌘Space).
+
 Picking a match scrolls to it, loading older history from the archive
 first when needed, and marks it for a moment.
 

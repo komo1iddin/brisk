@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use zapfast::backend::Command;
 
-use crate::types::PageKey;
+use crate::types::{GifInfo, PageKey};
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCommand {
@@ -177,6 +177,39 @@ pub enum BridgeCommand {
     EnsureChat {
         chat: String,
         name: String,
+    },
+
+    // Stickers and GIFs
+    /// Loads the picker's stickers; answered by `Stickers`.
+    RecentStickers,
+    /// Sends a WebP sticker.
+    SendSticker {
+        chat: String,
+        path: String,
+        quoting: Option<String>,
+    },
+    /// Adds a sticker to Favorites.
+    SaveSticker {
+        path: String,
+    },
+    /// Takes a sticker out of Favorites.
+    ForgetSticker {
+        path: String,
+    },
+    /// Takes a sticker out of Recent here and on the phone.
+    RemoveRecentSticker {
+        path: String,
+    },
+    /// Searches GIPHY, or lists trending GIFs for an empty query.
+    SearchGifs {
+        query: String,
+        key: String,
+    },
+    /// Sends a GIF as a short looping video.
+    SendGif {
+        chat: String,
+        gif: GifInfo,
+        quoting: Option<String>,
     },
 
     // Groups and contacts
@@ -349,6 +382,28 @@ impl BridgeCommand {
             Self::ClearChat { chat } => Command::ClearChat(chat),
             Self::DeleteChat { chat } => Command::DeleteChat(chat),
             Self::EnsureChat { chat, name } => Command::EnsureChat { chat, name },
+
+            Self::RecentStickers => Command::RecentStickers,
+            Self::SendSticker {
+                chat,
+                path,
+                quoting,
+            } => Command::SendSticker {
+                chat,
+                path: path.into(),
+                quoting,
+            },
+            Self::SaveSticker { path } => Command::SaveSticker { path: path.into() },
+            Self::ForgetSticker { path } => Command::ForgetSticker { path: path.into() },
+            Self::RemoveRecentSticker { path } => {
+                Command::RemoveRecentSticker { path: path.into() }
+            }
+            Self::SearchGifs { query, key } => Command::SearchGifs { query, key },
+            Self::SendGif { chat, gif, quoting } => Command::SendGif {
+                chat,
+                gif: gif.into(),
+                quoting,
+            },
 
             Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
             Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },

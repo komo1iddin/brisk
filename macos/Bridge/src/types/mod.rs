@@ -9,6 +9,7 @@ mod chat;
 mod contact;
 mod link;
 mod message;
+mod sticker;
 
 pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState};
 pub use contact::ContactRecord;
@@ -17,6 +18,7 @@ pub use message::{
     LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,
     PollSummary, PollVoterInfo, QuotedMessage, ReactionInfo,
 };
+pub use sticker::{GifFailure, GifInfo, StickerEmojis, StickerLibrary, StickerPackInfo};
 
 pub(crate) fn path_string(path: std::path::PathBuf) -> String {
     path.to_string_lossy().into_owned()

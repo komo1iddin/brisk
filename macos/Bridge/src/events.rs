@@ -6,7 +6,10 @@
 
 use zapfast::backend::{Event, Refusal, Unsent};
 
-use crate::types::{ChatSummary, ContactRecord, LinkState, MessageRecord, count, path_string};
+use crate::types::{
+    ChatSummary, ContactRecord, GifFailure, GifInfo, LinkState, MessageRecord, StickerLibrary,
+    count, path_string,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum SendRefusal {
@@ -107,6 +110,16 @@ pub enum BridgeEvent {
     GroupSaving {
         chat: String,
         saving: bool,
+    },
+    /// The picker's stickers.
+    Stickers {
+        library: StickerLibrary,
+    },
+    /// GIF results for `query`, or why there are none.
+    Gifs {
+        query: String,
+        gifs: Vec<GifInfo>,
+        error: Option<GifFailure>,
     },
     Typing {
         chat: String,
@@ -250,6 +263,27 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             error,
         }),
         Event::GroupSaving { chat, saving } => Some(B::GroupSaving { chat, saving }),
+        Event::Stickers {
+            favorites,
+            packs,
+            recent,
+            received,
+            emojis,
+        } => Some(B::Stickers {
+            library: StickerLibrary::new(favorites, packs, recent, received, emojis),
+        }),
+        Event::Gifs { query, results } => Some(match results {
+            Ok(gifs) => B::Gifs {
+                query,
+                gifs: gifs.into_iter().map(Into::into).collect(),
+                error: None,
+            },
+            Err(error) => B::Gifs {
+                query,
+                gifs: Vec::new(),
+                error: Some(error.into()),
+            },
+        }),
         Event::Typing {
             chat,
             sender,
@@ -324,10 +358,8 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::PollCreated { .. } => not_bridged("PollCreated"),
         Event::Labels(_) => not_bridged("Labels"),
         Event::Picked { .. } => not_bridged("Picked"),
-        Event::Gifs { .. } => not_bridged("Gifs"),
         Event::StickerPicture { .. } => not_bridged("StickerPicture"),
         Event::StickerPackPreview(_) => not_bridged("StickerPackPreview"),
-        Event::Stickers { .. } => not_bridged("Stickers"),
         Event::AccountPrivacy { .. } => not_bridged("AccountPrivacy"),
         Event::AccountPrivacySaved { .. } => not_bridged("AccountPrivacySaved"),
         Event::AccountPrivacyFailed { .. } => not_bridged("AccountPrivacyFailed"),

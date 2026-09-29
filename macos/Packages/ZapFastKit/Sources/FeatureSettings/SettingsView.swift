@@ -111,7 +111,15 @@ private struct AdvancedSettings: View {
     let model: AppModel
 
     var body: some View {
+        @Bindable var preferences = model.preferences
         Form {
+            Section {
+                TextField("GIPHY API key", text: $preferences.giphyKey, prompt: Text("Built-in key, if any"))
+            } footer: {
+                Text("GIF search asks GIPHY with this key. Create a free one at developers.giphy.com.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Section {
                 LabeledContent("Log file") {
                     Button("Show in Finder") {

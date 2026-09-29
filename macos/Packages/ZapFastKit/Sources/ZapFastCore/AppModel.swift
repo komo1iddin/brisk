@@ -16,6 +16,7 @@ public final class AppModel {
     public let avatars: AvatarStore
     public let preferences: Preferences
     public let search = SearchStore()
+    public let stickers = StickerStore()
     public let voice = VoicePlayer()
     public let recorder = VoiceRecorder()
 
@@ -105,6 +106,8 @@ public final class AppModel {
     @ObservationIgnored private var pollRefreshAsked: Set<MessageKey> = []
     /// What the composer held before an edit took it over, per chat.
     @ObservationIgnored private var textBeforeEdit: [String: String] = [:]
+    @ObservationIgnored private var gifSearchTask: Task<Void, Never>?
+    @ObservationIgnored private var wantedGifQuery: String?
     /// The query the sidebar's message hits should answer.
     @ObservationIgnored private var wantedMessageQuery = ""
     @ObservationIgnored private var chatSearchTask: Task<Void, Never>?
@@ -256,6 +259,51 @@ public final class AppModel {
             backend.send(.ensureChat(chat: id, name: chats.personName(id, hint: nil)))
         }
         selectedChatID = id
+    }
+
+    // MARK: Intents: stickers and GIFs
+
+    /// The picker opened: load its stickers, as upstream does each time.
+    public func loadStickers() {
+        backend.send(.recentStickers)
+    }
+
+    /// Sends a sticker, replying if a reply is set.
+    public func sendSticker(_ path: String, in chat: String) {
+        let quoting = replyingTo.removeValue(forKey: chat)?.id
+        backend.send(.sendSticker(chat: chat, path: path, quoting: quoting))
+    }
+
+    public func toggleFavoriteSticker(_ path: String) {
+        backend.send(stickers.isFavorite(path) ? .forgetSticker(path: path) : .saveSticker(path: path))
+    }
+
+    public func removeRecentSticker(_ path: String) {
+        backend.send(.removeRecentSticker(path: path))
+    }
+
+    /// Whether GIF search has a key: ours, or one built into upstream.
+    public var canSearchGifs: Bool {
+        giphyKey(own: preferences.giphyKey) != nil
+    }
+
+    /// Searches GIPHY once typing pauses; an empty query lists trending.
+    public func searchGifs(_ text: String) {
+        gifSearchTask?.cancel()
+        guard let key = giphyKey(own: preferences.giphyKey) else { return }
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        wantedGifQuery = query
+        stickers.gifPending = true
+        gifSearchTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            self?.backend.send(.searchGifs(query: query, key: key))
+        }
+    }
+
+    public func sendGif(_ gif: GifInfo, in chat: String) {
+        let quoting = replyingTo.removeValue(forKey: chat)?.id
+        backend.send(.sendGif(chat: chat, gif: gif, quoting: quoting))
     }
 
     // MARK: Intents: groups and contacts
@@ -801,6 +849,10 @@ public final class AppModel {
             // one was asked for by something else.
             guard from == nil, until == nil else { break }
             search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
+        case .stickers(let library):
+            stickers.apply(library)
+        case let .gifs(query, gifs, error):
+            stickers.applyGifs(query: query, gifs: gifs, error: error, wanted: wantedGifQuery ?? "")
         case let .groupSaving(chat, saving):
             if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
         case let .pollVoted(chat, message, error):
@@ -852,6 +904,7 @@ public final class AppModel {
             chats.clear()
             conversations.clear()
             search.clear()
+            stickers.clear()
             avatars.clear()
             composerText = [:]
             replyingTo = [:]

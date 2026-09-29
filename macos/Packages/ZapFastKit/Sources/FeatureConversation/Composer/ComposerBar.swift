@@ -10,6 +10,7 @@ struct ComposerBar: View {
 
     @State private var fieldHeight: CGFloat = 22
     @State private var choosingFiles = false
+    @State private var pickingSticker = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -57,6 +58,21 @@ struct ComposerBar: View {
                 .buttonStyle(.borderless)
                 .help("Attach files")
                 .accessibilityLabel("Attach files")
+
+                Button {
+                    pickingSticker.toggle()
+                } label: {
+                    Image(systemName: "face.smiling")
+                        .font(.title3)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .help("Stickers and GIFs")
+                .accessibilityLabel("Stickers and GIFs")
+                .disabled(isEditing)
+                .popover(isPresented: $pickingSticker, arrowEdge: .top) {
+                    StickerPicker(chatID: chatID, model: model) { pickingSticker = false }
+                }
 
                 ZStack(alignment: .topLeading) {
                     if text.isEmpty {

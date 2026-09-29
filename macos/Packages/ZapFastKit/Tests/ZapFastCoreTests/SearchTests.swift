@@ -107,6 +107,31 @@ struct SearchTests {
         #expect(loadUntilCount(backend) == 1)
     }
 
+    @Test func clickingAQuoteJumpsToTheQuotedMessage() {
+        let (model, backend) = model()
+        model.selectedChatID = chat
+        var reply = message("r", at: 60)
+        reply.quoted = QuotedMessage(id: "a", sender: "a@s.whatsapp.net", senderName: nil, summary: "hello", mentions: [])
+        model.apply([.messages(chat: chat, messages: [message("m", at: 50), reply], older: false, complete: false)])
+
+        model.showQuoted(in: reply)
+        #expect(backend.sent.last == .loadUntil(chat: chat, message: "a", before: PageKey(timestamp: 50, id: "m")))
+
+        model.apply([.messages(chat: chat, messages: [message("a", at: 1)], older: true, complete: false)])
+        #expect(model.jump?.key == MessageKey(chat: chat, message: "a"))
+        #expect(model.highlighted == MessageKey(chat: chat, message: "a"))
+    }
+
+    @Test func aQuoteWithoutAnIDGoesNowhere() {
+        let (model, backend) = model()
+        var reply = message("r", at: 60)
+        reply.quoted = QuotedMessage(id: "", sender: "a@s.whatsapp.net", senderName: nil, summary: "hello", mentions: [])
+
+        model.showQuoted(in: reply)
+        #expect(model.selectedChatID == nil)
+        #expect(backend.sent.isEmpty)
+    }
+
     // MARK: Search answers
 
     @Test func messageHitsForAnEarlierQueryAreIgnored() {

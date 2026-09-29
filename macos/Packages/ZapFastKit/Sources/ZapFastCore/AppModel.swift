@@ -841,6 +841,14 @@ public final class AppModel {
         reveal(MessageKey(chat: message.chat, message: message.id))
     }
 
+    /// Scrolls to the message a reply quotes, as clicking a quote does
+    /// upstream. A quote of a message the archive never had ends with the
+    /// backend saying so.
+    public func showQuoted(in message: MessageRecord) {
+        guard let quoted = message.quoted, !quoted.id.isEmpty else { return }
+        reveal(MessageKey(chat: message.chat, message: quoted.id))
+    }
+
     public func reveal(_ key: MessageKey) {
         if selectedChatID != key.chat { selectedChatID = key.chat }
         pendingJump = key

@@ -81,8 +81,9 @@ GIPHY, with your own key from Settings or one built in at compile time
 through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
 system's Character Viewer (⌃⌘Space).
 
-Picking a match scrolls to it, loading older history from the archive
-first when needed, and marks it for a moment.
+Picking a match, or clicking the quote in a reply, scrolls to the message,
+loading older history from the archive first when needed, and marks it for
+a moment.
 
 ## Build
 

@@ -26,7 +26,9 @@ struct MessageBubble: View {
                     .insetForMedia(isMedia)
             }
             if let quoted = message.quoted {
-                QuoteView(quoted: quoted, fromMe: message.fromMe, model: model)
+                QuoteView(quoted: quoted, fromMe: message.fromMe, model: model) {
+                    model.showQuoted(in: message)
+                }
             }
             if let text = inlineFooterText {
                 // The time tucks into the last line, as on the phone: the
@@ -118,11 +120,13 @@ struct MessageBubble: View {
     }
 }
 
-/// The replied-to message, with a bar in the sender's colour.
+/// The replied-to message, with a bar in the sender's colour. Clicking it
+/// scrolls to the original.
 private struct QuoteView: View {
     let quoted: QuotedMessage
     let fromMe: Bool
     let model: AppModel
+    let show: () -> Void
 
     var body: some View {
         HStack(spacing: Metrics.s) {
@@ -143,6 +147,13 @@ private struct QuoteView: View {
         .padding(Metrics.s)
         .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
         .fixedSize(horizontal: false, vertical: true)
+        .contentShape(.rect(cornerRadius: Metrics.controlRadius))
+        .onTapGesture(perform: show)
+        .help("Show the original message")
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Shows the original message")
+        .accessibilityAction { show() }
     }
 }
 

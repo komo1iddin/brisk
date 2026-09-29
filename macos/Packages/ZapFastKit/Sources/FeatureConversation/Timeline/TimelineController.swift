@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastSharedUI
 
 /// Owns the timeline's table: applies row changes as inserts and reloads,
 /// keeps the reader's place when older messages arrive above, follows new
@@ -246,8 +247,19 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         false
     }
 
+    /// Each row is its own SwiftUI root, so what the window's environment
+    /// would give it (opening invite links here) is given again.
     @ViewBuilder
     private func rowView(_ row: TimelineRow) -> some View {
+        if let model = content.model {
+            rowContent(row).opensInviteLinks(model: model)
+        } else {
+            rowContent(row)
+        }
+    }
+
+    @ViewBuilder
+    private func rowContent(_ row: TimelineRow) -> some View {
         switch row {
         case .day(_, let title):
             DaySeparator(title: title)

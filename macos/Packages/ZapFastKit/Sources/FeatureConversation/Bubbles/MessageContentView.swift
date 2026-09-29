@@ -17,7 +17,7 @@ struct MessageContentView: View {
         case let .text(text, preview):
             VStack(alignment: .leading, spacing: Metrics.s) {
                 BodyText(text: text, message: message, model: model)
-                if let preview { LinkPreviewCard(preview: preview, thumbnail: message.thumbnail, key: message.id) }
+                if let preview { LinkPreviewCard(preview: preview, thumbnail: message.thumbnail, key: message.id, model: model) }
             }
         case let .interactive(text, _):
             BodyText(text: text, message: message, model: model)
@@ -121,6 +121,7 @@ private struct LinkPreviewCard: View {
     let preview: LinkPreviewInfo
     let thumbnail: Data?
     let key: String
+    let model: AppModel
 
     @State private var image: NSImage?
 
@@ -152,7 +153,8 @@ private struct LinkPreviewCard: View {
             image = await Thumbnails.load(thumbnail, key: "preview-\(key)", points: 56)
         }
         .onTapGesture {
-            if let url = URL(string: preview.url) { NSWorkspace.shared.open(url) }
+            guard let url = URL(string: preview.url), !model.openInviteLink(url) else { return }
+            NSWorkspace.shared.open(url)
         }
     }
 }

@@ -37,6 +37,36 @@ pub struct PastedImage {
     pub rgba: Vec<u8>,
 }
 
+/// A group seen through its invite link, before joining.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct InviteInfo {
+    pub id: String,
+    pub subject: String,
+    pub description: Option<String>,
+    pub members: u32,
+    /// Admins approve new members before they join.
+    pub approval: bool,
+}
+
+impl From<zapfast::model::InviteInfo> for InviteInfo {
+    fn from(info: zapfast::model::InviteInfo) -> Self {
+        let zapfast::model::InviteInfo {
+            id,
+            subject,
+            description,
+            members,
+            approval,
+        } = info;
+        Self {
+            id,
+            subject,
+            description,
+            members: count(members),
+            approval,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct Draft {
     pub chat: String,
@@ -134,6 +164,20 @@ pub enum BridgeEvent {
         query: String,
         gifs: Vec<GifInfo>,
         error: Option<GifFailure>,
+    },
+    /// What an invite link says about its group, or why it could not be read.
+    InvitePreview {
+        code: String,
+        info: Option<InviteInfo>,
+        error: Option<String>,
+    },
+    /// Joining through an invite finished: the group's chat, or a request
+    /// admins must approve first (`pending`), or `error`.
+    InviteJoined {
+        code: String,
+        chat: Option<String>,
+        pending: bool,
+        error: Option<String>,
     },
     /// A number checked by `NewContact` is on WhatsApp; its chat can open.
     ContactReady {
@@ -317,6 +361,32 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             },
         }),
         Event::ContactReady { id, name } => Some(B::ContactReady { id, name }),
+        Event::InvitePreview { code, result } => Some(match result {
+            Ok(info) => B::InvitePreview {
+                code,
+                info: Some(info.into()),
+                error: None,
+            },
+            Err(error) => B::InvitePreview {
+                code,
+                info: None,
+                error: Some(error),
+            },
+        }),
+        Event::InviteJoined { code, result } => Some(match result {
+            Ok((chat, pending)) => B::InviteJoined {
+                code,
+                chat: Some(chat),
+                pending,
+                error: None,
+            },
+            Err(error) => B::InviteJoined {
+                code,
+                chat: None,
+                pending: false,
+                error: Some(error),
+            },
+        }),
         Event::Labels(labels) => Some(B::Labels {
             labels: labels.into_iter().map(Into::into).collect(),
         }),
@@ -427,8 +497,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::DownloadFolderPicked(_) => not_bridged("DownloadFolderPicked"),
         Event::WallpaperImagePicked(_) => not_bridged("WallpaperImagePicked"),
         Event::NotificationSoundPicked { .. } => not_bridged("NotificationSoundPicked"),
-        Event::InvitePreview { .. } => not_bridged("InvitePreview"),
-        Event::InviteJoined { .. } => not_bridged("InviteJoined"),
         Event::ClipboardImage(_) => not_bridged("ClipboardImage"),
         // Upstream's self-updater targets its own binary, never this app.
         Event::UpdateAvailable { .. }

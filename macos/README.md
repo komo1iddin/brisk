@@ -82,6 +82,11 @@ copied picture or screenshot) wait above the field with a Quick Look
 thumbnail; the text typed goes with them as the caption, and the reply
 with the first. A send refused offline puts them back.
 
+A WhatsApp group invite link (chat.whatsapp.com/…) clicked in a message
+opens here: the group's name, members and description, then Join, or
+Request to Join where admins approve. File › Join Group with Link… takes
+a pasted link.
+
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video
 messages play in their circle. GIFs and animated stickers move while the

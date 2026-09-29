@@ -33,6 +33,9 @@ struct ZapFastCommands: Commands {
             Button("New Chat…") { model.newChatShown = true }
                 .keyboardShortcut("n")
                 .disabled(!model.isLinked || locked)
+
+            Button("Join Group with Link…") { model.askForInviteLink() }
+                .disabled(!model.isLinked || locked)
         }
 
         CommandGroup(after: .textEditing) {

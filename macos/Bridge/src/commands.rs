@@ -289,6 +289,14 @@ pub enum BridgeCommand {
         chat: String,
         archive: bool,
     },
+    /// Looks up the group behind an invite code; answered by `InvitePreview`.
+    PreviewInvite {
+        code: String,
+    },
+    /// Joins the group behind an invite code; answered by `InviteJoined`.
+    JoinInvite {
+        code: String,
+    },
     /// Checks that a number is on WhatsApp, optionally saves a name for
     /// it, and answers with `ContactReady` so its chat can open.
     NewContact {
@@ -517,6 +525,8 @@ impl BridgeCommand {
             Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
             Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },
             Self::LeaveGroup { chat, archive } => Command::LeaveGroup { chat, archive },
+            Self::PreviewInvite { code } => Command::PreviewInvite(code),
+            Self::JoinInvite { code } => Command::JoinInvite(code),
             Self::NewContact {
                 phone,
                 full_name,

@@ -26,6 +26,8 @@ struct RootView: View {
         }
         .frame(minWidth: 720, minHeight: 480)
         .chatConfirmationAlert(model: model)
+        .groupInviteSheet(model: model)
+        .opensInviteLinks(model: model)
         .overlay(alignment: .top) {
             NoticeStack(model: model)
         }

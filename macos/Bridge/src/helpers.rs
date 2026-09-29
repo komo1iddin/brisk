@@ -111,6 +111,14 @@ pub fn giphy_key(own: String) -> Option<String> {
     .effective_giphy_key()
 }
 
+/// The code of a WhatsApp group invite link, such as
+/// `https://chat.whatsapp.com/AbCd…`, or `None` for any other URL
+/// (upstream's `safety::group_invite_code`).
+#[uniffi::export]
+pub fn group_invite_code(url: String) -> Option<String> {
+    zapfast::safety::group_invite_code(&url)
+}
+
 /// Upstream's shortest app-lock password, in characters.
 #[uniffi::export]
 pub fn app_lock_min_password_chars() -> u32 {

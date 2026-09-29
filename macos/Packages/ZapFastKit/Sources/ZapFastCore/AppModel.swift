@@ -71,6 +71,9 @@ public final class AppModel {
     /// The label manager is open.
     public var labelsManagerShown = false
 
+    /// The group invite sheet: a link being pasted, looked up, or joined.
+    public var invite: GroupInvite?
+
     /// The New Chat sheet is open.
     public var newChatShown = false
     /// A number is being checked with WhatsApp.
@@ -267,6 +270,9 @@ public final class AppModel {
         if recorder.isRecording { recorder.cancel() }
         messageInfo = nil
         forwarding = nil
+        // Sheets over the whole window would show over the lock screen.
+        invite = nil
+        chatConfirmation = nil
         if started { backend.send(.setOnline(online: false)) }
     }
 
@@ -400,6 +406,59 @@ public final class AppModel {
             phone: digits, fullName: name?.full, firstName: name?.short,
             toPhone: preferences.saveContactsToPhone
         ))
+    }
+
+    // MARK: Intents: group invites
+
+    /// A link was clicked: a WhatsApp group invite opens here (upstream's
+    /// rule), anything else is left to the system. Returns whether it was one.
+    @discardableResult
+    public func openInviteLink(_ url: URL) -> Bool {
+        guard let code = groupInviteCode(url: url.absoluteString) else { return false }
+        previewInvite(code: code)
+        return true
+    }
+
+    /// File › Join Group with Link…: the sheet asks for the link.
+    public func askForInviteLink() {
+        invite = GroupInvite(code: "", state: .entering)
+    }
+
+    /// The pasted text, when it is an invite link. Returns whether it was.
+    @discardableResult
+    public func submitInviteLink(_ text: String) -> Bool {
+        guard let code = groupInviteCode(url: text.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return false
+        }
+        previewInvite(code: code)
+        return true
+    }
+
+    private func previewInvite(code: String) {
+        invite = GroupInvite(code: code, state: .loading)
+        backend.send(.previewInvite(code: code))
+    }
+
+    /// Whether the group behind the invite is one we are already in.
+    public func isMember(of info: InviteInfo) -> Bool {
+        chats.chat(info.id).map { !$0.left } ?? false
+    }
+
+    /// Joins, or opens the chat of a group we are already in.
+    public func acceptInvite() {
+        guard var current = invite, case .ready(let info) = current.state else { return }
+        if isMember(of: info) {
+            invite = nil
+            selectedChatID = info.id
+            return
+        }
+        current.state = .joining(info)
+        invite = current
+        backend.send(.joinInvite(code: current.code))
+    }
+
+    public func cancelInvite() {
+        invite = nil
     }
 
     /// Opens the chat with a person, creating it in the archive first when
@@ -1283,6 +1342,23 @@ public final class AppModel {
             stickers.apply(library)
         case let .gifs(query, gifs, error):
             stickers.applyGifs(query: query, gifs: gifs, error: error, wanted: wantedGifQuery ?? "")
+        case let .invitePreview(code, info, error):
+            guard var current = invite, current.code == code else { break }
+            current.state = info.map { .ready($0) } ?? .failed(error ?? String(localized: "Could not read this invite."))
+            invite = current
+        case let .inviteJoined(code, chat, pending, error):
+            guard var current = invite, current.code == code else { break }
+            if let chat {
+                invite = nil
+                if pending {
+                    post(.info, String(localized: "Request sent. An admin must approve it before you join."))
+                } else {
+                    selectedChatID = chat
+                }
+            } else {
+                current.state = .failed(error ?? String(localized: "Could not join this group."))
+                invite = current
+            }
         case let .contactReady(id, name):
             newContactPending = false
             startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? phoneOf(id: id))
@@ -1404,6 +1480,7 @@ public final class AppModel {
             textBeforeEdit = [:]
             mentionsBeforeEdit = [:]
             forwarding = nil
+            invite = nil
             pollVoting = []
             pollComposerChat = nil
             pollCreating = false

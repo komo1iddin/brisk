@@ -1,0 +1,7 @@
+[bindings.swift]
+# The Swift module holding the generated wrappers, and the C module under it.
+module_name = "ZapFastBridge"
+ffi_module_name = "ZapFastBridgeFFI"
+ffi_module_filename = "ZapFastBridgeFFI"
+generate_module_map = true
+omit_argument_labels = false

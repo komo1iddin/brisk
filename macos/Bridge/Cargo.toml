@@ -1,0 +1,75 @@
+[package]
+name = "zapfast-bridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT"
+publish = false
+description = "Swift-facing bridge over ZapFast's backend for the native macOS app"
+
+[lib]
+name = "zapfast_bridge"
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+# The upstream crate, used as a library. Its backend, archive and model are
+# the whole contract; nothing from its egui interface is called.
+zapfast = { path = "../.." }
+uniffi = "0.32"
+thiserror = "2"
+log = "0.4"
+# A windowless egui context: upstream wakes its interface through
+# `fastframe_shell::Waker`, which wraps one. Its repaint callback is our signal.
+egui = "0.36"
+# The same logger upstream uses, with its protocol redaction.
+fastframe-log = { git = "https://github.com/crmne/fastframe", tag = "v0.1.7" }
+
+[workspace]
+members = [".", "uniffi-bindgen"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+
+# The binding generator is a build tool; without debug info it links quietly.
+[profile.bindgen]
+inherits = "dev"
+debug = false
+
+# Matches upstream: optimised dependencies keep decryption and history sync
+# usable in debug builds. Their debug info would make the static library
+# ~1.5 GB and every app link slow; the bridge itself keeps full debug info.
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+# BEGIN UPSTREAM PATCHES — managed by macos/Scripts/sync-patches.sh, do not edit.
+[patch.crates-io]
+# crmne/egui apps-0.36, shared with Spotifast, RekordFlash and TonePush: egui
+# 0.36.1 with right-to-left shaping and glyph clusters from crmne/zapfast#144
+# and digits shaped left to right in text without right-to-left letters (#184)
+# (emilk/egui#8577), egui's busy-loop fix (emilk/egui#8398), and eframe pacing
+# Wayland frames by the compositor's frame callbacks so a window the
+# compositor stops showing never blocks in a vsync swap (emilk/egui#8631).
+# Every egui crate comes from the same revision so they share one emath and
+# epaint. Drop this once egui releases all three.
+ecolor = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+eframe = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+egui = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+egui-wgpu = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+egui-winit = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+egui_extras = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+egui_glow = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+emath = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+epaint = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+epaint_default_fonts = { git = "https://github.com/crmne/egui", rev = "0b431145c22ee27b20b0aff7243d74f4b32e9a79" }
+# crmne/winit apps-0.30, shared with the same apps: winit 0.30.13 plus Wayland
+# `Occluded` for the xdg-shell suspended state with commits on the app's behalf
+# while it isn't presenting (rust-windowing/winit#4709, #4710), macOS Quit
+# through close requests (winit#4692), and file drag and drop on Wayland
+# through the data device (#178), which upstream only has in 0.31's new API
+# (winit#4571), and Windows drags between monitors of different scale
+# (winit#4694). eframe from the fork above calls the Occluded API.
+winit = { git = "https://github.com/crmne/winit", rev = "f4fed12c0b1426ee00ba56cd60898b309d9d917b" }
+# END UPSTREAM PATCHES

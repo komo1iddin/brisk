@@ -1,0 +1,78 @@
+# XcodeGen spec for the app target. `make project` turns this into
+# ZapFast.xcodeproj, which is generated and not committed.
+name: ZapFast
+
+options:
+  bundleIdPrefix: com.komoliddin
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Signing with a stable identity keeps the Keychain from asking again
+    # after every build for the archive key.
+    DEVELOPMENT_TEAM: 2DQJ3SL785
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  ZapFastKit:
+    path: Packages/ZapFastKit
+
+targets:
+  ZapFast:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+    dependencies:
+      - package: ZapFastKit
+        product: ZapFastShell
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: ZapFast
+        CFBundleName: ZapFast
+        LSApplicationCategoryType: public.app-category.social-networking
+        LSMinimumSystemVersion: "15.0"
+        NSHumanReadableCopyright: "Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors."
+        NSMicrophoneUsageDescription: "ZapFast records voice messages when you ask it to."
+    entitlements:
+      path: App/ZapFast.entitlements
+      properties:
+        # Personal build, outside the App Store: no sandbox for now.
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.komoliddin.ZapFastMac
+        PRODUCT_NAME: ZapFast
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+schemes:
+  ZapFast:
+    build:
+      targets:
+        ZapFast: all
+      # Runs before any package target builds, so the xcframework and the
+      # generated Swift are current. `make bridge` does the same by hand.
+      preActions:
+        - name: Build Rust bridge
+          settingsTarget: ZapFast
+          script: |
+            "$SRCROOT/Scripts/build-bridge.sh" "$CONFIGURATION" > "$SRCROOT/Build/bridge-build.log" 2>&1 \
+              || { echo "Rust bridge build failed, see Build/bridge-build.log" >&2; exit 1; }
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: ZapFastKit/ZapFastCoreTests
+    archive:
+      config: Release

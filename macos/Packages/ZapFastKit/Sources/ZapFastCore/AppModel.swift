@@ -15,11 +15,14 @@ public final class AppModel {
     public let conversations: ConversationStore
     public let avatars: AvatarStore
     public let preferences: Preferences
+    public let voice = VoicePlayer()
 
     /// The chat open in the conversation pane.
     public var selectedChatID: String? {
         didSet {
             guard selectedChatID != oldValue else { return }
+            // No player outlives its chat until there is a mini player.
+            if voice.current?.chat != selectedChatID { voice.stop() }
             if let oldValue { flushDraft(for: oldValue) }
             if let selectedChatID { opened(selectedChatID) }
         }
@@ -41,6 +44,8 @@ public final class AppModel {
     /// Chats we told the backend we are typing in, and the task that will
     /// say we stopped.
     @ObservationIgnored private var composingIn: [String: Task<Void, Never>] = [:]
+    /// Voice messages we already sent a played receipt for.
+    @ObservationIgnored private var playedTold: Set<String> = []
 
     public init(
         backend: Backend = LiveBackend(),
@@ -55,6 +60,7 @@ public final class AppModel {
         self.backend = backend
         self.paths = paths
         self.avatars = AvatarStore(send: backend.send)
+        voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
     }
 
     // MARK: Lifecycle
@@ -178,6 +184,59 @@ public final class AppModel {
         guard conversations.downloads[key] != .downloading else { return }
         conversations.startDownload(key)
         backend.send(.download(chat: message.chat, message: message.id, card: nil))
+    }
+
+    // MARK: Intents: voice messages
+
+    /// Plays or pauses a voice message or audio attachment, downloading it
+    /// first if needed.
+    public func playAudio(_ message: MessageRecord) {
+        guard case let .audio(media, _, voiceNote, _) = message.content else { return }
+        guard let url = message.mediaURL else {
+            download(message)
+            return
+        }
+        let key = MessageKey(chat: message.chat, message: message.id)
+        let opus = media.mime.contains("ogg") || media.mime.contains("opus")
+        let speed = voiceNote ? preferences.voiceSpeed : 1
+        Task { await voice.toggle(key, url: url, opus: opus, speed: speed) }
+        if voiceNote, !message.fromMe, playedTold.insert(message.id).inserted {
+            backend.send(.markPlayed(
+                chat: message.chat,
+                message: message.id,
+                sender: message.sender,
+                receipts: preferences.sendReadReceipts
+            ))
+        }
+    }
+
+    public func seekAudio(_ message: MessageRecord, to fraction: Double) {
+        guard voice.isCurrent(MessageKey(chat: message.chat, message: message.id)) else {
+            playAudio(message)
+            return
+        }
+        voice.seek(to: fraction)
+    }
+
+    /// 1× → 1.5× → 2× → 1×, as on the phone.
+    public func cycleVoiceSpeed() {
+        let next: Float = switch preferences.voiceSpeed {
+        case ..<1.25: 1.5
+        case ..<1.75: 2
+        default: 1
+        }
+        preferences.voiceSpeed = next
+        voice.setSpeed(next)
+    }
+
+    /// Upstream plays the next voice message of a run by itself.
+    private func continueVoice(after key: MessageKey) {
+        let messages = conversations.conversation(key.chat).messages
+        guard let index = messages.firstIndex(where: { $0.id == key.message }),
+              messages.indices.contains(index + 1) else { return }
+        let next = messages[index + 1]
+        guard case .audio(_, _, true, _) = next.content, !next.fromMe, next.mediaURL != nil else { return }
+        playAudio(next)
     }
 
     /// Upstream's largest automatic or manual download (`ATTACHMENT_DOWNLOAD_LIMIT`).

@@ -34,6 +34,13 @@ pub enum BridgeCommand {
     MarkRead { chat: String, receipts: bool },
     MarkUnread { chat: String },
     Download { chat: String, message: String, card: Option<u32> },
+    /// A voice message was played: the blue microphone for its sender.
+    MarkPlayed {
+        chat: String,
+        message: String,
+        sender: String,
+        receipts: bool,
+    },
     FetchAvatar { id: String, full: bool },
     SearchMessages { query: String },
     SearchChatMessages {
@@ -113,6 +120,17 @@ impl BridgeCommand {
                 card: card.map(|card| card as usize),
                 chat,
                 message,
+            },
+            Self::MarkPlayed {
+                chat,
+                message,
+                sender,
+                receipts,
+            } => Command::MarkPlayed {
+                chat,
+                message,
+                sender,
+                receipts,
             },
             Self::FetchAvatar { id, full } => Command::FetchAvatar { id, full },
             Self::SearchMessages { query } => Command::SearchMessages { query },

@@ -325,57 +325,108 @@ private struct AudioContent: View {
     let model: AppModel
 
     var body: some View {
-        let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
+        let key = MessageKey(chat: message.chat, message: message.id)
+        let player = model.voice
+        let current = player.isCurrent(key)
+        let downloading = model.conversations.downloads[key] == .downloading
         HStack(spacing: Metrics.s) {
-            Button(action: activate) {
+            Button { model.playAudio(message) } label: {
                 Group {
-                    if state == .downloading {
+                    if downloading || player.preparing == key {
                         ProgressView().controlSize(.small)
                     } else {
-                        Image(systemName: media.path == nil ? "arrow.down.circle.fill" : "play.circle.fill")
+                        Image(systemName: symbol(current: current, playing: player.isPlaying))
+                            .contentTransition(.symbolEffect(.replace))
                     }
                 }
-                .font(.system(size: 28))
+                .font(.system(size: 30))
+                .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(media.path == nil ? Text("Download") : Text("Play"))
+            .accessibilityLabel(label(current: current, playing: player.isPlaying))
 
-            WaveformView(samples: Array(waveform))
-                .frame(width: 150, height: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                WaveformView(samples: Array(waveform), progress: player.progress(of: key)) { fraction in
+                    model.seekAudio(message, to: fraction)
+                }
+                .frame(width: 170, height: 26)
 
-            if let seconds {
-                Text(Duration.seconds(Int(seconds)).formatted(.time(pattern: .minuteSecond)))
+                Text(timeLabel(current: current))
                     .font(.caption.monospacedDigit())
                     .opacity(0.8)
             }
+
+            if current, voiceNote {
+                Button { model.cycleVoiceSpeed() } label: {
+                    Text(speedLabel)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("Playback speed")
+            }
         }
+        .task(id: message.id) { model.autoDownload(message) }
     }
 
-    private func activate() {
-        if let url = message.mediaURL { NSWorkspace.shared.open(url) } else { model.download(message) }
+    private func symbol(current: Bool, playing: Bool) -> String {
+        if media.path == nil { return "arrow.down.circle.fill" }
+        return current && playing ? "pause.circle.fill" : "play.circle.fill"
+    }
+
+    private func label(current: Bool, playing: Bool) -> Text {
+        if media.path == nil { return Text("Download") }
+        return current && playing ? Text("Pause") : Text("Play")
+    }
+
+    private func timeLabel(current: Bool) -> String {
+        let total = seconds.map(TimeInterval.init) ?? model.voice.duration
+        let shown = current && model.voice.position > 0 ? model.voice.position : total
+        return Duration.seconds(Int(shown.rounded(.down))).formatted(.time(pattern: .minuteSecond))
+    }
+
+    private var speedLabel: String {
+        let speed = model.preferences.voiceSpeed
+        return speed == 1 ? "1×" : speed == 2 ? "2×" : "1.5×"
     }
 }
 
+/// The sender's 64-bar waveform; bars before `progress` are drawn solid.
+/// Clicking or dragging seeks.
 private struct WaveformView: View {
     let samples: [UInt8]
+    let progress: Double
+    let seek: (Double) -> Void
 
     var body: some View {
-        Canvas { context, size in
-            let bars = samples.isEmpty ? Array(repeating: UInt8(20), count: 40) : samples
-            let step = size.width / CGFloat(bars.count)
-            for (index, sample) in bars.enumerated() {
-                let height = max(2, size.height * CGFloat(sample) / 100)
-                let rect = CGRect(
-                    x: CGFloat(index) * step,
-                    y: (size.height - height) / 2,
-                    width: max(1, step * 0.6),
-                    height: height
-                )
-                context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .foreground)
+        GeometryReader { proxy in
+            Canvas { context, size in
+                let bars = samples.isEmpty ? Array(repeating: UInt8(20), count: 40) : samples
+                let step = size.width / CGFloat(bars.count)
+                for (index, sample) in bars.enumerated() {
+                    let height = max(2, size.height * CGFloat(sample) / 100)
+                    let rect = CGRect(
+                        x: CGFloat(index) * step,
+                        y: (size.height - height) / 2,
+                        width: max(1.5, step * 0.55),
+                        height: height
+                    )
+                    let played = (CGFloat(index) + 0.5) / CGFloat(bars.count) <= progress
+                    var bar = context
+                    bar.opacity = played ? 1 : 0.4
+                    bar.fill(Path(roundedRect: rect, cornerRadius: 1), with: .foreground)
+                }
             }
+            .contentShape(.rect)
+            .gesture(DragGesture(minimumDistance: 0).onEnded { value in
+                seek(Double(value.location.x / max(1, proxy.size.width)))
+            })
         }
-        .opacity(0.7)
-        .accessibilityHidden(true)
+        .accessibilityElement()
+        .accessibilityLabel("Voice message")
+        .accessibilityValue(Text("\(Int(progress * 100)) percent played"))
     }
 }
 

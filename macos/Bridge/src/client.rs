@@ -31,6 +31,8 @@ pub enum BridgeError {
     AnotherInstance,
     #[error("Could not prepare the app's folders: {message}")]
     Storage { message: String },
+    #[error("Could not read the recording: {message}")]
+    Media { message: String },
 }
 
 /// Receives backend events on a background thread, in the order they

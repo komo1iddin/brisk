@@ -67,6 +67,21 @@ public struct BubbleGallery: View {
             media: MediaInfo(mime: "video/mp4", size: 500_000, width: 400, height: 400, path: "/dev/null"),
             seconds: 12, gif: false, note: true
         ), status: .read),
+        .sample("14", from: "b", content: .interactive(
+            text: "Buyurtmangiz tayyor",
+            card: InteractiveCardInfo(
+                body: "Buyurtmangiz tayyor. Qanday olasiz?",
+                buttons: [
+                    InteractiveButtonInfo(label: "Yetkazib bering", url: nil, action: .reply),
+                    InteractiveButtonInfo(label: "Filialni tanlash", url: nil, action: .select(options: [
+                        InteractiveOptionInfo(section: "Toshkent", title: "Chilonzor", description: "09:00–21:00"),
+                    ])),
+                    InteractiveButtonInfo(label: "Promokod", url: nil, action: .copy(code: "ZAP10")),
+                    InteractiveButtonInfo(label: "Saytda ko'rish", url: "https://example.com", action: .unavailable),
+                ],
+                image: nil, needsPhone: false, carousel: [], thumbnail: nil
+            )
+        )),
         .sample("10", from: "b", content: .poll(
             question: "Tushlikka qayerga boramiz?",
             options: ["Osh markazi", "Somsaxona", "Uyda ovqatlanamiz"],

@@ -7,6 +7,7 @@
 
 mod chat;
 mod contact;
+mod interactive;
 mod link;
 mod message;
 mod receipts;
@@ -14,6 +15,10 @@ mod sticker;
 
 pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState, LabelInfo};
 pub use contact::ContactRecord;
+pub use interactive::{
+    CarouselCardInfo, InteractiveActionInfo, InteractiveButtonInfo, InteractiveCardInfo,
+    InteractiveOptionInfo,
+};
 pub use link::LinkState;
 pub use message::{
     LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,

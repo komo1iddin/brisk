@@ -87,6 +87,11 @@ public final class AppModel {
     /// A new poll is on its way.
     public private(set) var pollCreating = false
 
+    /// Business messages whose reply is on its way.
+    public private(set) var interactiveSending: Set<MessageKey> = []
+    /// The list of choices open for a business message's button.
+    public var interactiveList: InteractiveListRequest?
+
     /// Polls whose vote is on its way.
     public private(set) var pollVoting: Set<MessageKey> = []
     /// The poll whose results sheet is open.
@@ -667,6 +672,52 @@ public final class AppModel {
 
     public func showPollResults(_ message: MessageRecord) {
         pollResults = MessageKey(chat: message.chat, message: message.id)
+    }
+
+    // MARK: Intents: business messages
+
+    /// Upstream's rule for a button that sends: connected, a chat we can
+    /// write in, someone else's unedited message, no reply already going.
+    public func canAnswer(_ message: MessageRecord) -> Bool {
+        guard session.isConnected, !message.fromMe, !message.edited,
+              let chat = chats.chat(message.chat), chat.canSend else { return false }
+        return !interactiveSending.contains(MessageKey(chat: message.chat, message: message.id))
+    }
+
+    /// Why a sending button is off, in upstream's words, or nil when it works.
+    public func answerProblem(_ message: MessageRecord) -> String? {
+        if interactiveSending.contains(MessageKey(chat: message.chat, message: message.id)) {
+            return String(localized: "Sending reply…")
+        }
+        if !session.isConnected { return String(localized: "Connect to WhatsApp to reply") }
+        if chats.chat(message.chat)?.canSend != true { return String(localized: "This conversation is read-only") }
+        if message.fromMe { return String(localized: "Reply options are for the recipient") }
+        if message.edited { return String(localized: "Open this option in WhatsApp Web or on your phone") }
+        return nil
+    }
+
+    /// Presses a quick-reply button, or picks `choice` from a list button.
+    /// Only indices go out; the worker re-reads the ids from the archive.
+    public func answer(_ message: MessageRecord, button: Int, choice: Int? = nil) {
+        guard canAnswer(message) else { return }
+        interactiveList = nil
+        backend.send(.replyInteractive(
+            chat: message.chat, message: message.id, button: UInt32(button), choice: choice.map(UInt32.init)
+        ))
+    }
+
+    public func showChoices(_ message: MessageRecord, button: Int) {
+        guard canAnswer(message) else { return }
+        interactiveList = InteractiveListRequest(key: MessageKey(chat: message.chat, message: message.id), button: button)
+    }
+
+    /// Downloads a carousel card's image.
+    public func downloadCard(_ message: MessageRecord, card: Int) {
+        let key = CardKey(message: MessageKey(chat: message.chat, message: message.id), card: card)
+        guard conversations.cardDownloads[key] != .downloading,
+              let media = message.content.media(card: card), media.path == nil else { return }
+        conversations.startDownload(key)
+        backend.send(.download(chat: message.chat, message: message.id, card: UInt32(card)))
     }
 
     // MARK: Intents: forwarding
@@ -1364,6 +1415,9 @@ public final class AppModel {
             startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? phoneOf(id: id))
         case let .groupSaving(chat, saving):
             if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
+        case let .interactiveReplyState(chat, message, pending):
+            let key = MessageKey(chat: chat, message: message)
+            if pending { interactiveSending.insert(key) } else { interactiveSending.remove(key) }
         case let .pollCreated(chat, error):
             pollCreating = false
             if let error {
@@ -1380,8 +1434,8 @@ public final class AppModel {
             conversations.applyPresence(id: id, online: online, lastSeen: lastSeen)
         case let .avatar(id, full, path):
             avatars.apply(id: id, full: full, path: path)
-        case let .media(chat, message, _, path, error):
-            conversations.applyMedia(chat: chat, message: message, path: path, error: error)
+        case let .media(chat, message, card, path, error):
+            conversations.applyMedia(chat: chat, message: message, card: card.map(Int.init), path: path, error: error)
         case .syncing(let active):
             session.isSyncing = active
             if !active { session.syncProgress = nil }
@@ -1482,6 +1536,8 @@ public final class AppModel {
             forwarding = nil
             invite = nil
             pollVoting = []
+            interactiveSending = []
+            interactiveList = nil
             pollComposerChat = nil
             pollCreating = false
             groupSaving = []
@@ -1579,6 +1635,13 @@ public struct ChatConfirmation: Identifiable, Equatable, Sendable {
     public var id: String { chat }
     public let chat: String
     public let action: Action
+}
+
+/// A business message's list of choices, open for one of its buttons.
+public struct InteractiveListRequest: Identifiable, Equatable, Sendable {
+    public let id = UUID()
+    public let key: MessageKey
+    public let button: Int
 }
 
 public struct JumpRequest: Equatable, Sendable {

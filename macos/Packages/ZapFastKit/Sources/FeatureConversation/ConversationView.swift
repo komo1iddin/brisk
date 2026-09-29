@@ -66,6 +66,9 @@ public struct ConversationView: View {
         .sheet(item: messageInfo) { key in
             MessageInfoSheet(key: key, model: model)
         }
+        .sheet(item: interactiveList) { request in
+            InteractiveListSheet(request: request, model: model)
+        }
         .inspector(isPresented: inspectorPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
@@ -117,6 +120,13 @@ public struct ConversationView: View {
         Binding(
             get: { model.pollResults.flatMap { $0.chat == chatID ? $0 : nil } },
             set: { model.pollResults = $0 }
+        )
+    }
+
+    private var interactiveList: Binding<InteractiveListRequest?> {
+        Binding(
+            get: { model.interactiveList.flatMap { $0.key.chat == chatID ? $0 : nil } },
+            set: { model.interactiveList = $0 }
         )
     }
 

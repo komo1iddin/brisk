@@ -61,6 +61,17 @@ public struct MessageKey: Hashable, Identifiable, Sendable {
     }
 }
 
+/// A carousel card of one message.
+public struct CardKey: Hashable, Sendable {
+    public var message: MessageKey
+    public var card: Int
+
+    public init(message: MessageKey, card: Int) {
+        self.message = message
+        self.card = card
+    }
+}
+
 /// Messages per chat, plus what is happening in each right now.
 @Observable
 public final class ConversationStore {
@@ -69,6 +80,8 @@ public final class ConversationStore {
     public private(set) var typing: [String: Set<String>] = [:]
     public private(set) var presence: [String: Presence] = [:]
     public private(set) var downloads: [MessageKey: DownloadState] = [:]
+    /// Carousel card images on their way, by message and card index.
+    public private(set) var cardDownloads: [CardKey: DownloadState] = [:]
 
     public struct Presence: Equatable, Sendable {
         public var online: Bool
@@ -148,15 +161,20 @@ public final class ConversationStore {
         downloads[key] = .downloading
     }
 
-    func applyMedia(chat: String, message id: String, path: String?, error: String?) {
+    func startDownload(_ key: CardKey) {
+        cardDownloads[key] = .downloading
+    }
+
+    func applyMedia(chat: String, message id: String, card: Int? = nil, path: String?, error: String?) {
         let key = MessageKey(chat: chat, message: id)
-        if let path {
-            downloads[key] = nil
-            if let index = conversations[chat]?.messages.firstIndex(where: { $0.id == id }) {
-                conversations[chat]?.messages[index].setMediaPath(path)
-            }
+        let state: DownloadState? = path == nil ? .failed(error ?? String(localized: "Download failed")) : nil
+        if let card {
+            cardDownloads[CardKey(message: key, card: card)] = state
         } else {
-            downloads[key] = .failed(error ?? String(localized: "Download failed"))
+            downloads[key] = state
+        }
+        if let path, let index = conversations[chat]?.messages.firstIndex(where: { $0.id == id }) {
+            conversations[chat]?.messages[index].setMediaPath(path, card: card)
         }
     }
 
@@ -186,5 +204,6 @@ public final class ConversationStore {
         typing = [:]
         presence = [:]
         downloads = [:]
+        cardDownloads = [:]
     }
 }

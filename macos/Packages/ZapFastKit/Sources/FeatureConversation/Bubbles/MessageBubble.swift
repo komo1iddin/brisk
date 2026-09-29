@@ -67,7 +67,7 @@ struct MessageBubble: View {
     private var inlineFooterText: String? {
         switch message.content {
         case .text(let text, nil) where !BodyText.isOnlyEmoji(text): text
-        case .interactive(let text, _) where !BodyText.isOnlyEmoji(text): text
+        case .interactive(let text, nil) where !BodyText.isOnlyEmoji(text): text
         default: nil
         }
     }

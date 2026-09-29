@@ -149,6 +149,15 @@ pub enum BridgeCommand {
         message: String,
         emoji: String,
     },
+    /// Answers a business message: `button` is the index of a visible
+    /// button, `choice` the index of a list option. The worker re-reads the
+    /// ids from the archived message; answered by `InteractiveReplyState`.
+    ReplyInteractive {
+        chat: String,
+        message: String,
+        button: u32,
+        choice: Option<u32>,
+    },
     /// Delete for everyone.
     Revoke {
         chat: String,
@@ -460,6 +469,17 @@ impl BridgeCommand {
                 chat,
                 message,
                 emoji,
+            },
+            Self::ReplyInteractive {
+                chat,
+                message,
+                button,
+                choice,
+            } => Command::ReplyInteractive {
+                chat,
+                message,
+                button: button as usize,
+                choice: choice.map(|choice| choice as usize),
             },
             Self::Revoke { chat, id } => Command::Revoke { chat, id },
             Self::DeleteLocal { chat, id } => Command::DeleteLocal { chat, id },

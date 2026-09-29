@@ -3,7 +3,7 @@ use zapfast::model::{
     Reaction,
 };
 
-use super::{DeliveryState, count, path_string};
+use super::{DeliveryState, InteractiveCardInfo, count, path_string};
 
 /// Page boundary: the oldest loaded message's timestamp and id.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -241,10 +241,11 @@ pub enum MessageContent {
         text: String,
         preview: Option<LinkPreviewInfo>,
     },
-    /// Buttons, lists and cards; the readable text for now.
+    /// Buttons, lists and cards. `text` is the whole readable text;
+    /// `card`, when parsed, has the body and actions apart.
     Interactive {
         text: String,
-        has_card: bool,
+        card: Option<InteractiveCardInfo>,
     },
     Image {
         caption: Option<String>,
@@ -327,7 +328,7 @@ impl From<Content> for MessageContent {
             },
             Content::Interactive { text, card } => Self::Interactive {
                 text,
-                has_card: card.is_some(),
+                card: card.map(|card| (*card).into()),
             },
             Content::Image { caption, media } => Self::Image {
                 caption,

@@ -19,8 +19,8 @@ struct MessageContentView: View {
                 BodyText(text: text, message: message, model: model)
                 if let preview { LinkPreviewCard(preview: preview, thumbnail: message.thumbnail, key: message.id, model: model) }
             }
-        case let .interactive(text, _):
-            BodyText(text: text, message: message, model: model)
+        case let .interactive(text, card):
+            InteractiveContent(message: message, text: text, card: card, model: model)
         case let .image(caption, media):
             VisualMedia(message: message, media: media, symbol: "photo", model: model)
             caption.map { BodyText(text: $0, message: message, model: model).insetForMedia(captionInset) }

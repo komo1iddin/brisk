@@ -8,6 +8,11 @@ extension ChatSummary {
         kind == .group && !left && (admin || infoLocked == false)
     }
 
+    /// Upstream's `can_send`: not locked, read-only, left, or a broadcast.
+    public var canSend: Bool {
+        !locked && !readOnly && !left && kind != .broadcast
+    }
+
     /// Upstream's `can_leave`. `ours` holds every id we may be listed
     /// under; no known id, or no member list yet, still offers it.
     public func canLeave(ours: [String]) -> Bool {

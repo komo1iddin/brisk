@@ -87,6 +87,12 @@ opens here: the group's name, members and description, then Join, or
 Request to Join where admins approve. File › Join Group with Link… takes
 a pasted link.
 
+Business messages show their card: picture, text and buttons, or a
+strip of carousel cards. Quick replies and list choices answer the
+message (only visible indices leave the interface; the worker resolves
+them from the archived message), links open, and copy-code buttons
+copy. Calls, forms and payments point to the phone, as upstream's do.
+
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video
 messages play in their circle. GIFs and animated stickers move while the

@@ -138,6 +138,12 @@ pub enum BridgeEvent {
         messages: Vec<MessageRecord>,
         truncated: bool,
     },
+    /// A reply to a business message is on its way (`pending`), or done.
+    InteractiveReplyState {
+        chat: String,
+        message: String,
+        pending: bool,
+    },
     /// A new poll went out, or failed with `error`.
     PollCreated {
         chat: String,
@@ -328,6 +334,15 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             messages: messages.into_iter().map(Into::into).collect(),
             truncated,
         }),
+        Event::InteractiveReplyState {
+            chat,
+            message,
+            pending,
+        } => Some(B::InteractiveReplyState {
+            chat,
+            message,
+            pending,
+        }),
         Event::PollCreated { chat, error } => Some(B::PollCreated { chat, error }),
         Event::PollVoted {
             chat,
@@ -486,7 +501,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::Error(message) => Some(B::Error { message }),
 
         // Not bridged yet. Each moves up when its feature lands on macOS.
-        Event::InteractiveReplyState { .. } => not_bridged("InteractiveReplyState"),
         Event::Picked { .. } => not_bridged("Picked"),
         Event::StickerPicture { .. } => not_bridged("StickerPicture"),
         Event::StickerPackPreview(_) => not_bridged("StickerPackPreview"),

@@ -41,6 +41,9 @@ struct ComposerBar: View {
         .padding(.vertical, Metrics.s)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
+        .sheet(isPresented: pollSheet) {
+            CreatePollSheet(chatID: chatID, model: model)
+        }
         .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { model.sendFiles(urls, in: chatID) }
         }
@@ -48,16 +51,22 @@ struct ComposerBar: View {
 
     private var editor: some View {
             HStack(alignment: .bottom, spacing: Metrics.s) {
-                Button {
-                    choosingFiles = true
+                Menu {
+                    Button("Send Files…", systemImage: "paperclip") { choosingFiles = true }
+                    Button("Create Poll…", systemImage: "chart.bar.doc.horizontal") {
+                        model.pollComposerChat = chatID
+                    }
                 } label: {
-                    Image(systemName: "paperclip")
+                    Image(systemName: "plus")
                         .font(.title3)
                         .frame(width: 28, height: 28)
                 }
+                .menuStyle(.button)
                 .buttonStyle(.borderless)
-                .help("Attach files")
-                .accessibilityLabel("Attach files")
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Attach files or create a poll")
+                .accessibilityLabel("Attach")
 
                 Button {
                     pickingSticker.toggle()
@@ -138,6 +147,13 @@ struct ComposerBar: View {
 
     private var text: String {
         model.composerText[chatID] ?? ""
+    }
+
+    private var pollSheet: Binding<Bool> {
+        Binding(
+            get: { model.pollComposerChat == chatID },
+            set: { if !$0 { model.pollComposerChat = nil } }
+        )
     }
 
     private var isBlank: Bool {

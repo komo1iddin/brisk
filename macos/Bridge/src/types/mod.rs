@@ -16,7 +16,7 @@ pub use contact::ContactRecord;
 pub use link::LinkState;
 pub use message::{
     LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,
-    PollSummary, PollVoterInfo, QuotedMessage, ReactionInfo,
+    PollDraftInfo, PollSummary, PollVoterInfo, QuotedMessage, ReactionInfo,
 };
 pub use sticker::{GifFailure, GifInfo, StickerEmojis, StickerLibrary, StickerPackInfo};
 

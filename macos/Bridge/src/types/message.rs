@@ -518,3 +518,27 @@ impl From<Box<Message>> for MessageRecord {
         (*message).into()
     }
 }
+
+/// A poll being written, before it is sent.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct PollDraftInfo {
+    pub question: String,
+    pub options: Vec<String>,
+    /// More than one answer may be chosen.
+    pub multiple: bool,
+}
+
+impl From<PollDraftInfo> for zapfast::model::PollDraft {
+    fn from(draft: PollDraftInfo) -> Self {
+        let PollDraftInfo {
+            question,
+            options,
+            multiple,
+        } = draft;
+        Self {
+            question,
+            options,
+            multiple,
+        }
+    }
+}

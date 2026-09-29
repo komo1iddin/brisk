@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use zapfast::backend::Command;
 
-use crate::types::{GifInfo, PageKey};
+use crate::types::{GifInfo, PageKey, PollDraftInfo};
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCommand {
@@ -108,6 +108,11 @@ pub enum BridgeCommand {
         id: String,
         text: String,
         mentions: Vec<String>,
+    },
+    /// Sends a new poll; answered by `PollCreated`.
+    CreatePoll {
+        chat: String,
+        draft: PollDraftInfo,
     },
     /// Our whole choice in a poll; empty withdraws the vote.
     VotePoll {
@@ -349,6 +354,10 @@ impl BridgeCommand {
                 id,
                 text,
                 mentions,
+            },
+            Self::CreatePoll { chat, draft } => Command::CreatePoll {
+                chat,
+                draft: draft.into(),
             },
             Self::VotePoll {
                 chat,

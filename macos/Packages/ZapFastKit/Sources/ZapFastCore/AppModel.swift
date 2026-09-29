@@ -63,6 +63,11 @@ public final class AppModel {
     /// Groups whose name or photo change is on its way to WhatsApp.
     public private(set) var groupSaving: Set<String> = []
 
+    /// The chat whose Create Poll sheet is open.
+    public var pollComposerChat: String?
+    /// A new poll is on its way.
+    public private(set) var pollCreating = false
+
     /// Polls whose vote is on its way.
     public private(set) var pollVoting: Set<MessageKey> = []
     /// The poll whose results sheet is open.
@@ -379,6 +384,13 @@ public final class AppModel {
     }
 
     // MARK: Intents: polls
+
+    /// Sends a new poll once upstream's rules accept it, one at a time.
+    public func createPoll(_ draft: PollDraftInfo, in chat: String) {
+        guard pollDraftProblem(draft: draft) == nil, session.isConnected, !pollCreating else { return }
+        pollCreating = true
+        backend.send(.createPoll(chat: chat, draft: draft))
+    }
 
     /// Votes by clicking an option, while connected and with no vote of
     /// ours already on its way.
@@ -883,6 +895,13 @@ public final class AppModel {
             startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? phoneOf(id: id))
         case let .groupSaving(chat, saving):
             if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
+        case let .pollCreated(chat, error):
+            pollCreating = false
+            if let error {
+                post(.error, error)
+            } else if pollComposerChat == chat {
+                pollComposerChat = nil
+            }
         case let .pollVoted(chat, message, error):
             pollVoting.remove(MessageKey(chat: chat, message: message))
             if let error { post(.error, error) }
@@ -942,6 +961,8 @@ public final class AppModel {
             textBeforeEdit = [:]
             forwarding = nil
             pollVoting = []
+            pollComposerChat = nil
+            pollCreating = false
             groupSaving = []
             pollResults = nil
             pollRefreshAsked = []

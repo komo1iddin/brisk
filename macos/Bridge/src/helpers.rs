@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::client::BridgeError;
-use crate::types::{StickerLibrary, path_string};
+use crate::types::{PollDraftInfo, StickerLibrary, path_string};
 
 /// Accent- and case-insensitive key for matching search text.
 #[uniffi::export]
@@ -34,6 +34,16 @@ pub fn decode_voice(path: String) -> Result<Vec<f32>, BridgeError> {
         message: error.to_string(),
     })?;
     zapfast::voice::decode(&bytes).map_err(|message| BridgeError::Media { message })
+}
+
+/// Why a poll cannot be sent yet, in upstream's words, or `None` when it
+/// can (upstream's `PollDraft::validated`).
+#[uniffi::export]
+pub fn poll_draft_problem(draft: PollDraftInfo) -> Option<String> {
+    zapfast::model::PollDraft::from(draft)
+        .validated()
+        .err()
+        .map(str::to_owned)
 }
 
 /// Stickers matching `query` (upstream's `sticker_search::search`): by
@@ -151,5 +161,17 @@ mod tests {
     #[test]
     fn our_giphy_key_wins_once_trimmed() {
         assert_eq!(giphy_key("  abc ".into()).as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn poll_drafts_follow_upstream_rules() {
+        let draft = |options: &[&str]| PollDraftInfo {
+            question: "Lunch?".into(),
+            options: options.iter().map(|option| option.to_string()).collect(),
+            multiple: false,
+        };
+        assert_eq!(poll_draft_problem(draft(&["Rice", "Soup"])), None);
+        assert!(poll_draft_problem(draft(&["Rice"])).is_some());
+        assert!(poll_draft_problem(draft(&["Rice", " Rice "])).is_some());
     }
 }

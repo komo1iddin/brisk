@@ -25,9 +25,34 @@ struct ZapFastCommands: Commands {
                 .disabled(model.selectedChatID == nil)
         }
 
+        CommandGroup(after: .textEditing) {
+            Menu("Find") {
+                Button("Find in Chat…") { model.openChatSearch() }
+                    .keyboardShortcut("f")
+                    .disabled(model.selectedChatID == nil)
+
+                Button("Search All Chats") { model.focusSidebarSearch() }
+                    .keyboardShortcut("f", modifiers: [.command, .option])
+
+                Divider()
+
+                Button("Find Next") { model.stepChatSearch(older: true) }
+                    .keyboardShortcut("g")
+                    .disabled(!hasChatHits)
+
+                Button("Find Previous") { model.stepChatSearch(older: false) }
+                    .keyboardShortcut("g", modifiers: [.command, .shift])
+                    .disabled(!hasChatHits)
+            }
+        }
+
         CommandGroup(after: .appInfo) {
             Button("Reconnect") { model.reconnect() }
                 .disabled(model.session.isConnected)
         }
+    }
+
+    private var hasChatHits: Bool {
+        model.search.chat.map { !$0.hits.isEmpty } ?? false
     }
 }

@@ -15,6 +15,7 @@ public final class AppModel {
     public let conversations: ConversationStore
     public let avatars: AvatarStore
     public let preferences: Preferences
+    public let search = SearchStore()
     public let voice = VoicePlayer()
     public let recorder = VoiceRecorder()
 
@@ -26,6 +27,8 @@ public final class AppModel {
             // and a recording belongs to the chat it started in.
             if voice.current?.chat != selectedChatID { voice.stop() }
             if recorder.isRecording { recorder.cancel() }
+            if search.chat?.chat != selectedChatID { search.chat = nil }
+            if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if let oldValue { flushDraft(for: oldValue) }
             if let selectedChatID { opened(selectedChatID) }
         }
@@ -43,6 +46,16 @@ public final class AppModel {
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
 
+    /// A message the timeline should scroll to; the token tells a second
+    /// jump to the same message apart from the first.
+    public private(set) var jump: JumpRequest?
+    /// The message just jumped to, marked for a moment so the eye finds it.
+    public private(set) var highlighted: MessageKey?
+    /// Bumped to put the cursor in the sidebar's search field.
+    public private(set) var sidebarSearchRequests = 0
+    /// Bumped to put the cursor in the open chat's search field.
+    public private(set) var chatSearchFocusRequests = 0
+
     @ObservationIgnored private let backend: Backend
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
@@ -57,6 +70,15 @@ public final class AppModel {
     @ObservationIgnored private var notifier: Notifier?
     /// The person is looking at the app.
     @ObservationIgnored private var isActive = true
+    /// A jump waiting for its message to load, and whether the archive was
+    /// already asked for the pages up to it.
+    @ObservationIgnored private var pendingJump: MessageKey?
+    @ObservationIgnored private var jumpAskedArchive = false
+    @ObservationIgnored private var highlightTask: Task<Void, Never>?
+    @ObservationIgnored private var messageSearchTask: Task<Void, Never>?
+    /// The query the sidebar's message hits should answer.
+    @ObservationIgnored private var wantedMessageQuery = ""
+    @ObservationIgnored private var chatSearchTask: Task<Void, Never>?
 
     public init(
         backend: Backend = LiveBackend(),
@@ -347,6 +369,133 @@ public final class AppModel {
         backend.send(.markUnread(chat: chat))
     }
 
+    // MARK: Intents: search
+
+    /// Pause after the last keystroke before the archive is asked.
+    static let searchDelay: Duration = .milliseconds(200)
+
+    /// The sidebar's search text changed: ask for matching messages once
+    /// typing pauses. Locked chats stay out, as upstream keeps them.
+    public func searchMessages(_ text: String) {
+        messageSearchTask?.cancel()
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        wantedMessageQuery = query
+        guard !query.isEmpty else {
+            search.clearMessageHits()
+            return
+        }
+        messageSearchTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.searchDelay)
+            guard !Task.isCancelled else { return }
+            self?.backend.send(.searchMessages(query: query))
+        }
+    }
+
+    public func focusSidebarSearch() {
+        sidebarSearchRequests += 1
+    }
+
+    /// Opens the search inside the open chat, keeping one already open,
+    /// and puts the cursor in its field.
+    public func openChatSearch() {
+        guard let chat = selectedChatID else { return }
+        if search.chat?.chat != chat { search.chat = ChatSearch(chat: chat) }
+        chatSearchFocusRequests += 1
+    }
+
+    public func closeChatSearch() {
+        chatSearchTask?.cancel()
+        search.chat = nil
+    }
+
+    /// The in-chat search text changed. The earlier matches stay listed
+    /// until the answer replaces them, so the list does not blink empty on
+    /// every keystroke.
+    public func setChatSearchQuery(_ text: String) {
+        guard var current = search.chat, current.query != text else { return }
+        current.query = text
+        chatSearchTask?.cancel()
+        let query = current.trimmedQuery
+        if query.isEmpty {
+            current.hits = []
+            current.truncated = false
+            current.pending = false
+            current.selected = nil
+            search.chat = current
+            return
+        }
+        current.pending = true
+        search.chat = current
+        let chat = current.chat
+        chatSearchTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.searchDelay)
+            guard !Task.isCancelled else { return }
+            self?.backend.send(.searchChatMessages(chat: chat, query: query, from: nil, until: nil))
+        }
+    }
+
+    /// Reveals the match at `index` of the in-chat results.
+    public func revealChatSearchHit(_ index: Int) {
+        guard var current = search.chat, current.hits.indices.contains(index) else { return }
+        current.selected = index
+        search.chat = current
+        open(current.hits[index])
+    }
+
+    /// Moves through the in-chat results: `older` goes down the list, which
+    /// is newest first, as Find Next goes down a page.
+    public func stepChatSearch(older: Bool) {
+        guard let current = search.chat, !current.hits.isEmpty else { return }
+        let next: Int = switch current.selected {
+        case nil: 0
+        case let index?: older ? min(index + 1, current.hits.count - 1) : max(index - 1, 0)
+        }
+        revealChatSearchHit(next)
+    }
+
+    /// Opens a message's chat and scrolls to it, loading the archive up to
+    /// it first when it is older than what is loaded.
+    public func open(_ message: MessageRecord) {
+        reveal(MessageKey(chat: message.chat, message: message.id))
+    }
+
+    public func reveal(_ key: MessageKey) {
+        if selectedChatID != key.chat { selectedChatID = key.chat }
+        pendingJump = key
+        jumpAskedArchive = false
+        continueJump()
+    }
+
+    /// Finishes a pending jump once its message is loaded, or asks the
+    /// archive for everything from it up to what is loaded. With no page
+    /// loaded yet, the first page is on its way and this runs again then.
+    private func continueJump() {
+        guard let key = pendingJump else { return }
+        let conversation = conversations.conversation(key.chat)
+        if conversation.message(key.message) != nil {
+            pendingJump = nil
+            jump = JumpRequest(key: key)
+            flash(key)
+        } else if jumpAskedArchive, !conversation.loadingOlder {
+            // The archive answered without it; the backend has said why.
+            pendingJump = nil
+        } else if !jumpAskedArchive, !conversation.loadingOlder, let oldest = conversation.oldestKey {
+            jumpAskedArchive = true
+            conversations.markLoadingOlder(key.chat)
+            backend.send(.loadUntil(chat: key.chat, message: key.message, before: oldest))
+        }
+    }
+
+    private func flash(_ key: MessageKey) {
+        highlighted = key
+        highlightTask?.cancel()
+        highlightTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            self?.highlighted = nil
+        }
+    }
+
     public func dismissNotice(_ notice: Notice) {
         notices.removeAll { $0.id == notice.id }
     }
@@ -413,6 +562,7 @@ public final class AppModel {
                 chat: chat, messages: messages, older: older, complete: complete
             )
             if bare, chat == selectedChatID { loadOlder(in: chat) }
+            if pendingJump?.chat == chat { continueJump() }
         case .messageUpdated(let message):
             conversations.applyUpdated(message)
         case let .messageDeleted(chat, id):
@@ -421,9 +571,14 @@ public final class AppModel {
             maybeNotify(chat: chat, message: message)
         case .contacts(let contacts):
             chats.replaceContacts(contacts)
-        case .searchHits, .chatHits:
-            // Message search arrives with the search feature.
-            break
+        case let .searchHits(query, messages):
+            let visible = messages.filter { chats.chat($0.chat)?.locked != true }
+            search.applyMessageHits(query: query, messages: visible, wanted: wantedMessageQuery)
+        case let .chatHits(chat, query, from, until, messages, truncated):
+            // The panel never asks for a day range yet, so an answer with
+            // one was asked for by something else.
+            guard from == nil, until == nil else { break }
+            search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
         case let .typing(chat, sender, composing):
             conversations.applyTyping(chat: chat, sender: sender, composing: composing)
         case let .presence(id, online, lastSeen):
@@ -469,6 +624,7 @@ public final class AppModel {
         case .loggedOut:
             chats.clear()
             conversations.clear()
+            search.clear()
             avatars.clear()
             composerText = [:]
             replyingTo = [:]
@@ -533,6 +689,11 @@ public final class AppModel {
         notices.append(Notice(kind: kind, text: text))
         if notices.count > 3 { notices.removeFirst(notices.count - 3) }
     }
+}
+
+public struct JumpRequest: Equatable, Sendable {
+    public let key: MessageKey
+    public let token = UUID()
 }
 
 public struct Notice: Identifiable, Equatable, Sendable {

@@ -24,6 +24,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var lastWidth: CGFloat = 0
     /// The reader is at the newest message, so new ones scroll into view.
     private var followsBottom = true
+    /// The last jump scrolled to, so each is done once.
+    private var handledJump: UUID?
 
     /// Within this distance of an edge counts as being at it.
     private let edgeSlack: CGFloat = 48
@@ -68,7 +70,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
 
     // MARK: Updates
 
-    func update(chatID: String, rows new: [TimelineRow], content: Content, onReachTop: @escaping () -> Void) {
+    func update(
+        chatID: String,
+        rows new: [TimelineRow],
+        content: Content,
+        jump: JumpRequest?,
+        onReachTop: @escaping () -> Void
+    ) {
         self.content = content
         self.onReachTop = onReachTop
 
@@ -79,10 +87,12 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             tableView.reloadData()
             followsBottom = true
             scrollToBottom()
-            return
+        } else if new != rows {
+            apply(new)
         }
-        guard new != rows else { return }
-        apply(new)
+        if let jump, jump.key.chat == chatID, jump.token != handledJump {
+            scroll(toMessage: jump.key.message, token: jump.token)
+        }
     }
 
     private func apply(_ new: [TimelineRow]) {
@@ -159,6 +169,23 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         guard !rows.isEmpty else { return }
         tableView.layoutSubtreeIfNeeded()
         tableView.scrollRowToVisible(rows.count - 1)
+    }
+
+    /// Centres a message in view. A message not in the rows yet waits for
+    /// the next update, when its page has arrived.
+    private func scroll(toMessage id: String, token: UUID) {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        handledJump = token
+        tableView.layoutSubtreeIfNeeded()
+        let insets = clip.contentInsets
+        let visibleHeight = clip.bounds.height - insets.top - insets.bottom
+        let row = tableView.rect(ofRow: index)
+        let lowest = -insets.top
+        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
+        let top = min(max(row.midY - visibleHeight / 2 - insets.top, lowest), highest)
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))
+        scrollView.reflectScrolledClipView(clip)
+        followsBottom = isAtBottom
     }
 
     /// The first visible row and how far its top sits below the clip's top.

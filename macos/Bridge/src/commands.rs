@@ -38,6 +38,13 @@ pub enum BridgeCommand {
         chat: String,
         before: Option<PageKey>,
     },
+    /// Archived messages from `message` up to the page that starts at
+    /// `before`, to reach a search hit or a quote above what is loaded.
+    LoadUntil {
+        chat: String,
+        message: String,
+        before: PageKey,
+    },
     /// Ask the phone for messages older than the archive has.
     FetchOlder {
         chat: String,
@@ -175,6 +182,15 @@ impl BridgeCommand {
             Self::LoadChat { chat, before } => Command::LoadChat {
                 chat,
                 before: before.map(Into::into),
+            },
+            Self::LoadUntil {
+                chat,
+                message,
+                before,
+            } => Command::LoadUntil {
+                chat,
+                id: message,
+                before: before.into(),
             },
             Self::FetchOlder { chat } => Command::FetchOlder(chat),
             Self::MarkRead { chat, receipts } => Command::MarkRead { chat, receipts },

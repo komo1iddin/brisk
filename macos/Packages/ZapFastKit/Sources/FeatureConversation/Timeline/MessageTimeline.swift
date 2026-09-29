@@ -11,6 +11,7 @@ struct MessageTimeline: NSViewRepresentable {
     let rows: [TimelineRow]
     let chat: ChatSummary?
     let model: AppModel
+    let jump: JumpRequest?
     let onReachTop: () -> Void
 
     func makeCoordinator() -> TimelineController {
@@ -26,6 +27,7 @@ struct MessageTimeline: NSViewRepresentable {
             chatID: chatID,
             rows: rows,
             content: TimelineController.Content(chat: chat, model: model),
+            jump: jump,
             onReachTop: onReachTop
         )
     }

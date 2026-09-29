@@ -10,6 +10,7 @@ struct MessageRow: View {
     let startsRun: Bool
     let chat: ChatSummary?
     let model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 0) {
@@ -33,6 +34,17 @@ struct MessageRow: View {
         .padding(.horizontal, Metrics.l)
         .padding(.top, startsRun ? Metrics.s : Metrics.xxs)
         .padding(.bottom, Metrics.xxs)
+        .background {
+            // A search hit or quote just jumped to, marked for a moment.
+            if isHighlighted {
+                Rectangle().fill(.tint.opacity(0.18)).transition(.opacity)
+            }
+        }
+        .animation(.zf(reduceMotion, duration: 0.6), value: isHighlighted)
+    }
+
+    private var isHighlighted: Bool {
+        model.highlighted == MessageKey(chat: message.chat, message: message.id)
     }
 
     /// Shown on the first message of a run in a group.

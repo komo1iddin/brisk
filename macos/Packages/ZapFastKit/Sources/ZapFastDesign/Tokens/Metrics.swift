@@ -27,7 +27,7 @@ public enum Metrics {
 
 extension Animation {
     /// The app's one easing, off when Reduce Motion is on.
-    public static func zf(_ reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : .easeOut(duration: 0.2)
+    public static func zf(_ reduceMotion: Bool, duration: Double = 0.2) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: duration)
     }
 }

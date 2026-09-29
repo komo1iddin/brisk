@@ -23,6 +23,7 @@ public struct ConversationView: View {
             rows: TimelineRow.build(conversation.messages),
             chat: chat,
             model: model,
+            jump: model.jump,
             onReachTop: { model.loadOlder(in: chatID) }
         )
         // The table scrolls under the title bar; AppKit insets its content.
@@ -56,7 +57,25 @@ public struct ConversationView: View {
         }
         .navigationTitle(chat.map(model.chats.title(for:)) ?? "")
         .navigationSubtitle(subtitle(chat))
+        .inspector(isPresented: searchPresented) {
+            Group {
+                if let search = model.search.chat, search.chat == chatID {
+                    ChatSearchPanel(search: search, model: model)
+                }
+            }
+            .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
+        }
         .toolbar {
+            ToolbarItem {
+                Button("Search in Chat", systemImage: "magnifyingglass") {
+                    if searchPresented.wrappedValue {
+                        model.closeChatSearch()
+                    } else {
+                        model.openChatSearch()
+                    }
+                }
+                .help("Search in this chat (⌘F)")
+            }
             if let chat {
                 ToolbarItem {
                     Menu {
@@ -68,6 +87,15 @@ public struct ConversationView: View {
                 }
             }
         }
+    }
+
+    private var searchPresented: Binding<Bool> {
+        Binding(
+            get: { model.search.chat?.chat == chatID },
+            set: { presented in
+                if presented { model.openChatSearch() } else { model.closeChatSearch() }
+            }
+        )
     }
 
     private func canSend(_ chat: ChatSummary) -> Bool {

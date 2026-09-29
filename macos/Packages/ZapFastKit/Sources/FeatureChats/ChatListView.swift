@@ -11,6 +11,7 @@ public struct ChatListView: View {
     @State private var query = ""
     @State private var filter: ChatFilter = .all
     @State private var showingArchived = false
+    @FocusState private var searchFocused: Bool
 
     public init(model: AppModel) {
         self.model = model
@@ -18,24 +19,33 @@ public struct ChatListView: View {
 
     public var body: some View {
         let chats = model.chats.visibleChats(filter: filter, query: query, archived: showingArchived)
+        let hits = messageHits
         List(selection: $model.selectedChatID) {
-            if query.isEmpty {
-                if !showingArchived, filter == .all, model.chats.archivedCount > 0 {
+            if hits.isEmpty {
+                if query.isEmpty, !showingArchived, filter == .all, model.chats.archivedCount > 0 {
                     ArchivedRow(unread: model.chats.archivedUnread) { showingArchived = true }
                         .selectionDisabled()
                 }
-            }
-
-            ForEach(chats) { chat in
-                ChatRow(chat: chat, model: model)
-                    .tag(chat.id)
-                    .contextMenu { ChatActions(chat: chat, model: model) }
+                chatRows(chats)
+            } else {
+                if !chats.isEmpty {
+                    Section("Chats") { chatRows(chats) }
+                }
+                Section("Messages") {
+                    ForEach(hits, id: \.id) { hit in
+                        MessageHitRow(message: hit, query: query, model: model)
+                            .selectionDisabled()
+                    }
+                }
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $query, placement: .sidebar, prompt: "Search chats")
+        .searchable(text: $query, placement: .sidebar, prompt: "Search")
+        .searchFocused($searchFocused)
+        .onChange(of: query) { model.searchMessages(query) }
+        .onChange(of: model.sidebarSearchRequests) { searchFocused = true }
         .overlay {
-            if chats.isEmpty {
+            if chats.isEmpty, hits.isEmpty {
                 EmptyState(query: query, filter: filter, archived: showingArchived)
             }
         }
@@ -58,6 +68,22 @@ public struct ChatListView: View {
 }
 
 extension ChatListView {
+    private func chatRows(_ chats: [ChatSummary]) -> some View {
+        ForEach(chats) { chat in
+            ChatRow(chat: chat, model: model)
+                .tag(chat.id)
+                .contextMenu { ChatActions(chat: chat, model: model) }
+        }
+    }
+
+    /// Messages matching the search, once the archive has answered the
+    /// query in the field rather than an earlier one.
+    private var messageHits: [MessageRecord] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, model.search.messageQuery == trimmed else { return [] }
+        return model.search.messageHits
+    }
+
     private var title: Text {
         if showingArchived { return Text("Archived") }
         return filter == .all ? Text("Chats") : Text(filter.title)

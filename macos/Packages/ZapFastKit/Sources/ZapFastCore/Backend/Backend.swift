@@ -59,3 +59,22 @@ nonisolated private final class EventRelay: EventListener, Sendable {
         }
     }
 }
+
+/// A backend that goes nowhere, for previews, galleries, and tests.
+public final class PreviewBackend: Backend {
+    public private(set) var sent: [BridgeCommand] = []
+
+    public init() {}
+
+    public func start(
+        paths: AppPaths,
+        verbose: Bool,
+        deliver: @escaping @MainActor ([BridgeEvent]) -> Void
+    ) throws {}
+
+    public func send(_ command: BridgeCommand) {
+        sent.append(command)
+    }
+
+    public func shutdown() {}
+}

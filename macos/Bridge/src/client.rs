@@ -26,6 +26,9 @@ pub struct BridgeConfig {
 pub enum BridgeError {
     #[error("The backend is already running")]
     AlreadyRunning,
+    /// Another copy of the app holds this data folder.
+    #[error("ZapFast is already running")]
+    AnotherInstance,
     #[error("Could not prepare the app's folders: {message}")]
     Storage { message: String },
 }
@@ -40,6 +43,8 @@ pub trait EventListener: Send + Sync {
 struct Running {
     backend: Arc<Mutex<Backend>>,
     pump: Pump,
+    /// Held while running, so a second copy cannot open the same archive.
+    _instance: std::fs::File,
 }
 
 #[derive(uniffi::Object)]
@@ -71,6 +76,7 @@ impl BridgeClient {
         dirs.ensure().map_err(|error| BridgeError::Storage {
             message: error.to_string(),
         })?;
+        let instance = lock_instance(&dirs)?;
         crate::logging::init(&dirs, config.verbose);
 
         let (waker, signal) = crate::pump::waker();
@@ -84,7 +90,11 @@ impl BridgeClient {
         let pump = Pump::spawn(backend.clone(), signal, listener);
         log::info!("bridge started");
 
-        *running = Some(Running { backend, pump });
+        *running = Some(Running {
+            backend,
+            pump,
+            _instance: instance,
+        });
         Ok(())
     }
 
@@ -109,7 +119,7 @@ impl BridgeClient {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .take();
-        if let Some(Running { backend, pump }) = running {
+        if let Some(Running { backend, pump, .. }) = running {
             pump.stop();
             backend
                 .lock()
@@ -123,6 +133,28 @@ impl BridgeClient {
 impl Drop for BridgeClient {
     fn drop(&mut self) {
         self.shutdown();
+    }
+}
+
+/// An exclusive lock on this data folder. Upstream's single-instance guard
+/// also answers legacy FastsApp sockets, which upstream ZapFast itself may
+/// hold, so the bridge keeps its own lock beside its own data.
+fn lock_instance(dirs: &AppDirs) -> Result<std::fs::File, BridgeError> {
+    let path = dirs.runtime.join("instance.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&path)
+        .map_err(|error| BridgeError::Storage {
+            message: error.to_string(),
+        })?;
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(std::fs::TryLockError::WouldBlock) => Err(BridgeError::AnotherInstance),
+        Err(std::fs::TryLockError::Error(error)) => Err(BridgeError::Storage {
+            message: error.to_string(),
+        }),
     }
 }
 

@@ -12,6 +12,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        if DebugSnapshot.galleryPath != nil {
+            DispatchQueue.main.async { DebugSnapshot.renderGalleryAndQuit() }
+            return
+        }
+        #endif
         let verbose = ProcessInfo.processInfo.environment["ZAPFAST_VERBOSE"] != nil
         model.start(verbose: verbose)
         observeBadge()

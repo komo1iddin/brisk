@@ -8,6 +8,8 @@ struct MessageContentView: View {
     let message: MessageRecord
     let model: AppModel
     let textColor: Color
+    /// Captions under edge-to-edge media keep the usual text inset.
+    var captionInset = false
 
     var body: some View {
         switch message.content {
@@ -20,10 +22,10 @@ struct MessageContentView: View {
             BodyText(text: text, message: message, model: model)
         case let .image(caption, media):
             VisualMedia(message: message, media: media, symbol: "photo", model: model)
-            caption.map { BodyText(text: $0, message: message, model: model) }
+            caption.map { BodyText(text: $0, message: message, model: model).insetForMedia(captionInset) }
         case let .video(caption, media, seconds, _, _):
             VisualMedia(message: message, media: media, symbol: "play.circle.fill", model: model, seconds: seconds)
-            caption.map { BodyText(text: $0, message: message, model: model) }
+            caption.map { BodyText(text: $0, message: message, model: model).insetForMedia(captionInset) }
         case let .sticker(media, _):
             VisualMedia(message: message, media: media, symbol: "face.smiling", model: model, sticker: true)
         case let .audio(media, seconds, voiceNote, waveform):
@@ -72,17 +74,21 @@ struct MessageContentView: View {
 
 // MARK: - Text
 
-private struct BodyText: View {
+struct BodyText: View {
     let text: String
     let message: MessageRecord
     let model: AppModel
+    /// Clear text appended so the last line leaves room for an overlaid footer.
+    var reserve: String?
 
     var body: some View {
-        Text(WhatsAppMarkup.attributed(
+        let styled = Text(WhatsAppMarkup.attributed(
             text,
             mentions: message.mentions,
             name: { model.chats.displayName($0) }
         ))
+        let spaced = reserve.map { styled + Text($0).font(.caption2.monospacedDigit()).foregroundStyle(.clear) } ?? styled
+        spaced
         .font(Self.isOnlyEmoji(text) ? .system(size: 40) : .body)
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
@@ -173,12 +179,14 @@ private struct VisualMedia: View {
                     .scaledToFill()
             } else {
                 Rectangle().fill(.quaternary)
-                Image(systemName: symbol).font(.largeTitle).foregroundStyle(.secondary)
+                if media.path != nil || sticker {
+                    Image(systemName: symbol).font(.largeTitle).foregroundStyle(.secondary)
+                }
             }
             overlay
         }
         .frame(width: size.width, height: size.height)
-        .clipShape(.rect(cornerRadius: sticker ? 0 : Metrics.controlRadius))
+        .clipShape(.rect(cornerRadius: sticker ? 0 : Metrics.bubbleRadius - Metrics.xs, style: .continuous))
         .contentShape(.rect)
         .onTapGesture(perform: activate)
         .task(id: "\(message.id)-\(media.path ?? "")") { await load(size) }
@@ -294,7 +302,9 @@ private struct DocumentContent: View {
 
     private var detail: String {
         var parts: [String] = []
-        if let pages { parts.append(String(localized: "\(pages) pages")) }
+        if let pages {
+            parts.append(String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters))
+        }
         if media.size > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(media.size), countStyle: .file)) }
         if let ext = fileName.split(separator: ".").last, ext.count <= 5 { parts.append(ext.uppercased()) }
         return parts.joined(separator: " · ")

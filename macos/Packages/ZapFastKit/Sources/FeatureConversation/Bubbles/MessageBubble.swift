@@ -11,26 +11,38 @@ struct MessageBubble: View {
     let model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Metrics.xs) {
+        BubbleStack(spacing: Metrics.xs) {
             if let senderName {
                 Text(senderName)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Palette.sender(message.sender))
                     .lineLimit(1)
+                    .insetForMedia(isMedia)
             }
             if message.forwarded {
                 Label("Forwarded", systemImage: "arrowshape.turn.up.right")
                     .font(.caption.italic())
                     .foregroundStyle(secondaryText)
+                    .insetForMedia(isMedia)
             }
             if let quoted = message.quoted {
                 QuoteView(quoted: quoted, fromMe: message.fromMe, model: model)
             }
-            MessageContentView(message: message, model: model, textColor: primaryText)
-            footer
+            if let text = inlineFooterText {
+                // The time tucks into the last line, as on the phone: the
+                // text reserves room for it and the footer sits over that room.
+                BodyText(text: text, message: message, model: model, reserve: footerReserve)
+                    .overlay(alignment: .bottomTrailing) { footer.alignmentGuide(.bottom) { $0[.bottom] - 2 } }
+            } else {
+                MessageContentView(message: message, model: model, textColor: primaryText, captionInset: isMedia)
+                footer
+                    .insetForMedia(isMedia)
+                    .bubbleTrailing()
+            }
         }
-        .padding(.horizontal, isBare ? 0 : Metrics.m)
-        .padding(.vertical, isBare ? 0 : Metrics.s)
+        .padding(.horizontal, isBare ? 0 : isMedia ? Metrics.xs : Metrics.m)
+        .padding(.top, isBare ? 0 : isMedia ? Metrics.xs : Metrics.s)
+        .padding(.bottom, isBare ? 0 : Metrics.s)
         .background {
             if !isBare {
                 RoundedRectangle(cornerRadius: Metrics.bubbleRadius, style: .continuous)
@@ -41,9 +53,37 @@ struct MessageBubble: View {
         .tint(message.fromMe ? Palette.bubbleOutgoingText : Color.accentColor)
     }
 
-    /// Stickers float without a bubble, as on the phone.
+    /// Photos and videos run almost to the bubble's edge.
+    private var isMedia: Bool {
+        switch message.content {
+        case .image, .video: true
+        default: false
+        }
+    }
+
+    /// Plain text whose last line can hold the time.
+    private var inlineFooterText: String? {
+        switch message.content {
+        case .text(let text, nil) where !BodyText.isOnlyEmoji(text): text
+        case .interactive(let text, _) where !BodyText.isOnlyEmoji(text): text
+        default: nil
+        }
+    }
+
+    /// Invisible text as wide as the footer, appended to the message text.
+    private var footerReserve: String {
+        let edited = message.edited ? String(localized: "Edited") + " " : ""
+        let ticks = message.fromMe ? "\u{2003}\u{2002}" : ""
+        return "\u{2003}\(edited)\(DateText.bubble(message.timestamp))\(ticks)"
+    }
+
+    /// Stickers and emoji-only text float without a bubble, as on the phone.
     private var isBare: Bool {
-        if case .sticker = message.content { true } else { false }
+        switch message.content {
+        case .sticker: true
+        case .text(let text, nil): message.quoted == nil && BodyText.isOnlyEmoji(text)
+        default: false
+        }
     }
 
     private var primaryText: Color {
@@ -70,7 +110,7 @@ struct MessageBubble: View {
         }
         .font(.caption2)
         .foregroundStyle(secondaryText)
-        .frame(maxWidth: .infinity, alignment: .trailing)
+        .fixedSize()
         .padding(.horizontal, isBare ? Metrics.s : 0)
         .background {
             if isBare { Capsule().fill(.regularMaterial) }
@@ -106,3 +146,10 @@ private struct QuoteView: View {
     }
 }
 
+
+extension View {
+    /// Text beside edge-to-edge media keeps the usual text inset.
+    func insetForMedia(_ media: Bool) -> some View {
+        padding(.horizontal, media ? Metrics.s : 0)
+    }
+}

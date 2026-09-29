@@ -42,6 +42,8 @@ targets:
         CFBundleName: ZapFast
         LSApplicationCategoryType: public.app-category.social-networking
         LSMinimumSystemVersion: "15.0"
+        # One copy per user: both would open the same archive.
+        LSMultipleInstancesProhibited: true
         NSHumanReadableCopyright: "Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors."
         NSMicrophoneUsageDescription: "ZapFast records voice messages when you ask it to."
     entitlements:

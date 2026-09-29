@@ -60,8 +60,12 @@ public final class AppModel {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
             }
+        } catch BridgeError.AnotherInstance {
+            session.link = .failed(message: String(localized: "ZapFast is already running."))
+        } catch BridgeError.Storage(let message) {
+            session.link = .failed(message: String(localized: "Could not prepare ZapFast's folders: \(message)"))
         } catch {
-            session.link = .failed(message: error.localizedDescription)
+            session.link = .failed(message: String(describing: error))
         }
     }
 

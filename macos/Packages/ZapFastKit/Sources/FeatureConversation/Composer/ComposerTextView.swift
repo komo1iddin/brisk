@@ -22,7 +22,8 @@ struct ComposerTextView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
+        // Shown only once the text outgrows the field; see `measure()`.
+        scrollView.hasVerticalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
 
@@ -46,6 +47,7 @@ struct ComposerTextView: NSViewRepresentable {
         textView.setAccessibilityLabel(String(localized: "Message"))
         scrollView.documentView = textView
         context.coordinator.textView = textView
+        context.coordinator.scrollView = scrollView
         return scrollView
     }
 
@@ -68,6 +70,7 @@ struct ComposerTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerTextView
         weak var textView: NSTextView?
+        weak var scrollView: NSScrollView?
         var focusedToken: String?
 
         init(_ parent: ComposerTextView) {
@@ -101,6 +104,7 @@ struct ComposerTextView: NSViewRepresentable {
             let used = layout.usedRect(for: container).height + textView.textContainerInset.height * 2
             let line = (textView.font?.boundingRectForFont.height ?? 17) + textView.textContainerInset.height * 2
             let height = min(parent.maxHeight, max(line, ceil(used)))
+            scrollView?.hasVerticalScroller = used > parent.maxHeight
             if abs(height - parent.height) > 0.5 {
                 DispatchQueue.main.async { self.parent.height = height }
             }

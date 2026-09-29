@@ -24,6 +24,8 @@
 	<string>public.app-category.social-networking</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors.</string>
 	<key>NSMicrophoneUsageDescription</key>

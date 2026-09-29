@@ -50,6 +50,29 @@ impl From<StickerPackInfo> for StickerPack {
     }
 }
 
+/// The square of a picture a made sticker keeps, in the picture's pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct StickerCropInfo {
+    pub x: u32,
+    pub y: u32,
+    pub side: u32,
+}
+
+impl From<StickerCropInfo> for zapfast::model::StickerCrop {
+    fn from(crop: StickerCropInfo) -> Self {
+        let StickerCropInfo { x, y, side } = crop;
+        Self { x, y, side }
+    }
+}
+
+/// Upstream's default crop: the largest square in the middle.
+#[uniffi::export]
+pub fn centered_sticker_crop(width: u32, height: u32) -> StickerCropInfo {
+    let zapfast::model::StickerCrop { x, y, side } =
+        zapfast::model::StickerCrop::centered(width, height);
+    StickerCropInfo { x, y, side }
+}
+
 /// The emojis one sticker is tagged with.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct StickerEmojis {

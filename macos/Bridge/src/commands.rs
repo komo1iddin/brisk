@@ -11,6 +11,7 @@ use zapfast::backend::Command;
 
 use crate::types::{
     GifInfo, NotificationSoundInfo, PageKey, PollDraftInfo, PrivacyChoiceInfo, PrivacyKindInfo,
+    StickerCropInfo,
 };
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -282,6 +283,33 @@ pub enum BridgeCommand {
     SendStickerPack {
         chat: String,
         dir: String,
+    },
+    /// Creates an empty pack of our own.
+    CreateStickerPack {
+        name: String,
+    },
+    /// Files a sticker into one of our packs, or takes it out.
+    SetStickerPack {
+        pack: String,
+        sticker: String,
+        member: bool,
+    },
+    /// Deletes one of the packs here.
+    DeleteStickerPack {
+        dir: String,
+    },
+    /// Imports a pack from a signal.art link.
+    ImportStickerUrl {
+        url: String,
+    },
+    /// Makes a sticker from a picture: sends it to `chat`, or without one
+    /// adds it to Favorites.
+    MakeSticker {
+        source: String,
+        crop: StickerCropInfo,
+        transparent: bool,
+        emojis: Vec<String>,
+        chat: Option<String>,
     },
     /// Searches GIPHY, or lists trending GIFs for an empty query.
     SearchGifs {
@@ -577,6 +605,31 @@ impl BridgeCommand {
             Self::SendStickerPack { chat, dir } => Command::SendStickerPack {
                 chat,
                 dir: dir.into(),
+            },
+            Self::CreateStickerPack { name } => Command::CreateStickerPack { name },
+            Self::SetStickerPack {
+                pack,
+                sticker,
+                member,
+            } => Command::SetStickerPack {
+                pack: pack.into(),
+                sticker: sticker.into(),
+                member,
+            },
+            Self::DeleteStickerPack { dir } => Command::DeleteStickerPack { dir: dir.into() },
+            Self::ImportStickerUrl { url } => Command::ImportStickerUrl { url },
+            Self::MakeSticker {
+                source,
+                crop,
+                transparent,
+                emojis,
+                chat,
+            } => Command::MakeSticker {
+                source: source.into(),
+                crop: crop.into(),
+                transparent,
+                emojis,
+                chat,
             },
             Self::SearchGifs { query, key } => Command::SearchGifs { query, key },
             Self::SendGif { chat, gif, quoting } => Command::SendGif {

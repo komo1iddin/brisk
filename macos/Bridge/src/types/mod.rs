@@ -29,7 +29,9 @@ pub use message::{
 };
 pub use privacy::{PrivacyChoiceInfo, PrivacyKindInfo, PrivacySnapshot, PrivacyValueInfo};
 pub use receipts::{MessageReceiptsInfo, RecipientInfo};
-pub use sticker::{GifFailure, GifInfo, StickerEmojis, StickerLibrary, StickerPackInfo};
+pub use sticker::{
+    GifFailure, GifInfo, StickerCropInfo, StickerEmojis, StickerLibrary, StickerPackInfo,
+};
 
 pub(crate) fn path_string(path: std::path::PathBuf) -> String {
     path.to_string_lossy().into_owned()

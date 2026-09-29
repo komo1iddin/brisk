@@ -11,6 +11,7 @@ struct ComposerBar: View {
     @State private var fieldHeight: CGFloat = 22
     @State private var choosingFiles = false
     @State private var pickingSticker = false
+    @State private var makerPicture: StickerPicture?
     @State private var mentions = MentionTracker()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -60,11 +61,23 @@ struct ComposerBar: View {
         .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { model.stage(files: urls, in: chatID) }
         }
+        .sheet(item: $makerPicture) { picture in
+            StickerMakerSheet(picture: picture, chatID: chatID, model: model)
+        }
         .onAppear(perform: bindMentions)
         .onChange(of: chatID) {
             mentions.cancel()
             bindMentions()
         }
+    }
+
+    /// Asks for a picture for the sticker maker.
+    private func choosePicture() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.message = String(localized: "Choose a picture to make a sticker from")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        Task { makerPicture = await StickerPicture.inspect(url) }
     }
 
     private func bindMentions() {
@@ -104,7 +117,12 @@ struct ComposerBar: View {
                 .accessibilityLabel("Stickers and GIFs")
                 .disabled(isEditing)
                 .popover(isPresented: $pickingSticker, arrowEdge: .top) {
-                    StickerPicker(chatID: chatID, model: model) { pickingSticker = false }
+                    StickerPicker(chatID: chatID, model: model) {
+                        pickingSticker = false
+                    } makeSticker: {
+                        pickingSticker = false
+                        choosePicture()
+                    }
                 }
 
                 ZStack(alignment: .topLeading) {

@@ -551,6 +551,46 @@ public final class AppModel {
         backend.send(.addStickerPack(dir: pack.dir, name: pack.name))
     }
 
+    /// Starts an empty pack of our own.
+    public func createStickerPack(named name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        backend.send(.createStickerPack(name: name))
+    }
+
+    /// Files a sticker into one of our own packs, or takes it out.
+    public func setSticker(_ path: String, in pack: StickerPackInfo, member: Bool) {
+        guard pack.local else { return }
+        backend.send(.setStickerPack(pack: pack.dir, sticker: path, member: member))
+    }
+
+    public func deleteStickerPack(_ pack: StickerPackInfo) {
+        backend.send(.deleteStickerPack(dir: pack.dir))
+    }
+
+    /// Imports a pack from a signal.art link, which the worker fetches
+    /// from Signal's servers; a bad link ends with its error.
+    public func importStickerPack(from link: String) {
+        let link = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !link.isEmpty else { return }
+        backend.send(.importStickerUrl(url: link))
+    }
+
+    /// Makes a sticker from `picture`: sent to `chat`, or without one added
+    /// to Favorites. Upstream crops, scales to 512 and encodes WebP.
+    public func makeSticker(
+        from picture: StickerPicture,
+        crop: StickerCropInfo,
+        keepTransparency: Bool,
+        emojis: [String],
+        sendTo chat: String?
+    ) {
+        backend.send(.makeSticker(
+            source: picture.url.path(percentEncoded: false), crop: crop,
+            transparent: picture.transparent && keepTransparency, emojis: emojis, chat: chat
+        ))
+    }
+
     /// Sends one of our packs to a chat as a sticker pack message.
     public func sendStickerPack(_ pack: StickerPackInfo, in chat: String) {
         guard session.isConnected else { return }

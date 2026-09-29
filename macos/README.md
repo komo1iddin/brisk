@@ -133,8 +133,12 @@ The smiley button in the composer opens stickers (favorites, recent,
 packs, and ones sent to you, searchable by emoji or its name) and GIFs.
 A sticker pack someone shares opens with View: its stickers can be sent
 from there, and Add to My Stickers keeps it among the picker's packs;
-a pack's menu in the picker sends it to the open chat. GIF search is the
-only feature that talks to a third party: it asks
+a pack's menu in the picker sends it to the open chat, or deletes it.
+The picker's + makes a sticker from a picture (a square dragged into
+place and sized; sent, or kept in Favorites), creates a pack of your
+own to file stickers into from their menu, or imports a signal.art
+pack. Besides that import, which downloads from Signal's servers, GIF
+search is the only feature that talks to a third party: it asks
 GIPHY, with your own key from Settings or one built in at compile time
 through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
 system's Character Viewer (⌃⌘Space).

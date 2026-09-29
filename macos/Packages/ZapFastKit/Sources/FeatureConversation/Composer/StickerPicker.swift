@@ -10,10 +10,16 @@ struct StickerPicker: View {
     let chatID: String
     let model: AppModel
     let close: () -> Void
+    /// Closes the picker and asks for a picture to make a sticker from.
+    let makeSticker: () -> Void
 
     enum Tab: String { case stickers, gifs }
     @AppStorage("stickerPickerTab") private var tab: Tab = .stickers
     @State private var query = ""
+    @State private var naming = false
+    @State private var packName = ""
+    @State private var importing = false
+    @State private var importLink = ""
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -28,9 +34,32 @@ struct StickerPicker: View {
             if tab == .gifs, !model.canSearchGifs || model.stickers.gifError?.badKey == true {
                 GiphyKeyForm(model: model) { model.searchGifs(query) }
             } else {
-                TextField(tab == .stickers ? "Search stickers" : "Search GIPHY", text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($searchFocused)
+                HStack(spacing: Metrics.s) {
+                    TextField(tab == .stickers ? "Search stickers" : "Search GIPHY", text: $query)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($searchFocused)
+                    if tab == .stickers {
+                        Menu {
+                            Button("Make Sticker from Picture…", systemImage: "wand.and.stars", action: makeSticker)
+                            Button("New Pack…", systemImage: "folder.badge.plus") {
+                                packName = ""
+                                naming = true
+                            }
+                            Button("Import from signal.art…", systemImage: "link") {
+                                importLink = ""
+                                importing = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.borderless)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Make a sticker or add a pack")
+                        .accessibilityLabel("Add stickers")
+                    }
+                }
 
                 switch tab {
                 case .stickers: stickers
@@ -40,6 +69,20 @@ struct StickerPicker: View {
         }
         .padding(Metrics.m)
         .frame(width: 360, height: 420)
+        .alert("New Sticker Pack", isPresented: $naming) {
+            TextField("Name", text: $packName)
+            Button("Create") { model.createStickerPack(named: packName) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("File stickers into it from their menu.")
+        }
+        .alert("Import from signal.art", isPresented: $importing) {
+            TextField("https://signal.art/addstickers/#pack_id=…", text: $importLink)
+            Button("Import") { model.importStickerPack(from: importLink) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("ZapFast downloads the pack from Signal's servers.")
+        }
         .onAppear {
             model.loadStickers()
             if tab == .gifs { model.searchGifs(query) }
@@ -180,6 +223,19 @@ private struct StickerCell: View {
         .onHover { hovering = $0 }
         .task(id: path) { image = await Thumbnails.load(URL(filePath: path), points: 72) }
         .contextMenu {
+            let ownPacks = model.stickers.library?.packs.filter(\.local) ?? []
+            if !ownPacks.isEmpty {
+                Menu("Add to Pack", systemImage: "folder") {
+                    ForEach(ownPacks, id: \.dir) { pack in
+                        Toggle(isOn: Binding(
+                            get: { pack.stickers.contains(path) },
+                            set: { model.setSticker(path, in: pack, member: $0) }
+                        )) {
+                            Text(verbatim: pack.name)
+                        }
+                    }
+                }
+            }
             Button(model.stickers.isFavorite(path) ? "Remove from Favorites" : "Add to Favorites",
                    systemImage: model.stickers.isFavorite(path) ? "star.slash" : "star") {
                 model.toggleFavoriteSticker(path)
@@ -283,5 +339,9 @@ private struct PackActions: View {
             close()
         }
         .disabled(!model.session.isConnected || pack.stickers.isEmpty)
+        Divider()
+        Button("Delete Pack", systemImage: "trash", role: .destructive) {
+            model.deleteStickerPack(pack)
+        }
     }
 }

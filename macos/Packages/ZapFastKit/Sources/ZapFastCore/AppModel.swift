@@ -46,6 +46,7 @@ public final class AppModel {
     @ObservationIgnored private let backend: Backend
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
+    @ObservationIgnored private var verbose = false
     @ObservationIgnored private let log = Logger(subsystem: "ZapFast", category: "AppModel")
     /// Chats we told the backend we are typing in, and the task that will
     /// say we stopped.
@@ -78,14 +79,20 @@ public final class AppModel {
     public func start(verbose: Bool = false) {
         guard !started else { return }
         started = true
-        let notifier = Notifier()
-        notifier.onResponse = { [weak self] response in self?.handle(response) }
-        notifier.requestAuthorization()
-        self.notifier = notifier
+        // Notification Center needs a real app bundle, which only the live
+        // backend runs in.
+        if notifier == nil, backend is LiveBackend {
+            let notifier = Notifier()
+            notifier.onResponse = { [weak self] response in self?.handle(response) }
+            notifier.requestAuthorization()
+            self.notifier = notifier
+        }
+        self.verbose = verbose
         do {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
             }
+            session.link = .starting
         } catch BridgeError.AnotherInstance {
             session.link = .failed(message: String(localized: "ZapFast is already running."))
         } catch BridgeError.Storage(let message) {
@@ -93,6 +100,8 @@ public final class AppModel {
         } catch {
             session.link = .failed(message: String(describing: error))
         }
+        // A backend that never started can be started again (Try Again).
+        if case .failed = session.link { started = false }
     }
 
     public func shutdown() {
@@ -117,7 +126,14 @@ public final class AppModel {
         backend.send(.pairWithPhone(phone: digits))
     }
 
-    public func reconnect() { backend.send(.reconnect) }
+    /// Reconnects, or retries starting when the backend never came up.
+    public func reconnect() {
+        guard started else {
+            start(verbose: verbose)
+            return
+        }
+        backend.send(.reconnect)
+    }
     public func unlink() { backend.send(.unlink) }
     public func startOverArchive() { backend.send(.startOverArchive) }
 

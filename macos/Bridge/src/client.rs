@@ -142,21 +142,29 @@ impl Drop for BridgeClient {
 /// also answers legacy FastsApp sockets, which upstream ZapFast itself may
 /// hold, so the bridge keeps its own lock beside its own data.
 fn lock_instance(dirs: &AppDirs) -> Result<std::fs::File, BridgeError> {
+    let storage = |error: std::io::Error| BridgeError::Storage {
+        message: error.to_string(),
+    };
+    // Upstream's `AppDirs::ensure` leaves the runtime folder to its own
+    // single-instance guard, which the bridge does not use.
+    let mut folder = std::fs::DirBuilder::new();
+    folder.recursive(true);
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        folder.mode(0o700);
+    }
+    folder.create(&dirs.runtime).map_err(storage)?;
     let path = dirs.runtime.join("instance.lock");
     let file = std::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
         .write(true)
         .open(&path)
-        .map_err(|error| BridgeError::Storage {
-            message: error.to_string(),
-        })?;
+        .map_err(storage)?;
     match file.try_lock() {
         Ok(()) => Ok(file),
         Err(std::fs::TryLockError::WouldBlock) => Err(BridgeError::AnotherInstance),
-        Err(std::fs::TryLockError::Error(error)) => Err(BridgeError::Storage {
-            message: error.to_string(),
-        }),
+        Err(std::fs::TryLockError::Error(error)) => Err(storage(error)),
     }
 }
 
@@ -167,5 +175,34 @@ fn app_dirs(config: &BridgeConfig) -> AppDirs {
         state: data.join("State"),
         cache: PathBuf::from(&config.cache_dir),
         runtime: data.join("Runtime"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dirs_in(root: &std::path::Path) -> AppDirs {
+        app_dirs(&BridgeConfig {
+            data_dir: root.join("Data").to_string_lossy().into_owned(),
+            cache_dir: root.join("Caches").to_string_lossy().into_owned(),
+            verbose: false,
+        })
+    }
+
+    #[test]
+    fn first_launch_creates_the_runtime_folder_and_locks_it() {
+        let root = std::env::temp_dir().join(format!("zapfast-bridge-lock-{}", std::process::id()));
+        std::fs::remove_dir_all(&root).ok();
+        let dirs = dirs_in(&root);
+        dirs.ensure().unwrap();
+        assert!(!dirs.runtime.exists(), "upstream's ensure() does not create it");
+
+        let held = lock_instance(&dirs).expect("a fresh profile can be locked");
+        assert!(matches!(lock_instance(&dirs), Err(BridgeError::AnotherInstance)));
+
+        drop(held);
+        assert!(lock_instance(&dirs).is_ok(), "the lock is released with its file");
+        std::fs::remove_dir_all(&root).ok();
     }
 }

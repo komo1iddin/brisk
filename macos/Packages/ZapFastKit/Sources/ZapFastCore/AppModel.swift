@@ -50,6 +50,11 @@ public final class AppModel {
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
 
+    /// Polls whose vote is on its way.
+    public private(set) var pollVoting: Set<MessageKey> = []
+    /// The poll whose results sheet is open.
+    public var pollResults: MessageKey?
+
     /// Messages waiting for the person to pick where to forward them.
     public private(set) var forwarding: ForwardRequest?
 
@@ -88,6 +93,9 @@ public final class AppModel {
     @ObservationIgnored private var jumpAskedArchive = false
     @ObservationIgnored private var highlightTask: Task<Void, Never>?
     @ObservationIgnored private var messageSearchTask: Task<Void, Never>?
+    /// Polls whose earlier votes were already asked of the phone; the
+    /// backend keeps retrying on its own after that.
+    @ObservationIgnored private var pollRefreshAsked: Set<MessageKey> = []
     /// What the composer held before an edit took it over, per chat.
     @ObservationIgnored private var textBeforeEdit: [String: String] = [:]
     /// The query the sidebar's message hits should answer.
@@ -218,6 +226,33 @@ public final class AppModel {
         cancelEditing(in: message.chat)
         replyingTo[message.chat] = message
         composerFocusRequests += 1
+    }
+
+    // MARK: Intents: polls
+
+    /// Votes by clicking an option, while connected and with no vote of
+    /// ours already on its way.
+    public func vote(_ message: MessageRecord, option: Int) {
+        guard case let .poll(_, _, state) = message.content, state.canVote, session.isConnected else { return }
+        let key = MessageKey(chat: message.chat, message: message.id)
+        guard !pollVoting.contains(key),
+              let choices = PollBallot.choices(afterClicking: UInt32(option), in: state) else { return }
+        pollVoting.insert(key)
+        backend.send(.votePoll(chat: message.chat, message: message.id, choices: choices))
+    }
+
+    /// A poll came into view: ask the phone for its earlier votes when
+    /// upstream says they are missing, once.
+    public func pollAppeared(_ message: MessageRecord) {
+        guard case let .poll(_, _, state) = message.content, state.refreshNeeded, !state.refreshing,
+              session.isConnected else { return }
+        let key = MessageKey(chat: message.chat, message: message.id)
+        guard pollRefreshAsked.insert(key).inserted else { return }
+        backend.send(.refreshPoll(chat: message.chat, message: message.id))
+    }
+
+    public func showPollResults(_ message: MessageRecord) {
+        pollResults = MessageKey(chat: message.chat, message: message.id)
     }
 
     // MARK: Intents: forwarding
@@ -688,6 +723,9 @@ public final class AppModel {
             // one was asked for by something else.
             guard from == nil, until == nil else { break }
             search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
+        case let .pollVoted(chat, message, error):
+            pollVoting.remove(MessageKey(chat: chat, message: message))
+            if let error { post(.error, error) }
         case let .typing(chat, sender, composing):
             conversations.applyTyping(chat: chat, sender: sender, composing: composing)
         case let .presence(id, online, lastSeen):
@@ -740,6 +778,9 @@ public final class AppModel {
             editing = [:]
             textBeforeEdit = [:]
             forwarding = nil
+            pollVoting = []
+            pollResults = nil
+            pollRefreshAsked = []
             notifier?.clearAll()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))

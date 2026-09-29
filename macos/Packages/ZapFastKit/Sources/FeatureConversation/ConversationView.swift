@@ -60,6 +60,9 @@ public struct ConversationView: View {
         .sheet(item: forwarding) { request in
             ForwardSheet(request: request, model: model)
         }
+        .sheet(item: pollResults) { key in
+            PollResultsSheet(key: key, model: model)
+        }
         .inspector(isPresented: searchPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
@@ -96,6 +99,13 @@ public struct ConversationView: View {
         Binding(
             get: { model.forwarding.flatMap { $0.chat == chatID ? $0 : nil } },
             set: { if $0 == nil { model.cancelForward() } }
+        )
+    }
+
+    private var pollResults: Binding<MessageKey?> {
+        Binding(
+            get: { model.pollResults.flatMap { $0.chat == chatID ? $0 : nil } },
+            set: { model.pollResults = $0 }
         )
     }
 

@@ -49,7 +49,9 @@ public enum DownloadState: Equatable, Sendable {
     case failed(String)
 }
 
-public struct MessageKey: Hashable, Sendable {
+public struct MessageKey: Hashable, Identifiable, Sendable {
+    public var id: Self { self }
+
     public var chat: String
     public var message: String
 

@@ -109,6 +109,17 @@ pub enum BridgeCommand {
         text: String,
         mentions: Vec<String>,
     },
+    /// Our whole choice in a poll; empty withdraws the vote.
+    VotePoll {
+        chat: String,
+        message: String,
+        choices: Vec<u32>,
+    },
+    /// Ask the phone for a poll's earlier votes.
+    RefreshPoll {
+        chat: String,
+        message: String,
+    },
     React {
         chat: String,
         message: String,
@@ -273,6 +284,16 @@ impl BridgeCommand {
                 text,
                 mentions,
             },
+            Self::VotePoll {
+                chat,
+                message,
+                choices,
+            } => Command::VotePoll {
+                chat,
+                message,
+                choices: choices.into_iter().map(|choice| choice as usize).collect(),
+            },
+            Self::RefreshPoll { chat, message } => Command::RefreshPoll { chat, message },
             Self::React {
                 chat,
                 message,

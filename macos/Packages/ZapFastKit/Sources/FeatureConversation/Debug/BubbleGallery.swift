@@ -52,6 +52,14 @@ public struct BubbleGallery: View {
             caption: "Namuna",
             media: MediaInfo(mime: "image/jpeg", size: 65_000, width: 900, height: 1200, path: nil)
         ), status: .sent),
+        .sample("10", from: "b", content: .poll(
+            question: "Tushlikka qayerga boramiz?",
+            options: ["Osh markazi", "Somsaxona", "Uyda ovqatlanamiz"],
+            state: PollSummary(
+                selectable: 1, counts: [3, 1, 0], selected: [0], voters: 4, canVote: true,
+                historyComplete: true, refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []
+            )
+        )),
     ]
 }
 

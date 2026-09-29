@@ -1,5 +1,6 @@
 use zapfast::model::{
-    Content, LinkPreview, Media, MentionRef, Message, OnceMedia, PollState, Quoted, Reaction,
+    Content, LinkPreview, Media, MentionRef, Message, OnceMedia, PollState, PollVoter, Quoted,
+    Reaction,
 };
 
 use super::{DeliveryState, count, path_string};
@@ -148,13 +149,46 @@ pub struct PollSummary {
     pub voters: u32,
     pub can_vote: bool,
     pub history_complete: bool,
+    /// Earlier votes should be asked of the phone while the poll is seen.
+    pub refresh_needed: bool,
     pub refreshing: bool,
     pub refresh_failed: bool,
+    /// The latest decrypted vote of each voter, for the results sheet.
+    pub votes: Vec<PollVoterInfo>,
+}
+
+/// One person's latest vote.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct PollVoterInfo {
+    pub id: String,
+    pub name: String,
+    pub from_me: bool,
+    pub timestamp: i64,
+    /// Option indices chosen.
+    pub choices: Vec<u32>,
+}
+
+impl From<PollVoter> for PollVoterInfo {
+    fn from(voter: PollVoter) -> Self {
+        let PollVoter {
+            id,
+            name,
+            from_me,
+            timestamp,
+            choices,
+        } = voter;
+        Self {
+            id,
+            name,
+            from_me,
+            timestamp,
+            choices: choices.into_iter().map(count).collect(),
+        }
+    }
 }
 
 impl From<PollState> for PollSummary {
     fn from(state: PollState) -> Self {
-        // Voter details arrive with the results dialog, not per message.
         let PollState {
             selectable,
             counts,
@@ -162,10 +196,10 @@ impl From<PollState> for PollSummary {
             voters,
             can_vote,
             history_complete,
-            refresh_needed: _,
+            refresh_needed,
             refreshing,
             refresh_failed,
-            votes: _,
+            votes,
         } = state;
         Self {
             selectable: count(selectable),
@@ -174,8 +208,10 @@ impl From<PollState> for PollSummary {
             voters: count(voters),
             can_vote,
             history_complete,
+            refresh_needed,
             refreshing,
             refresh_failed,
+            votes: votes.into_iter().map(Into::into).collect(),
         }
     }
 }

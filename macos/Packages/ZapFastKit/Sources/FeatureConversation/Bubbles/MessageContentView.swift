@@ -46,7 +46,7 @@ struct MessageContentView: View {
             Label(displayName, systemImage: "person.crop.circle")
                 .font(.body.weight(.medium))
         case let .poll(question, options, state):
-            PollContent(question: question, options: options, state: state)
+            PollContent(message: message, question: question, options: options, state: state, model: model)
         case let .stickerPack(name, publisher, count, _):
             Label {
                 VStack(alignment: .leading) {
@@ -453,36 +453,5 @@ private struct LocationContent: View {
             }
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct PollContent: View {
-    let question: String
-    let options: [String]
-    let state: PollSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Metrics.s) {
-            Label(question, systemImage: "chart.bar")
-                .font(.body.weight(.semibold))
-            let total = max(1, state.counts.reduce(0, +))
-            ForEach(Array(options.enumerated()), id: \.offset) { index, option in
-                let count = index < state.counts.count ? state.counts[index] : 0
-                let chosen = state.selected.contains(UInt32(index))
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
-                        Text(option)
-                        Spacer()
-                        Text("\(count)").monospacedDigit()
-                    }
-                    .font(.callout)
-                    ProgressView(value: Double(count), total: Double(total))
-                        .progressViewStyle(.linear)
-                }
-            }
-            Text("\(state.voters) votes").font(.caption).opacity(0.75)
-        }
-        .frame(minWidth: 220)
     }
 }

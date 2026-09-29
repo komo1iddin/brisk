@@ -96,6 +96,12 @@ pub enum BridgeEvent {
         messages: Vec<MessageRecord>,
         truncated: bool,
     },
+    /// A vote went out, or failed with `error`.
+    PollVoted {
+        chat: String,
+        message: String,
+        error: Option<String>,
+    },
     Typing {
         chat: String,
         sender: String,
@@ -228,6 +234,15 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             messages: messages.into_iter().map(Into::into).collect(),
             truncated,
         }),
+        Event::PollVoted {
+            chat,
+            message,
+            error,
+        } => Some(B::PollVoted {
+            chat,
+            message,
+            error,
+        }),
         Event::Typing {
             chat,
             sender,
@@ -300,7 +315,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         // Not bridged yet. Each moves up when its feature lands on macOS.
         Event::InteractiveReplyState { .. } => not_bridged("InteractiveReplyState"),
         Event::PollCreated { .. } => not_bridged("PollCreated"),
-        Event::PollVoted { .. } => not_bridged("PollVoted"),
         Event::Labels(_) => not_bridged("Labels"),
         Event::Picked { .. } => not_bridged("Picked"),
         Event::Gifs { .. } => not_bridged("Gifs"),

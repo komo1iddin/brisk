@@ -48,14 +48,23 @@ struct MessageContentView: View {
         case let .poll(question, options, state):
             PollContent(message: message, question: question, options: options, state: state, model: model)
         case let .stickerPack(name, publisher, count, _):
-            Label {
-                VStack(alignment: .leading) {
-                    Text(name).font(.body.weight(.medium))
-                    Text("\(publisher) · \(count) stickers").font(.caption).opacity(0.8)
+            Button { model.viewStickerPack(message) } label: {
+                HStack(spacing: Metrics.s) {
+                    Image(systemName: "face.smiling").font(.title2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name).font(.body.weight(.medium))
+                        Text("\(publisher) · \(count) stickers").font(.caption).opacity(0.8)
+                    }
+                    Spacer(minLength: Metrics.s)
+                    Text("View").font(.callout.weight(.semibold))
                 }
-            } icon: {
-                Image(systemName: "face.smiling")
+                .padding(Metrics.s)
+                .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+                .contentShape(.rect)
             }
+            .buttonStyle(.plain)
+            .frame(minWidth: 220)
+            .help("View the stickers")
         case .revoked:
             Placeholder(symbol: "nosign", text: String(localized: "This message was deleted"))
         case .unsupported(let what):

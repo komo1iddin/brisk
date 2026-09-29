@@ -65,7 +65,7 @@ struct StickerPicker: View {
                         shelf(Text("Favorites"), library.favorites)
                         shelf(Text("Recent"), library.recent)
                         ForEach(library.packs, id: \.dir) { pack in
-                            shelf(Text(verbatim: pack.name), pack.stickers)
+                            shelf(Text(verbatim: pack.name), pack.stickers, pack: pack)
                         }
                         shelf(Text("Sent to You"), library.received)
                     } else {
@@ -91,7 +91,7 @@ struct StickerPicker: View {
     }
 
     @ViewBuilder
-    private func shelf(_ title: Text, _ paths: [String]) -> some View {
+    private func shelf(_ title: Text, _ paths: [String], pack: StickerPackInfo? = nil) -> some View {
         if !paths.isEmpty {
             Section {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: Metrics.s)], spacing: Metrics.s) {
@@ -103,12 +103,26 @@ struct StickerPicker: View {
                     }
                 }
             } header: {
-                title
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, Metrics.xxs)
-                    .background(.background)
+                HStack {
+                    title
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let pack {
+                        Menu {
+                            PackActions(pack: pack, chatID: chatID, model: model, close: close)
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.borderless)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Pack actions")
+                    }
+                }
+                .padding(.vertical, Metrics.xxs)
+                .background(.background)
             }
         }
     }
@@ -253,5 +267,21 @@ private struct GiphyKeyForm: View {
     private func save() {
         model.preferences.giphyKey = key.trimmingCharacters(in: .whitespaces)
         saved()
+    }
+}
+
+/// What can be done with one of our packs from the picker.
+private struct PackActions: View {
+    let pack: StickerPackInfo
+    let chatID: String
+    let model: AppModel
+    let close: () -> Void
+
+    var body: some View {
+        Button("Send Pack to This Chat", systemImage: "paperplane") {
+            model.sendStickerPack(pack, in: chatID)
+            close()
+        }
+        .disabled(!model.session.isConnected || pack.stickers.isEmpty)
     }
 }

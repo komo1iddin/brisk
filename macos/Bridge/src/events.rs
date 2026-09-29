@@ -8,7 +8,8 @@ use zapfast::backend::{Event, Refusal, Unsent};
 
 use crate::types::{
     ChatSummary, ContactRecord, GifFailure, GifInfo, LabelInfo, LinkState, MessageReceiptsInfo,
-    MessageRecord, PrivacyKindInfo, PrivacyValueInfo, StickerLibrary, count, path_string,
+    MessageRecord, PrivacyKindInfo, PrivacyValueInfo, StickerLibrary, StickerPackInfo, count,
+    path_string,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -164,6 +165,13 @@ pub enum BridgeEvent {
     /// The picker's stickers.
     Stickers {
         library: StickerLibrary,
+    },
+    /// A shared sticker pack, ready to view, with its publisher; or why it
+    /// could not be opened.
+    StickerPackPreview {
+        pack: Option<StickerPackInfo>,
+        publisher: Option<String>,
+        error: Option<String>,
     },
     /// GIF results for `query`, or why there are none.
     Gifs {
@@ -388,6 +396,18 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             },
         }),
         Event::ContactReady { id, name } => Some(B::ContactReady { id, name }),
+        Event::StickerPackPreview(result) => Some(match result {
+            Ok((pack, publisher)) => B::StickerPackPreview {
+                pack: Some(pack.into()),
+                publisher: Some(publisher),
+                error: None,
+            },
+            Err(error) => B::StickerPackPreview {
+                pack: None,
+                publisher: None,
+                error: Some(error),
+            },
+        }),
         Event::InvitePreview { code, result } => Some(match result {
             Ok(info) => B::InvitePreview {
                 code,
@@ -527,7 +547,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         // Not bridged yet. Each moves up when its feature lands on macOS.
         Event::Picked { .. } => not_bridged("Picked"),
         Event::StickerPicture { .. } => not_bridged("StickerPicture"),
-        Event::StickerPackPreview(_) => not_bridged("StickerPackPreview"),
         Event::ChatSoundPicked { .. } => not_bridged("ChatSoundPicked"),
         Event::DownloadFolderPicked(_) => not_bridged("DownloadFolderPicked"),
         Event::WallpaperImagePicked(_) => not_bridged("WallpaperImagePicked"),

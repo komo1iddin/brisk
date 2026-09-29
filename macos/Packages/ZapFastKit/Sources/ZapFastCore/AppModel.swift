@@ -72,6 +72,9 @@ public final class AppModel {
     /// The label manager is open.
     public var labelsManagerShown = false
 
+    /// A sticker pack shared in a chat, being fetched or looked at.
+    public var stickerPackPreview: StickerPackPreview?
+
     /// The group invite sheet: a link being pasted, looked up, or joined.
     public var invite: GroupInvite?
 
@@ -278,6 +281,7 @@ public final class AppModel {
         forwarding = nil
         // Sheets over the whole window would show over the lock screen.
         invite = nil
+        stickerPackPreview = nil
         chatConfirmation = nil
         if started { backend.send(.setOnline(online: false)) }
     }
@@ -531,6 +535,26 @@ public final class AppModel {
     public func sendSticker(_ path: String, in chat: String) {
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         backend.send(.sendSticker(chat: chat, path: path, quoting: quoting))
+    }
+
+    /// Fetches a pack shared in a chat and shows it.
+    public func viewStickerPack(_ message: MessageRecord) {
+        guard case .stickerPack = message.content else { return }
+        stickerPackPreview = StickerPackPreview(chat: message.chat, state: .loading)
+        backend.send(.viewStickerPack(chat: message.chat, message: message.id))
+    }
+
+    /// Keeps the viewed pack in the picker's packs.
+    public func addViewedStickerPack() {
+        guard case .ready(let pack, _) = stickerPackPreview?.state else { return }
+        stickerPackPreview = nil
+        backend.send(.addStickerPack(dir: pack.dir, name: pack.name))
+    }
+
+    /// Sends one of our packs to a chat as a sticker pack message.
+    public func sendStickerPack(_ pack: StickerPackInfo, in chat: String) {
+        guard session.isConnected else { return }
+        backend.send(.sendStickerPack(chat: chat, dir: pack.dir))
     }
 
     public func toggleFavoriteSticker(_ path: String) {
@@ -1418,6 +1442,13 @@ public final class AppModel {
             chats.replaceLabels(labels)
         case .stickers(let library):
             stickers.apply(library)
+        case let .stickerPackPreview(pack, publisher, error):
+            guard stickerPackPreview != nil else { break }
+            if let pack {
+                stickerPackPreview?.state = .ready(pack: pack, publisher: publisher ?? "")
+            } else {
+                stickerPackPreview?.state = .failed(error ?? String(localized: "This sticker pack could not be opened."))
+            }
         case let .gifs(query, gifs, error):
             stickers.applyGifs(query: query, gifs: gifs, error: error, wanted: wantedGifQuery ?? "")
         case let .invitePreview(code, info, error):
@@ -1574,6 +1605,7 @@ public final class AppModel {
             mentionsBeforeEdit = [:]
             forwarding = nil
             invite = nil
+            stickerPackPreview = nil
             pollVoting = []
             interactiveSending = []
             privacy.snapshot.reset()
@@ -1708,6 +1740,20 @@ public struct InteractiveListRequest: Identifiable, Equatable, Sendable {
     public let id = UUID()
     public let key: MessageKey
     public let button: Int
+}
+
+/// A shared sticker pack being fetched, shown, or that failed to open.
+public struct StickerPackPreview: Identifiable, Equatable, Sendable {
+    public enum State: Equatable, Sendable {
+        case loading
+        case ready(pack: StickerPackInfo, publisher: String)
+        case failed(String)
+    }
+
+    public let id = UUID()
+    /// The chat it was shared in, where its stickers can be sent.
+    public let chat: String
+    public internal(set) var state: State
 }
 
 public struct JumpRequest: Equatable, Sendable {

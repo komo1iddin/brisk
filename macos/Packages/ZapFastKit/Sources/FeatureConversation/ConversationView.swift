@@ -66,6 +66,9 @@ public struct ConversationView: View {
         .sheet(item: messageInfo) { key in
             MessageInfoSheet(key: key, model: model)
         }
+        .sheet(item: stickerPack) { preview in
+            StickerPackSheet(preview: preview, model: model)
+        }
         .sheet(item: interactiveList) { request in
             InteractiveListSheet(request: request, model: model)
         }
@@ -120,6 +123,13 @@ public struct ConversationView: View {
         Binding(
             get: { model.pollResults.flatMap { $0.chat == chatID ? $0 : nil } },
             set: { model.pollResults = $0 }
+        )
+    }
+
+    private var stickerPack: Binding<StickerPackPreview?> {
+        Binding(
+            get: { model.stickerPackPreview.flatMap { $0.chat == chatID ? $0 : nil } },
+            set: { model.stickerPackPreview = $0 }
         )
     }
 

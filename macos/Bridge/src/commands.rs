@@ -267,6 +267,22 @@ pub enum BridgeCommand {
     RemoveRecentSticker {
         path: String,
     },
+    /// Downloads a sticker pack shared in a chat so it can be viewed;
+    /// answered by `StickerPackPreview`.
+    ViewStickerPack {
+        chat: String,
+        message: String,
+    },
+    /// Copies a viewed pack into the packs here.
+    AddStickerPack {
+        dir: String,
+        name: String,
+    },
+    /// Sends a pack as a WhatsApp sticker pack message.
+    SendStickerPack {
+        chat: String,
+        dir: String,
+    },
     /// Searches GIPHY, or lists trending GIFs for an empty query.
     SearchGifs {
         query: String,
@@ -553,6 +569,15 @@ impl BridgeCommand {
             Self::RemoveRecentSticker { path } => {
                 Command::RemoveRecentSticker { path: path.into() }
             }
+            Self::ViewStickerPack { chat, message } => Command::ViewStickerPack { chat, message },
+            Self::AddStickerPack { dir, name } => Command::AddStickerPack {
+                dir: dir.into(),
+                name,
+            },
+            Self::SendStickerPack { chat, dir } => Command::SendStickerPack {
+                chat,
+                dir: dir.into(),
+            },
             Self::SearchGifs { query, key } => Command::SearchGifs { query, key },
             Self::SendGif { chat, gif, quoting } => Command::SendGif {
                 chat,

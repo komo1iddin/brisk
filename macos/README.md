@@ -131,7 +131,10 @@ upstream's are.
 
 The smiley button in the composer opens stickers (favorites, recent,
 packs, and ones sent to you, searchable by emoji or its name) and GIFs.
-GIF search is the only feature that talks to a third party: it asks
+A sticker pack someone shares opens with View: its stickers can be sent
+from there, and Add to My Stickers keeps it among the picker's packs;
+a pack's menu in the picker sends it to the open chat. GIF search is the
+only feature that talks to a third party: it asks
 GIPHY, with your own key from Settings or one built in at compile time
 through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
 system's Character Viewer (⌃⌘Space).

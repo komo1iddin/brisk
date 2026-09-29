@@ -21,7 +21,8 @@ public struct ChatAvatar: View {
             url: model.avatars.url(for: chat.id),
             seed: chat.id,
             placeholder: placeholder,
-            size: size
+            size: size,
+            version: model.avatars.version(for: chat.id)
         )
     }
 

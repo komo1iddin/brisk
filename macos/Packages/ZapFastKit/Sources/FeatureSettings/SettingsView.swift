@@ -32,13 +32,43 @@ public struct SettingsView: View {
 private struct AccountSettings: View {
     let model: AppModel
     @State private var confirmUnlink = false
+    @State private var name = ""
+    @State private var about = ""
+    @State private var choosingPicture = false
 
     var body: some View {
+        let account = model.session.account
         Form {
             Section {
-                LabeledContent("Name", value: model.session.account?.name ?? "—")
-                LabeledContent("Phone", value: model.session.account.flatMap { phoneOf(id: $0.id) } ?? "—")
+                HStack(spacing: Metrics.m) {
+                    AvatarView(
+                        url: account.flatMap { model.avatars.fullURL(for: $0.id) ?? model.avatars.url(for: $0.id) },
+                        seed: account?.id ?? "",
+                        placeholder: .initials(account?.name ?? ""),
+                        size: 56,
+                        version: account.map { model.avatars.version(for: $0.id) } ?? 0
+                    )
+                    VStack(alignment: .leading, spacing: Metrics.xxs) {
+                        Text(account?.name ?? String(localized: "Linked device")).font(.headline)
+                        Text(account.flatMap { phoneOf(id: $0.id) } ?? "").foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Change Picture…") { choosingPicture = true }
+                        .disabled(!model.session.isConnected)
+                }
                 LabeledContent("Status", value: status)
+            }
+            Section {
+                TextField("Your name", text: limited($name, to: AppModel.profileNameLimit))
+                TextField("About", text: limited($about, to: AppModel.aboutLimit))
+            } footer: {
+                HStack {
+                    Text("Shown to people you chat with.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Save") { model.saveProfile(name: name, about: about) }
+                        .disabled(!changed || !model.session.isConnected)
+                }
             }
             Section {
                 Button("Unlink This Mac…", role: .destructive) { confirmUnlink = true }
@@ -55,6 +85,26 @@ private struct AccountSettings: View {
         .confirmationDialog("Unlink this Mac?", isPresented: $confirmUnlink) {
             Button("Unlink", role: .destructive) { model.unlink() }
         }
+        .fileImporter(isPresented: $choosingPicture, allowedContentTypes: [.image]) { result in
+            if case .success(let url) = result { model.setProfilePicture(from: url) }
+        }
+        // Follows the account as the phone reports it, including after a save.
+        .onChange(of: account, initial: true) {
+            name = account?.name ?? ""
+            about = account?.about ?? ""
+        }
+    }
+
+    private var changed: Bool {
+        let account = model.session.account
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (!trimmedName.isEmpty && trimmedName != account?.name)
+            || about.trimmingCharacters(in: .whitespacesAndNewlines) != (account?.about ?? "")
+    }
+
+    /// Stops typing at upstream's length limit.
+    private func limited(_ text: Binding<String>, to limit: Int) -> Binding<String> {
+        Binding(get: { text.wrappedValue }, set: { text.wrappedValue = String($0.prefix(limit)) })
     }
 
     private var status: String {

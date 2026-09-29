@@ -11,10 +11,13 @@ public enum Thumbnails {
         return cache
     }()
 
-    /// An image from a file, decoded to `points` on its longest side.
+    /// An image from a file, decoded to `points` on its longest side. A file
+    /// rewritten in place (a new profile picture) is decoded afresh.
     @concurrent
     public static func load(_ url: URL, points: CGFloat, scale: CGFloat = 2) async -> NSImage? {
-        let key = "\(url.path(percentEncoded: false))@\(Int(points * scale))" as NSString
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+            .contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
+        let key = "\(url.path(percentEncoded: false))#\(modified)@\(Int(points * scale))" as NSString
         if let cached = cache.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         return decode(source, points: points, scale: scale, key: key)

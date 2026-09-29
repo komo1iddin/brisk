@@ -12,14 +12,22 @@ public struct AvatarView: View {
     private let seed: String
     private let placeholder: Placeholder
     private let size: CGFloat
+    /// Changes when the picture at `url` was replaced by a new one.
+    private let version: Int
 
     @State private var image: NSImage?
 
-    public init(url: URL?, seed: String, placeholder: Placeholder, size: CGFloat) {
+    public init(url: URL?, seed: String, placeholder: Placeholder, size: CGFloat, version: Int = 0) {
         self.url = url
         self.seed = seed
         self.placeholder = placeholder
         self.size = size
+        self.version = version
+    }
+
+    private struct Source: Equatable {
+        var url: URL?
+        var version: Int
     }
 
     public var body: some View {
@@ -37,7 +45,7 @@ public struct AvatarView: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityHidden(true)
-        .task(id: url) {
+        .task(id: Source(url: url, version: version)) {
             guard let url else { image = nil; return }
             image = await Thumbnails.load(url, points: size)
         }

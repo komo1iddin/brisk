@@ -336,6 +336,35 @@ public final class AppModel {
         backend.send(.sendGif(chat: chat, gif: gif, quoting: quoting))
     }
 
+    // MARK: Intents: our profile
+
+    /// Upstream's limits on our name and About.
+    public static let profileNameLimit = 25
+    public static let aboutLimit = 139
+
+    /// Sends what changed, as upstream's account settings do: a blank name
+    /// keeps the current one; About may be cleared.
+    public func saveProfile(name: String, about: String) {
+        let name = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.profileNameLimit))
+        let about = String(about.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.aboutLimit))
+        let account = session.account
+        let changedName = (!name.isEmpty && account?.name != name) ? name : nil
+        let changedAbout = ((account?.about ?? "") != about) ? about : nil
+        guard changedName != nil || changedAbout != nil else { return }
+        backend.send(.setProfile(name: changedName, about: changedAbout))
+    }
+
+    public func setProfilePicture(from url: URL) {
+        Task {
+            do {
+                let jpeg = try await PictureEncoding.squareJPEG(from: url)
+                backend.send(.setProfilePicture(jpeg: jpeg))
+            } catch {
+                post(.error, String(localized: "Could not use this picture: \(error.localizedDescription)"))
+            }
+        }
+    }
+
     // MARK: Intents: groups and contacts
 
     /// Every id we may be listed under, for `canLeave(ours:)`.

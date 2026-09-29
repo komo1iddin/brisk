@@ -101,7 +101,8 @@ private struct InfoPage: View {
                 url: model.avatars.fullURL(for: id) ?? model.avatars.url(for: id),
                 seed: id,
                 placeholder: placeholder(chat, title: title),
-                size: 96
+                size: 96,
+                version: model.avatars.version(for: id)
             )
             .padding(.bottom, Metrics.xs)
 

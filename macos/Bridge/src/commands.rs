@@ -217,6 +217,17 @@ pub enum BridgeCommand {
         quoting: Option<String>,
     },
 
+    // Our profile
+    /// Changes our name and About; `None` keeps the current one.
+    SetProfile {
+        name: Option<String>,
+        about: Option<String>,
+    },
+    /// Makes a square JPEG our profile picture.
+    SetProfilePicture {
+        jpeg: Vec<u8>,
+    },
+
     // Groups and contacts
     /// Renames a group for everyone in it.
     SetGroupName {
@@ -421,6 +432,9 @@ impl BridgeCommand {
                 gif: gif.into(),
                 quoting,
             },
+
+            Self::SetProfile { name, about } => Command::SetProfile { name, about },
+            Self::SetProfilePicture { jpeg } => Command::SetProfilePicture(jpeg),
 
             Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
             Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },

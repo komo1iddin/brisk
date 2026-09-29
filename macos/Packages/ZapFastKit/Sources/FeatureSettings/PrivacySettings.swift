@@ -7,6 +7,7 @@ import ZapFastDesign
 struct PrivacySettings: View {
     let model: AppModel
     @State private var form: AppLock.FormMode?
+    @State private var codeForm: CodeFormMode?
 
     var body: some View {
         @Bindable var preferences = model.preferences
@@ -38,6 +39,20 @@ struct PrivacySettings: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Section {
+                LabeledContent("Locked chats code") {
+                    if model.lockedChats.hasCode {
+                        Button("Change Code…") { codeForm = .change }
+                        Button("Remove…") { codeForm = .remove }
+                    } else {
+                        Button("Set Code…") { codeForm = .set }
+                    }
+                }
+            } footer: {
+                Text("Opens Locked Chats on this Mac. It hides chats; it doesn't encrypt them.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
@@ -45,6 +60,85 @@ struct PrivacySettings: View {
         .onChange(of: preferences.appLockAfter) { model.appLock.noteInput() }
         .sheet(item: $form) { mode in
             PasswordForm(mode: mode, lock: lock)
+        }
+        .sheet(item: $codeForm) { mode in
+            ChatLockCodeForm(mode: mode, lockedChats: model.lockedChats)
+        }
+    }
+}
+
+enum CodeFormMode: Identifiable {
+    case set, change, remove
+    var id: Self { self }
+}
+
+/// Sets, replaces or removes the local code of Locked Chats; the current
+/// code first when there is one. Changing it locks the folder again.
+private struct ChatLockCodeForm: View {
+    let mode: CodeFormMode
+    let lockedChats: LockedChats
+    @State private var current = ""
+    @State private var new = ""
+    @State private var confirm = ""
+    @State private var error: LockedChats.CodeError?
+    @State private var busy = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Metrics.m) {
+            Text(title).font(.headline)
+            Form {
+                if mode != .set {
+                    SecureField("Current code", text: $current)
+                }
+                if mode != .remove {
+                    SecureField("New code", text: $new)
+                    SecureField("Confirm code", text: $confirm)
+                }
+            }
+            .formStyle(.columns)
+            if let error {
+                Text(message(error)).foregroundStyle(.red).font(.callout)
+            }
+            HStack {
+                if busy { ProgressView().controlSize(.small) }
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(mode == .remove ? "Remove" : "Save", action: submit)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(busy || (mode != .set && current.isEmpty) || (mode != .remove && new.isEmpty))
+            }
+        }
+        .padding(Metrics.l)
+        .frame(width: 360)
+    }
+
+    private var title: LocalizedStringKey {
+        switch mode {
+        case .set: "Set Locked Chats Code"
+        case .change: "Change Locked Chats Code"
+        case .remove: "Remove Locked Chats Code"
+        }
+    }
+
+    private func message(_ error: LockedChats.CodeError) -> LocalizedStringKey {
+        switch error {
+        case .wrongCurrent: "The current code is wrong."
+        case .mismatch: "The codes don't match."
+        case .empty: "Enter a code."
+        }
+    }
+
+    private func submit() {
+        busy = true
+        error = nil
+        Task {
+            let problem = await lockedChats.change(
+                current: current, new: mode == .remove ? "" : new, confirm: mode == .remove ? "" : confirm
+            )
+            busy = false
+            if let problem { error = problem } else { dismiss() }
         }
     }
 }

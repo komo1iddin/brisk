@@ -140,7 +140,7 @@ public struct ConversationView: View {
     }
 
     private func canSend(_ chat: ChatSummary) -> Bool {
-        !chat.left && !(chat.readOnly && !chat.admin) && !(chat.isChannel && !chat.admin)
+        !chat.locked && !chat.left && !(chat.readOnly && !chat.admin) && !(chat.isChannel && !chat.admin)
     }
 
     /// Typing, presence, or group members, under the title.
@@ -181,6 +181,7 @@ private struct ReadOnlyBar: View {
     }
 
     private var message: LocalizedStringKey {
+        if chat.locked { return "Locked chats are read-only in ZapFast." }
         if chat.left { return "You're no longer a participant." }
         if chat.isChannel { return "Only channel admins can post." }
         return "Only admins can send messages."

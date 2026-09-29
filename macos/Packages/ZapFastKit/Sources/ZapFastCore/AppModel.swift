@@ -21,6 +21,7 @@ public final class AppModel {
     public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
     public let appLock: AppLock
+    public let lockedChats: LockedChats
 
     /// The chat open in the conversation pane.
     public var selectedChatID: String? {
@@ -83,7 +84,10 @@ public final class AppModel {
     /// The poll whose results sheet is open.
     public var pollResults: MessageKey?
 
-    /// A chat whose clearing or deleting waits for the person to confirm.
+    /// The Locked folder's code sheet is showing.
+    public var lockedChatsPrompt = false
+
+    /// A chat whose clearing, deleting or locking waits for the person to confirm.
     public var chatConfirmation: ChatConfirmation?
 
     /// The message whose "Message info" sheet is open. A group message's
@@ -162,6 +166,7 @@ public final class AppModel {
         self.paths = paths
         self.avatars = AvatarStore(send: backend.send)
         self.appLock = AppLock(preferences: preferences)
+        self.lockedChats = LockedChats(preferences: preferences)
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
         appLock.onLock = { [weak self] in self?.locked() }
         appLock.onUnlock = { [weak self] in self?.unlocked() }
@@ -250,6 +255,8 @@ public final class AppModel {
     /// While locked nothing plays or records, and the phone keeps its
     /// notifications, as nobody is reading.
     private func locked() {
+        closeLockedChats()
+        lockedChatsPrompt = false
         voice.stop()
         video.stop()
         if recorder.isRecording { recorder.cancel() }
@@ -885,6 +892,51 @@ public final class AppModel {
         }
     }
 
+    // MARK: Intents: locked chats
+
+    /// The Locked folder: straight in when this session opened it, else
+    /// the code sheet (which sets a code up when there is none).
+    public func openLockedChats() {
+        guard !lockedChats.isOpen else { return }
+        lockedChats.resetAttempt()
+        lockedChatsPrompt = true
+    }
+
+    /// Leaving the folder locks it again, and a locked chat left open closes.
+    public func closeLockedChats() {
+        lockedChatsPrompt = false
+        lockedChats.close()
+        if let selectedChatID, chats.chat(selectedChatID)?.locked == true {
+            self.selectedChatID = nil
+        }
+    }
+
+    /// The code sheet opened the folder.
+    public func lockedChatsOpened() {
+        lockedChatsPrompt = false
+        // A chat open from the normal list stays open inside the folder only
+        // if it is locked; anything else would be out of place there.
+        if let selectedChatID, chats.chat(selectedChatID)?.locked != true {
+            self.selectedChatID = nil
+        }
+    }
+
+    /// Asks before locking, since the chat leaves the list and the lock
+    /// syncs to the phone. Unlocking needs no confirmation.
+    public func confirmLock(_ chat: String) {
+        chatConfirmation = ChatConfirmation(chat: chat, action: .lock)
+    }
+
+    /// Upstream's `SetLocked`: the phone learns it through app state.
+    /// Locking the open chat closes it, as the phone does; the first lock
+    /// asks for a local code.
+    public func setLocked(_ locked: Bool, chat: String) {
+        backend.send(.setLocked(chat: chat, locked: locked))
+        guard locked else { return }
+        if selectedChatID == chat, !lockedChats.isOpen { selectedChatID = nil }
+        if !lockedChats.hasCode { openLockedChats() }
+    }
+
     // MARK: Intents: clearing and deleting chats
 
     /// Both reach the phone first, so they wait for a connection.
@@ -906,10 +958,11 @@ public final class AppModel {
     /// chat go here once it agreed (`chatCleared`, `chatRemoved`).
     public func perform(_ confirmation: ChatConfirmation) {
         chatConfirmation = nil
-        guard canClearOrDeleteChats else { return }
         switch confirmation.action {
-        case .clear: backend.send(.clearChat(chat: confirmation.chat))
-        case .delete: backend.send(.deleteChat(chat: confirmation.chat))
+        case .clear where canClearOrDeleteChats: backend.send(.clearChat(chat: confirmation.chat))
+        case .delete where canClearOrDeleteChats: backend.send(.deleteChat(chat: confirmation.chat))
+        case .lock: setLocked(true, chat: confirmation.chat)
+        case .clear, .delete: break
         }
     }
 
@@ -1124,6 +1177,9 @@ public final class AppModel {
             chats.replaceAll(list)
         case .chatUpdated(let chat):
             chats.upsert(chat)
+            // A chat locked on the phone leaves the window unless the
+            // folder is open here.
+            if chat.locked, chat.id == selectedChatID, !lockedChats.isOpen { selectedChatID = nil }
             if !chat.looksUnread { notifier?.clear(chat: chat.id) }
             // An open chat that turns unread was read by the person looking at it.
             if chat.id == selectedChatID, chat.looksUnread, !chat.markedUnread, !appLock.isLocked {
@@ -1297,6 +1353,7 @@ public final class AppModel {
             video.stop()
             selectedChatID = nil
             openAfterUnlock = nil
+            closeLockedChats()
             // Unlinking is how a forgotten app-lock password is recovered.
             appLock.forget()
             post(.error, String(localized: "This device was unlinked from your phone"))
@@ -1376,7 +1433,7 @@ public struct ForwardRequest: Identifiable, Equatable, Sendable {
 
 /// Clearing or deleting a chat, waiting to be confirmed.
 public struct ChatConfirmation: Identifiable, Equatable, Sendable {
-    public enum Action: Sendable { case clear, delete }
+    public enum Action: Sendable { case clear, delete, lock }
     public var id: String { chat }
     public let chat: String
     public let action: Action

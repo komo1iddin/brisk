@@ -20,15 +20,24 @@ public struct ChatListView: View {
     }
 
     public var body: some View {
-        let chats = model.chats.visibleChats(
-            filter: filter, query: query, archived: showingArchived, label: label
-        )
-        let hits = messageHits
+        let inLocked = model.lockedChats.isOpen
+        let chats = inLocked
+            ? model.chats.lockedChats(query: query)
+            : model.chats.visibleChats(filter: filter, query: query, archived: showingArchived, label: label)
+        let hits = inLocked ? [] : messageHits
         List(selection: $model.selectedChatID) {
             if hits.isEmpty {
-                if query.isEmpty, !showingArchived, filter == .all, label == nil, model.chats.archivedCount > 0 {
-                    ArchivedRow(unread: model.chats.archivedUnread) { showingArchived = true }
+                if query.isEmpty, !showingArchived, !inLocked, filter == .all, label == nil {
+                    if model.chats.lockedCount > 0 {
+                        FolderRow(title: "Locked Chats", systemImage: "lock", count: nil) { model.openLockedChats() }
+                            .selectionDisabled()
+                    }
+                    if model.chats.archivedCount > 0 {
+                        FolderRow(title: "Archived", systemImage: "archivebox", count: model.chats.archivedUnread) {
+                            showingArchived = true
+                        }
                         .selectionDisabled()
+                    }
                 }
                 chatRows(chats)
             } else {
@@ -50,7 +59,7 @@ public struct ChatListView: View {
         .onChange(of: model.sidebarSearchRequests) { searchFocused = true }
         .overlay {
             if chats.isEmpty, hits.isEmpty {
-                EmptyState(query: query, filter: filter, archived: showingArchived, labeled: label != nil)
+                EmptyState(query: query, filter: filter, archived: showingArchived, locked: inLocked, labeled: label != nil)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -58,7 +67,12 @@ public struct ChatListView: View {
         }
         .navigationTitle(title)
         .toolbar {
-            if showingArchived {
+            if inLocked {
+                ToolbarItem(placement: .navigation) {
+                    Button("Lock and Go Back", systemImage: "chevron.backward") { model.closeLockedChats() }
+                        .help("Lock these chats again and go back")
+                }
+            } else if showingArchived {
                 ToolbarItem(placement: .navigation) {
                     Button("Back to Chats", systemImage: "chevron.backward") { showingArchived = false }
                 }
@@ -78,6 +92,10 @@ public struct ChatListView: View {
         .sheet(isPresented: $model.labelsManagerShown) {
             LabelManagerSheet(model: model)
         }
+        .sheet(isPresented: $model.lockedChatsPrompt) {
+            LockedChatsSheet(model: model)
+        }
+        .onChange(of: inLocked) { query = "" }
         // A deleted label stops filtering.
         .onChange(of: model.chats.labels.map(\.id)) { _, ids in
             if let label, !ids.contains(label) { self.label = nil }
@@ -103,6 +121,7 @@ extension ChatListView {
     }
 
     private var title: Text {
+        if model.lockedChats.isOpen { return Text("Locked Chats") }
         if showingArchived { return Text("Archived") }
         if let label, let name = model.chats.labels.first(where: { $0.id == label })?.name {
             return Text(verbatim: name)
@@ -182,20 +201,23 @@ extension ChatFilter {
 
 // MARK: - Rows
 
-private struct ArchivedRow: View {
-    let unread: Int
+/// Archived and Locked Chats, above the chats.
+private struct FolderRow: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let count: Int?
     let open: () -> Void
 
     var body: some View {
         Button(action: open) {
             HStack(spacing: Metrics.m) {
-                Image(systemName: "archivebox")
+                Image(systemName: systemImage)
                     .frame(width: Metrics.rowAvatar)
                     .foregroundStyle(.secondary)
-                Text("Archived")
+                Text(title)
                 Spacer()
-                if unread > 0 {
-                    Text("\(unread)")
+                if let count, count > 0 {
+                    Text("\(count)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -210,6 +232,7 @@ private struct EmptyState: View {
     let query: String
     let filter: ChatFilter
     let archived: Bool
+    let locked: Bool
     let labeled: Bool
 
     var body: some View {
@@ -221,6 +244,8 @@ private struct EmptyState: View {
                 systemImage: "tag",
                 description: Text("Add chats to it from their right-click menu.")
             )
+        } else if locked {
+            ContentUnavailableView("No locked chats", systemImage: "lock")
         } else if archived {
             ContentUnavailableView("No archived chats", systemImage: "archivebox")
         } else if filter != .all {

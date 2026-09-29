@@ -63,6 +63,12 @@ public struct ChatActions: View {
 
         Divider()
 
+        if chat.locked {
+            Button("Unlock Chat", systemImage: "lock.open") { model.setLocked(false, chat: chat.id) }
+        } else {
+            Button("Lock Chat…", systemImage: "lock") { model.confirmLock(chat.id) }
+        }
+
         Button(
             chat.archived ? "Unarchive" : "Archive",
             systemImage: chat.archived ? "tray.and.arrow.up" : "archivebox"

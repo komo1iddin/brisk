@@ -70,6 +70,19 @@ public final class ChatStore {
             .sorted { $0.lastActivity != $1.lastActivity ? $0.lastActivity > $1.lastActivity : $0.id < $1.id }
     }
 
+    /// Chats WhatsApp's chat lock hides, for the Locked folder: newest
+    /// activity first, archived ones included.
+    public func lockedChats(query: String = "") -> [ChatSummary] {
+        let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
+        return chats.values
+            .filter { $0.locked && (needle.isEmpty || matches($0, needle: needle)) }
+            .sorted { $0.lastActivity != $1.lastActivity ? $0.lastActivity > $1.lastActivity : $0.id < $1.id }
+    }
+
+    public var lockedCount: Int {
+        chats.values.count(where: \.locked)
+    }
+
     public var archivedCount: Int {
         chats.values.count { $0.archived && !$0.locked }
     }

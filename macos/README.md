@@ -94,6 +94,13 @@ is kept; while locked nothing is marked read and notifications say only
 "New message". It encrypts nothing more, and a forgotten password means
 unlinking.
 
+A chat's menu can lock it with WhatsApp's chat lock, which syncs with
+the phone. Locked chats leave the list, search, badges and
+notifications, and open under Locked Chats with a local code (set the
+first time, changed in Settings › Privacy) or Touch ID. Going back or
+closing the window locks them again; they are read-only here, as
+upstream's are.
+
 The smiley button in the composer opens stickers (favorites, recent,
 packs, and ones sent to you, searchable by emoji or its name) and GIFs.
 GIF search is the only feature that talks to a third party: it asks

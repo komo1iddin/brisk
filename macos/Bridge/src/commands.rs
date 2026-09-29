@@ -175,6 +175,11 @@ pub enum BridgeCommand {
         chat: String,
         favorite: bool,
     },
+    /// WhatsApp's chat lock, synced with the phone.
+    SetLocked {
+        chat: String,
+        locked: bool,
+    },
     /// Mute end in Unix seconds, `Some(0)` indefinitely, `None` unmutes.
     SetMuted {
         chat: String,
@@ -437,6 +442,7 @@ impl BridgeCommand {
             Self::SetArchived { chat, archived } => Command::SetArchived(chat, archived),
             Self::SetPinned { chat, pinned } => Command::SetPinned(chat, pinned),
             Self::SetFavorite { chat, favorite } => Command::SetFavorite(chat, favorite),
+            Self::SetLocked { chat, locked } => Command::SetLocked(chat, locked),
             Self::SetMuted { chat, until } => Command::SetMuted(chat, until),
             Self::ClearChat { chat } => Command::ClearChat(chat),
             Self::DeleteChat { chat } => Command::DeleteChat(chat),

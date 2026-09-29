@@ -146,6 +146,39 @@ public final class ChatStore {
         return names.joined(separator: ", ")
     }
 
+    /// People to start a chat with (upstream's `new_chat`): saved contacts
+    /// and people we already have a direct chat with, only those with a
+    /// phone number, never us or a locked chat, by name.
+    public func newChatCandidates(query: String) -> [(id: String, name: String)] {
+        let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
+        var ids = Set(contacts.keys)
+        for chat in chats.values where chat.kind == .direct {
+            ids.insert(chat.id)
+        }
+        return ids
+            .filter { id in
+                guard let phone = phoneOf(id: id), !session.isOurs(id), chats[id]?.locked != true else { return false }
+                return needle.isEmpty
+                    || searchKey(text: personName(id, hint: nil)).contains(needle)
+                    || phone.filter(\.isNumber).contains(needle)
+            }
+            .map { (id: $0, name: personName($0, hint: nil)) }
+            .sorted { a, b in
+                let left = searchKey(text: a.name), right = searchKey(text: b.name)
+                return left != right ? left < right : a.id < b.id
+            }
+    }
+
+    /// Whether "Message yourself" belongs in a list searched for `query`
+    /// (upstream's `offers_self`).
+    public func offersSelf(query: String) -> Bool {
+        guard let me = session.account?.id, chats[me]?.locked != true else { return false }
+        let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
+        if needle.isEmpty { return true }
+        return [selfTitle, String(localized: "Message yourself"), String(localized: "You")]
+            .contains { searchKey(text: $0).contains(needle) }
+    }
+
     /// A group's members for its info panel (upstream's `participant_list`):
     /// named people alphabetically, then bare numbers, then us last.
     public func members(of chat: ChatSummary) -> [(id: String, name: String)] {

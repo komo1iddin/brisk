@@ -17,6 +17,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { DebugSnapshot.renderGalleryAndQuit() }
             return
         }
+        if DebugSnapshot.dumpsMenus {
+            // After SwiftUI has built the menus from the scene's commands.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { DebugSnapshot.dumpMenusAndQuit() }
+            return
+        }
         #endif
         let verbose = ProcessInfo.processInfo.environment["ZAPFAST_VERBOSE"] != nil
         model.bringToFront = {

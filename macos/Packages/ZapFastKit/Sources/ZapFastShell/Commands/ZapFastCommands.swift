@@ -29,6 +29,12 @@ struct ZapFastCommands: Commands {
                 .disabled(model.selectedChatID == nil)
         }
 
+        CommandGroup(replacing: .newItem) {
+            Button("New Chat…") { model.newChatShown = true }
+                .keyboardShortcut("n")
+                .disabled(!model.isLinked)
+        }
+
         CommandGroup(after: .textEditing) {
             Menu("Find") {
                 Button("Find in Chat…") { model.openChatSearch() }

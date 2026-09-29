@@ -64,6 +64,7 @@ drain, and a one-second timeout backs it up.
 
 | Keys | Does |
 |---|---|
+| ⌘N | New chat: a contact, yourself, or a phone number |
 | ⌘F | Search the open chat (a panel beside it lists the matches) |
 | ⌥⌘F | Search all chats: names in the sidebar, then matching messages |
 | ⌘G / ⇧⌘G | Next / previous match in the open chat (older / newer) |

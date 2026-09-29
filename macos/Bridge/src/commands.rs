@@ -228,6 +228,14 @@ pub enum BridgeCommand {
         chat: String,
         archive: bool,
     },
+    /// Checks that a number is on WhatsApp, optionally saves a name for
+    /// it, and answers with `ContactReady` so its chat can open.
+    NewContact {
+        phone: String,
+        full_name: Option<String>,
+        first_name: Option<String>,
+        to_phone: bool,
+    },
     /// Saves a name through contact sync; `to_phone` also adds it to the
     /// phone's address book.
     SaveContact {
@@ -408,6 +416,17 @@ impl BridgeCommand {
             Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
             Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },
             Self::LeaveGroup { chat, archive } => Command::LeaveGroup { chat, archive },
+            Self::NewContact {
+                phone,
+                full_name,
+                first_name,
+                to_phone,
+            } => Command::NewContact {
+                phone,
+                full_name,
+                first_name,
+                to_phone,
+            },
             Self::SaveContact {
                 id,
                 full_name,

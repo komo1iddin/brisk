@@ -12,7 +12,33 @@ import ZapFastCore
 ///
 /// `ZAPFAST_SNAPSHOT_GALLERY=/path/to.png` instead renders every kind of
 /// bubble with made-up content, without starting the backend, and quits.
+///
+/// `ZAPFAST_DUMP_MENUS=1` prints the menu bar (titles, key equivalents,
+/// actions) to standard output, without starting the backend, and quits:
+/// the way to check a shortcut is really there.
 enum DebugSnapshot {
+    static var dumpsMenus: Bool {
+        ProcessInfo.processInfo.environment["ZAPFAST_DUMP_MENUS"] != nil
+    }
+
+    static func dumpMenusAndQuit() {
+        func dump(_ menu: NSMenu, depth: Int) {
+            for item in menu.items where !item.isSeparatorItem {
+                let modifiers = item.keyEquivalentModifierMask
+                let keys = item.keyEquivalent.isEmpty ? "" : [
+                    modifiers.contains(.control) ? "⌃" : "", modifiers.contains(.option) ? "⌥" : "",
+                    modifiers.contains(.shift) ? "⇧" : "", modifiers.contains(.command) ? "⌘" : "",
+                    item.keyEquivalent.uppercased(),
+                ].joined()
+                print(String(repeating: "  ", count: depth) + item.title, keys)
+                if let submenu = item.submenu { dump(submenu, depth: depth + 1) }
+            }
+        }
+        if let menu = NSApp.mainMenu { dump(menu, depth: 0) }
+        fflush(stdout)
+        NSApp.terminate(nil)
+    }
+
     static var galleryPath: String? {
         ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_GALLERY"]
     }

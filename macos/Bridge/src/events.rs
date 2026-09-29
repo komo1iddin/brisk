@@ -121,6 +121,11 @@ pub enum BridgeEvent {
         gifs: Vec<GifInfo>,
         error: Option<GifFailure>,
     },
+    /// A number checked by `NewContact` is on WhatsApp; its chat can open.
+    ContactReady {
+        id: String,
+        name: Option<String>,
+    },
     Typing {
         chat: String,
         sender: String,
@@ -284,6 +289,7 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
                 error: Some(error.into()),
             },
         }),
+        Event::ContactReady { id, name } => Some(B::ContactReady { id, name }),
         Event::Typing {
             chat,
             sender,
@@ -370,7 +376,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::NotificationSoundPicked { .. } => not_bridged("NotificationSoundPicked"),
         Event::InvitePreview { .. } => not_bridged("InvitePreview"),
         Event::InviteJoined { .. } => not_bridged("InviteJoined"),
-        Event::ContactReady { .. } => not_bridged("ContactReady"),
         Event::ClipboardImage(_) => not_bridged("ClipboardImage"),
         // Upstream's self-updater targets its own binary, never this app.
         Event::UpdateAvailable { .. }

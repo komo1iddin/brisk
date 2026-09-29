@@ -55,6 +55,11 @@ public final class AppModel {
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
+    /// The New Chat sheet is open.
+    public var newChatShown = false
+    /// A number is being checked with WhatsApp.
+    public private(set) var newContactPending = false
+
     /// Groups whose name or photo change is on its way to WhatsApp.
     public private(set) var groupSaving: Set<String> = []
 
@@ -252,11 +257,31 @@ public final class AppModel {
         infoShown = false
     }
 
+    public func messageYourself() {
+        guard let me = session.account?.id else { return }
+        newChatShown = false
+        startChat(with: me)
+    }
+
+    /// Checks a number with WhatsApp and opens its chat once it answers,
+    /// saving a name for it when one is given.
+    public func newContact(phone: String, first: String, last: String) {
+        let digits = phone.filter(\.isNumber)
+        guard !digits.isEmpty, !newContactPending else { return }
+        let name = ContactName.compose(first: first, last: last)
+        newContactPending = true
+        backend.send(.newContact(
+            phone: digits, fullName: name?.full, firstName: name?.short,
+            toPhone: preferences.saveContactsToPhone
+        ))
+    }
+
     /// Opens the chat with a person, creating it in the archive first when
     /// there is none yet (upstream's `StartChat`).
-    public func startChat(with id: String) {
+    public func startChat(with id: String, name: String? = nil) {
+        newChatShown = false
         if chats.chat(id) == nil {
-            backend.send(.ensureChat(chat: id, name: chats.personName(id, hint: nil)))
+            backend.send(.ensureChat(chat: id, name: name ?? chats.personName(id, hint: nil)))
         }
         selectedChatID = id
     }
@@ -853,6 +878,9 @@ public final class AppModel {
             stickers.apply(library)
         case let .gifs(query, gifs, error):
             stickers.applyGifs(query: query, gifs: gifs, error: error, wanted: wantedGifQuery ?? "")
+        case let .contactReady(id, name):
+            newContactPending = false
+            startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? phoneOf(id: id))
         case let .groupSaving(chat, saving):
             if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
         case let .pollVoted(chat, message, error):
@@ -887,6 +915,8 @@ public final class AppModel {
         case .info(let message):
             post(.info, message)
         case .error(let message):
+            // A number WhatsApp does not know ends its check with an error.
+            newContactPending = false
             post(.error, message)
         case .notBridged(let name):
             log.debug("event not bridged yet: \(name, privacy: .public)")

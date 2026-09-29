@@ -62,7 +62,14 @@ public struct ChatListView: View {
                 ToolbarItem {
                     FilterMenu(selection: $filter)
                 }
+                ToolbarItem {
+                    Button("New Chat", systemImage: "square.and.pencil") { model.newChatShown = true }
+                        .help("Start a new chat (⌘N)")
+                }
             }
+        }
+        .sheet(isPresented: $model.newChatShown) {
+            NewChatSheet(model: model)
         }
     }
 }

@@ -351,6 +351,25 @@ The app keeps its data in `~/Library/Application Support/<bundle id>` and
 `~/Library/Caches/<bundle id>`, separate from upstream ZapFast.
 Set `ZAPFAST_VERBOSE=1` for debug logging.
 
+## Timeline benchmark
+
+`--benchmark` opens the real window on made-up group chats instead of the
+linked account (no backend, no archive, own preferences), measures the
+message timeline, prints a report and quits. It times opening a chat,
+scrolling up at 5,000 pt/s while older pages of 60 arrive, scrolling a fully
+loaded chat, jumps, resizing, and what a message or presence change in
+another chat costs the main thread. The phrases and speed match Telefast's
+benchmark, so the numbers compare.
+
+```bash
+cd macos
+make release
+ZAPFAST_BENCHMARK_COUNT=10000 Build/DerivedData/Build/Products/Release/ZapFast.app/Contents/MacOS/ZapFast --benchmark
+```
+
+`ZAPFAST_BENCHMARK_COUNT` sets the fully loaded chat's size (default 2,000).
+Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
+
 ## Following upstream
 
 ```bash

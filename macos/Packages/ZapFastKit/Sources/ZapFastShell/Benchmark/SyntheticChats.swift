@@ -8,6 +8,8 @@ nonisolated enum SyntheticChats {
     static let pagedChat = "benchmark-paged@g.us"
     /// The chat whose whole history arrives in one page.
     static let fullChat = "benchmark-full@g.us"
+    /// One page of history, opened after the others to time a warm open.
+    static let smallChat = "benchmark-small@g.us"
     /// A chat that is not open, for events elsewhere.
     static let otherChat = "benchmark-other@s.whatsapp.net"
     static let ownID = "998900000000@s.whatsapp.net"
@@ -88,6 +90,7 @@ nonisolated enum SyntheticChats {
             chat(id: pagedChat, name: "Benchmark (paged)", kind: .group, activity: newest),
             chat(id: fullChat, name: "Benchmark (full)", kind: .group, activity: newest - 1),
             chat(id: otherChat, name: "Other chat", kind: .direct, activity: newest - 2),
+            chat(id: smallChat, name: "Benchmark (small)", kind: .group, activity: newest - 3),
         ]
         for index in 0..<max(0, count - list.count) {
             list.append(chat(
@@ -101,7 +104,7 @@ nonisolated enum SyntheticChats {
     }
 
     static func chat(id: String, name: String, kind: ChatKind, activity: Int64, unread: UInt32 = 0) -> ChatSummary {
-        let text = phrases[abs(id.hashValue) % phrases.count]
+        let text = phrases[id.utf8.reduce(0) { $0 &+ Int($1) } % phrases.count]
         return ChatSummary(
             id: id, name: name, groupSubjectKnown: true, kind: kind, lastActivity: activity,
             unread: unread, markedUnread: false, archived: false, pinned: false, pinnedAt: 0, mutedUntil: nil,

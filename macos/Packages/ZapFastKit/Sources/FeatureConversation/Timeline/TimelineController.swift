@@ -66,6 +66,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         tableView.usesAutomaticRowHeights = false
         tableView.focusRingType = .none
         tableView.setAccessibilityLabel(String(localized: "Messages"))
+        tableView.identifier = .messageTimeline
         tableView.dataSource = self
         tableView.delegate = self
 
@@ -413,6 +414,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             }
         }
     }
+}
+
+public extension NSUserInterfaceItemIdentifier {
+    /// The message table, for the shell's benchmark to find.
+    static let messageTimeline = NSUserInterfaceItemIdentifier("ZapFastMessageTimeline")
 }
 
 // MARK: - Cells and measuring

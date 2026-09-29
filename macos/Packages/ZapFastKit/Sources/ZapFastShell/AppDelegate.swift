@@ -6,13 +6,18 @@ import ZapFastCore
 /// App lifecycle: starts the backend, reports whether the person is looking,
 /// keeps the Dock badge current, and shuts down cleanly on quit.
 public final class AppDelegate: NSObject, NSApplicationDelegate {
-    public let model = AppModel()
+    public let model: AppModel
 
     override public init() {
+        model = TimelineBenchmark.isRequested ? TimelineBenchmark.makeModel() : AppModel()
         super.init()
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        if TimelineBenchmark.isRequested {
+            TimelineBenchmark.start(model: model)
+            return
+        }
         #if DEBUG
         if DebugSnapshot.settingsPath != nil {
             DebugSnapshot.renderSettingsAndQuit(model: model)

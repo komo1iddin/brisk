@@ -57,6 +57,9 @@ public struct ConversationView: View {
         }
         .navigationTitle(chat.map(model.chats.title(for:)) ?? "")
         .navigationSubtitle(subtitle(chat))
+        .sheet(item: forwarding) { request in
+            ForwardSheet(request: request, model: model)
+        }
         .inspector(isPresented: searchPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
@@ -87,6 +90,13 @@ public struct ConversationView: View {
                 }
             }
         }
+    }
+
+    private var forwarding: Binding<ForwardRequest?> {
+        Binding(
+            get: { model.forwarding.flatMap { $0.chat == chatID ? $0 : nil } },
+            set: { if $0 == nil { model.cancelForward() } }
+        )
     }
 
     private var searchPresented: Binding<Bool> {

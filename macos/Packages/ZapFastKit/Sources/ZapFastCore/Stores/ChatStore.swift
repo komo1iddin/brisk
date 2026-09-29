@@ -47,6 +47,17 @@ public final class ChatStore {
         }
     }
 
+    /// Where messages can be forwarded (upstream's `forwardable`): not
+    /// broadcast lists or channels, not read-only groups, not locked chats;
+    /// newest activity first.
+    public func forwardTargets(query: String) -> [ChatSummary] {
+        let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
+        return chats.values
+            .filter { $0.kind != .broadcast && !$0.readOnly && !$0.locked }
+            .filter { needle.isEmpty || matchesName($0, needle: needle) }
+            .sorted { $0.lastActivity != $1.lastActivity ? $0.lastActivity > $1.lastActivity : $0.id < $1.id }
+    }
+
     public var archivedCount: Int {
         chats.values.count { $0.archived && !$0.locked }
     }
@@ -70,9 +81,13 @@ public final class ChatStore {
     }
 
     private func matches(_ chat: ChatSummary, needle: String) -> Bool {
+        matchesName(chat, needle: needle)
+            || (chat.last.map { searchKey(text: $0.summary).contains(needle) } ?? false)
+    }
+
+    private func matchesName(_ chat: ChatSummary, needle: String) -> Bool {
         searchKey(text: title(for: chat)).contains(needle)
             || (chat.phone.map { searchKey(text: $0).contains(needle) } ?? false)
-            || (chat.last.map { searchKey(text: $0.summary).contains(needle) } ?? false)
     }
 
     // MARK: Naming (ported from upstream `App::chat_title` and friends)

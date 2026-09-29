@@ -25,6 +25,10 @@ struct MessageActions: View {
             }
         }
 
+        if model.canForward(message) {
+            Button("Forward…", systemImage: "arrowshape.turn.up.right") { model.forward(message) }
+        }
+
         if model.canEdit(message) {
             Button("Edit", systemImage: "pencil") { model.startEditing(message) }
         }

@@ -50,6 +50,9 @@ public final class AppModel {
     /// The message the composer replies to, per chat.
     public var replyingTo: [String: MessageRecord] = [:]
 
+    /// Messages waiting for the person to pick where to forward them.
+    public private(set) var forwarding: ForwardRequest?
+
     /// The message the composer is editing, per chat.
     public private(set) var editing: [String: MessageRecord] = [:]
     /// Bumped to put the cursor back in the composer.
@@ -215,6 +218,35 @@ public final class AppModel {
         cancelEditing(in: message.chat)
         replyingTo[message.chat] = message
         composerFocusRequests += 1
+    }
+
+    // MARK: Intents: forwarding
+
+    /// Upstream's rule: revoked, unsupported, phone-only, poll and
+    /// interactive messages do not forward.
+    public func canForward(_ message: MessageRecord) -> Bool {
+        switch message.content {
+        case .revoked, .unsupported, .phoneOnly, .poll, .interactive: false
+        default: true
+        }
+    }
+
+    public func forward(_ message: MessageRecord) {
+        guard canForward(message) else { return }
+        forwarding = ForwardRequest(chat: message.chat, messages: [message.id])
+    }
+
+    /// Sends the waiting messages to `chat`, oldest first as upstream does.
+    public func forward(to chat: String) {
+        guard let request = forwarding else { return }
+        forwarding = nil
+        backend.send(.forward(fromChat: request.chat, messages: request.messages, toChat: chat))
+        let name = chats.chat(chat).map(chats.title(for:)) ?? chats.displayName(chat)
+        post(.info, String(localized: "Forwarded to \(name)"))
+    }
+
+    public func cancelForward() {
+        forwarding = nil
     }
 
     // MARK: Intents: editing
@@ -707,6 +739,7 @@ public final class AppModel {
             replyingTo = [:]
             editing = [:]
             textBeforeEdit = [:]
+            forwarding = nil
             notifier?.clearAll()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))
@@ -768,6 +801,13 @@ public final class AppModel {
         notices.append(Notice(kind: kind, text: text))
         if notices.count > 3 { notices.removeFirst(notices.count - 3) }
     }
+}
+
+public struct ForwardRequest: Identifiable, Equatable, Sendable {
+    public let id = UUID()
+    public let chat: String
+    /// Message ids in the source chat.
+    public let messages: [String]
 }
 
 public struct JumpRequest: Equatable, Sendable {

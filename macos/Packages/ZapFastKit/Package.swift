@@ -7,7 +7,8 @@
 //   ZapFastShell ─┬─▶ FeatureOnboarding ──┐
 //                 ├─▶ FeatureChats ───────┤
 //                 ├─▶ FeatureConversation ┼─▶ ZapFastSharedUI ─┬─▶ ZapFastDesign
-//                 └─▶ FeatureSettings ────┘                    └─▶ ZapFastCore ─▶ ZapFastBridge ─▶ ZapFastBridgeFFI
+//                 ├─▶ FeatureSettings ────┤                    └─▶ ZapFastCore ─▶ ZapFastBridge ─▶ ZapFastBridgeFFI
+//                 └─▶ FeatureLock ────────┘
 //
 // ZapFastDesign knows nothing about WhatsApp; ZapFastSharedUI adapts bridge
 // types to it for every feature. Features never import each other; the
@@ -103,6 +104,11 @@ let package = Package(
             dependencies: ["ZapFastCore", "ZapFastDesign", "ZapFastSharedUI"],
             swiftSettings: uiSettings
         ),
+        .target(
+            name: "FeatureLock",
+            dependencies: ["ZapFastCore", "ZapFastDesign", "ZapFastSharedUI"],
+            swiftSettings: uiSettings
+        ),
 
         // Scenes, window, split, menus: composes the features.
         .target(
@@ -115,6 +121,7 @@ let package = Package(
                 "FeatureChats",
                 "FeatureConversation",
                 "FeatureSettings",
+                "FeatureLock",
             ],
             swiftSettings: uiSettings
         ),

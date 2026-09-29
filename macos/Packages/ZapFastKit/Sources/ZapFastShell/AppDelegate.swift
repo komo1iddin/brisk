@@ -30,6 +30,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         model.start(verbose: verbose)
         observeBadge()
+        watchInput()
         #if DEBUG
         DebugSnapshot.scheduleIfRequested(model: model)
         #endif
@@ -53,6 +54,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     public func applicationWillTerminate(_ notification: Notification) {
         model.shutdown()
+    }
+
+    /// Input in any of the app's windows keeps the app lock's idle time
+    /// from running out.
+    private func watchInput() {
+        let events: NSEvent.EventTypeMask = [
+            .keyDown, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown,
+            .scrollWheel, .leftMouseDragged, .mouseMoved,
+        ]
+        NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            self?.model.appLock.noteInput()
+            return event
+        }
     }
 
     /// Unread chats on the Dock icon, re-evaluated whenever they change.

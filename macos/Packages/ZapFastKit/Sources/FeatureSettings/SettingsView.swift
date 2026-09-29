@@ -13,15 +13,30 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        TabView {
-            Tab("Account", systemImage: "person.crop.circle") {
-                AccountSettings(model: model)
-            }
-            Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
-                ChatSettings(preferences: model.preferences)
-            }
-            Tab("Advanced", systemImage: "gearshape") {
-                AdvancedSettings(model: model)
+        Group {
+            if model.appLock.isLocked {
+                // Settings stay behind the app lock with everything else.
+                ContentUnavailableView(
+                    "ZapFast Is Locked",
+                    systemImage: "lock.fill",
+                    description: Text("Unlock ZapFast in its window to change settings.")
+                )
+                .frame(height: 220)
+            } else {
+                TabView {
+                    Tab("Account", systemImage: "person.crop.circle") {
+                        AccountSettings(model: model)
+                    }
+                    Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
+                        ChatSettings(preferences: model.preferences)
+                    }
+                    Tab("Privacy", systemImage: "lock") {
+                        PrivacySettings(model: model)
+                    }
+                    Tab("Advanced", systemImage: "gearshape") {
+                        AdvancedSettings(model: model)
+                    }
+                }
             }
         }
         .frame(width: 480)

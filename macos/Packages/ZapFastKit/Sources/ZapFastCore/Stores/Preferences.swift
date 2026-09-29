@@ -43,6 +43,27 @@ public final class Preferences {
         didSet { defaults.set(giphyKey, forKey: Key.giphyKey) }
     }
 
+    /// The app lock's password verifier (upstream's salted PBKDF2); nil
+    /// leaves the lock off. The password itself is never kept.
+    public var appLockVerifier: String? {
+        didSet { defaults.set(appLockVerifier, forKey: Key.appLockVerifier) }
+    }
+
+    /// Minutes without using ZapFast before the app lock closes it.
+    public var appLockAfter: AutoLock {
+        didSet { defaults.set(appLockAfter.rawValue, forKey: Key.appLockAfter) }
+    }
+
+    /// Touch ID may open the app lock and locked chats instead of typing.
+    public var unlockWithTouchID: Bool {
+        didSet { defaults.set(unlockWithTouchID, forKey: Key.unlockWithTouchID) }
+    }
+
+    /// The verifier of the local code that opens locked chats; nil until set.
+    public var chatLockVerifier: String? {
+        didSet { defaults.set(chatLockVerifier, forKey: Key.chatLockVerifier) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -52,6 +73,8 @@ public final class Preferences {
             Key.notifications: true,
             Key.notificationPreviews: true,
             Key.saveContactsToPhone: true,
+            Key.appLockAfter: AutoLock.fifteenMinutes.rawValue,
+            Key.unlockWithTouchID: true,
         ])
         autoDownload = defaults.bool(forKey: Key.autoDownload)
         voiceSpeed = defaults.float(forKey: Key.voiceSpeed)
@@ -60,6 +83,10 @@ public final class Preferences {
         notificationPreviews = defaults.bool(forKey: Key.notificationPreviews)
         saveContactsToPhone = defaults.bool(forKey: Key.saveContactsToPhone)
         giphyKey = defaults.string(forKey: Key.giphyKey) ?? ""
+        appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
+        appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
+        unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
+        chatLockVerifier = defaults.string(forKey: Key.chatLockVerifier)
     }
 
     private enum Key {
@@ -70,5 +97,21 @@ public final class Preferences {
         static let notificationPreviews = "notificationPreviews"
         static let saveContactsToPhone = "saveContactsToPhone"
         static let giphyKey = "giphyKey"
+        static let appLockVerifier = "appLockVerifier"
+        static let appLockAfter = "appLockAfter"
+        static let unlockWithTouchID = "unlockWithTouchID"
+        static let chatLockVerifier = "chatLockVerifier"
     }
+}
+
+/// When the app lock closes ZapFast: WhatsApp Web's three choices, as
+/// upstream offers them. The raw value is in seconds.
+public enum AutoLock: Int, CaseIterable, Identifiable, Sendable {
+    case oneMinute = 60
+    case fifteenMinutes = 900
+    case oneHour = 3600
+
+    public var id: Int { rawValue }
+
+    public var duration: Duration { .seconds(rawValue) }
 }

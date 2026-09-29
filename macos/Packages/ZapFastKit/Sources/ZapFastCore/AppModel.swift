@@ -20,6 +20,7 @@ public final class AppModel {
     public let voice = VoicePlayer()
     public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
+    public let appLock: AppLock
 
     /// The chat open in the conversation pane.
     public var selectedChatID: String? {
@@ -123,8 +124,10 @@ public final class AppModel {
     @ObservationIgnored private var playedTold: Set<String> = []
     /// Created on start: Notification Center needs a real app bundle.
     @ObservationIgnored private var notifier: Notifier?
-    /// The person is looking at the app.
+    /// The app is in front (the lock may still hide it).
     @ObservationIgnored private var isActive = true
+    /// A clicked notification's chat, opened once the app lock lifts.
+    @ObservationIgnored private var openAfterUnlock: String?
     /// A jump waiting for its message to load, and whether the archive was
     /// already asked for the pages up to it.
     @ObservationIgnored private var pendingJump: MessageKey?
@@ -158,7 +161,15 @@ public final class AppModel {
         self.backend = backend
         self.paths = paths
         self.avatars = AvatarStore(send: backend.send)
+        self.appLock = AppLock(preferences: preferences)
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
+        appLock.onLock = { [weak self] in self?.locked() }
+        appLock.onUnlock = { [weak self] in self?.unlocked() }
+    }
+
+    /// The person is looking at the app, and the lock does not hide it.
+    private var isReading: Bool {
+        isActive && !appLock.isLocked
     }
 
     // MARK: Lifecycle
@@ -175,6 +186,7 @@ public final class AppModel {
             self.notifier = notifier
         }
         self.verbose = verbose
+        appLock.startIdleTimer()
         do {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
@@ -228,9 +240,43 @@ public final class AppModel {
     /// notifications while they are not.
     public func setActive(_ active: Bool) {
         isActive = active
-        guard started else { return }
+        guard started, !appLock.isLocked else { return }
         backend.send(.setOnline(online: active))
         if active, let selectedChatID { notifier?.clear(chat: selectedChatID) }
+    }
+
+    // MARK: App lock
+
+    /// While locked nothing plays or records, and the phone keeps its
+    /// notifications, as nobody is reading.
+    private func locked() {
+        voice.stop()
+        video.stop()
+        if recorder.isRecording { recorder.cancel() }
+        messageInfo = nil
+        forwarding = nil
+        if started { backend.send(.setOnline(online: false)) }
+    }
+
+    private func unlocked() {
+        if let chat = openAfterUnlock {
+            openAfterUnlock = nil
+            selectedChatID = chat
+        }
+        guard started else { return }
+        backend.send(.setOnline(online: isActive))
+        if isActive, let selectedChatID {
+            notifier?.clear(chat: selectedChatID)
+            if chats.chat(selectedChatID)?.looksUnread == true { markRead(selectedChatID) }
+        }
+    }
+
+    /// "Forgot password?" on the lock screen: unlink, which forgets the
+    /// password once WhatsApp confirms.
+    public func unlinkToForgetPassword() {
+        guard appLock.isLocked else { return }
+        appLock.startUnlinking()
+        unlink()
     }
 
     // MARK: Intents: conversation
@@ -1041,7 +1087,7 @@ public final class AppModel {
             composerText[chat] = draft
         }
         ensureLoaded(chat)
-        if chats.chat(chat)?.looksUnread == true {
+        if chats.chat(chat)?.looksUnread == true, !appLock.isLocked {
             markRead(chat)
         }
     }
@@ -1080,7 +1126,7 @@ public final class AppModel {
             chats.upsert(chat)
             if !chat.looksUnread { notifier?.clear(chat: chat.id) }
             // An open chat that turns unread was read by the person looking at it.
-            if chat.id == selectedChatID, chat.looksUnread, !chat.markedUnread {
+            if chat.id == selectedChatID, chat.looksUnread, !chat.markedUnread, !appLock.isLocked {
                 markRead(chat.id)
             }
         case .chatRemoved(let chat):
@@ -1250,6 +1296,9 @@ public final class AppModel {
             notifier?.clearAll()
             video.stop()
             selectedChatID = nil
+            openAfterUnlock = nil
+            // Unlinking is how a forgotten app-lock password is recovered.
+            appLock.forget()
             post(.error, String(localized: "This device was unlinked from your phone"))
         case .failed(let message):
             post(.error, message)
@@ -1266,10 +1315,11 @@ public final class AppModel {
         let now = Int64(Date.now.timeIntervalSince1970)
         guard !chat.archived, chat.unread > 0, !chats.isMuted(chat), !chat.locked,
               now - message.timestamp <= 60 else { return }
-        let reading = isActive && selectedChatID == id
+        let reading = isReading && selectedChatID == id
         guard !reading else { return }
 
-        guard preferences.notificationPreviews else {
+        // A locked app says nothing about who wrote or what.
+        guard preferences.notificationPreviews, !appLock.isLocked else {
             notifier?.post(chat: id, message: message.id, title: "ZapFast",
                            body: String(localized: "New message"), picture: nil)
             return
@@ -1293,14 +1343,20 @@ public final class AppModel {
     private func handle(_ response: Notifier.Response) {
         switch response {
         case let .open(chat, _):
-            selectedChatID = chat
+            if appLock.isLocked {
+                openAfterUnlock = chat
+            } else {
+                selectedChatID = chat
+            }
             bringToFront()
         case let .reply(chat, message, text):
+            guard !appLock.isLocked else { return }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
             backend.send(.sendText(chat: chat, text: trimmed, quoting: message, mentions: []))
             markRead(chat)
         case .markRead(let chat):
+            guard !appLock.isLocked else { return }
             markRead(chat)
         }
     }

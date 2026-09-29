@@ -1,5 +1,6 @@
 import FeatureChats
 import FeatureConversation
+import FeatureLock
 import FeatureOnboarding
 import SwiftUI
 import ZapFastCore
@@ -14,7 +15,10 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if model.isLinked {
+            if model.appLock.isLocked {
+                // Nothing else is drawn, not even sheets over the chats.
+                LockScreen(model: model)
+            } else if model.isLinked {
                 MainSplitView(model: model)
             } else {
                 LinkingView(model: model)

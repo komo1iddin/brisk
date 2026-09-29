@@ -41,6 +41,7 @@ macos/
 │       ├── FeatureChats/      the sidebar chat list
 │       ├── FeatureConversation/ timeline (NSTableView), bubbles, composer (NSTextView)
 │       ├── FeatureSettings/   the Settings window
+│       ├── FeatureLock/       the app lock's lock screen
 │       └── ZapFastShell/      scenes, split view, menus, app delegate
 ├── App/                       thin app target: @main, Info.plist, assets
 ├── Scripts/                   build-bridge, sync-patches, sync-upstream, print-link-libs
@@ -74,6 +75,7 @@ drain, and a one-second timeout backs it up.
 | @ in a group's composer | Suggest members to mention; ↑ ↓ choose, Return or Tab picks, Esc closes |
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
+| ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video
@@ -84,6 +86,13 @@ A message of yours has Info in its menu: when it was delivered and read,
 and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,
 after asking, here and on the phone; both need a connection.
+
+Settings › Privacy sets an app lock, as upstream's: a password asked at
+start and after 1 minute, 15 minutes or an hour without use, or at once
+with ⌃⌘L. Touch ID can open it instead. Only a salted PBKDF2 verifier
+is kept; while locked nothing is marked read and notifications say only
+"New message". It encrypts nothing more, and a forgotten password means
+unlinking.
 
 The smiley button in the composer opens stickers (favorites, recent,
 packs, and ones sent to you, searchable by emoji or its name) and GIFs.

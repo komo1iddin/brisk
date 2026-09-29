@@ -111,6 +111,52 @@ pub fn giphy_key(own: String) -> Option<String> {
     .effective_giphy_key()
 }
 
+/// Upstream's shortest app-lock password, in characters.
+#[uniffi::export]
+pub fn app_lock_min_password_chars() -> u32 {
+    count(zapfast::app_lock::MIN_PASSWORD_CHARS)
+}
+
+/// A stored verifier for an app-lock password (upstream's salted PBKDF2).
+/// Slow on purpose: call it off the main thread.
+#[uniffi::export]
+pub fn app_lock_verifier(password: String) -> String {
+    zapfast::app_lock::verifier(&password)
+}
+
+/// Whether `password` matches an app-lock verifier. Slow on purpose.
+#[uniffi::export]
+pub fn app_lock_verifies(stored: String, password: String) -> bool {
+    zapfast::app_lock::verifies(&stored, &password)
+}
+
+/// Seconds the next unlock try waits after `failures` wrong passwords in a
+/// row (upstream's `wait_after`).
+#[uniffi::export]
+pub fn app_lock_wait_seconds(failures: u32) -> u64 {
+    zapfast::app_lock::wait_after(failures).as_secs()
+}
+
+/// A stored verifier for the local code that opens locked chats, or `None`
+/// for a blank code (upstream's `Settings::set_chat_lock_code`). Slow.
+#[uniffi::export]
+pub fn chat_lock_verifier(code: String) -> Option<String> {
+    let mut settings = zapfast::settings::Settings::default();
+    settings.set_chat_lock_code(Some(&code));
+    settings.chat_lock_code_hash
+}
+
+/// Whether `code` opens locked chats (upstream's
+/// `Settings::verifies_chat_lock_code`). Slow on purpose.
+#[uniffi::export]
+pub fn chat_lock_verifies(stored: String, code: String) -> bool {
+    zapfast::settings::Settings {
+        chat_lock_code_hash: Some(stored),
+        ..Default::default()
+    }
+    .verifies_chat_lock_code(&code)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,6 +228,20 @@ mod tests {
     #[test]
     fn our_giphy_key_wins_once_trimmed() {
         assert_eq!(giphy_key("  abc ".into()).as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn app_lock_and_chat_lock_verifiers_round_trip() {
+        let stored = app_lock_verifier("correct horse".into());
+        assert!(app_lock_verifies(stored.clone(), "correct horse".into()));
+        assert!(!app_lock_verifies(stored, "wrong horse".into()));
+        assert_eq!(app_lock_wait_seconds(0), 0);
+        assert!(app_lock_wait_seconds(10) > 0);
+
+        let code = chat_lock_verifier(" 1234 ".into()).unwrap();
+        assert!(chat_lock_verifies(code.clone(), "1234".into()));
+        assert!(!chat_lock_verifies(code, "4321".into()));
+        assert_eq!(chat_lock_verifier("  ".into()), None);
     }
 
     #[test]

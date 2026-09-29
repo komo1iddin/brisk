@@ -69,6 +69,12 @@ public struct ChatActions: View {
         ) {
             model.setArchived(!chat.archived, chat: chat.id)
         }
+
+        // Both reach the phone first, so they wait for a connection.
+        Button("Clear Chat…", systemImage: "eraser") { model.confirmClear(chat.id) }
+            .disabled(!model.canClearOrDeleteChats)
+        Button("Delete Chat…", systemImage: "trash", role: .destructive) { model.confirmDelete(chat.id) }
+            .disabled(!model.canClearOrDeleteChats)
     }
 
     private var pinnedCount: Int {

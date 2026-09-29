@@ -9,6 +9,7 @@ mod chat;
 mod contact;
 mod link;
 mod message;
+mod receipts;
 mod sticker;
 
 pub use chat::{ChatKind, ChatPreview, ChatSummary, DeliveryState, LabelInfo};
@@ -18,6 +19,7 @@ pub use message::{
     LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,
     PollDraftInfo, PollSummary, PollVoterInfo, QuotedMessage, ReactionInfo,
 };
+pub use receipts::{MessageReceiptsInfo, RecipientInfo};
 pub use sticker::{GifFailure, GifInfo, StickerEmojis, StickerLibrary, StickerPackInfo};
 
 pub(crate) fn path_string(path: std::path::PathBuf) -> String {

@@ -63,6 +63,9 @@ public struct ConversationView: View {
         .sheet(item: pollResults) { key in
             PollResultsSheet(key: key, model: model)
         }
+        .sheet(item: messageInfo) { key in
+            MessageInfoSheet(key: key, model: model)
+        }
         .inspector(isPresented: inspectorPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
@@ -114,6 +117,13 @@ public struct ConversationView: View {
         Binding(
             get: { model.pollResults.flatMap { $0.chat == chatID ? $0 : nil } },
             set: { model.pollResults = $0 }
+        )
+    }
+
+    private var messageInfo: Binding<MessageKey?> {
+        Binding(
+            get: { model.messageInfo.flatMap { $0.chat == chatID ? $0 : nil } },
+            set: { model.messageInfo = $0 }
         )
     }
 

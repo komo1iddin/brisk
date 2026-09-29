@@ -72,6 +72,14 @@ pub enum BridgeCommand {
         id: String,
         full: bool,
     },
+    /// Follow one of our group messages' receipts while its "Message info"
+    /// is open; answered by `Receipts` now and on every new receipt.
+    WatchReceipts {
+        chat: String,
+        message: String,
+    },
+    /// Stop following receipts.
+    StopWatchingReceipts,
     SearchMessages {
         query: String,
     },
@@ -330,6 +338,8 @@ impl BridgeCommand {
                 receipts,
             },
             Self::FetchAvatar { id, full } => Command::FetchAvatar { id, full },
+            Self::WatchReceipts { chat, message } => Command::WatchReceipts(Some((chat, message))),
+            Self::StopWatchingReceipts => Command::WatchReceipts(None),
             Self::SearchMessages { query } => Command::SearchMessages { query },
             Self::SearchChatMessages {
                 chat,

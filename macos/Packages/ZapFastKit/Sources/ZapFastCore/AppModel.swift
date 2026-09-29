@@ -30,6 +30,7 @@ public final class AppModel {
             if recorder.isRecording { recorder.cancel() }
             if search.chat?.chat != selectedChatID { search.chat = nil }
             infoShown = false
+            if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if let oldValue {
                 // An unfinished edit is dropped, not kept as a draft.
@@ -78,6 +79,17 @@ public final class AppModel {
     public private(set) var pollVoting: Set<MessageKey> = []
     /// The poll whose results sheet is open.
     public var pollResults: MessageKey?
+
+    /// A chat whose clearing or deleting waits for the person to confirm.
+    public var chatConfirmation: ChatConfirmation?
+
+    /// The message whose "Message info" sheet is open. A group message's
+    /// receipts are followed while it is.
+    public var messageInfo: MessageKey? {
+        didSet { if messageInfo != oldValue { followReceipts() } }
+    }
+    /// The receipts of the group message `messageInfo` shows, once they came.
+    public private(set) var receipts: MessageReceiptsInfo?
 
     /// Messages waiting for the person to pick where to forward them.
     public private(set) var forwarding: ForwardRequest?
@@ -128,6 +140,8 @@ public final class AppModel {
     /// The query the sidebar's message hits should answer.
     @ObservationIgnored private var wantedMessageQuery = ""
     @ObservationIgnored private var chatSearchTask: Task<Void, Never>?
+    /// The group message the backend follows receipts for.
+    @ObservationIgnored private var receiptsWatch: MessageKey?
 
     public init(
         backend: Backend = LiveBackend(),
@@ -769,6 +783,67 @@ public final class AppModel {
         backend.send(.deleteLocal(chat: message.chat, id: message.id))
     }
 
+    // MARK: Intents: message info
+
+    /// Upstream offers "Message info" for our own messages that left this
+    /// computer and were not deleted.
+    public func canShowInfo(_ message: MessageRecord) -> Bool {
+        guard message.fromMe else { return false }
+        if case .revoked = message.content { return false }
+        switch message.status {
+        case .none, .pending, .failed: return false
+        default: return true
+        }
+    }
+
+    public func showInfo(_ message: MessageRecord) {
+        guard canShowInfo(message) else { return }
+        messageInfo = MessageKey(chat: message.chat, message: message.id)
+    }
+
+    /// Keeps the backend following receipts for exactly the group message
+    /// whose info is open (upstream's `follow_receipts`); a direct
+    /// message's times are on the message itself.
+    private func followReceipts() {
+        let wanted = messageInfo.flatMap { chats.chat($0.chat)?.kind == .group ? $0 : nil }
+        guard wanted != receiptsWatch else { return }
+        receipts = nil
+        receiptsWatch = wanted
+        if let wanted {
+            backend.send(.watchReceipts(chat: wanted.chat, message: wanted.message))
+        } else {
+            backend.send(.stopWatchingReceipts)
+        }
+    }
+
+    // MARK: Intents: clearing and deleting chats
+
+    /// Both reach the phone first, so they wait for a connection.
+    public var canClearOrDeleteChats: Bool {
+        session.isConnected
+    }
+
+    public func confirmClear(_ chat: String) {
+        guard canClearOrDeleteChats else { return }
+        chatConfirmation = ChatConfirmation(chat: chat, action: .clear)
+    }
+
+    public func confirmDelete(_ chat: String) {
+        guard canClearOrDeleteChats else { return }
+        chatConfirmation = ChatConfirmation(chat: chat, action: .delete)
+    }
+
+    /// The person confirmed. The phone is asked first; the messages or the
+    /// chat go here once it agreed (`chatCleared`, `chatRemoved`).
+    public func perform(_ confirmation: ChatConfirmation) {
+        chatConfirmation = nil
+        guard canClearOrDeleteChats else { return }
+        switch confirmation.action {
+        case .clear: backend.send(.clearChat(chat: confirmation.chat))
+        case .delete: backend.send(.deleteChat(chat: confirmation.chat))
+        }
+    }
+
     // MARK: Intents: chat list
 
     public func setPinned(_ pinned: Bool, chat: String) {
@@ -986,11 +1061,16 @@ public final class AppModel {
                 markRead(chat.id)
             }
         case .chatRemoved(let chat):
+            // The composer goes first, so closing the chat saves no draft for it.
+            forgetComposer(of: chat)
             chats.remove(chat)
             conversations.forget(chat)
             if selectedChatID == chat { selectedChatID = nil }
+            search.dropHits(in: chat, through: .max)
+            if chatConfirmation?.chat == chat { chatConfirmation = nil }
+            notifier?.clear(chat: chat)
         case let .chatCleared(chat, through):
-            conversations.applyCleared(chat: chat, through: through)
+            applyCleared(chat, through: through)
         case .drafts(let drafts):
             chats.replaceDrafts(drafts)
         case let .messages(chat, messages, older, complete):
@@ -1055,6 +1135,10 @@ public final class AppModel {
             session.receiptsDisabled = disabled
         case .pinLimit(let limit):
             session.pinLimit = limit
+        case .receipts(let receipts):
+            guard let watched = receiptsWatch, watched.chat == receipts.chat,
+                  watched.message == receipts.message else { break }
+            self.receipts = receipts
         case let .sendRefused(chat, _, reason, text):
             if let text, (composerText[chat] ?? "").isEmpty {
                 composerText[chat] = text
@@ -1071,6 +1155,43 @@ public final class AppModel {
         case .notBridged(let name):
             log.debug("event not bridged yet: \(name, privacy: .public)")
         }
+    }
+
+    /// Upstream's `handle_chat_cleared`: nothing up to `through` is left
+    /// here or on the phone, so the chat pages no further, and whatever
+    /// pointed at one of its messages lets go.
+    private func applyCleared(_ chat: String, through: Int64) {
+        // A confirmation still open would clear what arrived since.
+        if chatConfirmation?.chat == chat { chatConfirmation = nil }
+        conversations.applyCleared(chat: chat, through: through)
+        notifier?.clear(chat: chat)
+        chats.setDraft("", for: chat)
+        if chat != selectedChatID { forgetComposer(of: chat) }
+        search.dropHits(in: chat, through: through)
+        let remaining = conversations.conversation(chat)
+        if let message = editing[chat], remaining.message(message.id) == nil {
+            editing[chat] = nil
+            textBeforeEdit[chat] = nil
+            mentionsBeforeEdit[chat] = nil
+            composerText[chat] = ""
+            composerMentions[chat] = nil
+        }
+        if let message = replyingTo[chat], remaining.message(message.id) == nil {
+            replyingTo[chat] = nil
+        }
+        if let key = messageInfo, key.chat == chat, remaining.message(key.message) == nil {
+            messageInfo = nil
+        }
+    }
+
+    /// Everything the composer kept for a chat that is gone.
+    private func forgetComposer(of chat: String) {
+        composerText[chat] = nil
+        composerMentions[chat] = nil
+        replyingTo[chat] = nil
+        editing[chat] = nil
+        textBeforeEdit[chat] = nil
+        mentionsBeforeEdit[chat] = nil
     }
 
     private func applyLink(_ state: LinkState) {
@@ -1099,6 +1220,10 @@ public final class AppModel {
             groupSaving = []
             pollResults = nil
             pollRefreshAsked = []
+            chatConfirmation = nil
+            messageInfo = nil
+            receipts = nil
+            receiptsWatch = nil
             notifier?.clearAll()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))
@@ -1167,6 +1292,14 @@ public struct ForwardRequest: Identifiable, Equatable, Sendable {
     public let chat: String
     /// Message ids in the source chat.
     public let messages: [String]
+}
+
+/// Clearing or deleting a chat, waiting to be confirmed.
+public struct ChatConfirmation: Identifiable, Equatable, Sendable {
+    public enum Action: Sendable { case clear, delete }
+    public var id: String { chat }
+    public let chat: String
+    public let action: Action
 }
 
 public struct JumpRequest: Equatable, Sendable {

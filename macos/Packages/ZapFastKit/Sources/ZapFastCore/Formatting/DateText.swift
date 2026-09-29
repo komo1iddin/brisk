@@ -42,6 +42,26 @@ public enum DateText {
             : date.formatted(.dateTime.day().month(.wide).year())
     }
 
+    /// When a receipt arrived (upstream's `moment_stamp`): the time today,
+    /// "Yesterday at 14:02", a weekday this week, else the date and time.
+    public static func moment(_ unixSeconds: Int64, now: Date = .now, calendar: Calendar = .current) -> String {
+        let date = date(unixSeconds)
+        let time = date.formatted(date: .omitted, time: .shortened)
+        let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)
+        ).day ?? .max
+        switch days {
+        case 0:
+            return time
+        case 1:
+            return String(localized: "Yesterday at \(time)")
+        case 2...6:
+            return String(localized: "\(date.formatted(.dateTime.weekday(.wide))) at \(time)")
+        default:
+            return String(localized: "\(date.formatted(date: .abbreviated, time: .omitted)) at \(time)")
+        }
+    }
+
     /// "last seen today at 14:02" style presence line.
     public static func lastSeen(_ date: Date, calendar: Calendar = .current) -> String {
         let time = date.formatted(date: .omitted, time: .shortened)

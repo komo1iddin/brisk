@@ -75,6 +75,11 @@ drain, and a one-second timeout backs it up.
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 
+A message of yours has Info in its menu: when it was delivered and read,
+and in a group, by whom (from the receipts ZapFast recorded since the
+message was sent). A chat's menu can clear its messages or delete it,
+after asking, here and on the phone; both need a connection.
+
 The smiley button in the composer opens stickers (favorites, recent,
 packs, and ones sent to you, searchable by emoji or its name) and GIFs.
 GIF search is the only feature that talks to a third party: it asks

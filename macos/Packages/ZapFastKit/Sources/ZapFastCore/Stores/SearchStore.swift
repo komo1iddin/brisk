@@ -42,6 +42,15 @@ public final class SearchStore {
         chat = search
     }
 
+    /// A chat was cleared up to `through`, or deleted.
+    func dropHits(in id: String, through: Int64) {
+        messageHits.removeAll { $0.chat == id && $0.timestamp <= through }
+        if chat?.chat == id {
+            chat?.hits.removeAll { $0.timestamp <= through }
+            chat?.selected = nil
+        }
+    }
+
     func clear() {
         clearMessageHits()
         chat = nil

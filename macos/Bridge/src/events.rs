@@ -7,8 +7,8 @@
 use zapfast::backend::{Event, Refusal, Unsent};
 
 use crate::types::{
-    ChatSummary, ContactRecord, GifFailure, GifInfo, LabelInfo, LinkState, MessageRecord,
-    StickerLibrary, count, path_string,
+    ChatSummary, ContactRecord, GifFailure, GifInfo, LabelInfo, LinkState, MessageReceiptsInfo,
+    MessageRecord, StickerLibrary, count, path_string,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -173,6 +173,10 @@ pub enum BridgeEvent {
     },
     PinLimit {
         limit: u32,
+    },
+    /// The followed message's receipts (`WatchReceipts`).
+    Receipts {
+        receipts: MessageReceiptsInfo,
     },
     /// A send was refused before leaving this computer. `text` is the
     /// composer text to restore, when it was a text message.
@@ -369,6 +373,9 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
                 | Unsent::Gif => None,
             },
         }),
+        Event::Receipts(receipts) => Some(B::Receipts {
+            receipts: receipts.into(),
+        }),
         Event::Info(message) => Some(B::Info { message }),
         Event::Error(message) => Some(B::Error { message }),
 
@@ -380,7 +387,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::AccountPrivacy { .. } => not_bridged("AccountPrivacy"),
         Event::AccountPrivacySaved { .. } => not_bridged("AccountPrivacySaved"),
         Event::AccountPrivacyFailed { .. } => not_bridged("AccountPrivacyFailed"),
-        Event::Receipts(_) => not_bridged("Receipts"),
         Event::ChatSoundPicked { .. } => not_bridged("ChatSoundPicked"),
         Event::DownloadFolderPicked(_) => not_bridged("DownloadFolderPicked"),
         Event::WallpaperImagePicked(_) => not_bridged("WallpaperImagePicked"),

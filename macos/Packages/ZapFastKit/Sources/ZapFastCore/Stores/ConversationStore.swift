@@ -125,8 +125,18 @@ public final class ConversationStore {
         conversations[chat]?.messages.removeAll { $0.id == id }
     }
 
+    /// Nothing up to `through` is left here or on the phone.
     func applyCleared(chat: String, through: Int64) {
-        conversations[chat]?.messages.removeAll { $0.timestamp <= through }
+        var conversation = conversations[chat] ?? Conversation()
+        conversation.messages.removeAll { $0.timestamp <= through }
+        conversation.requested = true
+        conversation.complete = true
+        conversation.phoneExhausted = true
+        conversation.loadingOlder = false
+        conversations[chat] = conversation
+        downloads = downloads.filter { key, _ in
+            key.chat != chat || conversation.message(key.message) != nil
+        }
     }
 
     func applyOlderFetched(chat: String, more: Bool) {

@@ -40,6 +40,10 @@ struct MessageActions: View {
             }
         }
 
+        if model.canShowInfo(message) {
+            Button("Info", systemImage: "info.circle") { model.showInfo(message) }
+        }
+
         if message.content.media != nil {
             if let url = message.mediaURL {
                 Button("Quick Look", systemImage: "eye") { QuickLook.shared.show([url]) }

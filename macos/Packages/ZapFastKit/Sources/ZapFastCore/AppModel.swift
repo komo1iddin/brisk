@@ -14,6 +14,7 @@ public final class AppModel {
     public let chats: ChatStore
     public let conversations: ConversationStore
     public let avatars: AvatarStore
+    public let preferences: Preferences
 
     /// The chat open in the conversation pane.
     public var selectedChatID: String? {
@@ -41,7 +42,12 @@ public final class AppModel {
     /// say we stopped.
     @ObservationIgnored private var composingIn: [String: Task<Void, Never>] = [:]
 
-    public init(backend: Backend = LiveBackend(), paths: AppPaths = .standard()) {
+    public init(
+        backend: Backend = LiveBackend(),
+        paths: AppPaths = .standard(),
+        preferences: Preferences = Preferences()
+    ) {
+        self.preferences = preferences
         let session = SessionStore()
         self.session = session
         self.chats = ChatStore(session: session)
@@ -174,6 +180,20 @@ public final class AppModel {
         backend.send(.download(chat: message.chat, message: message.id, card: nil))
     }
 
+    /// Upstream's largest automatic or manual download (`ATTACHMENT_DOWNLOAD_LIMIT`).
+    public static let downloadLimit: UInt64 = 64 * 1024 * 1024
+
+    /// Upstream's rule for media scrolled into view: stickers always, other
+    /// media when automatic downloads are on, never past the size limit,
+    /// and never again after a failure until asked.
+    public func autoDownload(_ message: MessageRecord) {
+        guard let media = message.content.media, media.path == nil, media.size <= Self.downloadLimit else { return }
+        let isSticker = if case .sticker = message.content { true } else { false }
+        guard isSticker || preferences.autoDownload else { return }
+        guard conversations.downloads[MessageKey(chat: message.chat, message: message.id)] == nil else { return }
+        download(message)
+    }
+
     public func react(_ emoji: String, to message: MessageRecord) {
         backend.send(.react(chat: message.chat, message: message.id, emoji: emoji))
     }
@@ -206,7 +226,7 @@ public final class AppModel {
     }
 
     public func markRead(_ chat: String) {
-        backend.send(.markRead(chat: chat, receipts: true))
+        backend.send(.markRead(chat: chat, receipts: preferences.sendReadReceipts))
     }
 
     public func markUnread(_ chat: String) {

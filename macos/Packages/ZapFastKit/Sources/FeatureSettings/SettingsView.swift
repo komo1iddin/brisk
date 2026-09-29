@@ -17,6 +17,9 @@ public struct SettingsView: View {
             Tab("Account", systemImage: "person.crop.circle") {
                 AccountSettings(model: model)
             }
+            Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
+                ChatSettings(preferences: model.preferences)
+            }
             Tab("Advanced", systemImage: "gearshape") {
                 AdvancedSettings(model: model)
             }
@@ -63,6 +66,32 @@ private struct AccountSettings: View {
         case .loggedOut: String(localized: "Unlinked by the phone")
         case .failed: String(localized: "Failed")
         }
+    }
+}
+
+private struct ChatSettings: View {
+    @Bindable var preferences: Preferences
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Download media automatically", isOn: $preferences.autoDownload)
+            } footer: {
+                Text("Photos, videos, voice messages and documents download when they scroll into view, up to 64 MB each. Stickers always do.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Section {
+                Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
+            } footer: {
+                Text("When off, people don't see blue ticks or played voice messages from this Mac.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

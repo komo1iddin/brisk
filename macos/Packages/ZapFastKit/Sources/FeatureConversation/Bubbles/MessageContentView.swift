@@ -2,6 +2,7 @@ import SwiftUI
 import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
+import ZapFastSharedUI
 
 /// What a message holds, drawn by kind.
 struct MessageContentView: View {
@@ -229,13 +230,12 @@ private struct VisualMedia: View {
         } else if let thumbnail = message.thumbnail {
             image = await Thumbnails.load(thumbnail, key: "thumb-\(message.id)", points: points)
         }
-        // Stickers are small; fetch them straight away, as the phone does.
-        if sticker, media.path == nil { model.download(message) }
+        model.autoDownload(message)
     }
 
     private func activate() {
         if let url = message.mediaURL {
-            NSWorkspace.shared.open(url)
+            QuickLook.shared.show([url])
         } else {
             model.download(message)
         }
@@ -298,6 +298,7 @@ private struct DocumentContent: View {
         }
         .buttonStyle(.plain)
         .frame(minWidth: 220)
+        .task(id: message.id) { model.autoDownload(message) }
     }
 
     private var detail: String {
@@ -311,7 +312,7 @@ private struct DocumentContent: View {
     }
 
     private func activate() {
-        if let url = message.mediaURL { NSWorkspace.shared.open(url) } else { model.download(message) }
+        if let url = message.mediaURL { QuickLook.shared.show([url]) } else { model.download(message) }
     }
 }
 

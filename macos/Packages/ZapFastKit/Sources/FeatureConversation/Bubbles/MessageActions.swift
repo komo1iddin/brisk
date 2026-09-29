@@ -1,6 +1,7 @@
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastSharedUI
 
 /// A message's context menu.
 struct MessageActions: View {
@@ -33,6 +34,7 @@ struct MessageActions: View {
 
         if message.content.media != nil {
             if let url = message.mediaURL {
+                Button("Quick Look", systemImage: "eye") { QuickLook.shared.show([url]) }
                 Button("Open", systemImage: "arrow.up.forward.app") { NSWorkspace.shared.open(url) }
                 Button("Show in Finder", systemImage: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([url])

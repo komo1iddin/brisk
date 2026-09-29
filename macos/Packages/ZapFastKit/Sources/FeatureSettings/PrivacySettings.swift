@@ -1,4 +1,5 @@
 import SwiftUI
+import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
@@ -13,6 +14,7 @@ struct PrivacySettings: View {
         @Bindable var preferences = model.preferences
         let lock = model.appLock
         Form {
+            AccountPrivacySection(model: model)
             Section {
                 LabeledContent("App lock") {
                     if lock.isEnabled {
@@ -63,6 +65,94 @@ struct PrivacySettings: View {
         }
         .sheet(item: $codeForm) { mode in
             ChatLockCodeForm(mode: mode, lockedChats: model.lockedChats)
+        }
+    }
+}
+
+/// Who sees what of the account. The values live on the phone: they are
+/// read each time Settings shows and written one at a time.
+private struct AccountPrivacySection: View {
+    let model: AppModel
+
+    var body: some View {
+        let privacy = model.privacy
+        let writable = privacy.isEditable && model.session.isConnected
+        Section {
+            ForEach(privacy.kinds, id: \.self) { kind in
+                Picker(selection: binding(kind)) {
+                    if privacy.choice(kind) == nil {
+                        Text(verbatim: "—").tag(PrivacyChoiceInfo?.none)
+                    }
+                    ForEach(privacy.choices(kind), id: \.self) { choice in
+                        Text(label(choice))
+                            .tag(Optional(choice))
+                            .selectionDisabled(!privacyChoices(kind: kind).contains(choice))
+                    }
+                } label: {
+                    HStack(spacing: Metrics.xs) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(label(kind))
+                            if let hint = hint(kind) {
+                                Text(hint).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        if privacy.isPending(kind) { ProgressView().controlSize(.mini) }
+                    }
+                }
+                .disabled(!writable || privacy.isPending(kind))
+            }
+        } header: {
+            Text("Who Can See My Personal Info")
+        } footer: {
+            Text(footer(privacy))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { model.refreshPrivacy() }
+    }
+
+    private func binding(_ kind: PrivacyKindInfo) -> Binding<PrivacyChoiceInfo?> {
+        Binding(
+            get: { model.privacy.choice(kind) },
+            set: { if let choice = $0 { model.setPrivacy(kind, to: choice) } }
+        )
+    }
+
+    private func footer(_ privacy: PrivacyStore) -> LocalizedStringKey {
+        if !model.session.isConnected { return "Connect to WhatsApp to see and change these." }
+        if privacy.fetchFailed { return "Your phone didn't answer; these may be out of date." }
+        if !privacy.isEditable { return "Asking your phone…" }
+        return "Kept on your phone and used on every linked device. People excepted from “My contacts” are edited on the phone."
+    }
+
+    private func label(_ kind: PrivacyKindInfo) -> LocalizedStringKey {
+        switch kind {
+        case .lastSeen: "Last seen"
+        case .online: "Online"
+        case .profile: "Profile photo"
+        case .about: "About"
+        case .groupAdd: "Groups"
+        case .readReceipts: "Read receipts"
+        case .callAdd: "Calls"
+        }
+    }
+
+    private func hint(_ kind: PrivacyKindInfo) -> LocalizedStringKey? {
+        switch kind {
+        case .groupAdd: "Who can add you to groups."
+        case .readReceipts: "For your whole account. Groups always send them."
+        default: nil
+        }
+    }
+
+    private func label(_ choice: PrivacyChoiceInfo) -> LocalizedStringKey {
+        switch choice {
+        case .everyone: "Everyone"
+        case .contacts: "My contacts"
+        case .except: "My contacts except…"
+        case .nobody: "Nobody"
+        case .sameAsLastSeen: "Same as last seen"
+        case .known: "Silence unknown callers"
         }
     }
 }

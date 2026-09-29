@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use zapfast::backend::Command;
 
-use crate::types::{GifInfo, PageKey, PollDraftInfo};
+use crate::types::{GifInfo, PageKey, PollDraftInfo, PrivacyChoiceInfo, PrivacyKindInfo};
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCommand {
@@ -282,6 +282,15 @@ pub enum BridgeCommand {
         jpeg: Vec<u8>,
     },
 
+    // Account privacy (kept on the phone)
+    /// Asks the phone for the privacy values; answered by `AccountPrivacy`.
+    FetchAccountPrivacy,
+    /// Writes one category; answered by `AccountPrivacySaved` or `…Failed`.
+    SetAccountPrivacy {
+        kind: PrivacyKindInfo,
+        choice: PrivacyChoiceInfo,
+    },
+
     // Groups and contacts
     /// Renames a group for everyone in it.
     SetGroupName {
@@ -541,6 +550,12 @@ impl BridgeCommand {
 
             Self::SetProfile { name, about } => Command::SetProfile { name, about },
             Self::SetProfilePicture { jpeg } => Command::SetProfilePicture(jpeg),
+
+            Self::FetchAccountPrivacy => Command::FetchAccountPrivacy,
+            Self::SetAccountPrivacy { kind, choice } => Command::SetAccountPrivacy {
+                kind: kind.into(),
+                choice: choice.into(),
+            },
 
             Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
             Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },

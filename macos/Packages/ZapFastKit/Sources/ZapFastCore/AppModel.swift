@@ -17,6 +17,7 @@ public final class AppModel {
     public let preferences: Preferences
     public let search = SearchStore()
     public let stickers = StickerStore()
+    public let privacy = PrivacyStore()
     public let voice = VoicePlayer()
     public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
@@ -590,6 +591,32 @@ public final class AppModel {
             } catch {
                 post(.error, String(localized: "Could not use this picture: \(error.localizedDescription)"))
             }
+        }
+    }
+
+    // MARK: Intents: account privacy
+
+    /// Privacy can change on the phone at any time and nothing announces
+    /// it, so Settings asks again each time it shows.
+    public func refreshPrivacy() {
+        guard session.isConnected else { return }
+        backend.send(.fetchAccountPrivacy)
+    }
+
+    /// Writes one category, showing it at once; a refusal restores the
+    /// phone's value. Nothing is written offline or against stale values.
+    public func setPrivacy(_ kind: PrivacyKindInfo, to choice: PrivacyChoiceInfo) {
+        guard session.isConnected, privacy.isEditable,
+              privacy.snapshot.beginSet(kind: kind, choice: choice) else { return }
+        privacy.changed()
+        backend.send(.setAccountPrivacy(kind: kind, choice: choice))
+    }
+
+    /// The account's read receipts win over the local switch: they are
+    /// what the phone and the other linked devices enforce.
+    private func followReceiptsPrivacy() {
+        if let choice = privacy.choice(.readReceipts) {
+            session.receiptsDisabled = choice != .everyone
         }
     }
 
@@ -1447,6 +1474,18 @@ public final class AppModel {
             session.receiptsDisabled = disabled
         case .pinLimit(let limit):
             session.pinLimit = limit
+        case let .accountPrivacy(values, failed):
+            privacy.snapshot.applyFetch(values: values, failed: failed)
+            privacy.changed()
+            followReceiptsPrivacy()
+        case .accountPrivacySaved(let kind):
+            // A confirmation nothing waits for belongs to an earlier link.
+            if privacy.snapshot.finishSet(kind: kind), kind == .readReceipts { followReceiptsPrivacy() }
+            privacy.changed()
+        case .accountPrivacyFailed(let kind):
+            privacy.snapshot.failSet(kind: kind)
+            privacy.changed()
+            post(.error, String(localized: "Your phone didn't accept the privacy change."))
         case .receipts(let receipts):
             guard let watched = receiptsWatch, watched.chat == receipts.chat,
                   watched.message == receipts.message else { break }
@@ -1537,6 +1576,8 @@ public final class AppModel {
             invite = nil
             pollVoting = []
             interactiveSending = []
+            privacy.snapshot.reset()
+            privacy.changed()
             interactiveList = nil
             pollComposerChat = nil
             pollCreating = false

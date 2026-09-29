@@ -103,6 +103,11 @@ and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,
 after asking, here and on the phone; both need a connection.
 
+Settings › Privacy also shows who sees your last seen, online status,
+profile photo and About, who can add you to groups, read receipts and
+calls. The values live on the phone: they are read each time Settings
+opens and changed one at a time.
+
 Settings › Privacy sets an app lock, as upstream's: a password asked at
 start and after 1 minute, 15 minutes or an hour without use, or at once
 with ⌃⌘L. Touch ID can open it instead. Only a salted PBKDF2 verifier

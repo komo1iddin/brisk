@@ -10,6 +10,7 @@ mod contact;
 mod interactive;
 mod link;
 mod message;
+mod privacy;
 mod receipts;
 mod sticker;
 
@@ -24,6 +25,7 @@ pub use message::{
     LinkPreviewInfo, MediaInfo, MentionInfo, MessageContent, MessageRecord, OnceMediaKind, PageKey,
     PollDraftInfo, PollSummary, PollVoterInfo, QuotedMessage, ReactionInfo,
 };
+pub use privacy::{PrivacyChoiceInfo, PrivacyKindInfo, PrivacySnapshot, PrivacyValueInfo};
 pub use receipts::{MessageReceiptsInfo, RecipientInfo};
 pub use sticker::{GifFailure, GifInfo, StickerEmojis, StickerLibrary, StickerPackInfo};
 

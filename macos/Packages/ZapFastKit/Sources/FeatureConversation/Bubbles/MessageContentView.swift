@@ -160,7 +160,9 @@ private struct LinkPreviewCard: View {
 // MARK: - Media
 
 /// Photos, videos, and stickers: the preview at the picture's shape, a
-/// download button until the file is here, then a click opens it.
+/// download button until the file is here, then a click opens it. A video
+/// plays inside its message; a GIF and an animated sticker move while the
+/// pointer is over them in the active window, as upstream's do.
 private struct VisualMedia: View {
     let message: MessageRecord
     let media: MediaInfo
@@ -170,11 +172,35 @@ private struct VisualMedia: View {
     var sticker = false
 
     @State private var image: NSImage?
+    @State private var hovering = false
+    @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
         let size = displaySize
+        Group {
+            if playsInline {
+                PlayerView(player: model.video.player, fill: isNote, minimal: isNote)
+            } else {
+                poster(size)
+                    .contentShape(shape)
+                    .onTapGesture(perform: activate)
+                    .accessibilityAddTraits(.isButton)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipShape(shape)
+        .onHover { hovering = $0 }
+        .task(id: "\(message.id)-\(media.path ?? "")") { await load(size) }
+        .onDisappear {
+            if case .video = message.content { model.videoHidden(message) }
+        }
+    }
+
+    private func poster(_ size: CGSize) -> some View {
         ZStack {
-            if let image {
+            if let url = message.mediaURL, isAnimatedSticker {
+                AnimatedImage(url: url, still: image, points: max(size.width, size.height), playing: moves)
+            } else if let image {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
@@ -184,37 +210,75 @@ private struct VisualMedia: View {
                     Image(systemName: symbol).font(.largeTitle).foregroundStyle(.secondary)
                 }
             }
+            if isGif, moves, let url = message.mediaURL {
+                LoopingVideo(url: url)
+            }
             overlay
         }
-        .frame(width: size.width, height: size.height)
-        .clipShape(.rect(cornerRadius: sticker ? 0 : Metrics.bubbleRadius - Metrics.xs, style: .continuous))
-        .contentShape(.rect)
-        .onTapGesture(perform: activate)
-        .task(id: "\(message.id)-\(media.path ?? "")") { await load(size) }
-        .accessibilityAddTraits(.isButton)
     }
 
     @ViewBuilder private var overlay: some View {
         let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
         if media.path == nil, !sticker {
             DownloadBadge(state: state, size: media.size)
+        } else if isGif {
+            if !moves {
+                Text("GIF")
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.black.opacity(0.45), in: Capsule())
+                    .foregroundStyle(.white)
+            }
         } else if case .video = message.content {
             Image(systemName: "play.circle.fill")
                 .font(.system(size: 40))
                 .foregroundStyle(.white, .black.opacity(0.35))
         }
-        if let seconds, seconds > 0 {
+        if let seconds, seconds > 0, !isGif {
             Text(Duration.seconds(Int(seconds)).formatted(.time(pattern: .minuteSecond)))
                 .font(.caption2.monospacedDigit())
                 .padding(.horizontal, 6).padding(.vertical, 2)
                 .background(.black.opacity(0.45), in: Capsule())
                 .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .frame(maxWidth: .infinity, maxHeight: isNote ? nil : .infinity, alignment: isNote ? .center : .bottomLeading)
+                .frame(maxHeight: .infinity, alignment: .bottom)
                 .padding(Metrics.s)
         }
     }
 
+    private var key: MessageKey { MessageKey(chat: message.chat, message: message.id) }
+
+    /// This message's video is the one playing (or paused) in place.
+    private var playsInline: Bool {
+        guard case .video = message.content, !isGif else { return false }
+        return model.video.isCurrent(key)
+    }
+
+    private var isGif: Bool {
+        if case .video(_, _, _, true, _) = message.content { true } else { false }
+    }
+
+    /// A round video message.
+    private var isNote: Bool {
+        if case .video(_, _, _, _, true) = message.content { true } else { false }
+    }
+
+    private var isAnimatedSticker: Bool {
+        if case .sticker(_, true) = message.content { true } else { false }
+    }
+
+    /// Animations play under the pointer while the window is in front.
+    private var moves: Bool {
+        hovering && activeState != .inactive && media.path != nil
+    }
+
+    private var shape: AnyShape {
+        if isNote { return AnyShape(Circle()) }
+        return AnyShape(RoundedRectangle(cornerRadius: sticker ? 0 : Metrics.bubbleRadius - Metrics.xs, style: .continuous))
+    }
+
     private var displaySize: CGSize {
+        if isNote { return CGSize(width: 220, height: 220) }
         let bound: CGFloat = sticker ? 160 : 300
         guard let width = media.width, let height = media.height, width > 0, height > 0 else {
             return CGSize(width: bound, height: sticker ? bound : bound * 0.66)
@@ -233,8 +297,12 @@ private struct VisualMedia: View {
         model.autoDownload(message)
     }
 
+    /// A video plays in place (downloading first); anything else opens in
+    /// Quick Look once here.
     private func activate() {
-        if let url = message.mediaURL {
+        if case .video = message.content, !isGif {
+            model.playVideo(message)
+        } else if let url = message.mediaURL {
             QuickLook.shared.show([url])
         } else {
             model.download(message)

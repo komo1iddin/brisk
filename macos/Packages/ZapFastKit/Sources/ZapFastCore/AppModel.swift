@@ -18,6 +18,7 @@ public final class AppModel {
     public let search = SearchStore()
     public let stickers = StickerStore()
     public let voice = VoicePlayer()
+    public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
 
     /// The chat open in the conversation pane.
@@ -27,6 +28,7 @@ public final class AppModel {
             // No player outlives its chat until there is a mini player,
             // and a recording belongs to the chat it started in.
             if voice.current?.chat != selectedChatID { voice.stop() }
+            if video.current?.chat != selectedChatID { video.stop() }
             if recorder.isRecording { recorder.cancel() }
             if search.chat?.chat != selectedChatID { search.chat = nil }
             infoShown = false
@@ -692,6 +694,7 @@ public final class AppModel {
             return
         }
         let key = MessageKey(chat: message.chat, message: message.id)
+        video.stop()
         let opus = media.mime.contains("ogg") || media.mime.contains("opus")
         let speed = voiceNote ? preferences.voiceSpeed : 1
         Task { await voice.toggle(key, url: url, opus: opus, speed: speed) }
@@ -716,6 +719,7 @@ public final class AppModel {
     /// Starts recording a voice message; playback stops first.
     public func startRecording() {
         voice.stop()
+        video.stop()
         Task {
             if await !recorder.start(), recorder.state == .denied {
                 post(.error, String(localized: "ZapFast can't use the microphone. Allow it in System Settings › Privacy & Security › Microphone."))
@@ -734,6 +738,25 @@ public final class AppModel {
 
     public func cancelRecording() {
         recorder.cancel()
+    }
+
+    // MARK: Intents: videos
+
+    /// Plays or pauses a video inside its message, downloading it first if
+    /// needed; one plays at a time, and voice playback stops for it.
+    public func playVideo(_ message: MessageRecord) {
+        guard case .video = message.content else { return }
+        guard let url = message.mediaURL else {
+            download(message)
+            return
+        }
+        voice.stop()
+        video.toggle(MessageKey(chat: message.chat, message: message.id), url: url)
+    }
+
+    /// A playing video scrolled out of view: it pauses, as upstream's does.
+    public func videoHidden(_ message: MessageRecord) {
+        video.pause(MessageKey(chat: message.chat, message: message.id))
     }
 
     /// 1× → 1.5× → 2× → 1×, as on the phone.
@@ -1225,6 +1248,7 @@ public final class AppModel {
             receipts = nil
             receiptsWatch = nil
             notifier?.clearAll()
+            video.stop()
             selectedChatID = nil
             post(.error, String(localized: "This device was unlinked from your phone"))
         case .failed(let message):

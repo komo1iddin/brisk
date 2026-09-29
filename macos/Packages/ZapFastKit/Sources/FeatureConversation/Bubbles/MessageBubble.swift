@@ -79,10 +79,11 @@ struct MessageBubble: View {
         return "\u{2003}\(edited)\(DateText.bubble(message.timestamp))\(ticks)"
     }
 
-    /// Stickers and emoji-only text float without a bubble, as on the phone.
+    /// Stickers, round video messages and emoji-only text float without a
+    /// bubble, as on the phone.
     private var isBare: Bool {
         switch message.content {
-        case .sticker: true
+        case .sticker, .video(_, _, _, _, true): true
         case .text(let text, nil): message.quoted == nil && BodyText.isOnlyEmoji(text)
         default: false
         }

@@ -75,6 +75,11 @@ drain, and a one-second timeout backs it up.
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 
+Videos play inside their message, one at a time, with the system's
+controls (full screen and Picture in Picture included); round video
+messages play in their circle. GIFs and animated stickers move while the
+pointer is over them, as upstream's do.
+
 A message of yours has Info in its menu: when it was delivered and read,
 and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,

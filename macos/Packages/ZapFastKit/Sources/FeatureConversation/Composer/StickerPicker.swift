@@ -148,25 +148,22 @@ struct StickerPicker: View {
 }
 
 /// One sticker: click sends; the menu files it into or out of Favorites.
+/// An animated one moves under the pointer, as upstream's picker does.
 private struct StickerCell: View {
     let path: String
     let model: AppModel
     let send: () -> Void
     @State private var image: NSImage?
+    @State private var hovering = false
 
     var body: some View {
         Button(action: send) {
-            Group {
-                if let image {
-                    Image(nsImage: image).resizable().scaledToFit()
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(width: 72, height: 72)
-            .contentShape(.rect)
+            AnimatedImage(url: URL(filePath: path), still: image, points: 72, playing: hovering)
+                .frame(width: 72, height: 72)
+                .contentShape(.rect)
         }
         .buttonStyle(PickerCellStyle())
+        .onHover { hovering = $0 }
         .task(id: path) { image = await Thumbnails.load(URL(filePath: path), points: 72) }
         .contextMenu {
             Button(model.stickers.isFavorite(path) ? "Remove from Favorites" : "Add to Favorites",

@@ -52,6 +52,21 @@ public struct BubbleGallery: View {
             caption: "Namuna",
             media: MediaInfo(mime: "image/jpeg", size: 65_000, width: 900, height: 1200, path: nil)
         ), status: .sent),
+        .sample("11", from: "a", content: .video(
+            caption: nil,
+            media: MediaInfo(mime: "video/mp4", size: 1_200_000, width: 640, height: 360, path: "/dev/null"),
+            seconds: 42, gif: false, note: false
+        )),
+        .sample("12", from: "a", content: .video(
+            caption: nil,
+            media: MediaInfo(mime: "video/mp4", size: 300_000, width: 480, height: 270, path: "/dev/null"),
+            seconds: 3, gif: true, note: false
+        )),
+        .sample("13", fromMe: true, content: .video(
+            caption: nil,
+            media: MediaInfo(mime: "video/mp4", size: 500_000, width: 400, height: 400, path: "/dev/null"),
+            seconds: 12, gif: false, note: true
+        ), status: .read),
         .sample("10", from: "b", content: .poll(
             question: "Tushlikka qayerga boramiz?",
             options: ["Osh markazi", "Somsaxona", "Uyda ovqatlanamiz"],

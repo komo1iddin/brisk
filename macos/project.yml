@@ -51,6 +51,8 @@ targets:
       properties:
         # Personal build, outside the App Store: no sandbox for now.
         com.apple.security.app-sandbox: false
+        # Hardened runtime: recording voice messages.
+        com.apple.security.device.audio-input: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.komoliddin.ZapFastMac

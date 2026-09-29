@@ -64,6 +64,13 @@ pub enum BridgeCommand {
         mentions: Vec<String>,
         quoting: Option<String>,
     },
+    /// A recorded voice message: mono samples at `voice_sample_rate()`.
+    /// The worker encodes it and draws its waveform.
+    SendVoice {
+        chat: String,
+        samples: Vec<f32>,
+        quoting: Option<String>,
+    },
     EditText {
         chat: String,
         id: String,
@@ -168,6 +175,15 @@ impl BridgeCommand {
                 paths: paths.into_iter().map(PathBuf::from).collect(),
                 caption,
                 mentions,
+                quoting,
+            },
+            Self::SendVoice {
+                chat,
+                samples,
+                quoting,
+            } => Command::SendVoice {
+                chat,
+                samples,
                 quoting,
             },
             Self::EditText {

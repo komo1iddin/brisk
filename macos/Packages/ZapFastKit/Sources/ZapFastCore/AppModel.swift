@@ -16,13 +16,16 @@ public final class AppModel {
     public let avatars: AvatarStore
     public let preferences: Preferences
     public let voice = VoicePlayer()
+    public let recorder = VoiceRecorder()
 
     /// The chat open in the conversation pane.
     public var selectedChatID: String? {
         didSet {
             guard selectedChatID != oldValue else { return }
-            // No player outlives its chat until there is a mini player.
+            // No player outlives its chat until there is a mini player,
+            // and a recording belongs to the chat it started in.
             if voice.current?.chat != selectedChatID { voice.stop() }
+            if recorder.isRecording { recorder.cancel() }
             if let oldValue { flushDraft(for: oldValue) }
             if let selectedChatID { opened(selectedChatID) }
         }
@@ -229,6 +232,29 @@ public final class AppModel {
             return
         }
         voice.seek(to: fraction)
+    }
+
+    /// Starts recording a voice message; playback stops first.
+    public func startRecording() {
+        voice.stop()
+        Task {
+            if await !recorder.start(), recorder.state == .denied {
+                post(.error, String(localized: "ZapFast can't use the microphone. Allow it in System Settings › Privacy & Security › Microphone."))
+            }
+        }
+    }
+
+    /// Sends the recording to `chat`, replying if a reply is set. Upstream
+    /// drops recordings shorter than half a second.
+    public func sendRecording(in chat: String) {
+        let samples = recorder.finish()
+        guard samples.count >= Int(voiceSampleRate()) / 2 else { return }
+        let quoting = replyingTo.removeValue(forKey: chat)?.id
+        backend.send(.sendVoice(chat: chat, samples: samples, quoting: quoting))
+    }
+
+    public func cancelRecording() {
+        recorder.cancel()
     }
 
     /// 1× → 1.5× → 2× → 1×, as on the phone.

@@ -51,6 +51,14 @@ struct MessageActions: View {
                 Button("Show in Finder", systemImage: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 }
+                Button("Save As…", systemImage: "square.and.arrow.down") {
+                    AttachmentSaving.saveCopy(of: url, named: suggestedName(for: url))
+                }
+                if isPicture {
+                    Button("Copy Image", systemImage: "photo.on.rectangle") {
+                        AttachmentSaving.copyImage(at: url)
+                    }
+                }
             } else {
                 Button("Download", systemImage: "arrow.down.circle") { model.download(message) }
             }
@@ -64,6 +72,19 @@ struct MessageActions: View {
                 model.deleteForEveryone(message)
             }
         }
+    }
+
+    private var isPicture: Bool {
+        switch message.content {
+        case .image, .sticker: true
+        default: false
+        }
+    }
+
+    /// A document keeps the name it was sent with; other media the file's.
+    private func suggestedName(for url: URL) -> String {
+        if case let .document(_, fileName, _, _) = message.content, !fileName.isEmpty { return fileName }
+        return url.lastPathComponent
     }
 
     private var isLive: Bool {

@@ -93,6 +93,13 @@ private struct ChatSettings: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Section {
+                Toggle("Save contacts to the phone too", isOn: $preferences.saveContactsToPhone)
+            } footer: {
+                Text("Names you save here are also added to your phone's address book.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .formStyle(.grouped)
         .scrollDisabled(true)

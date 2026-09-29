@@ -178,6 +178,31 @@ pub enum BridgeCommand {
         chat: String,
         name: String,
     },
+
+    // Groups and contacts
+    /// Renames a group for everyone in it.
+    SetGroupName {
+        chat: String,
+        name: String,
+    },
+    /// Sets a group's photo to a square JPEG, or removes it with `None`.
+    SetGroupPicture {
+        chat: String,
+        jpeg: Option<Vec<u8>>,
+    },
+    /// Leaves a group or channel; `archive` also files it under Archived.
+    LeaveGroup {
+        chat: String,
+        archive: bool,
+    },
+    /// Saves a name through contact sync; `to_phone` also adds it to the
+    /// phone's address book.
+    SaveContact {
+        id: String,
+        full_name: String,
+        first_name: Option<String>,
+        to_phone: bool,
+    },
 }
 
 impl BridgeCommand {
@@ -324,6 +349,21 @@ impl BridgeCommand {
             Self::ClearChat { chat } => Command::ClearChat(chat),
             Self::DeleteChat { chat } => Command::DeleteChat(chat),
             Self::EnsureChat { chat, name } => Command::EnsureChat { chat, name },
+
+            Self::SetGroupName { chat, name } => Command::SetGroupName { chat, name },
+            Self::SetGroupPicture { chat, jpeg } => Command::SetGroupPicture { chat, jpeg },
+            Self::LeaveGroup { chat, archive } => Command::LeaveGroup { chat, archive },
+            Self::SaveContact {
+                id,
+                full_name,
+                first_name,
+                to_phone,
+            } => Command::SaveContact {
+                id,
+                full_name,
+                first_name,
+                to_phone,
+            },
         }
     }
 }

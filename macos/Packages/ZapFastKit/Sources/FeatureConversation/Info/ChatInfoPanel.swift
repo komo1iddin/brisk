@@ -27,6 +27,12 @@ private struct InfoPage: View {
     let isRoot: Bool
     let model: AppModel
 
+    @State private var renaming = false
+    @State private var newName = ""
+    @State private var choosingPhoto = false
+    @State private var confirmingLeave = false
+    @State private var editingContact = false
+
     var body: some View {
         let chat = model.chats.chat(id)
         ScrollView {
@@ -36,12 +42,50 @@ private struct InfoPage: View {
                 if let chat, chat.kind == .group, !chat.participants.isEmpty {
                     MemberList(members: model.chats.members(of: chat), model: model)
                 }
+                if let chat, chat.canLeave(ours: model.ourIDs) {
+                    Button(chat.isChannel ? "Leave Channel…" : "Leave Group…", role: .destructive) {
+                        confirmingLeave = true
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.red)
+                }
             }
             .padding(Metrics.l)
             .frame(maxWidth: .infinity)
         }
         .navigationTitle(isRoot ? Text("Info") : Text(name(chat)))
+        .alert("Rename Group", isPresented: $renaming) {
+            TextField("Group name", text: $newName)
+            Button("Rename") { if let chat { model.renameGroup(chat, to: newName) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Everyone in the group sees the new name.")
+        }
+        .fileImporter(isPresented: $choosingPhoto, allowedContentTypes: [.image]) { result in
+            if case .success(let url) = result, let chat { model.setGroupPicture(chat, from: url) }
+        }
+        .confirmationDialog(
+            chat?.isChannel == true ? "Leave this channel?" : "Leave this group?",
+            isPresented: $confirmingLeave
+        ) {
+            if let chat {
+                Button(chat.isChannel ? "Leave Channel" : "Leave Group", role: .destructive) {
+                    model.leaveGroup(chat, archive: false)
+                }
+                if !chat.archived {
+                    Button(chat.isChannel ? "Leave Channel and Archive" : "Leave Group and Archive", role: .destructive) {
+                        model.leaveGroup(chat, archive: true)
+                    }
+                }
+            }
+        } message: {
+            Text("You will not receive new messages. The local history stays on this computer.")
+        }
+        .sheet(isPresented: $editingContact) {
+            ContactNameSheet(id: id, model: model)
+        }
     }
+
 
     private func name(_ chat: ChatSummary?) -> String {
         chat.map(model.chats.title(for:)) ?? model.chats.displayName(id)
@@ -66,6 +110,10 @@ private struct InfoPage: View {
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
 
+            if let chat, chat.kind == .group {
+                groupEditing(chat)
+            }
+
             Text(kind(chat))
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -85,6 +133,36 @@ private struct InfoPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// Name and photo changes, when WhatsApp lets us make them. Nothing is
+    /// offered while one is on its way.
+    @ViewBuilder
+    private func groupEditing(_ chat: ChatSummary) -> some View {
+        if model.groupSaving.contains(chat.id) {
+            HStack(spacing: Metrics.xs) {
+                ProgressView().controlSize(.mini)
+                Text("Saving…")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else if chat.canEditInfo {
+            Menu {
+                Button("Rename Group…") {
+                    newName = chat.name
+                    renaming = true
+                }
+                Button("Choose Photo…") { choosingPhoto = true }
+                if model.avatars.url(for: chat.id) != nil {
+                    Button("Remove Photo", role: .destructive) { model.removeGroupPicture(chat) }
+                }
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .menuStyle(.button)
+            .buttonStyle(.accessoryBar)
+            .fixedSize()
         }
     }
 
@@ -130,6 +208,12 @@ private struct InfoPage: View {
         HStack(spacing: Metrics.s) {
             if !isGroup, !ours, id != model.selectedChatID {
                 ActionTile("Message", systemImage: "message") { model.startChat(with: id) }
+            }
+            if !isGroup, !ours, chat?.kind != .broadcast, phoneOf(id: id) != nil {
+                let saved = model.chats.contacts[id]?.fullName?.isEmpty == false
+                ActionTile(saved ? "Edit Name" : "Add Contact", systemImage: "person.crop.circle.badge.plus") {
+                    editingContact = true
+                }
             }
             if !isGroup, let phone = chat?.phone ?? phoneOf(id: id) {
                 ActionTile("Copy Number", systemImage: "doc.on.doc") {
@@ -229,6 +313,62 @@ private struct MemberList: View {
             }
             .padding(.vertical, Metrics.xs)
             .background(.fill.quaternary, in: .rect(cornerRadius: Metrics.cardRadius))
+        }
+    }
+}
+
+/// A person's name for the address book, first and last, saved through
+/// WhatsApp's contact sync (and to the phone when Settings say so).
+private struct ContactNameSheet: View {
+    let id: String
+    let model: AppModel
+    @State private var first = ""
+    @State private var last = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("First name", text: $first)
+                TextField("Last name", text: $last)
+            } header: {
+                Text(phoneOf(id: id) ?? model.chats.displayName(id))
+            } footer: {
+                Text(model.preferences.saveContactsToPhone
+                     ? "The name is also saved to your phone's contacts."
+                     : "The name is saved for WhatsApp only.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 360)
+        .fixedSize(horizontal: false, vertical: true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    model.saveContact(id, first: first, last: last)
+                    dismiss()
+                }
+                .disabled(ContactName.compose(first: first, last: last) == nil)
+            }
+        }
+        .onAppear(perform: prefill)
+    }
+
+    /// Starts from the saved name, split at its first name when known.
+    private func prefill() {
+        let contact = model.chats.contacts[id]
+        guard let full = contact?.fullName, !full.isEmpty else {
+            first = contact?.pushName ?? ""
+            return
+        }
+        if let short = contact?.firstName, !short.isEmpty, full.hasPrefix(short) {
+            first = short
+            last = String(full.dropFirst(short.count)).trimmingCharacters(in: .whitespaces)
+        } else {
+            first = full
         }
     }
 }

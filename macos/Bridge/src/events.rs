@@ -102,6 +102,12 @@ pub enum BridgeEvent {
         message: String,
         error: Option<String>,
     },
+    /// A change to a group's name or photo went out (`saving`), or
+    /// WhatsApp answered it.
+    GroupSaving {
+        chat: String,
+        saving: bool,
+    },
     Typing {
         chat: String,
         sender: String,
@@ -243,6 +249,7 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             message,
             error,
         }),
+        Event::GroupSaving { chat, saving } => Some(B::GroupSaving { chat, saving }),
         Event::Typing {
             chat,
             sender,
@@ -333,7 +340,6 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::InviteJoined { .. } => not_bridged("InviteJoined"),
         Event::ContactReady { .. } => not_bridged("ContactReady"),
         Event::ClipboardImage(_) => not_bridged("ClipboardImage"),
-        Event::GroupSaving { .. } => not_bridged("GroupSaving"),
         // Upstream's self-updater targets its own binary, never this app.
         Event::UpdateAvailable { .. }
         | Event::UpdateSupport(_)

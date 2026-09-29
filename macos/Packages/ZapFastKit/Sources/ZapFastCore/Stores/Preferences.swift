@@ -33,6 +33,11 @@ public final class Preferences {
         didSet { defaults.set(notificationPreviews, forKey: Key.notificationPreviews) }
     }
 
+    /// Contacts saved here also go to the phone's address book.
+    public var saveContactsToPhone: Bool {
+        didSet { defaults.set(saveContactsToPhone, forKey: Key.saveContactsToPhone) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -41,12 +46,14 @@ public final class Preferences {
             Key.sendReadReceipts: true,
             Key.notifications: true,
             Key.notificationPreviews: true,
+            Key.saveContactsToPhone: true,
         ])
         autoDownload = defaults.bool(forKey: Key.autoDownload)
         voiceSpeed = defaults.float(forKey: Key.voiceSpeed)
         sendReadReceipts = defaults.bool(forKey: Key.sendReadReceipts)
         notifications = defaults.bool(forKey: Key.notifications)
         notificationPreviews = defaults.bool(forKey: Key.notificationPreviews)
+        saveContactsToPhone = defaults.bool(forKey: Key.saveContactsToPhone)
     }
 
     private enum Key {
@@ -55,5 +62,6 @@ public final class Preferences {
         static let sendReadReceipts = "sendReadReceipts"
         static let notifications = "notifications"
         static let notificationPreviews = "notificationPreviews"
+        static let saveContactsToPhone = "saveContactsToPhone"
     }
 }

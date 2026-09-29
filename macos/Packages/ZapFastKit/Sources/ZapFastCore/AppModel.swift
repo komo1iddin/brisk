@@ -54,6 +54,9 @@ public final class AppModel {
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
+    /// Groups whose name or photo change is on its way to WhatsApp.
+    public private(set) var groupSaving: Set<String> = []
+
     /// Polls whose vote is on its way.
     public private(set) var pollVoting: Set<MessageKey> = []
     /// The poll whose results sheet is open.
@@ -253,6 +256,53 @@ public final class AppModel {
             backend.send(.ensureChat(chat: id, name: chats.personName(id, hint: nil)))
         }
         selectedChatID = id
+    }
+
+    // MARK: Intents: groups and contacts
+
+    /// Every id we may be listed under, for `canLeave(ours:)`.
+    public var ourIDs: [String] {
+        guard let account = session.account else { return [] }
+        return [account.id] + (account.lid.map { [$0] } ?? [])
+    }
+
+    public func renameGroup(_ chat: ChatSummary, to name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard chat.canEditInfo, !groupSaving.contains(chat.id), !name.isEmpty,
+              name != chat.name else { return }
+        backend.send(.setGroupName(chat: chat.id, name: name))
+    }
+
+    /// Makes a picture file the group's photo, squared and scaled as
+    /// upstream does first.
+    public func setGroupPicture(_ chat: ChatSummary, from url: URL) {
+        guard chat.canEditInfo, !groupSaving.contains(chat.id) else { return }
+        Task {
+            do {
+                let jpeg = try await PictureEncoding.squareJPEG(from: url)
+                backend.send(.setGroupPicture(chat: chat.id, jpeg: jpeg))
+            } catch {
+                post(.error, String(localized: "Could not use this picture: \(error.localizedDescription)"))
+            }
+        }
+    }
+
+    public func removeGroupPicture(_ chat: ChatSummary) {
+        guard chat.canEditInfo, !groupSaving.contains(chat.id) else { return }
+        backend.send(.setGroupPicture(chat: chat.id, jpeg: nil))
+    }
+
+    public func leaveGroup(_ chat: ChatSummary, archive: Bool) {
+        guard chat.canLeave(ours: ourIDs) else { return }
+        backend.send(.leaveGroup(chat: chat.id, archive: archive))
+    }
+
+    /// Saves a person's name through contact sync (upstream's SaveContact).
+    public func saveContact(_ id: String, first: String, last: String) {
+        guard let name = ContactName.compose(first: first, last: last) else { return }
+        backend.send(.saveContact(
+            id: id, fullName: name.full, firstName: name.short, toPhone: preferences.saveContactsToPhone
+        ))
     }
 
     // MARK: Intents: polls
@@ -751,6 +801,8 @@ public final class AppModel {
             // one was asked for by something else.
             guard from == nil, until == nil else { break }
             search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
+        case let .groupSaving(chat, saving):
+            if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
         case let .pollVoted(chat, message, error):
             pollVoting.remove(MessageKey(chat: chat, message: message))
             if let error { post(.error, error) }
@@ -807,6 +859,7 @@ public final class AppModel {
             textBeforeEdit = [:]
             forwarding = nil
             pollVoting = []
+            groupSaving = []
             pollResults = nil
             pollRefreshAsked = []
             notifier?.clearAll()

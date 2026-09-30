@@ -23,9 +23,11 @@ public struct ChatListView: View {
         let inLocked = model.lockedChats.isOpen
         let chats = inLocked
             ? model.chats.lockedChats(query: query)
-            : model.chats.visibleChats(filter: filter, query: query, archived: showingArchived, label: label)
+            : model.chats.visibleChats(
+                filter: filter, query: query, archived: showingArchived, label: label, kept: model.keptUnread
+            )
         let hits = inLocked ? [] : messageHits
-        List(selection: $model.selectedChatID) {
+        List(selection: opening) {
             if hits.isEmpty {
                 if query.isEmpty, !showingArchived, !inLocked, filter == .all, label == nil {
                     if model.chats.lockedCount > 0 {
@@ -56,6 +58,10 @@ public struct ChatListView: View {
         .searchable(text: $query, placement: .sidebar, prompt: "Search")
         .searchFocused($searchFocused)
         .onChange(of: query) { model.searchMessages(query) }
+        .onChange(of: keepsUnread(inLocked: inLocked), initial: true) { _, keeps in model.sidebarKeepsUnread = keeps }
+        .onChange(of: filter) { model.forgetKeptUnread() }
+        .onChange(of: label) { model.forgetKeptUnread() }
+        .onChange(of: showingArchived) { model.forgetKeptUnread() }
         // ⌃Tab and ⌃⇧Tab step through the chats as listed here.
         .onChange(of: chats.map(\.id), initial: true) { _, ids in model.sidebarOrder = ids }
         .onChange(of: model.sidebarSearchRequests) { searchFocused = true }
@@ -106,6 +112,22 @@ public struct ChatListView: View {
 }
 
 extension ChatListView {
+    /// A chat clicked in the list; one clicked in the Unread list stays
+    /// there once read, so its row does not leave from under the pointer.
+    private var opening: Binding<String?> {
+        Binding(
+            get: { model.selectedChatID },
+            set: { id in
+                if let id { model.keepUnread(id) }
+                model.selectedChatID = id
+            }
+        )
+    }
+
+    private func keepsUnread(inLocked: Bool) -> Bool {
+        filter == .unread && label == nil && query.isEmpty && !showingArchived && !inLocked
+    }
+
     private func chatRows(_ chats: [ChatSummary]) -> some View {
         ForEach(chats) { chat in
             ChatRow(chat: chat, model: model)
@@ -149,6 +171,14 @@ private struct FilterMenu: View {
                 }
             }
             .pickerStyle(.inline)
+
+            if !model.chats.channels.isEmpty {
+                let muted = model.allChannelsMuted
+                Button(
+                    muted ? "Unmute All Channels" : "Mute All Channels",
+                    systemImage: muted ? "bell" : "bell.slash"
+                ) { model.muteAllChannels(!muted) }
+            }
 
             Section("Labels") {
                 ForEach(model.chats.labels, id: \.id) { item in

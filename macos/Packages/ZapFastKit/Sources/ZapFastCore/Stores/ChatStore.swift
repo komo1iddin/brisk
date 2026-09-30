@@ -32,7 +32,8 @@ public final class ChatStore {
         filter: ChatFilter,
         query: String,
         archived: Bool,
-        label: String? = nil
+        label: String? = nil,
+        kept: Set<String> = []
     ) -> [ChatSummary] {
         let needle = searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines))
         let searching = !needle.isEmpty
@@ -44,7 +45,8 @@ public final class ChatStore {
             guard chat.archived == archived else { return false }
             if archived { return true }
             if let label { return chat.labels.contains(label) }
-            return filter.matches(chat)
+            // A chat opened from the Unread list stays in it once read.
+            return filter.matches(chat) || (filter == .unread && kept.contains(chat.id))
         }
         let favoritesOrder = !searching && !archived && label == nil && filter == .favorites
         return filtered.sorted { a, b in
@@ -98,6 +100,11 @@ public final class ChatStore {
             chat.unread > 0 && !chat.archived && !chat.locked && !chat.isChannel
                 && !isMuted(chat)
         }
+    }
+
+    /// Followed channels, for muting or unmuting them all.
+    public var channels: [ChatSummary] {
+        chats.values.filter(\.isChannel)
     }
 
     public func isMuted(_ chat: ChatSummary, now: Date = .now) -> Bool {

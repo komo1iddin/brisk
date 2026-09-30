@@ -94,6 +94,12 @@ public final class AppModel {
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
+    /// Chats opened from the Unread list, which stay listed there after
+    /// they are read (upstream's `unread_kept`), until the list changes.
+    public private(set) var keptUnread: Set<String> = []
+    /// The sidebar shows the Unread list, so chats opened from it are kept.
+    @ObservationIgnored public var sidebarKeepsUnread = false
+
     /// The keyboard shortcuts sheet is open.
     public var shortcutsShown = false
 
@@ -1451,11 +1457,37 @@ public final class AppModel {
     public func selectAdjacentChat(forward: Bool) {
         let order = sidebarOrder
         guard !order.isEmpty else { return }
-        guard let current = selectedChatID, let index = order.firstIndex(of: current) else {
-            selectedChatID = order.first
-            return
+        let next = if let current = selectedChatID, let index = order.firstIndex(of: current) {
+            order[(index + (forward ? 1 : order.count - 1)) % order.count]
+        } else {
+            order[0]
         }
-        selectedChatID = order[(index + (forward ? 1 : order.count - 1)) % order.count]
+        // Stepping through the Unread list must not shift it underfoot.
+        keepUnread(next)
+        selectedChatID = next
+    }
+
+    /// A chat opened from the sidebar: kept while it shows the Unread list.
+    public func keepUnread(_ chat: String) {
+        guard sidebarKeepsUnread else { return }
+        keptUnread.insert(chat)
+    }
+
+    /// The sidebar changed its filter, label or folder.
+    public func forgetKeptUnread() {
+        keptUnread = []
+    }
+
+    /// Upstream's "Mute all channels" / "Unmute all channels".
+    public var allChannelsMuted: Bool {
+        let channels = chats.channels
+        return !channels.isEmpty && channels.allSatisfy { chats.isMuted($0) }
+    }
+
+    public func muteAllChannels(_ mute: Bool) {
+        for channel in chats.channels where chats.isMuted(channel) != mute {
+            setMuted(until: mute ? 0 : nil, chat: channel.id)
+        }
     }
 
     /// Puts the cursor in the composer (upstream's Ctrl+L).
@@ -1843,6 +1875,7 @@ public final class AppModel {
         case .chatRemoved(let chat):
             // The composer goes first, so closing the chat saves no draft for it.
             forgetComposer(of: chat)
+            keptUnread.remove(chat)
             chats.remove(chat)
             conversations.forget(chat)
             if selectedChatID == chat { selectedChatID = nil }

@@ -208,6 +208,11 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
+A chat opened from the Unread list stays listed there once read, so its
+row does not leave from under the pointer, until the filter changes, as
+upstream's does. With channels followed, the filter menu mutes or
+unmutes them all.
+
 Select in a message's menu, or ⌘-click, starts selecting messages: a
 click adds or removes one, ⇧-click a run of them, and the bar in place of
 the composer forwards them (oldest first) or deletes them from ZapFast on

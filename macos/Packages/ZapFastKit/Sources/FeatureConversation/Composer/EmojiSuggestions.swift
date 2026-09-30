@@ -16,7 +16,13 @@ struct EmojiSuggestions: View {
                 row(suggestion, selected: index == tracker.selected)
                     .onHover { if $0 { tracker.selected = index } }
                     .onTapGesture { tracker.pick(suggestion) }
+                    .accessibilityAction { tracker.pick(suggestion) }
             }
+        }
+        // The keyboard stays in the field, so VoiceOver hears the choice.
+        .onChange(of: list.indices.contains(tracker.selected) ? list[tracker.selected].emoji : nil, initial: true) { _, emoji in
+            guard let emoji, let chosen = list.first(where: { $0.emoji == emoji }) else { return }
+            AccessibilityNotification.Announcement("\(chosen.name), \(chosen.shortcode)").post()
         }
         .padding(Metrics.xs)
         .background(.background, in: .rect(cornerRadius: Metrics.cardRadius))

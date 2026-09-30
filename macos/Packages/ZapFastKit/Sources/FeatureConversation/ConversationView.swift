@@ -9,6 +9,7 @@ public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
     @State private var scrollState = TimelineController.ScrollState()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(chatID: String, model: AppModel) {
         self.chatID = chatID
@@ -52,10 +53,10 @@ public struct ConversationView: View {
             if !scrollState.atBottom {
                 NewestMessageButton(newBelow: scrollState.newBelow) { model.scrollTimeline(.bottom) }
                     .padding(Metrics.l)
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
             }
         }
-        .animation(.snappy(duration: 0.2), value: scrollState.atBottom)
+        .animation(.zf(reduceMotion), value: scrollState.atBottom)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let selection = model.selection, selection.chat == chatID {
                 SelectionBar(selection: selection, model: model)
@@ -215,13 +216,25 @@ private struct ReadOnlyBar: View {
     let chat: ChatSummary
 
     var body: some View {
-        Text(message)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
-            .padding(Metrics.m)
-            .background(.bar)
-            .overlay(alignment: .top) { Divider() }
+        if #available(macOS 26, *) {
+            // Floating in glass over the chat, as the composer is.
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(Metrics.m)
+                .glassEffect(.regular, in: .rect(cornerRadius: Metrics.cardRadius))
+                .padding(.horizontal, Metrics.m)
+                .padding(.vertical, Metrics.s)
+        } else {
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(Metrics.m)
+                .background(.bar)
+                .overlay(alignment: .top) { Divider() }
+        }
     }
 
     private var message: LocalizedStringKey {

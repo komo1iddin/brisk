@@ -74,7 +74,10 @@ private struct AttachmentTile: View {
         }
         .onHover { hovering = $0 }
         .task(id: attachment.id) { thumbnail = await load() }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: name))
+        .accessibilityAction(named: "Preview", preview)
+        .accessibilityAction(named: "Remove", remove)
     }
 
     private var name: String {

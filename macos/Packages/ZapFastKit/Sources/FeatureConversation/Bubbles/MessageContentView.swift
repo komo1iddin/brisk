@@ -59,7 +59,7 @@ struct MessageContentView: View {
         case let .stickerPack(name, publisher, count, _):
             Button { model.viewStickerPack(message) } label: {
                 HStack(spacing: Metrics.s) {
-                    Image(systemName: "face.smiling").font(.title2)
+                    Image(systemName: "face.smiling").font(.title2).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name).font(.body.weight(.medium))
                         Text("\(publisher) · \(count) stickers").font(.caption).opacity(0.8)
@@ -112,6 +112,8 @@ struct BodyText: View {
         .font(.system(size: (Self.isOnlyEmoji(text) ? 40 : NSFont.systemFontSize) * scale))
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
+        // The clear room kept for the time is not read out; the footer is.
+        .accessibilityLabel(styled)
     }
 
     /// Up to three emoji and nothing else draw large, as on the phone.
@@ -153,6 +155,7 @@ private struct ContactCard: View {
                     .font(.system(size: 36))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(contact?.name ?? displayName)
                         .font(.body.weight(.semibold))
@@ -231,10 +234,15 @@ private struct LinkPreviewCard: View {
             guard let thumbnail else { return }
             image = await Thumbnails.load(thumbnail, key: "preview-\(key)", points: 56)
         }
-        .onTapGesture {
-            guard let url = URL(string: preview.url), !model.openInviteLink(url) else { return }
-            NSWorkspace.shared.open(url)
-        }
+        .onTapGesture(perform: open)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isLink)
+        .accessibilityAction { open() }
+    }
+
+    private func open() {
+        guard let url = URL(string: preview.url), !model.openInviteLink(url) else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -255,6 +263,7 @@ private struct VisualMedia: View {
     @State private var image: NSImage?
     @State private var hovering = false
     @Environment(\.controlActiveState) private var activeState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let size = displaySize
@@ -265,6 +274,9 @@ private struct VisualMedia: View {
                 poster(size)
                     .contentShape(shape)
                     .onTapGesture(perform: activate)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(accessibilityTitle)
+                    .accessibilityValue(accessibilityState)
                     .accessibilityAddTraits(.isButton)
             }
         }
@@ -330,6 +342,27 @@ private struct VisualMedia: View {
 
     private var key: MessageKey { MessageKey(chat: message.chat, message: message.id) }
 
+    /// "Video, 0:42", "GIF", "Photo", "Sticker", read as one element.
+    private var accessibilityTitle: Text {
+        if sticker { return Text("Sticker") }
+        if isGif { return Text("GIF") }
+        if case .video = message.content {
+            let length = seconds.map { Duration.seconds(Int($0)).formatted(.time(pattern: .minuteSecond)) }
+            if let length { return isNote ? Text("Video message, \(length)") : Text("Video, \(length)") }
+            return isNote ? Text("Video message") : Text("Video")
+        }
+        return Text("Photo")
+    }
+
+    private var accessibilityState: Text {
+        guard media.path == nil, !sticker else { return Text(verbatim: "") }
+        switch model.conversations.downloads[key] {
+        case .downloading: return Text("Downloading")
+        case .failed: return Text("Download failed")
+        case nil: return Text("Not downloaded")
+        }
+    }
+
     /// This message's video is the one playing (or paused) in place.
     private var playsInline: Bool {
         guard case .video = message.content, !isGif else { return false }
@@ -349,9 +382,10 @@ private struct VisualMedia: View {
         if case .sticker(_, true) = message.content { true } else { false }
     }
 
-    /// Animations play under the pointer while the window is in front.
+    /// Animations play under the pointer while the window is in front,
+    /// and not at all with Reduce Motion on.
     private var moves: Bool {
-        hovering && activeState != .inactive && media.path != nil
+        hovering && activeState != .inactive && media.path != nil && !reduceMotion
     }
 
     private var shape: AnyShape {
@@ -470,6 +504,7 @@ private struct DocumentContent: View {
                             ProgressView().controlSize(.small)
                         } else {
                             Image(systemName: "arrow.down.circle").font(.title3)
+                                .accessibilityLabel("Download")
                         }
                     }
                 }
@@ -527,6 +562,7 @@ private struct AudioContent: View {
     let waveform: Data
     let model: AppModel
     let footer: AnyView?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let waveWidth: CGFloat = 170
     private static let sideWidth: CGFloat = 40
@@ -586,14 +622,16 @@ private struct AudioContent: View {
                         }
                         .buttonStyle(.plain)
                         .help("Playback speed")
-                        .transition(.scale(scale: 0.7).combined(with: .opacity))
+                        .accessibilityLabel("Playback speed")
+                        .accessibilityValue(Text(verbatim: speedLabel))
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.7).combined(with: .opacity))
                     } else {
                         RecorderAvatar(message: message, model: model)
-                            .transition(.scale(scale: 0.7).combined(with: .opacity))
+                            .transition(reduceMotion ? .opacity : .scale(scale: 0.7).combined(with: .opacity))
                     }
                 }
                 .frame(width: Self.sideWidth, height: Self.sideWidth)
-                .animation(.snappy(duration: 0.2), value: showsSpeed)
+                .animation(.zf(reduceMotion), value: showsSpeed)
             }
         }
         .task(id: message.id) { model.autoDownload(message) }
@@ -690,6 +728,14 @@ private struct WaveformView: View {
         .accessibilityElement()
         .accessibilityLabel("Voice message")
         .accessibilityValue(Text("\(Int(progress * 100)) percent played"))
+        // VoiceOver and the keyboard move through it a tenth at a time.
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: seek(min(1, progress + 0.1))
+            case .decrement: seek(max(0, progress - 0.1))
+            @unknown default: break
+            }
+        }
     }
 }
 

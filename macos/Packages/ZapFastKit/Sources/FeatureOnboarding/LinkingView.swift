@@ -173,6 +173,8 @@ private struct PairCodeCard: View {
             Text(Self.grouped(code))
                 .font(.system(size: 40, weight: .semibold, design: .monospaced))
                 .textSelection(.enabled)
+                // Read letter by letter, as it is typed on the phone.
+                .speechSpellsOutCharacters()
             Text("WhatsApp › Settings › Linked Devices › Link a Device › Link with phone number instead")
                 .font(.callout)
                 .foregroundStyle(.secondary)

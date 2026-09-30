@@ -107,10 +107,10 @@ public final class AppModel {
     /// The sidebar shows the Unread list, so chats opened from it are kept.
     @ObservationIgnored public var sidebarKeepsUnread = false
 
-    /// The keyboard shortcuts sheet is open.
     /// Something shared from another app, waiting for its chat.
     public var shareRequest: ShareRequest?
 
+    /// The keyboard shortcuts sheet is open.
     public var shortcutsShown = false
 
     /// The label manager is open.
@@ -480,8 +480,6 @@ public final class AppModel {
         infoChat = nil
     }
 
-    // MARK: Intents: chat windows
-
     // MARK: Intents: the Share menu
 
     /// A `zapfast-mac://share` link from the Share extension: asks which
@@ -508,6 +506,8 @@ public final class AppModel {
         }
         composerFocusRequests += 1
     }
+
+    // MARK: Intents: chat windows
 
     /// The chat shows in the main window or one of its own.
     public func isOpen(_ chat: String) -> Bool {

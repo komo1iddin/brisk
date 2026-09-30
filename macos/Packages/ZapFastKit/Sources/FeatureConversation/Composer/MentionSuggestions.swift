@@ -22,15 +22,18 @@ struct MentionSuggestions: View {
                             .id(candidate.id)
                             .onHover { if $0 { tracker.selected = index } }
                             .onTapGesture { tracker.pick(candidate) }
+                            .accessibilityAction { tracker.pick(candidate) }
                     }
                 }
                 .padding(Metrics.xs)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: rowHeight * CGFloat(min(list.count, visibleRows)) + Metrics.xs * 2)
-            .onChange(of: tracker.selected) { _, index in
+            .onChange(of: tracker.selected, initial: true) { _, index in
                 guard list.indices.contains(index) else { return }
                 proxy.scrollTo(list[index].id)
+                // The keyboard stays in the field, so VoiceOver hears the choice.
+                AccessibilityNotification.Announcement(list[index].name).post()
             }
         }
         .background(.background, in: .rect(cornerRadius: Metrics.cardRadius))

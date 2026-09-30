@@ -57,7 +57,7 @@ struct MessageRow: View {
             if selecting {
                 SelectionCheckbox(selected: model.isSelected(message), enabled: model.canSelect(message))
                     .padding(.leading, Metrics.m)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .move(edge: .leading).combined(with: .opacity))
             }
         }
         .padding(.top, startsRun ? Metrics.s : Metrics.xxs)
@@ -80,14 +80,28 @@ struct MessageRow: View {
         }
         // ⌘-click starts selecting, as upstream's Command-click does.
         .simultaneousGesture(TapGesture().modifiers(.command).onEnded { model.select(message) })
-        .animation(.snappy(duration: 0.2), value: selecting)
+        .animation(.zf(reduceMotion, duration: 0.2), value: selecting)
         .onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovering)
+        .animation(.zf(reduceMotion, duration: 0.12), value: hovering)
         // A reused cell shows another message.
         .onChange(of: message.id) {
             hovering = false
         }
-        .accessibilityAction(named: Text("Reply")) { if isLive { model.reply(to: message) } }
+        // What the pointer finds beside the bubble, and a click does while
+        // selecting, as actions for VoiceOver.
+        .accessibilityActions {
+            if selecting {
+                if model.canSelect(message) {
+                    Button(model.isSelected(message) ? "Deselect" : "Select") { model.toggleSelected(message) }
+                }
+            } else if isLive {
+                Button("Reply") { model.reply(to: message) }
+                Button("React") { model.showReactionPicker(for: message) }
+                if model.canSelect(message) {
+                    Button("Select") { model.select(message) }
+                }
+            }
+        }
         .background {
             // A search hit or quote just jumped to, marked for a moment.
             if isHighlighted {
@@ -171,13 +185,15 @@ private struct HoverActions: View {
 
     var body: some View {
         // Reply nearest the bubble, React beyond it, on either side.
-        HStack(spacing: Self.spacing) {
-            if message.fromMe {
-                react
-                reply
-            } else {
-                reply
-                react
+        GlassGroup(spacing: Self.spacing) {
+            HStack(spacing: Self.spacing) {
+                if message.fromMe {
+                    react
+                    reply
+                } else {
+                    reply
+                    react
+                }
             }
         }
         .accessibilityHidden(true)
@@ -221,7 +237,7 @@ private struct HoverDiscSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         if #available(macOS 26, *) {
-            content.glassEffect(.regular.interactive(), in: .circle)
+            content.modifier(FloatingSurface(Circle()))
         } else {
             content.background {
                 Circle()
@@ -245,6 +261,8 @@ private struct SelectionCheckbox: View {
             .symbolRenderingMode(selected ? .monochrome : .hierarchical)
             .contentTransition(.symbolEffect(.replace))
             .opacity(enabled ? 1 : 0.3)
-            .accessibilityLabel(selected ? Text("Selected") : Text("Not selected"))
+            .accessibilityLabel("Selected")
+            .accessibilityValue(selected ? Text("On") : Text("Off"))
+            .accessibilityAddTraits(.isToggle)
     }
 }

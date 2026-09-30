@@ -167,6 +167,7 @@ struct StickerPicker: View {
                         .menuIndicator(.hidden)
                         .fixedSize()
                         .help("Pack actions")
+                        .accessibilityLabel(Text("Actions for \(pack.name)"))
                     }
                 }
                 .padding(.vertical, Metrics.xxs)
@@ -217,10 +218,11 @@ private struct StickerCell: View {
     let send: () -> Void
     @State private var image: NSImage?
     @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: send) {
-            AnimatedImage(url: URL(filePath: path), still: image, points: 72, playing: hovering)
+            AnimatedImage(url: URL(filePath: path), still: image, points: 72, playing: hovering && !reduceMotion)
                 .frame(width: 72, height: 72)
                 .contentShape(.rect)
         }

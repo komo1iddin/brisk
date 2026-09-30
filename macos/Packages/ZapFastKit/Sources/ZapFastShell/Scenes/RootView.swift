@@ -79,6 +79,7 @@ private struct MainSplitView: View {
 /// Info and error notices, newest at the bottom, each dismissing itself.
 private struct NoticeStack: View {
     let model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: Metrics.s) {
@@ -87,9 +88,14 @@ private struct NoticeStack: View {
                     model.dismissNotice(notice)
                 }
                 .frame(maxWidth: 420)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                 .task {
-                    try? await Task.sleep(for: .seconds(notice.kind == .error ? 8 : 4))
+                    // Said aloud, since it goes away on its own; with
+                    // VoiceOver on it stays twice as long.
+                    AccessibilityNotification.Announcement(notice.text).post()
+                    let seconds = notice.kind == .error ? 8.0 : 4.0
+                    let voiceOver = NSWorkspace.shared.isVoiceOverEnabled
+                    try? await Task.sleep(for: .seconds(voiceOver ? seconds * 2 : seconds))
                     model.dismissNotice(notice)
                 }
             }

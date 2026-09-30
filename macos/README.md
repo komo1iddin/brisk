@@ -61,6 +61,14 @@ the events, and calls Swift's `EventListener`, which replays them on the
 main queue in order. `Context::run_logic` re-arms the callback after each
 drain, and a one-second timeout backs it up.
 
+With Reduce Motion on, stickers and GIFs stay still under the pointer
+and ZapFast's slides, pulses and growth turn into fades or nothing. On
+macOS 26 the floating controls are Liquid Glass drawn in groups (the
+composer, a message's Reply and React), and a chat you cannot write to
+shows why in the same glass. VoiceOver reaches what the pointer does: a
+message's actions include Reply, React and Select, the voice waveform
+steps by tenths, and suggestions and notices are announced.
+
 Settings has a tab for each area, as the Mac's own apps do: General
 (login, menu bar, running in the background, downloads), Account, Chats
 (text size, Return, voice message photos, contacts), Notifications,

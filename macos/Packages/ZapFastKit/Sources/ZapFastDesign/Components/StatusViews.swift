@@ -132,8 +132,8 @@ public struct GlassCard: ViewModifier {
 }
 
 /// A small control floating over the timeline (the "newest message" button,
-/// a message's hover actions): Liquid Glass on macOS 26, a lifted material
-/// before it.
+/// a message's Reply and React discs): Liquid Glass on macOS 26, a lifted
+/// material before it.
 public struct FloatingSurface<S: InsettableShape>: ViewModifier {
     private let shape: S
 
@@ -149,6 +149,27 @@ public struct FloatingSurface<S: InsettableShape>: ViewModifier {
                 .background(.regularMaterial, in: shape)
                 .overlay(shape.strokeBorder(.separator, lineWidth: Metrics.hairline))
                 .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+        }
+    }
+}
+
+/// Glass shapes side by side (the composer's field and buttons, a message's
+/// hover discs) drawn as one group on macOS 26, so they blend and morph
+/// together instead of each sampling the others.
+public struct GlassGroup<Content: View>: View {
+    private let spacing: CGFloat
+    private let content: Content
+
+    public init(spacing: CGFloat, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    public var body: some View {
+        if #available(macOS 26, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
         }
     }
 }

@@ -139,6 +139,8 @@ private struct ColorMenu: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .help(Text(ColorSwatch.name(hex: selection)))
+        .accessibilityLabel("Label colour")
+        .accessibilityValue(Text(ColorSwatch.name(hex: selection)))
     }
 }
 

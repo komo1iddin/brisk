@@ -12,6 +12,7 @@ struct ReactionPicker: View {
     let choose: (String) -> Void
 
     @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if expanded {
@@ -23,9 +24,10 @@ struct ReactionPicker: View {
                         .help(emoji == mine ? Text("Remove \(emoji)") : Text(verbatim: emoji))
                 }
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { expanded = true }
+                    withAnimation(.zf(reduceMotion)) { expanded = true }
                 } label: {
-                    Image(systemName: "plus")
+                    Label("More Reactions", systemImage: "plus")
+                        .labelStyle(.iconOnly)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 36, height: 36)
@@ -52,6 +54,7 @@ struct EmojiCatalog: View {
     let choose: (String) -> Void
 
     @State private var query = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var searching: Bool
 
     private static let groups = emojiGroups()
@@ -136,7 +139,7 @@ struct EmojiCatalog: View {
     private func tab(_ symbol: String, _ title: LocalizedStringKey, id: String, proxy: ScrollViewProxy) -> some View {
         Button {
             query = ""
-            withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }
+            withAnimation(.zf(reduceMotion)) { proxy.scrollTo(id, anchor: .top) }
         } label: {
             Text(symbol)
                 .font(.system(size: 17))
@@ -145,6 +148,7 @@ struct EmojiCatalog: View {
         }
         .buttonStyle(.plain)
         .help(title)
+        .accessibilityLabel(title)
     }
 }
 
@@ -154,6 +158,7 @@ private struct EmojiButton: View {
     let marked: Bool
     let action: () -> Void
     @State private var hovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -167,8 +172,8 @@ private struct EmojiButton: View {
                         RoundedRectangle(cornerRadius: 8).fill(.quaternary)
                     }
                 }
-                .scaleEffect(hovered ? 1.12 : 1)
-                .animation(.snappy(duration: 0.12), value: hovered)
+                .scaleEffect(hovered && !reduceMotion ? 1.12 : 1)
+                .animation(.zf(reduceMotion, duration: 0.12), value: hovered)
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)

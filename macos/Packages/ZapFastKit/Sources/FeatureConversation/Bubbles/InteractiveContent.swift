@@ -183,6 +183,9 @@ private struct CardImage: View {
         .onTapGesture {
             if let path = media.path { QuickLook.shared.show([URL(filePath: path)]) } else { download() }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(media.path == nil ? Text("Download image") : Text("Image"))
+        .accessibilityAddTraits(.isButton)
         .task(id: "\(message.id)-\(card ?? -1)-\(media.path ?? "")") {
             if let path = media.path {
                 image = await Thumbnails.load(URL(filePath: path), points: 280)

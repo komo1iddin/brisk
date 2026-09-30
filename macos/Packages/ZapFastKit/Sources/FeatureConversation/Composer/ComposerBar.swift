@@ -121,57 +121,59 @@ struct ComposerBar: View {
     /// microphone while there is nothing to send. System buttons: Liquid
     /// Glass on macOS 26, bordered before it.
     private var editor: some View {
-        HStack(alignment: .bottom, spacing: Metrics.s) {
-            Button {
-                attaching.toggle()
-            } label: {
-                Label("Attach", systemImage: "plus")
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 15, weight: .medium))
-                    .frame(width: Self.control, height: Self.control)
-                    .rotationEffect(.degrees(attaching ? 45 : 0))
-                    .animation(.snappy(duration: 0.2), value: attaching)
-            }
-            .composerButton()
-            .help("Attach photos, videos or documents, or create a poll or sticker")
-            .popover(isPresented: $attaching, arrowEdge: .top) {
-                AttachPanel(creates: !isEditing) { choice in
-                    attaching = false
-                    // The panel closes before a file dialog or sheet opens.
-                    DispatchQueue.main.async { attach(choice) }
-                }
-            }
-
-            field
-
-            if isEditing {
-                sendButton(title: "Save Changes", systemImage: "checkmark")
-                    .disabled(isBlank)
-            } else if isBlank, !hasAttachments, model.unsentVoice?.chat == chatID {
-                // Send tries the refused voice message again, as upstream's.
+        GlassGroup(spacing: Metrics.s) {
+            HStack(alignment: .bottom, spacing: Metrics.s) {
                 Button {
-                    model.resendVoice(in: chatID)
+                    attaching.toggle()
                 } label: {
-                    Label("Send Voice Message", systemImage: "arrow.up")
-                        .labelStyle(.iconOnly)
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: Self.control, height: Self.control)
-                }
-                .composerButton(prominent: true)
-                .help("Send the voice message again")
-            } else if isBlank, !hasAttachments {
-                Button {
-                    model.startRecording()
-                } label: {
-                    Label("Record Voice Message", systemImage: "mic")
+                    Label("Attach", systemImage: "plus")
                         .labelStyle(.iconOnly)
                         .font(.system(size: 15, weight: .medium))
                         .frame(width: Self.control, height: Self.control)
+                        .rotationEffect(.degrees(attaching && !reduceMotion ? 45 : 0))
+                        .animation(.zf(reduceMotion), value: attaching)
                 }
                 .composerButton()
-                .help("Record a voice message")
-            } else {
-                sendButton(title: "Send", systemImage: "arrow.up")
+                .help("Attach photos, videos or documents, or create a poll or sticker")
+                .popover(isPresented: $attaching, arrowEdge: .top) {
+                    AttachPanel(creates: !isEditing) { choice in
+                        attaching = false
+                        // The panel closes before a file dialog or sheet opens.
+                        DispatchQueue.main.async { attach(choice) }
+                    }
+                }
+
+                field
+
+                if isEditing {
+                    sendButton(title: "Save Changes", systemImage: "checkmark")
+                        .disabled(isBlank)
+                } else if isBlank, !hasAttachments, model.unsentVoice?.chat == chatID {
+                    // Send tries the refused voice message again, as upstream's.
+                    Button {
+                        model.resendVoice(in: chatID)
+                    } label: {
+                        Label("Send Voice Message", systemImage: "arrow.up")
+                            .labelStyle(.iconOnly)
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(width: Self.control, height: Self.control)
+                    }
+                    .composerButton(prominent: true)
+                    .help("Send the voice message again")
+                } else if isBlank, !hasAttachments {
+                    Button {
+                        model.startRecording()
+                    } label: {
+                        Label("Record Voice Message", systemImage: "mic")
+                            .labelStyle(.iconOnly)
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(width: Self.control, height: Self.control)
+                    }
+                    .composerButton()
+                    .help("Record a voice message")
+                } else {
+                    sendButton(title: "Send", systemImage: "arrow.up")
+                }
             }
         }
     }
@@ -210,9 +212,11 @@ struct ComposerBar: View {
                 if text.isEmpty {
                     Text(hasAttachments ? "Add a caption" : "Message")
                         .font(.system(size: NSFont.systemFontSize * model.preferences.textScale))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Color(nsColor: .placeholderTextColor))
                         .padding(.top, 4)
                         .allowsHitTesting(false)
+                        // The field itself is labelled "Message".
+                        .accessibilityHidden(true)
                 }
                 ComposerTextView(
                     text: textBinding,
@@ -446,10 +450,17 @@ private struct Pulse: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(dim ? 0.35 : 1)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { dim = true }
-            }
+            .onAppear(perform: pulse)
+            // Turning Reduce Motion on stops a pulse already running.
+            .onChange(of: reduceMotion) { pulse() }
+    }
+
+    private func pulse() {
+        if reduceMotion {
+            withAnimation(nil) { dim = false }
+        } else {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { dim = true }
+        }
     }
 }
 
@@ -457,6 +468,7 @@ private struct Pulse: ViewModifier {
 /// or re-encoded), until each goes to WhatsApp.
 private struct PreparingStrip: View {
     let count: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: Metrics.s) {
@@ -469,7 +481,7 @@ private struct PreparingStrip: View {
         }
         .frame(height: 30)
         .padding(.horizontal, Metrics.xs)
-        .animation(.snappy, value: count)
+        .animation(.zf(reduceMotion), value: count)
     }
 }
 

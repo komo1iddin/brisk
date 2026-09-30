@@ -69,10 +69,11 @@ private struct PackSticker: View {
     let send: () -> Void
     @State private var image: NSImage?
     @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: send) {
-            AnimatedImage(url: URL(filePath: path), still: image, points: 80, playing: hovering)
+            AnimatedImage(url: URL(filePath: path), still: image, points: 80, playing: hovering && !reduceMotion)
                 .frame(width: 80, height: 80)
                 .padding(Metrics.xxs)
                 .background(

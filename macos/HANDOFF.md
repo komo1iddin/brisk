@@ -16,7 +16,7 @@ nima qilingan, nima tekshirilishi kerak, nima qolgan va qanday o'lchanadi.
 | Asos | `main` @ `92981d3`. Tarix chiziqli, merge commit yo'q |
 | Zaxira | `backup/timeline-performance-pre-rebase` (`89ed0db`) |
 | `main`ga qo'shilganmi | **Yo'q.** Foydalanuvchi o'z akkauntida sinab ko'rmaguncha qo'shilmaydi. Faqat fast-forward |
-| Testlar | 216 (ZapFastCoreTests) + 29 (FeatureConversationTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi |
+| Testlar | 216 (ZapFastCoreTests) + 31 (FeatureConversationTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi |
 
 ```bash
 cd ~/Developer/Self-projects/zapfast-mac-native-timeline/macos
@@ -40,9 +40,19 @@ make check      # ogohlantirishlar + testlar
 | `411fcfc` | Ovozli xabar va audio fayl native (`VoiceView`) |
 | `85157cf` | O'zgargan xabar (yuklab olish, status, reaksiya) faqat o'z qatorini qayta quradi, butun lentani emas |
 | `4fe5ff6` | **Chat kontenti AppKit'da** (`ConversationViewController`): lenta oddiy subview, composer va overlay'lar kichik SwiftUI orollari. Toolbar, sheet'lar, qidiruv, wallpaper SwiftUI'da qoldi |
+| `c685ab5` | Xabarlarni tanlash (checkbox'lar) native kataklarda. Avval tanlash boshlanganda har bir qator SwiftUI'ga aylanardi |
+| `858415c` | Benchmark chat ro'yxatini (sidebar) ham scroll qiladi: hitch yo'q |
+| `4006a67` | Kod review'dagi 13 topilma tuzatildi (quyida) |
 
 Hali SwiftUI qatori bo'lib qolganlar (kam uchraydi): so'rovnoma, joylashuv, kontakt, biznes (interactive) kartalar,
-stiker to'plami, va **tanlash rejimidagi barcha qatorlar** (checkbox'larni SwiftUI chizadi).
+stiker to'plami.
+
+**Review (`4006a67`).** Mustaqil review agenti native kataklar va pane'ni tekshirdi. Crash yoki noto'g'ri qator topilmadi,
+13 ta kichikroq xato tuzatildi: o'chirilgan video xabar ijroda qolishi, reaksiya picker'i boshqa xabar uchun yopilgan deb
+xabar berishi, fayl kelganda rasm yoki PDF sahifasi bir lahza kulrang bo'lishi, hujjat sahifasining burchaklari kesilmagani,
+tanlash rejimida kursor va VoiceOver qiymati, checkbox'ning dark mode'i, kulrang fonlar pufak matni rangidan olinishi,
+hujjatni sudrab chiqarishdagi cho'zilgan ikonka, link preview bosilganda emas qo'yib yuborilganda ochilishi,
+overlay faqat lenta ustida, "eng yangi xabar" oroli faqat tugmada bosiladi.
 
 ---
 
@@ -61,6 +71,7 @@ stiker to'plami, va **tanlash rejimidagi barcha qatorlar** (checkbox'larni Swift
 | Resize qadami (8 pt) | 24 ms | 24 ms (o'zgarmadi) |
 | Xotira | 240 MB | 115–135 MB |
 | Integrity (bo'sh qatorlar) | 2/5 ishga tushirishda xato | 0 |
+| Chat ro'yxatini scroll qilish | o'lchanmagan | hitch yo'q |
 
 **Haqiqiy akkaunt:** hali o'lchanmagan. Foydalanuvchi sinab ko'rishi va `ZAPFAST_STRESS=40` ishga tushirishi kerak (8-bo'lim).
 

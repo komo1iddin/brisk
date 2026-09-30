@@ -497,3 +497,102 @@ struct TimelineRefreshTests {
         #expect(controller.generation > generation)
     }
 }
+
+@MainActor
+struct TimelineCellTests {
+    private func message(_ index: Int, content: MessageContent? = nil) -> MessageRecord {
+        MessageRecord(
+            id: "m\(index)", chat: "c@s.whatsapp.net", sender: "a@s.whatsapp.net", senderName: nil, fromMe: false,
+            timestamp: 1_780_000_000 + Int64(index) * 60, content: content ?? .text(text: "Salom \(index)", preview: nil),
+            status: .none, deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false,
+            mentions: [], forwarded: false, thumbnail: nil, summary: "Salom"
+        )
+    }
+
+    private var photo: MessageContent {
+        .image(caption: nil, media: MediaInfo(mime: "image/jpeg", size: 1_000, width: 1280, height: 960, path: nil))
+    }
+
+    private func update(_ controller: TimelineController, _ messages: [MessageRecord], revision: Int, model: AppModel) {
+        controller.update(
+            chatID: "c@s.whatsapp.net", messages: messages, revision: revision, isGroup: false, model: model,
+            style: .standard, unread: nil, jump: nil, scrollRequest: nil,
+            onReachTop: {}, onScrollState: { _ in }
+        )
+    }
+
+    /// The timeline in a window off screen, tall enough to lay out every
+    /// row, with downloads left to the reader.
+    private func show(_ messages: [MessageRecord]) async throws -> (TimelineController, AppModel, NSWindow) {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "zapfast-cell-test-\(UUID().uuidString)")
+        let model = AppModel(backend: PreviewBackend(), paths: AppPaths(data: folder, caches: folder))
+        model.preferences.autoDownload = false
+        let controller = TimelineController()
+        let window = NSWindow(
+            contentRect: NSRect(x: -4000, y: 0, width: 600, height: 2000), styleMask: [.borderless], backing: .buffered, defer: false
+        )
+        let scrollView = controller.makeScrollView()
+        scrollView.frame = window.contentView!.bounds
+        window.contentView!.addSubview(scrollView)
+        window.orderFrontRegardless()
+        update(controller, messages, revision: 1, model: model)
+        try await waitUntil { controller.items.count > messages.count }
+        try await Task.sleep(for: .milliseconds(50))
+        controller.tableView.layoutSubtreeIfNeeded()
+        return (controller, model, window)
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        let deadline = Date.now.addingTimeInterval(5)
+        while !condition(), Date.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    private func cell(_ id: String, in controller: TimelineController) -> BubbleCell? {
+        let table = controller.tableView
+        return (0..<table.numberOfRows).lazy
+            .compactMap { table.view(atColumn: 0, row: $0, makeIfNecessary: false) as? BubbleCell }
+            .first { $0.messageID == id }
+    }
+
+    /// While picking, a row reads out whether it is picked; afterwards a
+    /// photo reads out its download again, not "Selected".
+    @Test func pickingIsReadOutAndThenTheDownloadAgain() async throws {
+        var messages = (0..<8).map { message($0) }
+        messages[4] = message(4, content: photo)
+        let (controller, model, window) = try await show(messages)
+        defer { window.orderOut(nil) }
+        let picture = try #require(cell("m4", in: controller))
+        let text = try #require(cell("m5", in: controller))
+        #expect(picture.accessibilityValue() as? String == "Not downloaded")
+
+        model.select(messages[4])
+        try await waitUntil { picture.accessibilityValue() as? String == "Selected" }
+        #expect(picture.accessibilityValue() as? String == "Selected")
+        #expect(text.accessibilityValue() as? String == "Not selected")
+
+        model.cancelSelection()
+        try await waitUntil { picture.accessibilityValue() as? String == "Not downloaded" }
+        #expect(picture.accessibilityValue() as? String == "Not downloaded")
+        #expect(text.accessibilityValue() == nil)
+    }
+
+    /// A photo deleted for everyone becomes a note with another kind of
+    /// cell; the photo's cell, out of its row, lets go of the message.
+    @Test func aCellReplacedInItsRowLetsGoOfItsMessage() async throws {
+        var messages = (0..<8).map { message($0) }
+        messages[4] = message(4, content: photo)
+        let (controller, model, window) = try await show(messages)
+        defer { window.orderOut(nil) }
+        let before = try #require(cell("m4", in: controller))
+
+        messages[4] = message(4, content: .revoked)
+        update(controller, messages, revision: 2, model: model)
+        controller.tableView.layoutSubtreeIfNeeded()
+        let after = try #require(cell("m4", in: controller))
+        #expect(after !== before)
+        #expect(before.superview == nil)
+        #expect(before.messageID == nil)
+    }
+}

@@ -21,8 +21,10 @@ class AttachmentView: NSView, NSDraggingSource {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    /// What shows under the pointer while the file is dragged.
+    /// What shows under the pointer while the file is dragged, and where
+    /// it starts, in this view's coordinates.
     var dragImage: NSImage? { nil }
+    var dragFrame: CGRect { bounds }
 
     override func mouseDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {
@@ -55,7 +57,7 @@ class AttachmentView: NSView, NSDraggingSource {
         guard let id = messageID, let file = cell?.delegate?.attachmentFile(ofMessage: id),
               let copy = AttachmentFiles.dragCopy(of: file.url, named: file.name) else { return }
         let item = NSDraggingItem(pasteboardWriter: copy as NSURL)
-        item.setDraggingFrame(bounds, contents: dragImage ?? NSWorkspace.shared.icon(forFile: copy.path(percentEncoded: false)))
+        item.setDraggingFrame(dragFrame, contents: dragImage ?? NSWorkspace.shared.icon(forFile: copy.path(percentEncoded: false)))
         beginDraggingSession(with: [item], event: event, source: self)
     }
 

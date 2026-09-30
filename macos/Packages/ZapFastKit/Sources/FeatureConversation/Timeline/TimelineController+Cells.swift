@@ -136,10 +136,11 @@ extension TimelineController: TimelineCellDelegate {
         model.autoDownload(message)
     }
 
-    /// A video playing in place pauses once it is out of view.
+    /// A video playing in place pauses once it is out of view, found by
+    /// its key: a deleted message is no longer among the rows.
     func attachmentHidden(inMessage id: String) {
-        guard let model, let message = message(id), case .video = message.content else { return }
-        model.videoHidden(message)
+        guard let model, let chatID else { return }
+        model.video.pause(MessageKey(chat: chatID, message: id))
     }
 
     func attachmentFile(ofMessage id: String) -> (url: URL, name: String)? {

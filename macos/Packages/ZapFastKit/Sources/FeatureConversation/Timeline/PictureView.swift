@@ -28,6 +28,9 @@ final class PictureView: AttachmentView {
 
     private var image: CGImage?
     private var hasImage: Bool { image != nil }
+    /// The bubble's text colour, which the grey ground and its symbol are
+    /// made from, as SwiftUI's `.quaternary` and `.secondary` are.
+    private var textColor = NSColor.labelColor
     private var loads = 0
     private var download: DownloadState?
     private(set) var moving = false
@@ -63,14 +66,16 @@ final class PictureView: AttachmentView {
 
     // MARK: Configuring
 
-    func configure(_ layout: BubbleLayout.PictureLayout, messageID: String) {
-        let same = messageID == self.messageID && layout.picture == pictureLayout?.picture
-        if messageID != self.messageID {
+    func configure(_ layout: BubbleLayout.PictureLayout, messageID: String, color: NSColor) {
+        let sameMessage = messageID == self.messageID
+        let same = sameMessage && layout.picture == pictureLayout?.picture && layout.points == pictureLayout?.points
+        if !sameMessage {
             setMoving(false)
             setPlaying(false)
         }
         self.messageID = messageID
         pictureLayout = layout
+        textColor = color
         let bounds = CGRect(origin: .zero, size: layout.frame.size)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -98,10 +103,10 @@ final class PictureView: AttachmentView {
         CATransaction.commit()
         player?.frame = bounds
         looping?.frame = bounds
-        if !same { loadImage() }
+        if !same { loadImage(keepingShown: sameMessage) }
         placeholder.configure(
             symbol: Self.placeholderSymbol(layout.picture.kind), pointSize: 26, weight: .regular,
-            palette: [.secondaryLabelColor]
+            palette: [TimelineText.faded(color, 0.55)]
         )
         refreshOverlays()
         applyAppearance()
@@ -155,7 +160,7 @@ final class PictureView: AttachmentView {
         CATransaction.setDisableActions(true)
         effectiveAppearance.performAsCurrentDrawingAppearance {
             // `.quaternary` behind a picture not decoded yet.
-            picture.backgroundColor = hasImage ? nil : NSColor.quaternaryLabelColor.cgColor
+            picture.backgroundColor = hasImage ? nil : TimelineText.faded(textColor, 0.12).cgColor
         }
         for layer in [placeholder, glyph] { layer.appearance = effectiveAppearance }
         CATransaction.commit()
@@ -179,8 +184,10 @@ final class PictureView: AttachmentView {
 
     /// The file when it is an image that is here, else the sender's
     /// preview, decoded off the main actor at the size drawn; one decoded
-    /// before shows at once.
-    private func loadImage() {
+    /// before shows at once. The same message keeps what it shows until
+    /// then: its preview while the file that came is decoded, the picture
+    /// at the old size while a new one is.
+    private func loadImage(keepingShown: Bool) {
         guard let layout = pictureLayout, let id = messageID else { return }
         loads += 1
         let load = loads
@@ -196,7 +203,7 @@ final class PictureView: AttachmentView {
             show(image)
             return
         }
-        show(nil)
+        if !keepingShown { show(nil) }
         let thumbnail = picture.thumbnail
         Task { [weak self] in
             var image: NSImage?

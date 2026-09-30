@@ -120,6 +120,12 @@ final class BubbleCell: NSView {
     private var watches = CellWatches()
     private var selection = SelectionState()
     private let checkbox = SymbolLayer()
+    /// Read out after the message: its download, or whether it is picked.
+    private var downloadValue: String? {
+        didSet { updateAccessibilityValue() }
+    }
+    /// The message the reaction picker opened for.
+    private var popoverMessage: String?
     /// While picking, incoming bubbles move over for the checkboxes, as
     /// `MessageRow` offsets them.
     static let checkboxRoom: CGFloat = 28
@@ -163,14 +169,29 @@ final class BubbleCell: NSView {
         setHighlighted(highlighted, animated: false)
     }
 
-    /// The row scrolled out of the table: what plays stops, and the next
-    /// `configure` starts afresh.
+    /// The row scrolled out of the table, or the cell left its row (a
+    /// reload gave the row another kind of cell): what plays stops, the
+    /// reaction picker closes, and the next `configure` starts afresh.
     func leftScreen() {
         watches.stopAll()
         bubble.pictureView?.setMoving(false)
         if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
         hideHoverActions(animated: false)
+        // The picker closes now, reported for the message it opened for:
+        // the cell may show another before the popover would report it.
+        if let popover {
+            popover.delegate = nil
+            popover.close()
+            self.popover = nil
+            if let id = popoverMessage { delegate?.reactionPickerClosed(forMessage: id) }
+            popoverMessage = nil
+        }
         messageID = nil
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        if superview == nil, messageID != nil { leftScreen() }
     }
 
     /// Only what can change for this message is watched: picking, a
@@ -178,12 +199,13 @@ final class BubbleCell: NSView {
     /// may play.
     private func watchMessage() {
         watches.stopAll()
-        setAccessibilityValue(nil)
+        downloadValue = nil
         guard let id = messageID, let layout = bubbleLayout else { return }
-        let first = selection
+        var initial = true
         watches.watch({ [weak self] in self?.delegate?.selectionState(forMessage: id) ?? SelectionState() }) { [weak self] state in
-            // A reused cell takes the state as it is; a change here moves.
-            self?.applySelection(state, animated: state.selecting != first.selecting && self?.window != nil)
+            // A cell set up takes the state as it is; a change after moves.
+            self?.applySelection(state, animated: !initial && self?.window != nil)
+            initial = false
         }
         guard layout.hasAttachment else { return }
         delegate?.attachmentShown(inMessage: id)
@@ -191,7 +213,7 @@ final class BubbleCell: NSView {
             if document.document.path == nil {
                 watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
                     self?.bubble.documentView?.setDownload(state)
-                    self?.setAccessibilityValue(Self.accessibilityValue(state))
+                    self?.downloadValue = Self.accessibilityValue(state)
                 }
             } else {
                 bubble.documentView?.setDownload(nil)
@@ -212,7 +234,7 @@ final class BubbleCell: NSView {
         if picture.picture.path == nil, !picture.picture.isSticker {
             watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
                 self?.bubble.pictureView?.setDownload(state)
-                self?.setAccessibilityValue(Self.accessibilityValue(state))
+                self?.downloadValue = Self.accessibilityValue(state)
             }
         } else {
             bubble.pictureView?.setDownload(nil)
@@ -232,8 +254,22 @@ final class BubbleCell: NSView {
         }
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        checkbox.appearance = effectiveAppearance
+        checkbox.setNeedsDisplay()
+        paintBackground(animated: false)
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        checkbox.contentsScale = window?.backingScaleFactor ?? 2
+        checkbox.setNeedsDisplay()
+    }
+
     /// The system accent colour changed.
     func refreshColors() {
+        checkbox.setNeedsDisplay()
         bubble.refreshColors()
         bubble.pictureView?.refreshColors()
         bubble.documentView?.refreshColors()
@@ -312,6 +348,7 @@ final class BubbleCell: NSView {
         if state.selecting {
             hideHoverActions(animated: false)
             removeBodyText()
+            checkbox.appearance = effectiveAppearance
             checkbox.configure(
                 symbol: state.selected ? "checkmark.circle.fill" : "circle", pointSize: 20, weight: .regular,
                 palette: [state.selected ? bubbleLayout?.accent ?? .controlAccentColor : .secondaryLabelColor]
@@ -330,8 +367,14 @@ final class BubbleCell: NSView {
             placeSubviews(animated: animated)
         }
         paintBackground(animated: false)
-        if state.selecting, state.enabled {
-            setAccessibilityValue(state.selected ? String(localized: "Selected") : nil)
+        updateAccessibilityValue()
+    }
+
+    private func updateAccessibilityValue() {
+        if selection.selecting, selection.enabled {
+            setAccessibilityValue(selection.selected ? String(localized: "Selected") : String(localized: "Not selected"))
+        } else {
+            setAccessibilityValue(downloadValue)
         }
     }
 
@@ -354,6 +397,12 @@ final class BubbleCell: NSView {
     /// have no tracking areas or cursor rects of their own, which AppKit
     /// recomputed for every cell on every frame of a scroll).
     func pointerMoved(to point: NSPoint) {
+        // While picking a click picks the row: no text to select, no
+        // controls beside it, the plain arrow.
+        guard !selection.selecting else {
+            NSCursor.arrow.set()
+            return
+        }
         if !hovering {
             hovering = true
             hoverTask?.cancel()
@@ -430,6 +479,7 @@ final class BubbleCell: NSView {
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.delegate = self
         self.popover = popover
+        popoverMessage = id
         popover.show(relativeTo: bubble.bounds, of: bubble, preferredEdge: .minY)
     }
 
@@ -477,7 +527,8 @@ final class BubbleCell: NSView {
 extension BubbleCell: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         popover = nil
-        if let id = messageID { delegate?.reactionPickerClosed(forMessage: id) }
+        if let id = popoverMessage { delegate?.reactionPickerClosed(forMessage: id) }
+        popoverMessage = nil
         if !hovering { hideHoverActions(animated: true) }
     }
 }
@@ -525,7 +576,7 @@ private final class BubbleView: NSView {
         if let picture = layout.picture {
             let view = install(&pictureView, frame: picture.frame) { PictureView() }
             view.cell = cell
-            view.configure(picture, messageID: messageID)
+            view.configure(picture, messageID: messageID, color: layout.textColor)
         } else {
             remove(&pictureView)
         }

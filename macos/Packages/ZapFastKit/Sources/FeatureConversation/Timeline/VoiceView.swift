@@ -186,7 +186,8 @@ final class VoiceView: NSView {
         for layer in [time, initials, speedText] { layer.appearance = effectiveAppearance }
         wave.appearance = effectiveAppearance
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            speed.backgroundColor = NSColor.quaternaryLabelColor.cgColor
+            // `.quaternary` of the bubble's text, as the SwiftUI capsule.
+            speed.backgroundColor = TimelineText.faded(voiceLayout?.color ?? .labelColor, 0.12).cgColor
         }
         CATransaction.commit()
     }

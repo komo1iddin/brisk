@@ -52,14 +52,15 @@ final class ConversationViewController: NSViewController {
             island.frame = view.bounds
             view.addSubview(island)
         }
-        overlay.autoresizingMask = [.width, .height]
         overlay.sizingOptions = []
         newest.sizingOptions = []
         // A picture only: clicks and scrolling go to the timeline under it.
         overlay.passesThrough = { _ in true }
-        // Only the button itself, while it shows, takes the pointer.
+        // Only the button itself, while it shows, takes the pointer: the
+        // 34-point circle in the middle of the island.
         newest.passesThrough = { [pane] point in
-            pane.scroll.atBottom || point.x < NewestMessageIsland.size - 40 || point.y < NewestMessageIsland.size - 40
+            let middle = NewestMessageIsland.size / 2
+            return pane.scroll.atBottom || hypot(point.x - middle, point.y - middle) > 17
         }
         // The composer sizes itself; the timeline ends where it starts.
         bottomBar.sizingOptions = [.intrinsicContentSize]
@@ -105,13 +106,14 @@ final class ConversationViewController: NSViewController {
 
     /// The timeline scrolls under the title bar, its first row inset clear
     /// of it, and ends where the composer starts, as the SwiftUI view's
-    /// safe area inset placed it. The "newest message" button sits just
-    /// above the composer.
+    /// safe area inset placed it. What floats over it covers the same
+    /// place; the "newest message" button sits just above the composer.
     private func placeTimeline() {
         let bounds = view.bounds
         let bar = bottomBar.frame.height
         let frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - bar))
         let top = view.safeAreaInsets.top
+        overlay.frame = frame
         let size = NewestMessageIsland.size
         newest.frame = CGRect(x: bounds.width - Metrics.l - size + 8, y: frame.maxY - Metrics.l - size + 8, width: size, height: size)
         timeline.place(frame: frame, topInset: top)

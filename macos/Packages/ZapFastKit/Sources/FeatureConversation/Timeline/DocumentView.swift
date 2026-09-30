@@ -35,7 +35,9 @@ final class DocumentView: AttachmentView {
         page.addSublayer(divider)
         pageImage.contentsGravity = .resizeAspectFill
         icon.contentsGravity = .resizeAspect
-        for sublayer in [card, page, icon, texts, arrow] as [CALayer] { layer?.addSublayer(sublayer) }
+        // The page inside the card, whose rounded corners clip it.
+        card.addSublayer(page)
+        for sublayer in [card, icon, texts, arrow] as [CALayer] { layer?.addSublayer(sublayer) }
         for sublayer in [card, page, pageImage, divider, icon, texts, arrow] as [CALayer] {
             sublayer.actions = ["bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull(), "backgroundColor": NSNull()]
         }
@@ -46,7 +48,8 @@ final class DocumentView: AttachmentView {
     }
 
     func configure(_ layout: BubbleLayout.DocumentLayout, messageID: String, color: NSColor) {
-        let same = messageID == self.messageID && layout.document == documentLayout?.document
+        let sameMessage = messageID == self.messageID
+        let same = sameMessage && layout.document == documentLayout?.document && layout.preview?.width == documentLayout?.preview?.width
         self.messageID = messageID
         documentLayout = layout
         self.color = color
@@ -67,7 +70,7 @@ final class DocumentView: AttachmentView {
         texts.setNeedsDisplay()
         spinner.frame = layout.indicator.map { $0.insetBy(dx: 0.5, dy: 0.5) } ?? .zero
         icon.contents = Self.icon(for: layout.document, scale: window?.backingScaleFactor ?? 2)
-        if !same { loadPage() }
+        if !same { loadPage(keepingShown: sameMessage) }
         refreshIndicator()
         applyAppearance()
     }
@@ -123,8 +126,9 @@ final class DocumentView: AttachmentView {
 
     // MARK: The first page
 
-    /// A PDF that is here draws sharper than the sender's small preview.
-    private func loadPage() {
+    /// A PDF that is here draws sharper than the sender's small preview,
+    /// which stays until the PDF is drawn.
+    private func loadPage(keepingShown: Bool) {
         guard let layout = documentLayout, let id = messageID, let preview = layout.preview else {
             showPage(nil)
             return
@@ -144,7 +148,11 @@ final class DocumentView: AttachmentView {
             showPage(cached)
             return
         }
-        showPage(nil)
+        if keepingShown {
+            placePage()
+        } else {
+            showPage(nil)
+        }
         let thumbnail = document.thumbnail
         Task { [weak self] in
             var image: NSImage?
@@ -165,10 +173,16 @@ final class DocumentView: AttachmentView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         pageImage.contents = pagePicture
-        if let pagePicture, let preview = documentLayout?.preview, pagePicture.width > 0 {
-            let height = preview.width * CGFloat(pagePicture.height) / CGFloat(pagePicture.width)
-            pageImage.frame = CGRect(x: 0, y: 0, width: preview.width, height: height.rounded())
-        }
+        CATransaction.commit()
+        placePage()
+    }
+
+    private func placePage() {
+        guard let pagePicture, let preview = documentLayout?.preview, pagePicture.width > 0 else { return }
+        let height = preview.width * CGFloat(pagePicture.height) / CGFloat(pagePicture.width)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        pageImage.frame = CGRect(x: 0, y: 0, width: preview.width, height: height.rounded())
         CATransaction.commit()
     }
 
@@ -176,6 +190,9 @@ final class DocumentView: AttachmentView {
         guard let document = documentLayout?.document else { return nil }
         return FileIcons.icon(fileName: document.fileName, mime: document.mime)
     }
+
+    /// The file's icon leaves from where it is drawn.
+    override var dragFrame: CGRect { documentLayout?.icon ?? bounds }
 
     /// The Finder's icon for the kind of file, at the display's scale,
     /// kept per kind.
@@ -204,6 +221,7 @@ final class LinkPreviewView: NSView {
     private let image = CALayer()
     private let texts = PiecesLayer()
     private var loads = 0
+    private var pressed = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -299,7 +317,16 @@ final class LinkPreviewView: NSView {
             cell?.mouseDown(with: event)
             return
         }
-        guard let link = previewLayout.flatMap({ URL(string: $0.preview.url) }) else { return }
+        pressed = true
+    }
+
+    /// Opens on release inside the card, as a button does, so a press
+    /// that slides off it opens nothing.
+    override func mouseUp(with event: NSEvent) {
+        guard pressed else { return }
+        pressed = false
+        guard bounds.contains(convert(event.locationInWindow, from: nil)),
+              let link = previewLayout.flatMap({ URL(string: $0.preview.url) }) else { return }
         cell?.delegate?.open(link)
     }
 

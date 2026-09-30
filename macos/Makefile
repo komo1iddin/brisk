@@ -5,13 +5,16 @@
 #   make test       unit tests of ZapFastKit
 #   make release    optimised build
 #   make sync       merge upstream and re-sync the bridge
+#   make check      no warnings in ZapFastKit, then its tests
 
 CONFIG      ?= Debug
 DERIVED     := Build/DerivedData
 APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
-XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath $(DERIVED)
+# The bridge is built for Apple silicon only (Scripts/build-bridge.sh), so the
+# app is too; Release otherwise builds an Intel slice that cannot link.
+XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath $(DERIVED) ARCHS=arm64
 
-.PHONY: all bridge project build run test release sync clean
+.PHONY: all bridge project build run test release sync clean check
 
 all: build
 
@@ -35,6 +38,12 @@ release:
 
 sync:
 	./Scripts/sync-upstream.sh
+
+# Before merging: no warnings in ZapFastKit's own sources (some Swift 6
+# isolation errors are only warnings, and crash at run time), then the tests.
+check: bridge
+	./Scripts/check-warnings.sh
+	cd Packages/ZapFastKit && swift test
 
 clean:
 	rm -rf Build ZapFast.xcodeproj Packages/ZapFastKit/Artifacts Packages/ZapFastKit/Sources/ZapFastBridge/Generated

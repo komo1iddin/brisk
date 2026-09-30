@@ -6,7 +6,7 @@ import ZapFastBridge
 /// the backend does live with the backend instead.
 @Observable
 public final class Preferences {
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored let defaults: UserDefaults
 
     /// Visible photos, videos, voice messages and documents download by
     /// themselves, as upstream does by default. Stickers always do.

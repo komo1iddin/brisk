@@ -18,6 +18,7 @@ public final class AppModel {
     public let search = SearchStore()
     public let stickers = StickerStore()
     public let privacy = PrivacyStore()
+    public let themes: ThemeStore
     public let voice = VoicePlayer()
     public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
@@ -71,6 +72,9 @@ public final class AppModel {
 
     /// The label manager is open.
     public var labelsManagerShown = false
+
+    /// The chat whose own theme is being chosen (from its menu).
+    public var themeEditorChat: String?
 
     /// A sticker pack shared in a chat, being fetched or looked at.
     public var stickerPackPreview: StickerPackPreview?
@@ -183,6 +187,7 @@ public final class AppModel {
         self.paths = paths
         self.avatars = AvatarStore(send: backend.send)
         self.appLock = AppLock(preferences: preferences)
+        self.themes = ThemeStore(defaults: preferences.defaults, wallpapersFolder: paths.data.appending(path: "Wallpapers"))
         self.lockedChats = LockedChats(preferences: preferences)
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
         appLock.onLock = { [weak self] in self?.locked() }
@@ -281,6 +286,7 @@ public final class AppModel {
         forwarding = nil
         // Sheets over the whole window would show over the lock screen.
         invite = nil
+        themeEditorChat = nil
         stickerPackPreview = nil
         chatConfirmation = nil
         if started { backend.send(.setOnline(online: false)) }

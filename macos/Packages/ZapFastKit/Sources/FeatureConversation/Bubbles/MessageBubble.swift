@@ -9,6 +9,7 @@ struct MessageBubble: View {
     let message: MessageRecord
     let senderName: String?
     let model: AppModel
+    @Environment(\.chatTheme) private var theme
 
     var body: some View {
         BubbleStack(spacing: Metrics.xs) {
@@ -26,7 +27,7 @@ struct MessageBubble: View {
                     .insetForMedia(isMedia)
             }
             if let quoted = message.quoted {
-                QuoteView(quoted: quoted, fromMe: message.fromMe, model: model) {
+                QuoteView(quoted: quoted, fromMe: message.fromMe, textColor: primaryText, model: model) {
                     model.showQuoted(in: message)
                 }
             }
@@ -48,11 +49,13 @@ struct MessageBubble: View {
         .background {
             if !isBare {
                 RoundedRectangle(cornerRadius: Metrics.bubbleRadius, style: .continuous)
-                    .fill(message.fromMe ? Palette.bubbleOutgoing : Palette.bubbleIncoming)
+                    .fill(message.fromMe ? theme.outgoing : theme.incoming)
+                    // Over a wallpaper bubbles lift a little, as on the phone.
+                    .shadow(color: .black.opacity(theme.hasWallpaper ? 0.1 : 0), radius: 0.5, y: 0.5)
             }
         }
         .foregroundStyle(primaryText)
-        .tint(message.fromMe ? Palette.bubbleOutgoingText : Color.accentColor)
+        .tint(message.fromMe ? theme.outgoingText : theme.accent)
     }
 
     /// Photos and videos run almost to the bubble's edge.
@@ -90,11 +93,11 @@ struct MessageBubble: View {
     }
 
     private var primaryText: Color {
-        message.fromMe && !isBare ? Palette.bubbleOutgoingText : Color.primary
+        message.fromMe && !isBare ? theme.outgoingText : Color.primary
     }
 
     private var secondaryText: Color {
-        message.fromMe && !isBare ? Palette.bubbleOutgoingText.opacity(0.75) : Color.secondary
+        message.fromMe && !isBare ? theme.outgoingText.opacity(0.7) : Color.secondary
     }
 
     private var footer: some View {
@@ -107,7 +110,7 @@ struct MessageBubble: View {
             if message.fromMe {
                 DeliveryTicks(
                     DeliveryTicks.State(message.status),
-                    readTint: isBare ? .accentColor : Palette.bubbleOutgoingText
+                    readTint: isBare ? theme.accent : theme.readTicks
                 )
             }
         }
@@ -126,18 +129,20 @@ struct MessageBubble: View {
 private struct QuoteView: View {
     let quoted: QuotedMessage
     let fromMe: Bool
+    /// Our bubble's text colour, which its quote's bar and name take.
+    let textColor: Color
     let model: AppModel
     let show: () -> Void
 
     var body: some View {
         HStack(spacing: Metrics.s) {
             RoundedRectangle(cornerRadius: 2)
-                .fill(fromMe ? Palette.bubbleOutgoingText : Palette.sender(quoted.sender))
+                .fill(fromMe ? textColor : Palette.sender(quoted.sender))
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.chats.displayName(quoted.sender, hint: quoted.senderName))
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(fromMe ? Palette.bubbleOutgoingText : Palette.sender(quoted.sender))
+                    .foregroundStyle(fromMe ? textColor : Palette.sender(quoted.sender))
                 Text(quoted.summary)
                     .font(.callout)
                     .lineLimit(2)

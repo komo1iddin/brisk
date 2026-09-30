@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastDesign
 
 /// The message list: an `NSTableView` island, because a chat can hold
 /// thousands of rows and needs exact control over scroll position when
@@ -12,6 +13,7 @@ struct MessageTimeline: NSViewRepresentable {
     let chat: ChatSummary?
     let model: AppModel
     let jump: JumpRequest?
+    let theme: ChatTheme
     let onReachTop: () -> Void
 
     func makeCoordinator() -> TimelineController {
@@ -26,7 +28,7 @@ struct MessageTimeline: NSViewRepresentable {
         context.coordinator.update(
             chatID: chatID,
             rows: rows,
-            content: TimelineController.Content(chat: chat, model: model),
+            content: TimelineController.Content(chat: chat, model: model, theme: theme),
             jump: jump,
             onReachTop: onReachTop
         )

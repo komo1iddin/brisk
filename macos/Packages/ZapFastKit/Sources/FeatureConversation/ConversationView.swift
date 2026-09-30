@@ -17,6 +17,7 @@ public struct ConversationView: View {
     public var body: some View {
         let chat = model.chats.chat(chatID)
         let conversation = model.conversations.conversation(chatID)
+        let theme = model.chatTheme(for: chatID)
 
         MessageTimeline(
             chatID: chatID,
@@ -24,8 +25,10 @@ public struct ConversationView: View {
             chat: chat,
             model: model,
             jump: model.jump,
+            theme: theme,
             onReachTop: { model.loadOlder(in: chatID) }
         )
+        .background { WallpaperView(theme.wallpaper).ignoresSafeArea() }
         // The table scrolls under the title bar; AppKit insets its content.
         .ignoresSafeArea(edges: .top)
         .overlay {
@@ -55,6 +58,8 @@ public struct ConversationView: View {
             model.stage(files: files, in: chatID)
             return true
         }
+        .environment(\.chatTheme, theme)
+        .tint(theme.accent)
         .navigationTitle(chat.map(model.chats.title(for:)) ?? "")
         .navigationSubtitle(subtitle(chat))
         .sheet(item: forwarding) { request in

@@ -119,6 +119,44 @@ pub fn group_invite_code(url: String) -> Option<String> {
     zapfast::safety::group_invite_code(&url)
 }
 
+/// One of WhatsApp's wallpaper colours, as upstream offers them.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct WallpaperColorInfo {
+    /// English name, as upstream labels it.
+    pub name: String,
+    /// `#rrggbb`.
+    pub hex: String,
+}
+
+/// WhatsApp's wallpaper colours for light or dark appearance, in the
+/// picker's order (upstream's `WallpaperColor::LIGHT` / `DARK`, without
+/// its "Theme" entry, which follows upstream's own palette).
+#[uniffi::export]
+pub fn wallpaper_colors(dark: bool) -> Vec<WallpaperColorInfo> {
+    zapfast::settings::WallpaperColor::choices(dark)
+        .iter()
+        .filter_map(|color| {
+            let [r, g, b] = color.rgb()?;
+            Some(WallpaperColorInfo {
+                name: color.label().to_owned(),
+                hex: format!("#{r:02x}{g:02x}{b:02x}"),
+            })
+        })
+        .collect()
+}
+
+/// The doodles' ink over a wallpaper colour (upstream's `doodle_ink`):
+/// dark or light, faint enough to stay behind the messages. `#rrggbbaa`.
+#[uniffi::export]
+pub fn doodle_ink(background_hex: String) -> String {
+    let digits = background_hex.trim_start_matches('#');
+    let value = u32::from_str_radix(digits, 16).unwrap_or(0xefeae2);
+    let [_, r, g, b] = value.to_be_bytes();
+    let ink = zapfast::wallpaper::doodle_ink(egui::Color32::from_rgb(r, g, b));
+    let [r, g, b, a] = ink.to_srgba_unmultiplied();
+    format!("#{r:02x}{g:02x}{b:02x}{a:02x}")
+}
+
 /// Upstream's shortest app-lock password, in characters.
 #[uniffi::export]
 pub fn app_lock_min_password_chars() -> u32 {
@@ -250,6 +288,20 @@ mod tests {
         assert!(chat_lock_verifies(code.clone(), "1234".into()));
         assert!(!chat_lock_verifies(code, "4321".into()));
         assert_eq!(chat_lock_verifier("  ".into()), None);
+    }
+
+    #[test]
+    fn wallpaper_colours_and_ink_follow_upstream() {
+        let light = wallpaper_colors(false);
+        assert_eq!(light.len(), 28);
+        assert_eq!(light[0].hex, "#f5f1eb");
+        assert_eq!(wallpaper_colors(true).len(), 21);
+        let dark_ink = doodle_ink("#f5f1eb".into());
+        let light_ink = doodle_ink("#161717".into());
+        let red = |ink: &str| u8::from_str_radix(&ink[1..3], 16).unwrap();
+        assert!(red(&dark_ink) < 0x40, "{dark_ink}");
+        assert!(red(&light_ink) > 0xe0, "{light_ink}");
+        assert_eq!(dark_ink.len(), 9);
     }
 
     #[test]

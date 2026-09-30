@@ -3,6 +3,8 @@ import AppKit
 import FeatureConversation
 import SwiftUI
 import ZapFastCore
+import ZapFastDesign
+import ZapFastSharedUI
 
 /// Development aid: with `ZAPFAST_SNAPSHOT=/path/to.png` in the environment,
 /// renders the main window's SwiftUI content to a PNG a few seconds after
@@ -49,13 +51,31 @@ enum DebugSnapshot {
             data: FileManager.default.temporaryDirectory.appending(path: "zapfast-gallery"),
             caches: FileManager.default.temporaryDirectory.appending(path: "zapfast-gallery-cache")
         ))
+        let theme = model.chatTheme(for: nil)
         for scheme in [ColorScheme.light, .dark] {
+            let suffix = scheme == .dark ? "-dark" : ""
             let content = BubbleGallery(model: model)
+                .environment(\.chatTheme, theme)
                 .frame(width: 900)
+                .background { WallpaperView(theme.wallpaper) }
                 .background(Color(nsColor: .textBackgroundColor))
                 .environment(\.colorScheme, scheme)
-            let target = scheme == .dark ? path.replacingOccurrences(of: ".png", with: "-dark.png") : path
-            write(content, to: target)
+            write(content, to: path.replacingOccurrences(of: ".png", with: "\(suffix).png"))
+            // Every preset theme, as the Appearance settings preview it.
+            let presets = LazyVGrid(columns: Array(repeating: GridItem(.fixed(260)), count: 5), spacing: 12) {
+                ForEach(ThemePresets.all) { preset in
+                    VStack {
+                        ThemePreview(theme: ChatTheme(preset.appearance, photos: model.themes), detailed: true)
+                            .frame(width: 260, height: 170)
+                            .clipShape(.rect(cornerRadius: 12))
+                        Text(preset.name).font(.caption)
+                    }
+                }
+            }
+            .padding(16)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, scheme)
+            write(presets, to: path.replacingOccurrences(of: ".png", with: "-themes\(suffix).png"))
         }
         NSApp.terminate(nil)
     }

@@ -25,8 +25,11 @@ struct RootView: View {
             }
         }
         .frame(minWidth: 720, minHeight: 480)
+        // The default theme's colour, not the system accent, tints the app.
+        .tint(model.chatTheme(for: nil).accent)
         .chatConfirmationAlert(model: model)
         .groupInviteSheet(model: model)
+        .chatThemeSheet(model: model)
         .opensInviteLinks(model: model)
         .overlay(alignment: .top) {
             NoticeStack(model: model)

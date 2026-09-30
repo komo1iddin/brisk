@@ -63,6 +63,8 @@ public struct ChatActions: View {
 
         ChatSoundMenu(chat: chat, model: model)
 
+        Button("Chat Theme…", systemImage: "paintpalette") { model.themeEditorChat = chat.id }
+
         Divider()
 
         if chat.locked {

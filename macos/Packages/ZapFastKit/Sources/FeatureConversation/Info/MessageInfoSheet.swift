@@ -40,6 +40,7 @@ struct MessageInfoSheet: View {
 private struct Preview: View {
     let message: MessageRecord
     let model: AppModel
+    @Environment(\.chatTheme) private var theme
 
     var body: some View {
         HStack {
@@ -50,15 +51,15 @@ private struct Preview: View {
                     .multilineTextAlignment(.leading)
                 HStack(spacing: Metrics.xs) {
                     Text(DateText.bubble(message.timestamp)).monospacedDigit()
-                    DeliveryTicks(DeliveryTicks.State(message.status), readTint: Palette.bubbleOutgoingText)
+                    DeliveryTicks(DeliveryTicks.State(message.status), readTint: theme.readTicks)
                 }
                 .font(.caption2)
-                .foregroundStyle(Palette.bubbleOutgoingText.opacity(0.75))
+                .foregroundStyle(theme.outgoingText.opacity(0.7))
             }
             .padding(.horizontal, Metrics.m)
             .padding(.vertical, Metrics.s)
-            .foregroundStyle(Palette.bubbleOutgoingText)
-            .background(Palette.bubbleOutgoing, in: .rect(cornerRadius: Metrics.bubbleRadius, style: .continuous))
+            .foregroundStyle(theme.outgoingText)
+            .background(theme.outgoing, in: .rect(cornerRadius: Metrics.bubbleRadius, style: .continuous))
         }
         .accessibilityElement(children: .combine)
     }

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastDesign
 import ZapFastSharedUI
 
 /// Owns the timeline's table: applies row changes as inserts and reloads,
@@ -13,6 +14,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     struct Content {
         var chat: ChatSummary?
         var model: AppModel?
+        var theme: ChatTheme = .standard
     }
 
     private let scrollView = NSScrollView()
@@ -78,6 +80,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         jump: JumpRequest?,
         onReachTop: @escaping () -> Void
     ) {
+        let restyled = content.theme != self.content.theme
         self.content = content
         self.onReachTop = onReachTop
 
@@ -90,6 +93,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             scrollToBottom()
         } else if new != rows {
             apply(new)
+        } else if restyled, !rows.isEmpty {
+            // Colours only: the same rows, heights unchanged.
+            tableView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<rows.count), columnIndexes: [0])
         }
         if let jump, jump.key.chat == chatID, jump.token != handledJump {
             scroll(toMessage: jump.key.message, token: jump.token)
@@ -252,9 +258,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     @ViewBuilder
     private func rowView(_ row: TimelineRow) -> some View {
         if let model = content.model {
-            rowContent(row).opensInviteLinks(model: model)
+            rowContent(row).opensInviteLinks(model: model).environment(\.chatTheme, content.theme)
         } else {
-            rowContent(row)
+            rowContent(row).environment(\.chatTheme, content.theme)
         }
     }
 

@@ -31,6 +31,13 @@ public struct SettingsView: View {
                     Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
                         ChatSettings(preferences: model.preferences)
                     }
+                    Tab("Appearance", systemImage: "paintpalette") {
+                        ScrollView {
+                            ChatThemeEditor(chat: nil, model: model)
+                                .padding(Metrics.m)
+                        }
+                        .frame(height: 620)
+                    }
                     Tab("Privacy", systemImage: "lock") {
                         PrivacySettings(model: model)
                     }

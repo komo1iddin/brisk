@@ -22,6 +22,14 @@ extension BubbleSource {
         case .text(let body, nil):
             text = body
             emojiOnly = BodyText.isOnlyEmoji(body)
+        case let .image(caption, media):
+            text = caption ?? ""
+            attachment = .picture(.init(message: message, media: media, kind: .photo, seconds: nil))
+        case let .video(caption, media, seconds, gif, note):
+            text = caption ?? ""
+            attachment = .picture(.init(message: message, media: media, kind: note ? .roundVideo : gif ? .gif : .video, seconds: seconds))
+        case let .sticker(media, animated):
+            attachment = .picture(.init(message: message, media: media, kind: animated ? .animatedSticker : .sticker, seconds: nil))
         case .revoked:
             attachment = .placeholder(symbol: "nosign", text: String(localized: "This message was deleted"))
         case .unsupported(let what):
@@ -32,8 +40,7 @@ extension BubbleSource {
                 : liveLocation
                     ? String(localized: "Live location. See it on your phone.")
                     : String(localized: "This message is only on your phone."))
-        case .text, .interactive, .image, .video, .sticker, .audio, .document, .location, .liveLocation,
-             .contact, .poll, .stickerPack:
+        case .text, .interactive, .audio, .document, .location, .liveLocation, .contact, .poll, .stickerPack:
             return nil
         }
         return BubbleSource(
@@ -60,6 +67,15 @@ extension BubbleSource {
             reactions: message.reactions,
             colors: colors,
             attachment: attachment
+        )
+    }
+}
+
+extension BubbleSource.Picture {
+    init(message: MessageRecord, media: MediaInfo, kind: Kind, seconds: UInt32?) {
+        self.init(
+            kind: kind, width: media.width, height: media.height, path: media.path, mime: media.mime,
+            bytes: media.size, seconds: seconds, thumbnail: message.thumbnail
         )
     }
 }

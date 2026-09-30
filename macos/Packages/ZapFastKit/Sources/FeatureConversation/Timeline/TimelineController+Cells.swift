@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
@@ -98,6 +99,54 @@ extension TimelineController: TimelineCellDelegate {
         model.reactionTarget = nil
     }
 
+    // MARK: Attachments
+
+    func downloadState(forMessage id: String) -> DownloadState? {
+        guard let model, let chatID else { return nil }
+        return model.conversations.download(MessageKey(chat: chatID, message: id))
+    }
+
+    func isPlayingInPlace(_ id: String) -> Bool {
+        guard let model, let chatID else { return false }
+        return model.video.isCurrent(MessageKey(chat: chatID, message: id))
+    }
+
+    var inlinePlayer: AVPlayer? {
+        model?.video.player
+    }
+
+    /// As `VisualMedia` does: a round video message plays in place, photos,
+    /// videos and GIFs open in the media viewer (which downloads what is not
+    /// here), and a sticker opens in Quick Look.
+    func activateAttachment(ofMessage id: String) {
+        guard let model, let message = message(id) else { return }
+        if case .video(_, _, _, _, true) = message.content {
+            model.playVideo(message)
+        } else if MediaGallery.kind(of: message) != nil {
+            model.openMediaViewer(message)
+        } else if let url = message.mediaURL {
+            QuickLook.shared.show([url])
+        } else {
+            model.download(message)
+        }
+    }
+
+    func attachmentShown(inMessage id: String) {
+        guard let model, let message = message(id) else { return }
+        model.autoDownload(message)
+    }
+
+    /// A video playing in place pauses once it is out of view.
+    func attachmentHidden(inMessage id: String) {
+        guard let model, let message = message(id), case .video = message.content else { return }
+        model.videoHidden(message)
+    }
+
+    func attachmentFile(ofMessage id: String) -> (url: URL, name: String)? {
+        guard let message = message(id), let url = message.mediaURL else { return nil }
+        return (url, AttachmentFiles.dragName(of: message, url: url))
+    }
+
     /// What the pointer finds beside the bubble, as actions for VoiceOver.
     func accessibilityActions(forMessage id: String) -> [NSAccessibilityCustomAction] {
         guard let model, let message = message(id) else { return [] }
@@ -108,6 +157,13 @@ extension TimelineController: TimelineCellDelegate {
         }
         if model.canSelect(message) {
             actions.append(NSAccessibilityCustomAction(name: String(localized: "Select")) { model.select(message); return true })
+        }
+        if message.content.media != nil {
+            let title = message.mediaURL == nil ? String(localized: "Download") : String(localized: "Open")
+            actions.append(NSAccessibilityCustomAction(name: title) { [weak self] in
+                self?.activateAttachment(ofMessage: id)
+                return true
+            })
         }
         return actions
     }

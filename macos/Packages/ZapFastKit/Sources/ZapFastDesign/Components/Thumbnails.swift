@@ -35,6 +35,19 @@ public enum Thumbnails {
         return decode(source, points: points, scale: scale, key: key)
     }
 
+    /// The image `load(_:points:)` gave for this file, if it is still kept:
+    /// a reused cell shows it at once instead of its grey ground first.
+    public nonisolated static func cached(_ url: URL, points: CGFloat, scale: CGFloat = 2) -> NSImage? {
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+            .contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
+        return cache.object(forKey: "\(url.path(percentEncoded: false))#\(modified)@\(Int(points * scale))" as NSString)
+    }
+
+    /// The image `load(_:key:points:)` gave, if it is still kept.
+    public nonisolated static func cached(key: String, points: CGFloat, scale: CGFloat = 2) -> NSImage? {
+        cache.object(forKey: "\(key)@\(Int(points * scale))" as NSString)
+    }
+
     /// A document's first page as Quick Look draws it (a PDF's cover), fit
     /// within `size`.
     @concurrent

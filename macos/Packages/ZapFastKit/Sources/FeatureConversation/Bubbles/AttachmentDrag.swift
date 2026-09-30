@@ -22,8 +22,22 @@ private struct AttachmentDrag: ViewModifier {
         }
     }
 
-    /// A document keeps the name it was sent with; other media the file's.
     private func name(of url: URL) -> String {
+        AttachmentFiles.dragName(of: message, url: url)
+    }
+
+    private static func provider(for url: URL, named name: String) -> NSItemProvider {
+        guard let copy = AttachmentFiles.dragCopy(of: url, named: name) else { return NSItemProvider() }
+        let provider = NSItemProvider(contentsOf: copy) ?? NSItemProvider()
+        provider.suggestedName = name
+        return provider
+    }
+}
+
+/// Files handed out of the timeline.
+enum AttachmentFiles {
+    /// A document keeps the name it was sent with; other media the file's.
+    static func dragName(of message: MessageRecord, url: URL) -> String {
         if case let .document(_, fileName, _, _) = message.content {
             let clean = fileName.replacing("/", with: "-").trimmingCharacters(in: .whitespaces)
             if !clean.isEmpty { return clean }
@@ -31,9 +45,9 @@ private struct AttachmentDrag: ViewModifier {
         return url.lastPathComponent
     }
 
-    /// Hands over a copy (an APFS clone, so instant), never the file in
-    /// ZapFast's own folders, which a drop could otherwise move away.
-    private static func provider(for url: URL, named name: String) -> NSItemProvider {
+    /// A copy (an APFS clone, so instant), never the file in ZapFast's own
+    /// folders, which a drop could otherwise move away.
+    static func dragCopy(of url: URL, named name: String) -> URL? {
         let folder = FileManager.default.temporaryDirectory
             .appending(path: "ZapFast Drags", directoryHint: .isDirectory)
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
@@ -42,10 +56,8 @@ private struct AttachmentDrag: ViewModifier {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: url, to: copy)
         } catch {
-            return NSItemProvider()
+            return nil
         }
-        let provider = NSItemProvider(contentsOf: copy) ?? NSItemProvider()
-        provider.suggestedName = name
-        return provider
+        return copy
     }
 }

@@ -52,6 +52,7 @@ chat, 200 chats, three alternating runs of each build.
 | 09-30 | All of the above against `main` | resize 2.3–2.7 s → 23–25 ms; jump p95 98–126 → 5–10 ms; reopen 290–446 → 59–87 ms; message elsewhere p50 22–30 → 4–7 ms; memory 132–184 → 98–102 MB |
 | 09-30 | Benchmark with media (half of each chat), the pointer optional, rows checked every frame | with media: scroll hitches 55–85 ms/s, 200–350 with the pointer over the timeline; open 2,000 messages 940 ms (SwiftUI rows measured on the main thread); 240 MB |
 | 09-30 | Rows, cells and hosting views back under Auto Layout (the overrides of `0dee224` removed) | rows found blank (a hosted row's view with no size): 2 of 5 runs → 0 of 5; scroll hitches with media unchanged within noise; text alone, frame work p50 2.3 → 2.9 ms |
+| 09-30 | Photos, videos, GIFs and stickers drawn by Core Animation, measured off the main actor | open 2,000 messages 940 → 550 ms; open again 127 → 92 ms; jump p50 13 → 8 ms; scroll hitches unchanged within noise: the SwiftUI rows left (documents, voice, link previews) and the window's root are most of the scroll now |
 
 ### On the linked account
 
@@ -89,8 +90,11 @@ one keeps loading and drawing all sixteen. Its p99 is lower.
   the first time a chat moves to the top of the list.
 - While scrolling, the window's root `NSHostingView.layout()` and tracking
   area updates still show in traces; their source is not found yet.
-- Photos, voice, polls and cards are still SwiftUI rows, measured on the
-  main thread once per bubble width.
+- Documents, voice messages, link previews, polls and cards are still
+  SwiftUI rows, measured on the main thread once per bubble width. In a
+  trace with media they were a quarter of the main thread while
+  scrolling, most of it SwiftUI rendering their display lists again as
+  they moved.
 
 ## Rules
 

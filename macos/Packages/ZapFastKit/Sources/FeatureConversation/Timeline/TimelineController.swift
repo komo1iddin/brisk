@@ -91,7 +91,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var onReachTop: () -> Void = {}
     var onScrollState: (ScrollState) -> Void = { _ in }
 
-    var items: [Item] = []
+    var items: [Item] = [] {
+        didSet { itemIndex = Dictionary(items.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }) }
+    }
+    /// Where each item is, for cells asking about their message.
+    private var itemIndex: [String: Int] = [:]
     private var plans: [Plan] = []
     /// The bubble width the items are laid out for.
     private var widthLimit: CGFloat = 0
@@ -555,8 +559,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             cell.configure(title: title, isHeader: isDay, colors: colors)
             return cell
         case let .bubble(row, layout):
-            let cell = tableView.makeView(withIdentifier: BubbleCell.identifier, owner: nil) as? BubbleCell
-                ?? BubbleCell()
+            let identifier = BubbleCell.identifier(for: layout)
+            let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? BubbleCell
+                ?? BubbleCell(identifier: identifier)
             cell.delegate = self
             cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id))
             return cell
@@ -575,6 +580,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         false
     }
 
+    /// A row that scrolled away stops what plays in it.
+    func tableView(_ tableView: NSTableView, didRemove rowView: NSTableRowView, forRow row: Int) {
+        for case let cell as BubbleCell in rowView.subviews { cell.leftScreen() }
+    }
+
     /// Each SwiftUI row is its own root, so what the window's environment
     /// would give it (the chat's theme, the text size, opening invite links
     /// here) is given again.
@@ -589,6 +599,6 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     func message(_ id: String) -> MessageRecord? {
-        items.first { $0.id == id }?.message
+        itemIndex[id].map { items[$0] }?.message
     }
 }

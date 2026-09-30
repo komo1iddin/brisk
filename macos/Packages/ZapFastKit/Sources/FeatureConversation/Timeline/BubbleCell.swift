@@ -1,5 +1,7 @@
 import AppKit
+import AVFoundation
 import ZapFastBridge
+import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
@@ -24,9 +26,26 @@ protocol TimelineCellDelegate: AnyObject {
     func reactionPicker(forMessage id: String) -> NSViewController?
     func reactionPickerClosed(forMessage id: String)
     func accessibilityActions(forMessage id: String) -> [NSAccessibilityCustomAction]
+
+    // Attachments. The cell reads these under observation, so each must
+    // read only its own message's state.
+    /// The attachment's download, while its file is not here.
+    func downloadState(forMessage id: String) -> DownloadState?
+    /// Whether the message's video is the one playing in place.
+    func isPlayingInPlace(_ id: String) -> Bool
+    var inlinePlayer: AVPlayer? { get }
+    /// A click on the attachment: open, play, or download it.
+    func activateAttachment(ofMessage id: String)
+    /// The attachment came on screen (downloads start), or left it (a
+    /// video playing in place pauses).
+    func attachmentShown(inMessage id: String)
+    func attachmentHidden(inMessage id: String)
+    /// The downloaded file and the name to give it when dragged out.
+    func attachmentFile(ofMessage id: String) -> (url: URL, name: String)?
 }
 
-/// A plain text message, drawn by Core Animation instead of SwiftUI.
+/// A message drawn by Core Animation instead of SwiftUI: text, a deleted
+/// message's line, a photo, video or sticker.
 ///
 /// Telefast's timeline measurements, repeated here: the bubble is a layer
 /// background with rounded corners, composited by the GPU; only text is
@@ -40,6 +59,13 @@ protocol TimelineCellDelegate: AnyObject {
 /// moves when it appears.
 final class BubbleCell: NSView {
     static let identifier = NSUserInterfaceItemIdentifier("TimelineBubble")
+    /// Cells with a picture are reused for pictures, so the picture's view
+    /// is made once per cell.
+    static let pictureIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-picture")
+
+    static func identifier(for layout: BubbleLayout) -> NSUserInterfaceItemIdentifier {
+        layout.picture == nil ? identifier : pictureIdentifier
+    }
 
     weak var delegate: TimelineCellDelegate?
     private(set) var messageID: String?
@@ -53,10 +79,12 @@ final class BubbleCell: NSView {
     private var hoverTask: Task<Void, Never>?
     private var hovering = false
     private var popover: NSPopover?
+    /// Downloads and playback of the message's attachment.
+    private var watches = CellWatches()
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        identifier = Self.identifier
+    init(identifier: NSUserInterfaceItemIdentifier) {
+        super.init(frame: .zero)
+        self.identifier = identifier
         wantsLayer = true
         layerContentsRedrawPolicy = .never
         addSubview(bubble)
@@ -74,23 +102,66 @@ final class BubbleCell: NSView {
         if id != messageID || layout !== bubbleLayout {
             if id != messageID {
                 // A reused cell shows another message.
+                if let messageID, bubbleLayout?.picture != nil { delegate?.attachmentHidden(inMessage: messageID) }
                 hideHoverActions(animated: false)
                 popover?.close()
             }
             messageID = id
             bubbleLayout = layout
             removeBodyText()
-            bubble.configure(layout)
+            bubble.configure(layout, messageID: id)
             pills.configure(layout)
             placeSubviews()
             setAccessibilityLabel(layout.accessibilityLabel)
+            watchAttachment()
         }
         setHighlighted(highlighted, animated: false)
+    }
+
+    /// The row scrolled out of the table: what plays stops, and the next
+    /// `configure` starts afresh.
+    func leftScreen() {
+        watches.stopAll()
+        bubble.pictureView?.setMoving(false)
+        if let messageID, bubbleLayout?.picture != nil { delegate?.attachmentHidden(inMessage: messageID) }
+        hideHoverActions(animated: false)
+        messageID = nil
+    }
+
+    /// Only what can change for this message is watched: a download while
+    /// the file is not here, and a video that may play in place.
+    private func watchAttachment() {
+        watches.stopAll()
+        guard let id = messageID, let picture = bubbleLayout?.picture else { return }
+        delegate?.attachmentShown(inMessage: id)
+        if picture.picture.path == nil, !picture.picture.isSticker {
+            watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
+                self?.bubble.pictureView?.setDownload(state)
+                self?.setAccessibilityValue(Self.accessibilityValue(state))
+            }
+        } else {
+            bubble.pictureView?.setDownload(nil)
+            setAccessibilityValue(nil)
+        }
+        if picture.picture.kind == .video || picture.picture.kind == .roundVideo {
+            watches.watch({ [weak self] in self?.delegate?.isPlayingInPlace(id) ?? false }) { [weak self] playing in
+                self?.bubble.pictureView?.setPlaying(playing, player: self?.delegate?.inlinePlayer)
+            }
+        }
+    }
+
+    private static func accessibilityValue(_ state: DownloadState?) -> String {
+        switch state {
+        case .downloading: String(localized: "Downloading")
+        case .failed: String(localized: "Download failed")
+        case nil: String(localized: "Not downloaded")
+        }
     }
 
     /// The system accent colour changed.
     func refreshColors() {
         bubble.refreshColors()
+        bubble.pictureView?.refreshColors()
         pills.needsRedraw()
     }
 
@@ -266,11 +337,14 @@ extension BubbleCell: NSPopoverDelegate {
 private final class BubbleView: NSView {
     weak var cell: BubbleCell?
     private(set) var bodyText: BodyTextView?
+    private(set) var pictureView: PictureView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
     private var bubbleLayout: BubbleLayout?
     private var bodyHover: Task<Void, Never>?
     private var overBody = false
+    private var overPicture = false
+    private var pictureRest: Task<Void, Never>?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -291,8 +365,22 @@ private final class BubbleView: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(_ layout: BubbleLayout) {
+    func configure(_ layout: BubbleLayout, messageID: String) {
         bubbleLayout = layout
+        if let picture = layout.picture {
+            let view = pictureView ?? PictureView()
+            if view.superview == nil {
+                view.cell = cell
+                addSubview(view)
+                pictureView = view
+            }
+            view.frame = picture.frame
+            view.configure(picture, messageID: messageID)
+        } else if let view = pictureView {
+            view.removeFromSuperview()
+            pictureView = nil
+        }
+        overPicture = false
         chrome.layout = layout
         body.piece = layout.body.map { TextPiece(string: $0.string, rect: CGRect(origin: .zero, size: $0.rect.size)) }
         body.isHidden = layout.body == nil
@@ -373,6 +461,21 @@ private final class BubbleView: NSView {
         guard let layout = bubbleLayout else { return }
         let clickable = layout.quote?.rect.contains(point) == true || layout.name?.rect.contains(point) == true
         if bodyText == nil { (clickable ? NSCursor.pointingHand : NSCursor.arrow).set() }
+        let picture = layout.picture?.frame.contains(point) == true
+        if picture != overPicture {
+            overPicture = picture
+            pictureRest?.cancel()
+            if picture {
+                // A GIF moves once the pointer rests on it, not as it passes.
+                pictureRest = Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(BubbleCell.restDelay))
+                    guard let self, !Task.isCancelled else { return }
+                    self.pointerRested()
+                }
+            } else {
+                pictureView?.setMoving(false)
+            }
+        }
         let body = layout.body?.rect.contains(point) == true
         guard body != overBody else { return }
         overBody = body
@@ -388,8 +491,18 @@ private final class BubbleView: NSView {
         }
     }
 
+    /// The pointer rested on the row: a GIF or animated sticker under it
+    /// moves.
+    func pointerRested() {
+        guard overPicture, let window, window.isKeyWindow else { return }
+        pictureView?.setMoving(true)
+    }
+
     func pointerLeft() {
         overBody = false
+        overPicture = false
+        pictureRest?.cancel()
+        pictureView?.setMoving(false)
         bodyHover?.cancel()
         NSCursor.arrow.set()
         if let view = bodyText, view.selectedRange().length == 0 { hideBodyText() }
@@ -455,6 +568,15 @@ nonisolated private final class BubbleChromeLayer: CALayer {
     }
 
     @MainActor
+    private static let quoteFill = TimelineText.faded(AppKitPalette.quoteBar, 0.5)
+    @MainActor
+    private static let capsuleFill = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(white: 0.17, alpha: 0.9)
+            : NSColor(white: 0.93, alpha: 0.9)
+    }
+
+    @MainActor
     private static func draw(_ layout: BubbleLayout) {
         layout.name?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         if let placeholder = layout.placeholder {
@@ -466,7 +588,9 @@ nonisolated private final class BubbleChromeLayer: CALayer {
             forwarded.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         }
         if let quote = layout.quote {
-            AppKitPalette.quoteBar.withAlphaComponent(0.5).setFill()
+            // Half the bar colour's own alpha, as SwiftUI's `opacity` does;
+            // `withAlphaComponent` would replace it.
+            quoteFill.setFill()
             NSBezierPath(roundedRect: quote.rect, xRadius: Metrics.controlRadius, yRadius: Metrics.controlRadius).fill()
             quote.barColor.setFill()
             NSBezierPath(roundedRect: quote.bar, xRadius: 2, yRadius: 2).fill()
@@ -475,8 +599,9 @@ nonisolated private final class BubbleChromeLayer: CALayer {
         }
         let footer = layout.footer
         if let capsule = footer.capsule {
-            // The material SwiftUI put behind it, as a translucent fill.
-            NSColor.windowBackgroundColor.withAlphaComponent(0.85).setFill()
+            // The material SwiftUI puts behind it, as a nearly opaque fill
+            // that reads over a wallpaper or a photo.
+            capsuleFill.setFill()
             NSBezierPath(roundedRect: capsule, xRadius: capsule.height / 2, yRadius: capsule.height / 2).fill()
         }
         footer.edited?.draw()
@@ -511,6 +636,53 @@ nonisolated final class TextLayer: CALayer {
         nonisolated(unsafe) let appearance = appearance
         MainActor.assumeIsolated {
             withAppKitContext(context, appearance: appearance) { piece.draw() }
+        }
+    }
+}
+
+/// An SF Symbol centred in its own 8-bit layer: one colour, or a palette
+/// of several for symbols drawn in layers (a play button's circle).
+nonisolated final class SymbolLayer: CALayer {
+    nonisolated(unsafe) private var symbol: String?
+    nonisolated(unsafe) private var pointSize: CGFloat = 13
+    nonisolated(unsafe) private var weight: NSFont.Weight = .regular
+    nonisolated(unsafe) private var palette: [NSColor] = []
+    nonisolated(unsafe) var appearance: NSAppearance?
+
+    override init() {
+        super.init()
+        contentsFormat = .RGBA8Uint
+        contentsScale = 2
+        needsDisplayOnBoundsChange = true
+    }
+
+    override init(layer: Any) { super.init(layer: layer) }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override func action(forKey event: String) -> (any CAAction)? { nil }
+
+    @MainActor
+    func configure(symbol: String, pointSize: CGFloat, weight: NSFont.Weight, palette: [NSColor]) {
+        guard symbol != self.symbol || pointSize != self.pointSize || weight != self.weight || palette != self.palette else { return }
+        self.symbol = symbol
+        self.pointSize = pointSize
+        self.weight = weight
+        self.palette = palette
+        setNeedsDisplay()
+    }
+
+    override func draw(in context: CGContext) {
+        guard let symbol else { return }
+        nonisolated(unsafe) let context = context
+        nonisolated(unsafe) let appearance = appearance
+        let bounds = bounds
+        let (pointSize, weight, palette) = (pointSize, weight, palette)
+        MainActor.assumeIsolated {
+            withAppKitContext(context, appearance: appearance) {
+                Symbols.drawCentered(symbol, in: bounds, pointSize: pointSize, weight: weight, palette: palette)
+            }
         }
     }
 }
@@ -743,6 +915,34 @@ enum Symbols {
         }
         cache[key] = made
         return (made, alpha)
+    }
+
+    /// Centred in `rect`: one colour tints it (as `image` does), more
+    /// colours paint its layers in order.
+    static func drawCentered(_ name: String, in rect: CGRect, pointSize: CGFloat, weight: NSFont.Weight, palette: [NSColor]) {
+        let image: NSImage
+        var alpha: CGFloat = 1
+        if palette.count == 1 {
+            guard let (tinted, fraction) = Self.image(name, pointSize: pointSize, weight: weight, color: palette[0]) else { return }
+            image = tinted
+            alpha = fraction
+        } else {
+            let colors = palette.map { $0.usingColorSpace(.sRGB) ?? $0 }
+            let key = "palette|\(name)|\(pointSize)|\(weight.rawValue)|\(colors.map(\.description).joined(separator: ","))"
+            if let cached = cache[key] {
+                image = cached
+            } else {
+                let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+                    .applying(.init(paletteColors: colors))
+                guard let made = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                    .withSymbolConfiguration(configuration) else { return }
+                cache[key] = made
+                image = made
+            }
+        }
+        let size = image.size
+        let origin = CGPoint(x: (rect.midX - size.width / 2).rounded(), y: (rect.midY - size.height / 2).rounded())
+        image.draw(in: CGRect(origin: origin, size: size), from: .zero, operation: .sourceOver, fraction: alpha, respectFlipped: true, hints: nil)
     }
 
     /// `DeliveryTicks`, drawn: one tick sent, two delivered, two tinted read.

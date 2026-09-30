@@ -1,5 +1,6 @@
 import AppKit
 import ImageIO
+import QuartzCore
 import SwiftUI
 
 /// An animated WebP or GIF (a sticker) that moves only while `playing`,
@@ -42,8 +43,8 @@ public struct AnimatedImage: View {
 }
 
 /// Decoded frames and how long each shows.
-nonisolated final class AnimatedFrames: Sendable {
-    let frames: [CGImage]
+public nonisolated final class AnimatedFrames: Sendable {
+    public let frames: [CGImage]
     /// Cumulative end time of each frame, in seconds.
     private let ends: [TimeInterval]
     private let started = Date.now
@@ -52,6 +53,20 @@ nonisolated final class AnimatedFrames: Sendable {
         self.frames = frames
         var total: TimeInterval = 0
         ends = delays.map { total += $0; return total }
+    }
+
+    /// The frames as a Core Animation keyframe animation of a layer's
+    /// contents, looping: it plays without the main thread.
+    public func contentsAnimation() -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: "contents")
+        let total = max(ends.last ?? 0, 0.001)
+        animation.values = frames
+        animation.keyTimes = ([0] + ends.dropLast()).map { NSNumber(value: $0 / total) }
+        animation.calculationMode = .discrete
+        animation.duration = total
+        animation.repeatCount = .infinity
+        animation.isRemovedOnCompletion = false
+        return animation
     }
 
     func frame(at date: Date) -> CGImage {
@@ -71,7 +86,7 @@ nonisolated final class AnimatedFrames: Sendable {
     }()
 
     @concurrent
-    static func load(_ url: URL, points: CGFloat, scale: CGFloat = 2) async -> AnimatedFrames? {
+    public static func load(_ url: URL, points: CGFloat, scale: CGFloat = 2) async -> AnimatedFrames? {
         let key = "\(url.path(percentEncoded: false))@\(Int(points * scale))" as NSString
         if let cached = cache.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }

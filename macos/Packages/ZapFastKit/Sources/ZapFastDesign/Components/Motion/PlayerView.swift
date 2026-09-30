@@ -36,7 +36,7 @@ public struct PlayerView: NSViewRepresentable {
     }
 
     public final class WindowedPlayerView: AVPlayerView {
-        var wanted: AVPlayer? {
+        public var wanted: AVPlayer? {
             didSet { attach() }
         }
 
@@ -77,7 +77,7 @@ public struct LoopingVideo: NSViewRepresentable {
         private var looper: AVPlayerLooper?
         private var url: URL?
 
-        init(url: URL) {
+        public init(url: URL) {
             super.init(frame: .zero)
             wantsLayer = true
             let layer = AVPlayerLayer(player: player)
@@ -90,14 +90,14 @@ public struct LoopingVideo: NSViewRepresentable {
         @available(*, unavailable)
         required init?(coder: NSCoder) { fatalError("not used") }
 
-        func load(_ url: URL) {
+        public func load(_ url: URL) {
             guard url != self.url else { return }
             self.url = url
             looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
             player.play()
         }
 
-        func stop() {
+        public func stop() {
             player.pause()
             looper = nil
             player.removeAllItems()

@@ -33,16 +33,25 @@ nonisolated enum TimelineLayoutEngine {
         typealias T = TimelineText
         let fromMe = source.fromMe
         let hasText = !source.text.isEmpty
-        // Emoji alone float without a bubble, in the ordinary text colours.
-        let bare = source.emojiOnly && source.quote == nil && source.attachment == nil
+        let picture = source.attachment?.picture
+        // Emoji alone, stickers and round video messages float without a
+        // bubble, in the ordinary text colours.
+        let bare = (source.emojiOnly && source.quote == nil && source.attachment == nil) || picture?.isBare == true
+        // Photos and videos run almost to the bubble's edge.
+        let media = picture != nil && !bare
         let onAccent = fromMe && !bare
         let colors = source.colors
         let fonts = T.bodyFonts(scale: colors.textScale)
         let textColor: NSColor = onAccent ? colors.outgoingText : .labelColor
         let secondary: NSColor = onAccent ? T.faded(colors.outgoingText, 0.7) : .secondaryLabelColor
         let linkColor: NSColor = onAccent ? colors.outgoingText : colors.accent
-        let padding = bare ? .zero : G.bubblePadding
-        let contentLimit = widthLimit - padding.width * 2
+        // Sides, top and bottom, as `MessageBubble` pads each kind.
+        let side: CGFloat = bare ? 0 : media ? G.mediaPadding : G.bubblePadding.width
+        let top: CGFloat = bare ? 0 : media ? G.mediaPadding : G.bubblePadding.height
+        let bottom: CGFloat = bare ? 0 : G.bubblePadding.height
+        // Text beside a photo keeps the usual inset.
+        let inset: CGFloat = media ? G.mediaTextInset : 0
+        let contentLimit = widthLimit - side * 2
         // The time tucks into the last line of plain text; after large
         // emoji or an attachment it is a line of its own on the trailing
         // edge, as `MessageBubble` places it.
@@ -83,21 +92,38 @@ nonisolated enum TimelineLayoutEngine {
         let bodyLength = body?.length ?? 0
         if inlineFooter { body?.append(T.reserve(width: footerWidth + G.footerSpacing * 2, fonts: fonts)) }
 
+        // A picture keeps its shape; one too wide for the timeline shrinks.
+        var pictureSize = picture?.displaySize ?? .zero
+        if pictureSize.width > contentLimit {
+            pictureSize = CGSize(width: contentLimit, height: (pictureSize.height * contentLimit / pictureSize.width).rounded())
+        }
+
         let quoteChrome = G.quotePadding * 3 + G.quoteBarWidth
         let placeholderChrome = G.placeholderIconWidth + G.placeholderSpacing
-        var ideal = body.map { T.size($0).width } ?? 0
-        if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
-        if let name { ideal = max(ideal, T.size(name).width) }
-        if let forwarded { ideal = max(ideal, G.forwardedIconWidth + G.footerSpacing + T.size(forwarded).width) }
-        if let quoteName, let quoteSummary {
-            ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, T.size(quoteSummary).width))
+        let width: CGFloat
+        if media {
+            // The photo sets the width; everything else fits it, as on
+            // the phone.
+            width = pictureSize.width
+        } else {
+            var ideal = body.map { T.size($0).width } ?? 0
+            if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
+            if let name { ideal = max(ideal, T.size(name).width) }
+            if let forwarded { ideal = max(ideal, G.forwardedIconWidth + G.footerSpacing + T.size(forwarded).width) }
+            if let quoteName, let quoteSummary {
+                ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, T.size(quoteSummary).width))
+            }
+            if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
+            ideal = max(ideal, pictureSize.width)
+            width = min(ceil(ideal), contentLimit)
         }
-        if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
-        let width = min(ceil(ideal), contentLimit)
 
-        // Top to bottom, in the bubble's coordinates.
-        let left = padding.width
-        var y = padding.height
+        // Top to bottom, in the bubble's coordinates. Text parts sit
+        // `inset` in from the sides; the quote and the picture do not.
+        let left = side
+        let textLeft = side + inset
+        let textWidth = width - inset * 2
+        var y = top
         func advance(_ height: CGFloat) -> CGFloat {
             defer { y += height + G.partSpacing }
             return y
@@ -105,16 +131,16 @@ nonisolated enum TimelineLayoutEngine {
 
         let namePiece = name.map { string in
             let height = T.size(string).height
-            return TextPiece(string: string, rect: CGRect(x: left, y: advance(height), width: width, height: height))
+            return TextPiece(string: string, rect: CGRect(x: textLeft, y: advance(height), width: textWidth, height: height))
         }
 
         var forwardedIcon: CGRect?
         let forwardedPiece = forwarded.map { string in
             let height = T.size(string).height
             let top = advance(height)
-            forwardedIcon = CGRect(x: left, y: top, width: G.forwardedIconWidth, height: height)
-            let x = left + G.forwardedIconWidth + G.footerSpacing
-            return TextPiece(string: string, rect: CGRect(x: x, y: top, width: width - (x - left), height: height))
+            forwardedIcon = CGRect(x: textLeft, y: top, width: G.forwardedIconWidth, height: height)
+            let x = textLeft + G.forwardedIconWidth + G.footerSpacing
+            return TextPiece(string: string, rect: CGRect(x: x, y: top, width: textWidth - (x - textLeft), height: height))
         }
 
         var quote: BubbleLayout.QuoteLayout?
@@ -152,27 +178,34 @@ nonisolated enum TimelineLayoutEngine {
             )
         }
 
+        let pictureLayout = picture.map { picture in
+            let frame = CGRect(origin: CGPoint(x: left, y: advance(pictureSize.height)), size: pictureSize)
+            return pictureOverlays(picture, frame: frame)
+        }
+
         let bodyPiece = body.map { body in
-            let height = T.size(body, width: width).height
+            let height = T.size(body, width: textWidth).height
             let drawn = NSMutableAttributedString(attributedString: body)
             drawn.removeAttribute(.link, range: NSRange(location: 0, length: drawn.length))
-            return TextPiece(string: drawn, rect: CGRect(x: left, y: advance(height), width: width, height: height))
+            return TextPiece(string: drawn, rect: CGRect(x: textLeft, y: advance(height), width: textWidth, height: height))
         }
         let footerRect: CGRect
         var capsule: CGRect?
         if inlineFooter, let bodyRect = bodyPiece?.rect {
             footerRect = CGRect(
-                x: left + width - footerWidth,
+                x: textLeft + textWidth - footerWidth,
                 y: bodyRect.maxY + G.footerDrop - footerHeight,
                 width: footerWidth,
                 height: footerHeight
             )
         } else {
             let top = advance(footerHeight)
-            footerRect = CGRect(x: left + width - capsuleInset - footerWidth, y: top, width: footerWidth, height: footerHeight)
+            footerRect = CGRect(
+                x: textLeft + textWidth - capsuleInset - footerWidth, y: top, width: footerWidth, height: footerHeight
+            )
             if bare { capsule = footerRect.insetBy(dx: -capsuleInset, dy: 0) }
         }
-        let bubbleHeight = y - G.partSpacing + padding.height
+        let bubbleHeight = y - G.partSpacing + bottom
         var x = footerRect.minX
         let editedPiece = edited.map { string in
             defer { x += editedSize.width + G.footerSpacing }
@@ -190,12 +223,13 @@ nonisolated enum TimelineLayoutEngine {
             fromMe: fromMe,
             startsRun: source.startsRun,
             bare: bare,
-            bubbleSize: CGSize(width: width + padding.width * 2, height: ceil(bubbleHeight)),
+            bubbleSize: CGSize(width: width + side * 2, height: ceil(bubbleHeight)),
             name: namePiece,
             forwarded: forwardedPiece,
             forwardedIcon: forwardedIcon,
             quote: quote,
             placeholder: placeholder,
+            picture: pictureLayout,
             body: bodyPiece,
             bodyLength: bodyLength,
             linkedBody: body,
@@ -211,8 +245,58 @@ nonisolated enum TimelineLayoutEngine {
             accent: colors.accent,
             pills: pills,
             pillsSize: pillsSize,
-            accessibilityLabel: accessibilityLabel(source, time: time.string)
+            accessibilityLabel: accessibilityLabel(source, title: pictureLayout?.accessibilityTitle, time: time.string)
         ))
+    }
+
+    /// The play button, the length and "GIF", placed as `VisualMedia`'s
+    /// overlay places them.
+    private static func pictureOverlays(_ picture: BubbleSource.Picture, frame: CGRect) -> BubbleLayout.PictureLayout {
+        typealias T = TimelineText
+        let bounds = CGRect(origin: .zero, size: frame.size)
+        let video = picture.kind == .video || picture.kind == .roundVideo
+        func label(_ text: String, font: NSFont) -> (NSAttributedString, CGSize) {
+            let string = T.line(text, font, .white)
+            let size = T.size(string)
+            return (string, CGSize(width: size.width + 12, height: size.height + 4))
+        }
+        var duration: BubbleLayout.PictureLayout.Label?
+        var length: String?
+        if let seconds = picture.seconds, seconds > 0, picture.kind != .gif {
+            length = Duration.seconds(Int(seconds)).formatted(.time(pattern: .minuteSecond))
+            let (string, size) = label(length ?? "", font: T.caption2Digits)
+            let x = picture.kind == .roundVideo ? (bounds.width - size.width) / 2 : Metrics.s
+            let capsule = CGRect(x: x.rounded(), y: bounds.maxY - Metrics.s - size.height, width: size.width, height: size.height)
+            duration = .init(capsule: capsule, text: TextPiece(string: string, rect: capsule.insetBy(dx: 6, dy: 2)))
+        }
+        var gif: BubbleLayout.PictureLayout.Label?
+        if picture.kind == .gif {
+            let (string, size) = label("GIF", font: T.captionBold)
+            let capsule = CGRect(x: ((bounds.width - size.width) / 2).rounded(), y: ((bounds.height - size.height) / 2).rounded(), width: size.width, height: size.height)
+            gif = .init(capsule: capsule, text: TextPiece(string: string, rect: capsule.insetBy(dx: 6, dy: 2)))
+        }
+        let glyphSize: CGFloat = 44
+        let glyph = video && picture.path != nil
+            ? CGRect(x: ((bounds.width - glyphSize) / 2).rounded(), y: ((bounds.height - glyphSize) / 2).rounded(), width: glyphSize, height: glyphSize)
+            : nil
+        let title: String = switch picture.kind {
+        case .sticker, .animatedSticker: String(localized: "Sticker")
+        case .gif: String(localized: "GIF")
+        case .photo: String(localized: "Photo")
+        case .video: length.map { String(localized: "Video, \($0)") } ?? String(localized: "Video")
+        case .roundVideo: length.map { String(localized: "Video message, \($0)") } ?? String(localized: "Video message")
+        }
+        return .init(
+            picture: picture,
+            frame: frame,
+            cornerRadius: picture.isSticker ? 0 : Metrics.bubbleRadius - Metrics.xs,
+            circle: picture.kind == .roundVideo,
+            glyph: glyph,
+            duration: duration,
+            gif: gif,
+            points: max(frame.width, frame.height),
+            accessibilityTitle: title
+        )
     }
 
     private static let twoCalloutLines = TimelineText.height(ofLines: 2, TimelineText.callout)
@@ -257,7 +341,7 @@ nonisolated enum TimelineLayoutEngine {
         return (pills, CGSize(width: x - Metrics.xxs, height: height))
     }
 
-    private static func accessibilityLabel(_ source: BubbleSource, time: String) -> String {
+    private static func accessibilityLabel(_ source: BubbleSource, title: String?, time: String) -> String {
         var parts: [String] = []
         if source.fromMe {
             parts.append(String(localized: "You"))
@@ -269,6 +353,7 @@ nonisolated enum TimelineLayoutEngine {
             parts.append(String(localized: "Replying to \(quote.name): \(quote.summary)"))
         }
         if case .placeholder(_, let text) = source.attachment { parts.append(text) }
+        if let title { parts.append(title) }
         if !source.text.isEmpty { parts.append(source.text) }
         if source.edited { parts.append(String(localized: "Edited")) }
         parts.append(time)

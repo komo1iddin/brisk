@@ -17,6 +17,51 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         /// A deleted message, or one ZapFast cannot show: a symbol and a
         /// line, as `Placeholder` draws them.
         case placeholder(symbol: String, text: String)
+        case picture(Picture)
+
+        var picture: Picture? {
+            if case .picture(let picture) = self { picture } else { nil }
+        }
+    }
+
+    /// A photo, video, GIF or sticker, as `VisualMedia` shows it.
+    struct Picture: Equatable, Sendable {
+        enum Kind: Equatable, Sendable {
+            case photo, video, gif, sticker, animatedSticker, roundVideo
+        }
+
+        var kind: Kind
+        var width: UInt32?
+        var height: UInt32?
+        /// The file, once downloaded.
+        var path: String?
+        var mime: String
+        var bytes: UInt64
+        var seconds: UInt32?
+        /// The sender's small preview, shown until the file is here.
+        var thumbnail: Data?
+
+        /// Stickers and round video messages float without a bubble.
+        var isBare: Bool {
+            kind == .sticker || kind == .animatedSticker || kind == .roundVideo
+        }
+
+        var isSticker: Bool {
+            kind == .sticker || kind == .animatedSticker
+        }
+
+        /// `VisualMedia.displaySize`: the picture's shape within 300 points
+        /// (160 for a sticker), at most one and a half times its pixels, and
+        /// no smaller than 120 by 80.
+        var displaySize: CGSize {
+            if kind == .roundVideo { return CGSize(width: 220, height: 220) }
+            let bound: CGFloat = isSticker ? 160 : 300
+            guard let width, let height, width > 0, height > 0 else {
+                return CGSize(width: bound, height: isSticker ? bound : bound * 0.66)
+            }
+            let scale = min(bound / CGFloat(width), bound / CGFloat(height), 1.5)
+            return CGSize(width: max(120, CGFloat(width) * scale), height: max(80, CGFloat(height) * scale))
+        }
     }
 
     var id: String
@@ -88,6 +133,32 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var mine: Bool
     }
 
+    /// A photo, video, GIF or sticker, and what lies over it.
+    struct PictureLayout {
+        /// A caption on a dark capsule over the picture.
+        struct Label {
+            var capsule: CGRect
+            var text: TextPiece
+        }
+
+        var picture: BubbleSource.Picture
+        /// In the bubble's coordinates; everything else in the picture's.
+        var frame: CGRect
+        var cornerRadius: CGFloat
+        /// A round video message is a circle.
+        var circle: Bool
+        /// A video's play button, centred.
+        var glyph: CGRect?
+        /// The length, bottom left (bottom centre on a round video).
+        var duration: Label?
+        /// "GIF", centred, while it is not moving.
+        var gif: Label?
+        /// Decoded at this many points on its longest side.
+        var points: CGFloat
+        /// "Photo", "Video, 0:42": read as one element.
+        var accessibilityTitle: String
+    }
+
     /// A symbol and a line of italic text, for a deleted message or one
     /// that cannot be shown here.
     struct Placeholder {
@@ -111,6 +182,7 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var forwardedIcon: CGRect?
         var quote: QuoteLayout?
         var placeholder: Placeholder?
+        var picture: PictureLayout?
         /// The text, with room for the footer at its end when the footer
         /// shares its last line. `bodyLength` is where the visible text
         /// stops. Nil for an attachment without a caption. Drawn without
@@ -170,6 +242,10 @@ nonisolated enum TimelineGeometry {
     /// Room kept beside a bubble (the row's `Spacer(minLength: 72)`).
     static let besideBubble: CGFloat = 72
     static let bubblePadding = CGSize(width: Metrics.m, height: Metrics.s)
+    /// Photos and videos run almost to the bubble's edge; the text beside
+    /// them keeps the usual inset (`insetForMedia`).
+    static let mediaPadding = Metrics.xs
+    static let mediaTextInset = Metrics.s
     static let partSpacing = Metrics.xs
     static let rowBottom = Metrics.xxs
     static let reactionOverlap = Metrics.xs
@@ -243,6 +319,7 @@ nonisolated enum TimelineText {
     nonisolated(unsafe) static let caption2Digits = NSFont.monospacedDigitSystemFont(ofSize: caption2.pointSize, weight: .regular)
     nonisolated(unsafe) static let callout = NSFont.preferredFont(forTextStyle: .callout)
     nonisolated(unsafe) static let bodyItalic = styled(body, .italic)
+    nonisolated(unsafe) static let captionBold = NSFont.systemFont(ofSize: caption.pointSize, weight: .bold)
     /// Wraps at words, for text measured at a width.
     nonisolated(unsafe) static let wrapping: NSParagraphStyle = {
         let paragraph = NSMutableParagraphStyle()

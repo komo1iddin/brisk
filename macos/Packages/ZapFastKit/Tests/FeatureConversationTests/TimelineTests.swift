@@ -219,3 +219,83 @@ struct BubbleSourceTests {
         #expect(abs(light.alphaComponent - NSColor.labelColor.usingColorSpace(.sRGB)!.alphaComponent * 0.75) < 0.05)
     }
 }
+
+@MainActor
+struct PictureBubbleTests {
+    private let chats = ChatStore(session: SessionStore())
+    private let colors = BubbleColors(.standard)
+
+    private func source(_ content: MessageContent, fromMe: Bool = false, startsRun: Bool = true) throws -> BubbleSource {
+        let message = MessageRecord(
+            id: "p", chat: "c@g.us", sender: "a@s.whatsapp.net", senderName: "Aziza", fromMe: fromMe,
+            timestamp: 1_780_000_000, content: content, status: fromMe ? .read : .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: Data([1, 2, 3]), summary: ""
+        )
+        return try #require(BubbleSource.make(message, startsRun: startsRun, isGroup: true, colors: colors, chats: chats))
+    }
+
+    private func media(width: UInt32? = 1280, height: UInt32? = 960, path: String? = nil) -> MediaInfo {
+        MediaInfo(mime: "image/jpeg", size: 1_000, width: width, height: height, path: path)
+    }
+
+    @Test func eachKindOfPictureIsDrawn() throws {
+        let photo = try source(.image(caption: "Salom", media: media()))
+        #expect(photo.text == "Salom")
+        #expect(photo.attachment?.picture?.kind == .photo)
+        #expect(photo.attachment?.picture?.thumbnail == Data([1, 2, 3]))
+        let note = try source(.video(caption: nil, media: media(), seconds: 12, gif: false, note: true))
+        #expect(note.attachment?.picture?.kind == .roundVideo)
+        #expect(note.attachment?.picture?.seconds == 12)
+        let gif = try source(.video(caption: nil, media: media(), seconds: 3, gif: true, note: false))
+        #expect(gif.attachment?.picture?.kind == .gif)
+        let sticker = try source(.sticker(media: media(width: 512, height: 512), animated: true))
+        #expect(sticker.attachment?.picture?.kind == .animatedSticker)
+    }
+
+    /// `VisualMedia.displaySize`, which the drawn picture keeps.
+    @Test func picturesKeepTheirShapeWithinTheirBounds() throws {
+        let landscape = try #require(try source(.image(caption: nil, media: media())).attachment?.picture)
+        #expect(landscape.displaySize == CGSize(width: 300, height: 225))
+        let tiny = try #require(try source(.image(caption: nil, media: media(width: 40, height: 20))).attachment?.picture)
+        #expect(tiny.displaySize == CGSize(width: 120, height: 80))
+        let unknown = try #require(try source(.image(caption: nil, media: media(width: nil, height: nil))).attachment?.picture)
+        #expect(unknown.displaySize == CGSize(width: 300, height: 198))
+        let sticker = try #require(try source(.sticker(media: media(width: 512, height: 512), animated: false)).attachment?.picture)
+        #expect(sticker.displaySize == CGSize(width: 160, height: 160))
+    }
+
+    @Test func aPhotoSetsItsBubblesWidthAndItsCaptionWrapsInIt() throws {
+        let caption = "Tog'dagi manzara, kechqurun. Juda chiroyli joy ekan, keyingi safar birga boramiz."
+        let layout = TimelineLayoutEngine.layout(for: try source(.image(caption: caption, media: media())), widthLimit: 560)
+        let picture = try #require(layout.picture)
+        let body = try #require(layout.body)
+        #expect(layout.bubbleSize.width == 300 + TimelineGeometry.mediaPadding * 2)
+        #expect(picture.frame == CGRect(x: TimelineGeometry.mediaPadding, y: picture.frame.minY, width: 300, height: 225))
+        #expect(body.rect.minY > picture.frame.maxY)
+        #expect(body.rect.minX == TimelineGeometry.mediaPadding + TimelineGeometry.mediaTextInset)
+        #expect(body.rect.maxX <= picture.frame.maxX - TimelineGeometry.mediaTextInset + 0.5)
+        #expect(layout.footer.rect.minY >= body.rect.maxY)
+        #expect(layout.accessibilityLabel.contains("Photo"))
+    }
+
+    @Test func stickersAndRoundVideosFloatWithoutABubble() throws {
+        let sticker = TimelineLayoutEngine.layout(for: try source(.sticker(media: media(width: 512, height: 512), animated: false), startsRun: false), widthLimit: 560)
+        #expect(sticker.bare)
+        #expect(sticker.bubbleColor == nil)
+        #expect(sticker.picture?.frame.origin == .zero)
+        #expect(sticker.footer.capsule != nil)
+        let note = TimelineLayoutEngine.layout(for: try source(.video(caption: nil, media: media(), seconds: 18, gif: false, note: true), fromMe: true), widthLimit: 560)
+        #expect(note.picture?.circle == true)
+        #expect(note.picture?.frame.size == CGSize(width: 220, height: 220))
+        // The length is centred at the bottom of the circle.
+        let duration = try #require(note.picture?.duration)
+        #expect(abs(duration.capsule.midX - 110) <= 1)
+    }
+
+    @Test func aPictureWiderThanTheTimelineShrinksInShape() throws {
+        let layout = TimelineLayoutEngine.layout(for: try source(.image(caption: nil, media: media())), widthLimit: 200)
+        let frame = try #require(layout.picture?.frame)
+        #expect(frame.width == 200 - TimelineGeometry.mediaPadding * 2)
+        #expect(abs(frame.width / frame.height - 300 / 225) < 0.02)
+    }
+}

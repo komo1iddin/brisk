@@ -41,6 +41,16 @@ public enum WhatsAppMarkup {
         return output
     }
 
+    /// The text with `@number` mentions shown as `@name`, markup left as
+    /// typed, for copying.
+    public static func resolvingMentions(
+        _ text: String,
+        mentions: [MentionInfo],
+        name: (String) -> String
+    ) -> String {
+        resolveMentions(text, mentions: mentions, name: name).text
+    }
+
     // MARK: Markup
 
     /// Code blocks first, then inline code, then a single-character style

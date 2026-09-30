@@ -312,6 +312,31 @@ private struct SelectionBar: View {
             Spacer()
 
             Button {
+                model.copySelection { text in
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 22, height: 22)
+            }
+            .selectionButton()
+            .help("Copy the selected messages")
+
+            let share = model.shareableSelection
+            ShareMenuButton {
+                (share.files as [Any]) + (share.text.map { [$0 as Any] } ?? [])
+            } label: {
+                Label("Share…", systemImage: "square.and.arrow.up")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 22, height: 22)
+            }
+            .selectionButton()
+            .disabled(share.isEmpty)
+            .help(share.isEmpty ? "Download the selected files to share them" : "Share the selected messages")
+
+            Button {
                 confirmingDelete = true
             } label: {
                 Label("Delete for Me", systemImage: "trash")

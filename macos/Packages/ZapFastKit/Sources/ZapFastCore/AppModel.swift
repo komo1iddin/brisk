@@ -1178,6 +1178,46 @@ public final class AppModel {
         }
     }
 
+    /// The selected messages, in chat order.
+    private var selectedMessages: [MessageRecord] {
+        guard let selection else { return [] }
+        let conversation = conversations.conversation(selection.chat)
+        return inChatOrder(selection.ids, chat: selection.chat).compactMap(conversation.message)
+    }
+
+    /// Copies the selection as the phone does, with who wrote each message
+    /// and when once there are several; selecting ends.
+    public func copySelection(to write: (String) -> Void) {
+        let messages = selectedMessages
+        guard !messages.isEmpty else { return }
+        write(transcript(of: messages))
+        selection = nil
+        post(.info, messages.count == 1
+            ? String(localized: "Copied")
+            : String(localized: "Copied \(messages.count) messages"))
+    }
+
+    /// What Share hands on: the selection's downloaded files, and the
+    /// messages without a file as text. Files not downloaded are left out.
+    public var shareableSelection: SelectionShare {
+        let messages = selectedMessages
+        let files = messages.compactMap(\.mediaURL)
+        let texts = messages.filter { $0.content.media == nil }
+        return SelectionShare(text: texts.isEmpty ? nil : transcript(of: texts), files: files)
+    }
+
+    private func transcript(of messages: [MessageRecord]) -> String {
+        MessageTranscript.text(
+            messages,
+            name: { message in
+                message.fromMe
+                    ? session.account?.name.nonEmpty ?? String(localized: "You")
+                    : chats.personName(message.sender, hint: message.senderName)
+            },
+            mentionName: { chats.displayName($0) }
+        )
+    }
+
     private func inChatOrder(_ ids: [String], chat: String) -> [String] {
         let wanted = Set(ids)
         return conversations.conversation(chat).messages.map(\.id).filter(wanted.contains)
@@ -2546,6 +2586,14 @@ public struct MessageSelection: Equatable, Sendable {
     public internal(set) var ids: [String]
     /// The last message clicked, where a Shift-click range starts.
     var anchor: String
+}
+
+/// The selected messages for the share menu.
+public struct SelectionShare: Equatable, Sendable {
+    public let text: String?
+    public let files: [URL]
+
+    public var isEmpty: Bool { text == nil && files.isEmpty }
 }
 
 public struct UnsentVoice: Equatable, Sendable {

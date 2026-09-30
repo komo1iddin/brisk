@@ -285,8 +285,12 @@ the menu. No map tiles are fetched.
 
 Select in a message's menu, or ⌘-click, starts selecting messages: a
 click adds or removes one, ⇧-click a run of them, and the bar in place of
-the composer forwards them (oldest first) or deletes them from ZapFast on
-this Mac after asking; Esc stops. Deleted, phone-only and unsupported
+the composer copies, shares, forwards them (oldest first) or deletes them
+from ZapFast on this Mac after asking; Esc stops. Copy takes one message's
+text as it is, and several as the phone does, a line each with the time,
+date and who wrote it (`[9:28, 30/09/2026] Ada: …`), with markers such as
+`[photo]` for what is not text. Share hands on the downloaded files and
+the other messages as that text. Deleted, phone-only and unsupported
 messages cannot be selected, as upstream's.
 
 Forward opens "Send to", as on the phone: your own chat first, then the

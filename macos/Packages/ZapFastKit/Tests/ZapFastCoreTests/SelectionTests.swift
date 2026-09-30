@@ -65,6 +65,49 @@ struct SelectionTests {
         #expect(model.selection == nil)
     }
 
+    @Test func copyingOneMessageTakesItsTextAndEndsSelecting() {
+        let (model, _) = model()
+        model.select(record(model, "b"))
+        var copied: String?
+        model.copySelection { copied = $0 }
+        #expect(copied == "hi")
+        #expect(model.selection == nil)
+    }
+
+    @Test func copyingSeveralNamesWhoWroteEachAndWhen() {
+        let (model, _) = model()
+        model.select(record(model, "e"))
+        model.toggleSelected(record(model, "a"))
+        var copied: String?
+        model.copySelection { copied = $0 }
+        let lines = copied?.split(separator: "\n").map(String.init) ?? []
+        #expect(lines.count == 2)
+        #expect(lines.allSatisfy { $0.hasPrefix("[") && $0.hasSuffix(": hi") })
+    }
+
+    @Test func aTranscriptMarksWhatIsNotText() {
+        let voice = MessageRecord(
+            id: "v", chat: chat, sender: "a@s.whatsapp.net", senderName: nil, fromMe: false, timestamp: 1_790_000_000,
+            content: .audio(media: .init(mime: "audio/ogg", size: 1, width: nil, height: nil, path: nil), seconds: 41, voiceNote: true, waveform: Data()),
+            status: .none, deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false,
+            mentions: [], forwarded: false, thumbnail: nil, summary: ""
+        )
+        let text = message("t", at: 1_790_000_060)
+        let transcript = MessageTranscript.text(
+            [voice, text], name: { _ in "Ada" }, mentionName: { $0 },
+            locale: Locale(identifier: "en_GB"), timeZone: TimeZone(identifier: "UTC")!
+        )
+        #expect(transcript == "[14:13, 21/09/2026] Ada: [voice message, 0:41]\n[14:14, 21/09/2026] Ada: hi")
+    }
+
+    @Test func sharingHandsOnFilesAndTheRestAsText() {
+        let (model, _) = model()
+        model.select(record(model, "a"))
+        #expect(model.shareableSelection == SelectionShare(text: "hi", files: []))
+        model.cancelSelection()
+        #expect(model.shareableSelection.isEmpty)
+    }
+
     @Test func deletingSendsEachAndOpeningAnotherChatLetsGo() {
         let (model, backend) = model()
         model.select(record(model, "a"))

@@ -206,6 +206,7 @@ public final class AppModel {
     @ObservationIgnored private let backend: Backend
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
+    @ObservationIgnored let launch = LaunchTimer()
     @ObservationIgnored private var verbose = false
     @ObservationIgnored private let log = Logger(subsystem: "ZapFast", category: "AppModel")
     /// Chats we told the backend we are typing in, and the task that will
@@ -291,6 +292,7 @@ public final class AppModel {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
             }
+            launch.step("backend started")
             session.link = .starting
             if let folder = preferences.downloadFolder { backend.send(.setDownloadFolder(path: folder)) }
         } catch BridgeError.AnotherInstance {
@@ -302,6 +304,11 @@ public final class AppModel {
         }
         // A backend that never started can be started again (Try Again).
         if case .failed = session.link { started = false }
+    }
+
+    /// The main window's first appearance, for the launch log.
+    public func mainWindowAppeared() {
+        launch.step("window shown")
     }
 
     public func shutdown() {
@@ -2208,6 +2215,7 @@ public final class AppModel {
         case .chats(let list):
             chats.replaceAll(list)
             restoreLastChat()
+            launch.step("chat list from the archive")
         case .chatUpdated(let chat):
             chats.upsert(chat)
             // A chat locked on the phone leaves the window unless the
@@ -2421,6 +2429,7 @@ public final class AppModel {
         let wasDisconnected = if case .disconnected = session.link { true } else { false }
         switch state {
         case .connected:
+            launch.step("connected to WhatsApp")
             if wasDisconnected { post(.info, String(localized: "Back online")) }
             avatars.forgetMisses()
             if let selectedChatID { ensureLoaded(selectedChatID) }

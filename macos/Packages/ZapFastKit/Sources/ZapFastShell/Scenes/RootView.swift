@@ -72,6 +72,7 @@ private struct MainSplitView: View {
                 )
             }
         }
+        .onAppear { model.mainWindowAppeared() }
         // Closing the window locks the Locked folder again, as upstream's does.
         .onDisappear { model.closeLockedChats() }
     }

@@ -49,6 +49,11 @@ struct StickerPicker: View {
                                 importLink = ""
                                 importing = true
                             }
+                            Button("Import .wastickers File…", systemImage: "doc.zipper") {
+                                close()
+                                // The open panel comes up once the picker is gone.
+                                DispatchQueue.main.async { model.importStickerArchive() }
+                            }
                         } label: {
                             Image(systemName: "plus")
                         }

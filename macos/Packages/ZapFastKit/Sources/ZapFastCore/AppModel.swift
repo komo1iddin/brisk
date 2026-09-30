@@ -687,6 +687,12 @@ public final class AppModel {
         backend.send(.importStickerUrl(url: link))
     }
 
+    /// Adds a pack from a `.wastickers` archive (WhatsApp's sticker apps
+    /// share them) chosen in the open panel upstream shows for it.
+    public func importStickerArchive() {
+        backend.send(.pickStickerArchive)
+    }
+
     /// Makes a sticker from `picture`: sent to `chat`, or without one added
     /// to Favorites. Upstream crops, scales to 512 and encodes WebP.
     public func makeSticker(

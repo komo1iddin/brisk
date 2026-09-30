@@ -48,3 +48,17 @@ struct SharedContactTests {
         #expect(!model.isKnownContact("15550101234"))
     }
 }
+
+@MainActor
+struct StickerArchiveTests {
+    @Test func anArchiveIsAskedForInUpstreamsOpenPanel() {
+        let backend = PreviewBackend()
+        let root = FileManager.default.temporaryDirectory.appending(path: "zapfast-archive-\(UUID().uuidString)")
+        let model = AppModel(
+            backend: backend, paths: AppPaths(data: root, caches: root),
+            preferences: Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        )
+        model.importStickerArchive()
+        #expect(backend.sent.last == .pickStickerArchive)
+    }
+}

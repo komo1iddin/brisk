@@ -190,7 +190,8 @@ a pack's menu in the picker sends it to the open chat, or deletes it.
 The picker's + makes a sticker from a picture (a square dragged into
 place and sized; sent, or kept in Favorites), creates a pack of your
 own to file stickers into from their menu, or imports a signal.art
-pack. Besides that import, which downloads from Signal's servers, GIF
+pack or a `.wastickers` file (the archive WhatsApp's sticker apps share,
+chosen in the open panel upstream shows for it). Besides that import, which downloads from Signal's servers, GIF
 search is the only feature that talks to a third party: it asks
 GIPHY, with your own key from Settings or one built in at compile time
 through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the

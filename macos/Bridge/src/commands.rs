@@ -3,7 +3,10 @@
 //! This is a deliberate subset: a command is added when a screen needs it.
 //! Upstream's internal result commands (`Sent`, `Downloaded`, …) are never
 //! exposed. File pickers are native on the Swift side, so the `Pick*`
-//! commands are replaced by their path-carrying counterparts.
+//! commands are replaced by their path-carrying counterparts, except
+//! `PickStickerArchive`: upstream imports a `.wastickers` archive only from
+//! its own picker (the system's open panel through rfd), with no command
+//! that takes a path.
 
 use std::path::PathBuf;
 
@@ -307,6 +310,10 @@ pub enum BridgeCommand {
     ImportStickerUrl {
         url: String,
     },
+    /// Asks for a `.wastickers` or `.zip` sticker archive in the system's
+    /// open panel and adds it as a pack; the result arrives as Info or
+    /// Error and a new sticker library.
+    PickStickerArchive,
     /// Makes a sticker from a picture: sends it to `chat`, or without one
     /// adds it to Favorites.
     MakeSticker {
@@ -626,6 +633,7 @@ impl BridgeCommand {
             },
             Self::DeleteStickerPack { dir } => Command::DeleteStickerPack { dir: dir.into() },
             Self::ImportStickerUrl { url } => Command::ImportStickerUrl { url },
+            Self::PickStickerArchive => Command::PickStickerArchive,
             Self::MakeSticker {
                 source,
                 crop,

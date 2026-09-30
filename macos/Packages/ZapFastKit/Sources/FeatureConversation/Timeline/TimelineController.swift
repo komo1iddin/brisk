@@ -421,7 +421,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
 private final class HostingCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("TimelineHostingCell")
 
-    private let host = NSHostingView(rootView: AnyView(EmptyView()))
+    private let host = RowHostingView(rootView: AnyView(EmptyView()))
 
     init() {
         super.init(frame: .zero)
@@ -442,6 +442,29 @@ private final class HostingCell: NSTableCellView {
 
     func show(_ view: some View) {
         host.rootView = AnyView(view)
+    }
+}
+
+/// A row's hosting view, which keeps a right-click (or Control-click) for
+/// the row's own context menu. Selectable text answers it with an AppKit
+/// text menu (Cut, Paste, Font, Spelling…) that suits no message; taken
+/// here, the menu is always the one SwiftUI attached to the bubble. Plain
+/// clicks and drags still reach the text, so it can be selected.
+private final class RowHostingView: NSHostingView<AnyView> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hit = super.hitTest(point)
+        if hit != nil, hit !== self, let event = NSApp.currentEvent, opensContextMenu(event) {
+            return self
+        }
+        return hit
+    }
+
+    private func opensContextMenu(_ event: NSEvent) -> Bool {
+        switch event.type {
+        case .rightMouseDown: true
+        case .leftMouseDown: event.modifierFlags.contains(.control)
+        default: false
+        }
     }
 }
 

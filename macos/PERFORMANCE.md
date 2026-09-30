@@ -53,6 +53,8 @@ chat, 200 chats, three alternating runs of each build.
 | 09-30 | Benchmark with media (half of each chat), the pointer optional, rows checked every frame | with media: scroll hitches 55–85 ms/s, 200–350 with the pointer over the timeline; open 2,000 messages 940 ms (SwiftUI rows measured on the main thread); 240 MB |
 | 09-30 | Rows, cells and hosting views back under Auto Layout (the overrides of `0dee224` removed) | rows found blank (a hosted row's view with no size): 2 of 5 runs → 0 of 5; scroll hitches with media unchanged within noise; text alone, frame work p50 2.3 → 2.9 ms |
 | 09-30 | Photos, videos, GIFs and stickers drawn by Core Animation, measured off the main actor | open 2,000 messages 940 → 550 ms; open again 127 → 92 ms; jump p50 13 → 8 ms; scroll hitches unchanged within noise: the SwiftUI rows left (documents, voice, link previews) and the window's root are most of the scroll now |
+| 10-01 | Documents, link previews and voice messages drawn too: no SwiftUI rows left in the benchmark | open 2,000 messages 550 → 160–185 ms; open again 92 → 58–72 ms; jump p50 8 → 3.5 ms; scroll hitches 60–100 → 38–62 ms/s, flicks 8–12; with the pointer over the timeline 200–350 → 44–66 ms/s; memory 240 → 120–134 MB |
+| 10-01 | A message changed in place (a download, a receipt, a reaction) remakes its row only, not the chat's | scroll hitches 38–62 → 15–22 ms/s, flicks 4–6; with the pointer over the timeline 22–24 ms/s. The gaps between frames had been whole rebuilds of 2,000 rows as downloads finished |
 
 ### On the linked account
 

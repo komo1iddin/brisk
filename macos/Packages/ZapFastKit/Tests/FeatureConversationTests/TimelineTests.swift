@@ -437,3 +437,55 @@ struct VoiceBubbleTests {
         #expect(layout.accessibilityLabel.contains("1:15"))
     }
 }
+
+@MainActor
+struct TimelineRefreshTests {
+    private func message(_ index: Int, reactions: [ReactionInfo] = []) -> MessageRecord {
+        MessageRecord(
+            id: "m\(index)", chat: "c@s.whatsapp.net", sender: "a@s.whatsapp.net", senderName: nil, fromMe: index % 3 == 0,
+            timestamp: 1_780_000_000 + Int64(index) * 60, content: .text(text: "Salom \(index)", preview: nil),
+            status: .delivered, deliveredAt: nil, readAt: nil, quoted: nil, reactions: reactions, edited: false,
+            mentions: [], forwarded: false, thumbnail: nil, summary: "Salom"
+        )
+    }
+
+    private func update(_ controller: TimelineController, _ messages: [MessageRecord], revision: Int, model: AppModel) {
+        controller.update(
+            chatID: "c@s.whatsapp.net", messages: messages, revision: revision, isGroup: false, model: model,
+            style: .standard, unread: nil, selecting: false, jump: nil, scrollRequest: nil,
+            onReachTop: {}, onScrollState: { _ in }
+        )
+    }
+
+    /// A reaction, a receipt or a download changes a message in place: its
+    /// row alone is made again, not the whole chat.
+    @Test func aMessageChangedInPlaceRemakesOnlyItsRow() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "zapfast-refresh-test-\(UUID().uuidString)")
+        let model = AppModel(backend: PreviewBackend(), paths: AppPaths(data: folder, caches: folder))
+        let controller = TimelineController()
+        controller.makeScrollView().frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        var messages = (0..<40).map { message($0) }
+        update(controller, messages, revision: 1, model: model)
+        let deadline = Date.now.addingTimeInterval(5)
+        // Measured in the background, maybe twice as the width settles.
+        try await Task.sleep(for: .milliseconds(50))
+        while controller.items.count <= messages.count, Date.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        let generation = controller.generation
+        let before = controller.items
+
+        messages[12] = message(12, reactions: [ReactionInfo(sender: "b", fromMe: false, emoji: "👍")])
+        update(controller, messages, revision: 2, model: model)
+        #expect(controller.generation == generation)
+        #expect(controller.message("m12")?.reactions.count == 1)
+        let changed = controller.items.indices.filter { controller.items[$0].differs(from: before[$0]) }
+        #expect(changed.map { controller.items[$0].id } == ["m12"])
+
+        // A message arriving is a new list.
+        messages.append(message(40))
+        update(controller, messages, revision: 3, model: model)
+        #expect(controller.generation > generation)
+    }
+}

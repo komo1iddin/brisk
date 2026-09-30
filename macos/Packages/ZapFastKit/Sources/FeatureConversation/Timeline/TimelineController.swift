@@ -57,10 +57,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
 
         var message: MessageRecord? {
+            if case .message(let message, _)? = row { message } else { nil }
+        }
+
+        var row: TimelineRow? {
             switch self {
             case .chip: nil
-            case .bubble(let row, _), .hosted(let row, _):
-                if case .message(let message, _) = row { message } else { nil }
+            case .bubble(let row, _), .hosted(let row, _): row
             }
         }
 
@@ -105,7 +108,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var chipHeights: [String: CGFloat] = [:]
     /// Bumped by every preparation; a background layout that finishes after
     /// a newer one started is not installed.
-    private var generation = 0
+    private(set) var generation = 0
+    /// Layouts are being measured in the background; the rows on screen
+    /// are older than the plans.
+    private var preparing = false
 
     /// The reader is at the newest message, so new ones scroll into view.
     var followsBottom = true
@@ -241,7 +247,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             pendingJump = jump
         }
         let restyled = style != self.style
-        var changed = revision != self.revision || restyled || unread != self.unread || selecting != self.selecting
+        // Anything that regroups or restyles the rows makes them all again.
+        var rebuilds = restyled || unread != self.unread || selecting != self.selecting
         if restyled {
             self.style = style
             colors = BubbleColors(style)
@@ -254,10 +261,18 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         self.unread = unread
         if revision != self.revision {
             self.revision = revision
+            let old = self.messages
             self.messages = messages
-            changed = true
+            // A download, a receipt, a reaction or an edit changes a message
+            // or two in place: those rows alone are made again, not all of
+            // them, which cost a frame or more in a long chat each time.
+            if !rebuilds, let edited = editedInPlace(from: old, to: messages) {
+                refresh(edited)
+            } else {
+                rebuilds = true
+            }
         }
-        if changed {
+        if rebuilds {
             rebuild(restyled: restyled)
         } else {
             performPendingJump()
@@ -267,6 +282,56 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             perform(scrollRequest.kind)
         }
         report()
+    }
+
+    /// The messages that changed between two lists of the same messages in
+    /// the same order, or nil when they differ otherwise (messages came,
+    /// went, or moved; or a change could regroup the rows: a sender or a
+    /// time). At most a few dozen; more is a new list.
+    private func editedInPlace(from old: [MessageRecord], to new: [MessageRecord]) -> [MessageRecord]? {
+        guard !items.isEmpty, !preparing, old.count == new.count, !new.isEmpty else { return nil }
+        var edited: [MessageRecord] = []
+        for index in new.indices where old[index] != new[index] {
+            let (before, after) = (old[index], new[index])
+            guard before.id == after.id, before.timestamp == after.timestamp, before.sender == after.sender,
+                  before.fromMe == after.fromMe, edited.count < 48 else { return nil }
+            edited.append(after)
+        }
+        return edited
+    }
+
+    /// Makes the rows of `edited` again, where they are, and tells the table
+    /// of those that changed; the reader stays where they were.
+    private func refresh(_ edited: [MessageRecord]) {
+        guard !edited.isEmpty else { return }
+        let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
+        var rows: [(index: Int, row: TimelineRow)] = []
+        for message in edited {
+            guard let index = itemIndex[message.id], case let .message(_, startsRun)? = items[index].row else { continue }
+            rows.append((index, .message(message, startsRun: startsRun)))
+        }
+        let resolved = resolve(rows.map(\.row))
+        let follow = followsBottom
+        let anchor = follow ? nil : readingAnchor()
+        var changed = IndexSet()
+        var resized = IndexSet()
+        var updated = items
+        for ((index, _), plan) in zip(rows, resolved) {
+            plans[index] = plan
+            let item = self.item(for: plan, limit: limit)
+            guard item.differs(from: updated[index]) else { continue }
+            changed.insert(index)
+            if item.height != updated[index].height { resized.insert(index) }
+            updated[index] = item
+        }
+        guard !changed.isEmpty else { return }
+        items = updated
+        reload(changed, resized: resized)
+        if follow {
+            scrollToBottom()
+        } else if let anchor, !resized.isEmpty {
+            restore(anchor)
+        }
     }
 
     /// Rows for the current messages: resolved on the main actor, measured
@@ -337,15 +402,19 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
 
         if missing.count <= backgroundThreshold {
+            // Whatever was measuring in the background is older now.
+            preparing = false
             store(TimelineLayoutEngine.layouts(for: missing, widthLimit: limit), for: missing)
             install(limit: limit, restyled: restyled)
             return
         }
         // The table keeps showing what it has until the layouts land.
+        preparing = true
         Task {
             let layouts = await Self.measure(missing, limit: limit)
             store(layouts, for: missing)
             guard generation == self.generation else { return }
+            preparing = false
             install(limit: limit, restyled: restyled)
         }
     }
@@ -366,33 +435,35 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// Turns the plans into rows and applies them to the table.
     private func install(limit: CGFloat, restyled: Bool) {
         widthLimit = limit
-        let width = rowWidth
-        let scale = style.textScale
-        let new: [Item] = plans.map { plan in
-            switch plan {
-            case let .chip(id, title, isDay):
-                let height = chipHeights[title] ?? ChipCell.measure(title).rowHeight
-                chipHeights[title] = height
-                return .chip(id: id, title: title, isDay: isDay, height: height)
-            case let .bubble(row, source):
-                if let cached = bubbleLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
-                    return .bubble(row, cached.layout)
-                }
-                let layout = TimelineLayoutEngine.layout(for: source, widthLimit: limit)
-                bubbleLayouts[source.id] = (source, layout)
-                return .bubble(row, layout)
-            case let .hosted(row):
-                if let cached = hostedHeights[row.id], cached.row == row, cached.limit == limit, cached.scale == scale {
-                    return .hosted(row, height: cached.height)
-                }
-                let height = RowMeasurer.shared.height(of: rowView(row), width: width)
-                hostedHeights[row.id] = (row, limit, scale, height)
-                return .hosted(row, height: height)
-            }
-        }
+        let new: [Item] = plans.map { item(for: $0, limit: limit) }
         apply(new, restyled: restyled)
         placeUnreadDivider()
         performPendingJump()
+    }
+
+    /// A plan measured: from the caches when it was measured before.
+    private func item(for plan: Plan, limit: CGFloat) -> Item {
+        switch plan {
+        case let .chip(id, title, isDay):
+            let height = chipHeights[title] ?? ChipCell.measure(title).rowHeight
+            chipHeights[title] = height
+            return .chip(id: id, title: title, isDay: isDay, height: height)
+        case let .bubble(row, source):
+            if let cached = bubbleLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
+                return .bubble(row, cached.layout)
+            }
+            let layout = TimelineLayoutEngine.layout(for: source, widthLimit: limit)
+            bubbleLayouts[source.id] = (source, layout)
+            return .bubble(row, layout)
+        case let .hosted(row):
+            let scale = style.textScale
+            if let cached = hostedHeights[row.id], cached.row == row, cached.limit == limit, cached.scale == scale {
+                return .hosted(row, height: cached.height)
+            }
+            let height = RowMeasurer.shared.height(of: rowView(row), width: rowWidth)
+            hostedHeights[row.id] = (row, limit, scale, height)
+            return .hosted(row, height: height)
+        }
     }
 
     private func apply(_ new: [Item], restyled: Bool) {

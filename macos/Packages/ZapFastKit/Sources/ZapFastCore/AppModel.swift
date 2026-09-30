@@ -207,6 +207,7 @@ public final class AppModel {
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
     @ObservationIgnored let launch = LaunchTimer()
+    @ObservationIgnored lazy var phoneHistory = PhoneHistory(defaults: preferences.defaults)
     @ObservationIgnored private var verbose = false
     @ObservationIgnored private let log = Logger(subsystem: "ZapFast", category: "AppModel")
     /// Chats we told the backend we are typing in, and the task that will
@@ -407,8 +408,9 @@ public final class AppModel {
             conversations.markLoadingOlder(chat)
             backend.send(.loadChat(chat: chat, before: key))
         } else if conversation.complete, !conversation.fetchingPhone, !conversation.phoneExhausted,
-                  session.isConnected {
+                  session.isConnected, phoneHistory.mayAsk(chat) {
             conversations.markFetchingPhone(chat)
+            phoneHistory.asking(chat, holding: conversation.messages.count)
             backend.send(.fetchOlder(chat: chat))
         }
     }
@@ -2335,6 +2337,7 @@ public final class AppModel {
             session.syncProgress = percent
         case let .olderFetched(chat, more):
             conversations.applyOlderFetched(chat: chat, more: more)
+            phoneHistory.answered(chat, more: more, holding: conversations.conversation(chat).messages.count)
         case .receiptsPrivacy(let disabled):
             session.receiptsDisabled = disabled
         case .pinLimit(let limit):
@@ -2436,6 +2439,7 @@ public final class AppModel {
         case .loggedOut:
             chats.clear()
             conversations.clear()
+            phoneHistory.clear()
             search.clear()
             stickers.clear()
             avatars.clear()

@@ -364,18 +364,28 @@ private struct DocumentContent: View {
 
     @State private var preview: NSImage?
 
-    private static let width: CGFloat = 260
-    private static let previewHeight: CGFloat = 130
+    private static let width: CGFloat = 280
+    private static let previewHeight: CGFloat = 150
 
     var body: some View {
         let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
         Button(action: activate) {
             VStack(spacing: 0) {
-                if let preview {
-                    Image(nsImage: preview)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: Self.width, height: Self.previewHeight, alignment: .top)
+                // The page's room is kept from the start: the timeline
+                // measures a row once, before the picture has loaded.
+                if hasPreview {
+                    Rectangle()
+                        .fill(.white)
+                        .frame(width: Self.width, height: Self.previewHeight)
+                        .overlay(alignment: .top) {
+                            if let preview {
+                                Image(nsImage: preview)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: Self.width)
+                                    .transition(.opacity)
+                            }
+                        }
                         .clipped()
                         .overlay(alignment: .bottom) { Divider() }
                         .accessibilityHidden(true)
@@ -419,14 +429,22 @@ private struct DocumentContent: View {
         return parts.joined(separator: " · ")
     }
 
+    /// A page to show: the sender's preview, or a PDF that is here.
+    private var hasPreview: Bool {
+        message.thumbnail != nil
+            || (message.mediaURL != nil && DocumentType.of(fileName: fileName, mime: media.mime).conforms(to: .pdf))
+    }
+
     private func load() async {
         model.autoDownload(message)
-        let size = CGSize(width: Self.width, height: Self.previewHeight)
-        if let thumbnail = message.thumbnail {
-            preview = await Thumbnails.load(thumbnail, key: "document-\(message.id)", points: Self.width)
-        } else if let url = message.mediaURL, DocumentType.of(fileName: fileName, mime: media.mime).conforms(to: .pdf) {
-            // Only the top of the page shows, so ask for it at full width.
-            preview = await Thumbnails.document(url, size: CGSize(width: size.width, height: size.width * 1.5))
+        // A page is taller than wide and shows at full width, top first.
+        let tall = Self.width * 1.5
+        if let url = message.mediaURL, DocumentType.of(fileName: fileName, mime: media.mime).conforms(to: .pdf),
+           let page = await Thumbnails.document(url, size: CGSize(width: Self.width, height: tall)) {
+            // The file itself draws sharper than the sender's small preview.
+            withAnimation(.easeOut(duration: 0.15)) { preview = page }
+        } else if let thumbnail = message.thumbnail {
+            preview = await Thumbnails.load(thumbnail, key: "document-\(message.id)", points: tall)
         }
     }
 

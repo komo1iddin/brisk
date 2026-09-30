@@ -10,6 +10,7 @@ struct ComposerBar: View {
 
     @State private var fieldHeight: CGFloat = 22
     @State private var choosing: FileChoice?
+    @State private var attaching = false
     @State private var pickingSticker = false
     @State private var makerPicture: StickerPicture?
     @State private var mentions = MentionTracker()
@@ -106,25 +107,25 @@ struct ComposerBar: View {
     /// Glass on macOS 26, bordered before it.
     private var editor: some View {
         HStack(alignment: .bottom, spacing: Metrics.s) {
-            Menu {
-                Button("Photos & Videos…", systemImage: "photo.on.rectangle") { choosing = .media }
-                Button("Document…", systemImage: "doc") { choosing = .files }
-                Divider()
-                Button("Poll…", systemImage: "chart.bar.xaxis") { model.pollComposerChat = chatID }
-                    .disabled(isEditing)
-                Button("New Sticker…", systemImage: "face.dashed") { choosePicture() }
-                    .disabled(isEditing)
+            Button {
+                attaching.toggle()
             } label: {
                 Label("Attach", systemImage: "plus")
                     .labelStyle(.iconOnly)
                     .font(.system(size: 15, weight: .medium))
                     .frame(width: Self.control, height: Self.control)
+                    .rotationEffect(.degrees(attaching ? 45 : 0))
+                    .animation(.snappy(duration: 0.2), value: attaching)
             }
-            .menuStyle(.button)
-            .menuIndicator(.hidden)
             .composerButton()
-            .fixedSize()
             .help("Attach photos, videos or documents, or create a poll or sticker")
+            .popover(isPresented: $attaching, arrowEdge: .top) {
+                AttachPanel(creates: !isEditing) { choice in
+                    attaching = false
+                    // The panel closes before a file dialog or sheet opens.
+                    DispatchQueue.main.async { attach(choice) }
+                }
+            }
 
             field
 
@@ -145,6 +146,15 @@ struct ComposerBar: View {
             } else {
                 sendButton(title: "Send", systemImage: "arrow.up")
             }
+        }
+    }
+
+    private func attach(_ choice: AttachChoice) {
+        switch choice {
+        case .document: choosing = .files
+        case .media: choosing = .media
+        case .poll: model.pollComposerChat = chatID
+        case .sticker: choosePicture()
         }
     }
 

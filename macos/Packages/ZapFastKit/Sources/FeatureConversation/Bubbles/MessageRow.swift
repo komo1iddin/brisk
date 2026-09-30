@@ -117,7 +117,7 @@ private struct HoverActions: View {
     let model: AppModel
     @Binding var reacting: Bool
 
-    static let size: CGFloat = 30
+    static let size: CGFloat = 34
     static let spacing: CGFloat = 6
     static let gap: CGFloat = 8
     /// How far the pair sits from the bubble's edge it is pinned to: its
@@ -158,25 +158,39 @@ private struct HoverDisc: View {
     let systemImage: String
     let action: () -> Void
     @State private var hovered = false
-    @Environment(\.chatTheme) private var theme
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(hovered ? .primary : .secondary)
                 .frame(width: HoverActions.size, height: HoverActions.size)
-                .background {
-                    Circle()
-                        .fill(theme.chip)
-                        .overlay(Circle().fill(.primary.opacity(hovered ? 0.06 : 0)))
-                        .shadow(color: .black.opacity(0.14), radius: 1.5, y: 1)
-                }
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
+        .modifier(HoverDiscSurface(hovered: hovered))
         .onHover { hovered = $0 }
         .help(title)
+    }
+}
+
+/// Liquid Glass on macOS 26, as WhatsApp's are; before it, an opaque disc
+/// lifted like a bubble so the wallpaper does not show through.
+private struct HoverDiscSurface: ViewModifier {
+    let hovered: Bool
+    @Environment(\.chatTheme) private var theme
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            content.background {
+                Circle()
+                    .fill(theme.chip)
+                    .overlay(Circle().fill(.primary.opacity(hovered ? 0.06 : 0)))
+                    .shadow(color: .black.opacity(0.14), radius: 1.5, y: 1)
+            }
+        }
     }
 }
 

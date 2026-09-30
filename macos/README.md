@@ -78,8 +78,8 @@ drain, and a one-second timeout backs it up.
 | ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
 The composer is laid out as in Messages, with system buttons (Liquid
-Glass on macOS 26): + opens a menu for photos and videos, documents, a
-poll or a new sticker; the stickers button sits in the field; Send
+Glass on macOS 26): + opens a panel of coloured tiles for a document,
+photos and videos, a poll or a new sticker; the stickers button sits in the field; Send
 replaces the microphone once there is something to send.
 
 Files picked with +, dropped on the chat, or pasted (⌘V, including a
@@ -179,8 +179,9 @@ of the bubble, as upstream's hover controls; React offers the quick reactions, a
 again takes it back. Everything else stays in the message's context menu.
 
 A document shows the icon the Finder gives its kind (Excel's or Word's
-when they are installed) and, above it, its first page: the sender's
-preview, or a PDF's cover drawn by Quick Look once the file is here.
+when they are installed) and, above it, the top of its first page: a
+PDF's drawn by Quick Look once the file is here, else the sender's
+preview.
 
 Voice messages show the photo of whoever recorded them at the end of the
 player, with a microphone that turns blue once yours was played; while

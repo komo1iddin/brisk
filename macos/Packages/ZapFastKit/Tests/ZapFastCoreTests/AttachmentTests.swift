@@ -78,10 +78,35 @@ struct AttachmentTests {
         let (model, _) = model()
         model.apply([.sendRefused(
             chat: chat, quoting: nil, reason: .offline, text: nil,
-            files: ["/tmp/a.pdf"], image: pixel, caption: "look"
+            files: ["/tmp/a.pdf"], image: pixel, caption: "look", voice: []
         )])
         #expect(model.attachments[chat]?.count == 2)
         #expect(model.composerText[chat] == "look")
+        #expect(model.unsentVoice == nil)
+    }
+
+    @Test func aRefusedVoiceMessageWaitsToBeSentAgainOrDiscarded() {
+        let (model, backend) = model()
+        let samples = [Float](repeating: 0.1, count: Int(voiceSampleRate()) * 3)
+        model.apply([.sendRefused(
+            chat: chat, quoting: nil, reason: .offline, text: nil,
+            files: [], image: nil, caption: nil, voice: samples
+        )])
+        #expect(model.unsentVoice?.chat == chat)
+        #expect(model.unsentVoice?.seconds == 3)
+
+        model.resendVoice(in: "other@s.whatsapp.net")
+        #expect(model.unsentVoice != nil, "it belongs to its own chat")
+        model.resendVoice(in: chat)
+        #expect(backend.sent.last == .sendVoice(chat: chat, samples: samples, quoting: nil))
+        #expect(model.unsentVoice == nil)
+
+        model.apply([.sendRefused(
+            chat: chat, quoting: nil, reason: .offline, text: nil,
+            files: [], image: nil, caption: nil, voice: samples
+        )])
+        model.discardUnsentVoice()
+        #expect(model.unsentVoice == nil)
     }
 
     @Test func pastedPicturesBecomeStraightAlpha() throws {

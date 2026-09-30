@@ -85,7 +85,9 @@ replaces the microphone once there is something to send.
 Files picked with +, dropped on the chat, or pasted (⌘V, including a
 copied picture or screenshot) wait above the field with a Quick Look
 thumbnail; the text typed goes with them as the caption, and the reply
-with the first. A send refused offline puts them back.
+with the first. A send refused offline puts them back. A voice message refused
+the same way waits above the field ("Voice message (0:07) not sent")
+until Send tries it again or the cross discards it.
 
 A WhatsApp group invite link (chat.whatsapp.com/…) clicked in a message
 opens here: the group's name, members and description, then Join, or

@@ -258,8 +258,9 @@ pub enum BridgeEvent {
         receipts: MessageReceiptsInfo,
     },
     /// A send was refused before leaving this computer. What it carried
-    /// comes back to the composer: `text` for a text message, or the
-    /// attachments (`files`, `image`) with their `caption`.
+    /// comes back to the composer: `text` for a text message, the
+    /// attachments (`files`, `image`) with their `caption`, or a voice
+    /// message's `voice` samples (mono, `voice_sample_rate`).
     SendRefused {
         chat: String,
         quoting: Option<String>,
@@ -268,6 +269,7 @@ pub enum BridgeEvent {
         files: Vec<String>,
         image: Option<PastedImage>,
         caption: Option<String>,
+        voice: Vec<f32>,
     },
     Info {
         message: String,
@@ -491,7 +493,8 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             unsent,
             reason,
         } => {
-            let (mut text, mut files, mut image, mut caption) = (None, Vec::new(), None, None);
+            let (mut text, mut files, mut image, mut caption, mut voice) =
+                (None, Vec::new(), None, None, Vec::new());
             match unsent {
                 Unsent::Text(unsent) => text = Some(unsent),
                 Unsent::Files {
@@ -514,7 +517,8 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
                     });
                     caption = unsent;
                 }
-                Unsent::Voice(_) | Unsent::Sticker | Unsent::Gif => {}
+                Unsent::Voice(samples) => voice = samples,
+                Unsent::Sticker | Unsent::Gif => {}
             }
             Some(B::SendRefused {
                 chat,
@@ -524,6 +528,7 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
                 files,
                 image,
                 caption,
+                voice,
             })
         }
         Event::Receipts(receipts) => Some(B::Receipts {

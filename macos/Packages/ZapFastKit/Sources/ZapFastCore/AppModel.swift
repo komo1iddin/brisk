@@ -134,6 +134,10 @@ public final class AppModel {
     public private(set) var jump: JumpRequest?
     /// The message just jumped to, marked for a moment so the eye finds it.
     public private(set) var highlighted: MessageKey?
+    /// A voice message the backend refused (offline, or its quote gone),
+    /// kept for the composer to send again or discard, as upstream's
+    /// `unsent_voice`. It lives until then, in memory only.
+    public private(set) var unsentVoice: UnsentVoice?
     /// Where the open chat's unread messages began when it was opened.
     public private(set) var unreadDivider: UnreadDivider?
     /// Bumped to put the cursor in the sidebar's search field.
@@ -1078,6 +1082,18 @@ public final class AppModel {
         recorder.cancel()
     }
 
+    /// Sends the refused voice message again, with the reply if one is set.
+    public func resendVoice(in chat: String) {
+        guard let unsent = unsentVoice, unsent.chat == chat else { return }
+        unsentVoice = nil
+        let quoting = replyingTo.removeValue(forKey: chat)?.id
+        backend.send(.sendVoice(chat: chat, samples: unsent.samples, quoting: quoting))
+    }
+
+    public func discardUnsentVoice() {
+        unsentVoice = nil
+    }
+
     // MARK: Intents: videos
 
     /// Plays or pauses a video inside its message, downloading it first if
@@ -1619,10 +1635,16 @@ public final class AppModel {
             guard let watched = receiptsWatch, watched.chat == receipts.chat,
                   watched.message == receipts.message else { break }
             self.receipts = receipts
-        case let .sendRefused(chat, _, reason, text, files, image, caption):
+        case let .sendRefused(chat, quoting, reason, text, files, image, caption, voice):
             // What was refused comes back to the composer, as upstream does.
             if let restored = text ?? caption, (composerText[chat] ?? "").isEmpty {
                 composerText[chat] = restored
+            }
+            if !voice.isEmpty { unsentVoice = UnsentVoice(chat: chat, samples: voice) }
+            // So does the reply, which must be cancelled to send a voice
+            // message whose quote is gone.
+            if let quoting, replyingTo[chat] == nil, let message = conversations.conversation(chat).message(quoting) {
+                replyingTo[chat] = message
             }
             if chat == selectedChatID {
                 let returned = files.map { Attachment(.file(URL(filePath: $0))) }
@@ -1679,6 +1701,7 @@ public final class AppModel {
         editing[chat] = nil
         textBeforeEdit[chat] = nil
         mentionsBeforeEdit[chat] = nil
+        if unsentVoice?.chat == chat { unsentVoice = nil }
     }
 
     private func applyLink(_ state: LinkState) {
@@ -1864,6 +1887,16 @@ public struct StickerPackPreview: Identifiable, Equatable, Sendable {
     /// The chat it was shared in, where its stickers can be sent.
     public let chat: String
     public internal(set) var state: State
+}
+
+public struct UnsentVoice: Equatable, Sendable {
+    public let chat: String
+    public let samples: [Float]
+
+    /// Whole seconds, at least one, as upstream's strip rounds them.
+    public var seconds: Int {
+        max(1, Int((Double(samples.count) / Double(voiceSampleRate())).rounded()))
+    }
 }
 
 /// Upstream's `UnreadDivider`: how many messages were unread when the chat

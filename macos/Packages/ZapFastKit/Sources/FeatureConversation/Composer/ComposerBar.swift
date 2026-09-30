@@ -42,6 +42,14 @@ struct ComposerBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            if let unsent = model.unsentVoice, unsent.chat == chatID, !model.recorder.isRecording {
+                UnsentVoiceStrip(seconds: unsent.seconds) {
+                    withAnimation(.zf(reduceMotion)) { model.discardUnsentVoice() }
+                }
+                .modifier(ComposerPanelSurface())
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             if let staged = model.attachments[chatID], !staged.isEmpty, !model.recorder.isRecording {
                 AttachmentStrip(attachments: staged) { id in
                     withAnimation(.zf(reduceMotion)) { model.removeAttachment(id, in: chatID) }
@@ -132,6 +140,18 @@ struct ComposerBar: View {
             if isEditing {
                 sendButton(title: "Save Changes", systemImage: "checkmark")
                     .disabled(isBlank)
+            } else if isBlank, !hasAttachments, model.unsentVoice?.chat == chatID {
+                // Send tries the refused voice message again, as upstream's.
+                Button {
+                    model.resendVoice(in: chatID)
+                } label: {
+                    Label("Send Voice Message", systemImage: "arrow.up")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: Self.control, height: Self.control)
+                }
+                .composerButton(prominent: true)
+                .help("Send the voice message again")
             } else if isBlank, !hasAttachments {
                 Button {
                     model.startRecording()
@@ -420,6 +440,33 @@ private struct Pulse: ViewModifier {
                 guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { dim = true }
             }
+    }
+}
+
+/// A voice message that could not be sent, above the field until Send
+/// tries again or the cross discards it.
+private struct UnsentVoiceStrip: View {
+    let seconds: Int
+    let discard: () -> Void
+
+    var body: some View {
+        HStack(spacing: Metrics.s) {
+            Image(systemName: "mic.fill")
+                .foregroundStyle(.red)
+                .frame(width: 16)
+            Text("Voice message (\(Duration.seconds(seconds).formatted(.time(pattern: .minuteSecond)))) not sent")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.red)
+            Spacer()
+            Button(action: discard) {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Discard voice message")
+            .accessibilityLabel("Discard voice message")
+        }
+        .frame(height: 36)
+        .padding(.horizontal, Metrics.xs)
     }
 }
 

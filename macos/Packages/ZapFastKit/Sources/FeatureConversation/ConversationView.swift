@@ -87,10 +87,12 @@ public struct ConversationView: View {
         }
         .environment(\.chatTheme, theme)
         .tint(theme.accent)
-        // The window's name, for the Window menu and Mission Control; the
-        // toolbar shows the chat's own header in its place.
-        .navigationTitle(chat.map(model.chats.title(for:)) ?? "")
-        .toolbar(removing: .title)
+        // The header shows the chat's name, so the toolbar's title is empty.
+        // It must stay, though: without a title (`.toolbar(removing: .title)`)
+        // AppKit drops the edge effect under the toolbar while scrolling.
+        // The Window menu and the Dock still name the window after the chat.
+        .navigationTitle("")
+        .background { WindowMenuTitle(title: chat.map(model.chats.title(for:)) ?? "") }
         .infoDialogs($infoRequest, model: model)
         .sheet(item: forwarding) { request in
             ForwardSheet(request: request, model: model)
@@ -203,6 +205,38 @@ public struct ConversationView: View {
 
     private func canSend(_ chat: ChatSummary) -> Bool {
         !chat.locked && !chat.left && !(chat.readOnly && !chat.admin) && !(chat.isChannel && !chat.admin)
+    }
+}
+
+/// Names the window after its chat in the Window menu and the Dock, while
+/// its title (and so the toolbar's) stays empty.
+private struct WindowMenuTitle: NSViewRepresentable {
+    let title: String
+
+    func makeNSView(context: Context) -> Anchor { Anchor() }
+
+    func updateNSView(_ anchor: Anchor, context: Context) {
+        anchor.title = title
+        anchor.apply()
+    }
+
+    final class Anchor: NSView {
+        var title = ""
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            apply()
+        }
+
+        func apply() {
+            guard let window, !title.isEmpty else { return }
+            window.miniwindowTitle = title
+            // After SwiftUI's own title change, which renames the item too.
+            DispatchQueue.main.async { [title] in
+                guard window.isVisible || window.isMiniaturized, !window.isExcludedFromWindowsMenu else { return }
+                NSApp.changeWindowsItem(window, title: title, filename: false)
+            }
+        }
     }
 }
 

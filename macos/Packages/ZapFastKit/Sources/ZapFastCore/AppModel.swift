@@ -1459,23 +1459,41 @@ public final class AppModel {
     public func setChatSearchQuery(_ text: String) {
         guard var current = search.chat, current.query != text else { return }
         current.query = text
+        askChatSearch(current, wait: true)
+    }
+
+    /// Keeps the in-chat search to one day, or lifts that with nil; asked
+    /// at once, since a click is not typing.
+    public func setChatSearchDay(_ day: Date?, calendar: Calendar = .current) {
+        guard var current = search.chat else { return }
+        if let day, let interval = calendar.dateInterval(of: .day, for: day) {
+            current.day = interval.start
+            current.dayBounds = (Int64(interval.start.timeIntervalSince1970), Int64(interval.end.timeIntervalSince1970))
+        } else {
+            current.day = nil
+            current.dayBounds = nil
+        }
+        askChatSearch(current, wait: false)
+    }
+
+    private func askChatSearch(_ search: ChatSearch, wait: Bool) {
+        var current = search
         chatSearchTask?.cancel()
-        let query = current.trimmedQuery
-        if query.isEmpty {
+        guard current.isAsking else {
             current.hits = []
             current.truncated = false
             current.pending = false
             current.selected = nil
-            search.chat = current
+            self.search.chat = current
             return
         }
         current.pending = true
-        search.chat = current
-        let chat = current.chat
+        self.search.chat = current
+        let chat = current.chat, query = current.trimmedQuery, bounds = current.dayBounds
         chatSearchTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.searchDelay)
+            if wait { try? await Task.sleep(for: Self.searchDelay) }
             guard !Task.isCancelled else { return }
-            self?.backend.send(.searchChatMessages(chat: chat, query: query, from: nil, until: nil))
+            self?.backend.send(.searchChatMessages(chat: chat, query: query, from: bounds?.from, until: bounds?.until))
         }
     }
 
@@ -1657,10 +1675,9 @@ public final class AppModel {
             let visible = messages.filter { chats.chat($0.chat)?.locked != true }
             search.applyMessageHits(query: query, messages: visible, wanted: wantedMessageQuery)
         case let .chatHits(chat, query, from, until, messages, truncated):
-            // The panel never asks for a day range yet, so an answer with
-            // one was asked for by something else.
-            guard from == nil, until == nil else { break }
-            search.applyChatHits(chat: chat, query: query, messages: messages, truncated: truncated)
+            search.applyChatHits(
+                chat: chat, query: query, from: from, until: until, messages: messages, truncated: truncated
+            )
         case .labels(let labels):
             chats.replaceLabels(labels)
         case .stickers(let library):

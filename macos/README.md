@@ -168,6 +168,10 @@ field, ranked as upstream ranks them (its `emojis` data, exact shortcodes
 first); ↑ ↓ choose, Return or Tab picks, Escape closes. A bare `:`
 offers the ones picked most recently.
 
+The calendar beside the in-chat search field keeps the search to one
+day; a day with nothing typed lists that day's messages, as upstream's
+does.
+
 Picking a match, clicking the quote in a reply, or clicking a
 notification scrolls to the message,
 loading older history from the archive first when needed, and marks it for

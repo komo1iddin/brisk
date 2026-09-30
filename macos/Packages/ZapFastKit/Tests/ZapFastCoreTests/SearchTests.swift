@@ -176,6 +176,30 @@ struct SearchTests {
         #expect(model.search.chat?.pending == false)
     }
 
+    @Test func aDayAloneListsThatDaysMessages() async throws {
+        let (model, backend) = model()
+        model.selectedChatID = chat
+        model.openChatSearch()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        let day = Date(timeIntervalSince1970: 1_700_000_000)
+        model.setChatSearchDay(day, calendar: calendar)
+        let from: Int64 = 1_699_920_000, until: Int64 = 1_700_006_400
+        #expect(model.search.chat?.pending == true)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(backend.sent.last == .searchChatMessages(chat: chat, query: "", from: from, until: until))
+
+        // An answer for every day no longer fits.
+        model.apply([.chatHits(chat: chat, query: "", from: nil, until: nil, messages: [message("x", at: 1)], truncated: false)])
+        #expect(model.search.chat?.hits.isEmpty == true)
+        model.apply([.chatHits(chat: chat, query: "", from: from, until: until, messages: [message("a", at: from)], truncated: false)])
+        #expect(model.search.chat?.hits.map(\.id) == ["a"])
+
+        model.setChatSearchDay(nil)
+        #expect(model.search.chat?.hits.isEmpty == true)
+        #expect(model.search.chat?.isAsking == false)
+    }
+
     @Test func findNextWalksFromNewestToOldestAndStops() {
         let (model, _) = model()
         model.selectedChatID = chat

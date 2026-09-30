@@ -33,8 +33,11 @@ public final class SearchStore {
         messageHits = []
     }
 
-    func applyChatHits(chat id: String, query: String, messages: [MessageRecord], truncated: Bool) {
-        guard var search = chat, search.chat == id, search.trimmedQuery == query else { return }
+    func applyChatHits(
+        chat id: String, query: String, from: Int64?, until: Int64?, messages: [MessageRecord], truncated: Bool
+    ) {
+        guard var search = chat, search.chat == id, search.trimmedQuery == query,
+              search.dayBounds?.from == from, search.dayBounds?.until == until else { return }
         search.hits = messages
         search.truncated = truncated
         search.pending = false
@@ -69,8 +72,22 @@ public struct ChatSearch: Equatable, Sendable {
     public internal(set) var pending = false
     /// The match last revealed in the timeline, an index into `hits`.
     public internal(set) var selected: Int?
+    /// Only messages from this day (upstream's `chat_search_day`), its
+    /// first and first-after instants in Unix seconds.
+    public internal(set) var day: Date?
+    public internal(set) var dayBounds: (from: Int64, until: Int64)?
 
     public var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A day alone lists that day's messages, as upstream's does.
+    public var isAsking: Bool {
+        !trimmedQuery.isEmpty || day != nil
+    }
+
+    public static func == (lhs: ChatSearch, rhs: ChatSearch) -> Bool {
+        lhs.chat == rhs.chat && lhs.query == rhs.query && lhs.hits == rhs.hits && lhs.truncated == rhs.truncated
+            && lhs.pending == rhs.pending && lhs.selected == rhs.selected && lhs.day == rhs.day
     }
 }

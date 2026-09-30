@@ -96,7 +96,7 @@ set height and scrolls, so the window fits the screen.
 | ↑ in an empty composer | Edit your newest message (up to 15 minutes old); Esc cancels |
 | @ in a group's composer | Suggest members to mention; ↑ ↓ choose, Return or Tab picks, Esc closes |
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |
-| ⌘I | Chat info: picture, number, members, mute / pin / archive |
+| ⌘I | Chat info over the chat, as a click on its header: picture, number, members, search / mute / pin / archive, leave / clear / delete |
 | ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
 The composer is laid out as in Messages, with system buttons (Liquid

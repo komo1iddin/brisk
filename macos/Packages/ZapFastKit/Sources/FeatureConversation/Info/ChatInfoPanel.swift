@@ -3,20 +3,70 @@ import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
-/// The inspector about the open chat: its picture and name, how to reach
-/// or quiet it, and a group's members, each of whom opens their own page.
+/// The open chat's info, over the chat as WhatsApp shows it: its picture
+/// and name, what can be done with it, a group's members (each opening
+/// their own page here), and the chat's destructive actions.
 struct ChatInfoPanel: View {
     let chatID: String
     let model: AppModel
+    let request: (InfoRequest) -> Void
+    /// Member pages opened from here, the last one showing.
     @State private var path: [String] = []
+    @State private var contentHeight: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let width: CGFloat = 340
+    static let maxHeight: CGFloat = 600
 
     var body: some View {
-        NavigationStack(path: $path) {
-            InfoPage(id: chatID, isRoot: true, model: model)
-                .navigationDestination(for: String.self) { id in
-                    InfoPage(id: id, isRoot: false, model: model)
+        let id = path.last ?? chatID
+        VStack(spacing: 0) {
+            if !path.isEmpty {
+                BackBar(title: backTitle) {
+                    withAnimation(.zf(reduceMotion)) { _ = path.popLast() }
                 }
+                Divider()
+            }
+            ScrollView {
+                InfoPage(id: id, isRoot: path.isEmpty, model: model, request: request) { member in
+                    withAnimation(.zf(reduceMotion)) { path.append(member) }
+                }
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(max(contentHeight, 1), Self.maxHeight))
+            .id(id)
+            .transition(reduceMotion ? .opacity : .push(from: .trailing))
         }
+        .frame(width: Self.width)
+        .onExitCommand {
+            if path.isEmpty { model.closeInfo() } else { _ = path.popLast() }
+        }
+    }
+
+    /// The page the back button returns to.
+    private var backTitle: String {
+        let parent = path.dropLast().last ?? chatID
+        return model.chats.chat(parent).map(model.chats.title(for:)) ?? model.chats.displayName(parent)
+    }
+}
+
+private struct BackBar: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        HStack {
+            Button(action: action) {
+                Label(title, systemImage: "chevron.backward")
+                    .lineLimit(1)
+            }
+            .buttonStyle(.borderless)
+            .help("Back")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Metrics.m)
+        .padding(.vertical, Metrics.s)
     }
 }
 
@@ -26,69 +76,33 @@ private struct InfoPage: View {
     let id: String
     let isRoot: Bool
     let model: AppModel
-
-    @State private var renaming = false
-    @State private var newName = ""
-    @State private var choosingPhoto = false
-    @State private var confirmingLeave = false
-    @State private var editingContact = false
+    let request: (InfoRequest) -> Void
+    let open: (String) -> Void
 
     var body: some View {
         let chat = model.chats.chat(id)
-        ScrollView {
-            VStack(spacing: Metrics.l) {
-                header(chat)
-                actions(chat)
-                if let chat, chat.kind == .group, !chat.participants.isEmpty {
-                    MemberList(members: model.chats.members(of: chat), model: model)
-                }
-                if let chat, chat.canLeave(ours: model.ourIDs) {
-                    Button(chat.isChannel ? "Leave Channel…" : "Leave Group…", role: .destructive) {
-                        confirmingLeave = true
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.red)
-                }
+        VStack(spacing: Metrics.l) {
+            header(chat)
+            actions(chat)
+            details(chat)
+            if let chat, chat.kind == .group, !chat.participants.isEmpty {
+                MemberList(members: model.chats.members(of: chat), model: model, open: open)
             }
-            .padding(Metrics.l)
-            .frame(maxWidth: .infinity)
-        }
-        .navigationTitle(isRoot ? Text("Info") : Text(name(chat)))
-        .alert("Rename Group", isPresented: $renaming) {
-            TextField("Group name", text: $newName)
-            Button("Rename") { if let chat { model.renameGroup(chat, to: newName) } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Everyone in the group sees the new name.")
-        }
-        .fileImporter(isPresented: $choosingPhoto, allowedContentTypes: [.image]) { result in
-            if case .success(let url) = result, let chat { model.setGroupPicture(chat, from: url) }
-        }
-        .confirmationDialog(
-            chat?.isChannel == true ? "Leave this channel?" : "Leave this group?",
-            isPresented: $confirmingLeave
-        ) {
-            if let chat {
-                Button(chat.isChannel ? "Leave Channel" : "Leave Group", role: .destructive) {
-                    model.leaveGroup(chat, archive: false)
-                }
-                if !chat.archived {
-                    Button(chat.isChannel ? "Leave Channel and Archive" : "Leave Group and Archive", role: .destructive) {
-                        model.leaveGroup(chat, archive: true)
-                    }
-                }
+            if isRoot, let chat {
+                destructive(chat)
             }
-        } message: {
-            Text("You will not receive new messages. The local history stays on this computer.")
         }
-        .sheet(isPresented: $editingContact) {
-            ContactNameSheet(id: id, model: model)
-        }
+        .padding(Metrics.l)
+        .frame(maxWidth: .infinity)
     }
-
 
     private func name(_ chat: ChatSummary?) -> String {
         chat.map(model.chats.title(for:)) ?? model.chats.displayName(id)
+    }
+
+    private func phone(_ chat: ChatSummary?) -> String? {
+        guard chat?.kind != .group else { return nil }
+        return chat?.phone ?? phoneOf(id: id)
     }
 
     // MARK: Header
@@ -119,18 +133,8 @@ private struct InfoPage: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
-            if let phone = chat?.phone ?? phoneOf(id: id), chat?.kind != .group {
-                Text(phone)
-                    .font(.callout.monospacedDigit())
-                    .textSelection(.enabled)
-            }
             if let status = status(chat) {
                 Text(status)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if let chat, let muted = mutedLine(chat) {
-                Label(muted, systemImage: "bell.slash")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -150,11 +154,8 @@ private struct InfoPage: View {
             .foregroundStyle(.secondary)
         } else if chat.canEditInfo {
             Menu {
-                Button("Rename Group…") {
-                    newName = chat.name
-                    renaming = true
-                }
-                Button("Choose Photo…") { choosingPhoto = true }
+                Button("Rename Group…") { request(.rename(chat)) }
+                Button("Choose Photo…") { request(.choosePhoto(chat)) }
                 if model.avatars.url(for: chat.id) != nil {
                     Button("Remove Photo", role: .destructive) { model.removeGroupPicture(chat) }
                 }
@@ -193,13 +194,6 @@ private struct InfoPage: View {
         return presence.lastSeen.map { DateText.lastSeen($0) }
     }
 
-    private func mutedLine(_ chat: ChatSummary) -> String? {
-        guard model.chats.isMuted(chat), let until = chat.mutedUntil else { return nil }
-        if until == 0 { return String(localized: "Muted") }
-        let date = DateText.date(until).formatted(date: .abbreviated, time: .shortened)
-        return String(localized: "Muted until \(date)")
-    }
-
     // MARK: Actions
 
     @ViewBuilder
@@ -207,19 +201,19 @@ private struct InfoPage: View {
         let isGroup = chat?.kind == .group
         let ours = model.session.isOurs(id)
         HStack(spacing: Metrics.s) {
-            if !isGroup, !ours, id != model.selectedChatID {
-                ActionTile("Message", systemImage: "message") { model.startChat(with: id) }
+            if !isRoot, !isGroup, !ours {
+                ActionTile("Message", systemImage: "message") {
+                    model.closeInfo()
+                    model.startChat(with: id)
+                }
+            }
+            if isRoot, let chat {
+                ActionTile("Search", systemImage: "magnifyingglass") { model.openChatSearch(in: chat.id) }
             }
             if !isGroup, !ours, chat?.kind != .broadcast, phoneOf(id: id) != nil {
                 let saved = model.chats.contacts[id]?.fullName?.isEmpty == false
                 ActionTile(saved ? "Edit Name" : "Add Contact", systemImage: "person.crop.circle.badge.plus") {
-                    editingContact = true
-                }
-            }
-            if !isGroup, let phone = chat?.phone ?? phoneOf(id: id) {
-                ActionTile("Copy Number", systemImage: "doc.on.doc") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(phone, forType: .string)
+                    request(.editContact(id))
                 }
             }
             if let chat {
@@ -238,6 +232,70 @@ private struct InfoPage: View {
                 }
             }
         }
+    }
+
+    // MARK: Details
+
+    @ViewBuilder
+    private func details(_ chat: ChatSummary?) -> some View {
+        let phone = phone(chat)
+        let muted = chat.flatMap(mutedLine)
+        if phone != nil || muted != nil {
+            VStack(spacing: 0) {
+                if let phone {
+                    DetailRow(title: "Phone number", value: phone) {
+                        Button("Copy Number", systemImage: "doc.on.doc") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(phone, forType: .string)
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .help("Copy the number")
+                    }
+                }
+                if phone != nil, muted != nil { Divider().padding(.leading, Metrics.m) }
+                if let muted {
+                    DetailRow(title: "Notifications", value: muted) { EmptyView() }
+                }
+            }
+            .background(.fill.quaternary, in: .rect(cornerRadius: Metrics.cardRadius))
+        }
+    }
+
+    private func mutedLine(_ chat: ChatSummary) -> String? {
+        guard model.chats.isMuted(chat), let until = chat.mutedUntil else { return nil }
+        if until == 0 { return String(localized: "Muted") }
+        let date = DateText.date(until).formatted(date: .abbreviated, time: .shortened)
+        return String(localized: "Muted until \(date)")
+    }
+
+    // MARK: Leaving, clearing, deleting
+
+    /// As at the foot of WhatsApp's info: each asks first, in the window.
+    @ViewBuilder
+    private func destructive(_ chat: ChatSummary) -> some View {
+        let leaves = chat.canLeave(ours: model.ourIDs)
+        VStack(spacing: 0) {
+            if leaves {
+                DestructiveRow(
+                    title: chat.isChannel ? "Leave Channel…" : "Leave Group…",
+                    systemImage: "rectangle.portrait.and.arrow.right"
+                ) { request(.leave(chat)) }
+                Divider().padding(.leading, Metrics.m)
+            }
+            DestructiveRow(title: "Clear Chat…", systemImage: "eraser") {
+                model.closeInfo()
+                model.confirmClear(chat.id)
+            }
+            .disabled(!model.canClearOrDeleteChats)
+            Divider().padding(.leading, Metrics.m)
+            DestructiveRow(title: "Delete Chat…", systemImage: "trash") {
+                model.closeInfo()
+                model.confirmDelete(chat.id)
+            }
+            .disabled(!model.canClearOrDeleteChats)
+        }
+        .background(.fill.quaternary, in: .rect(cornerRadius: Metrics.cardRadius))
     }
 }
 
@@ -275,10 +333,55 @@ private struct ActionTile: View {
     }
 }
 
+/// A caption over a value in a card, with an optional accessory.
+private struct DetailRow<Accessory: View>: View {
+    let title: LocalizedStringKey
+    let value: String
+    @ViewBuilder let accessory: () -> Accessory
+
+    var body: some View {
+        HStack(spacing: Metrics.s) {
+            VStack(alignment: .leading, spacing: Metrics.xxs) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.callout.monospacedDigit())
+                    .textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
+            accessory()
+        }
+        .padding(.horizontal, Metrics.m)
+        .padding(.vertical, Metrics.s)
+    }
+}
+
+/// A red action in a card, as at the foot of WhatsApp's info.
+private struct DestructiveRow: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Metrics.m)
+                .padding(.vertical, Metrics.s)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isEnabled ? AnyShapeStyle(.red) : AnyShapeStyle(.tertiary))
+    }
+}
+
 /// A group's members in a card; each opens that person's page.
 private struct MemberList: View {
     let members: [(id: String, name: String)]
     let model: AppModel
+    let open: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.xs) {
@@ -290,7 +393,9 @@ private struct MemberList: View {
 
             LazyVStack(spacing: 0) {
                 ForEach(members, id: \.id) { member in
-                    NavigationLink(value: member.id) {
+                    Button {
+                        open(member.id)
+                    } label: {
                         HStack(spacing: Metrics.s) {
                             AvatarView(
                                 url: model.avatars.url(for: member.id),
@@ -314,62 +419,6 @@ private struct MemberList: View {
             }
             .padding(.vertical, Metrics.xs)
             .background(.fill.quaternary, in: .rect(cornerRadius: Metrics.cardRadius))
-        }
-    }
-}
-
-/// A person's name for the address book, first and last, saved through
-/// WhatsApp's contact sync (and to the phone when Settings say so).
-private struct ContactNameSheet: View {
-    let id: String
-    let model: AppModel
-    @State private var first = ""
-    @State private var last = ""
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("First name", text: $first)
-                TextField("Last name", text: $last)
-            } header: {
-                Text(phoneOf(id: id) ?? model.chats.displayName(id))
-            } footer: {
-                Text(model.preferences.saveContactsToPhone
-                     ? "The name is also saved to your phone's contacts."
-                     : "The name is saved for WhatsApp only.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 360)
-        .fixedSize(horizontal: false, vertical: true)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    model.saveContact(id, first: first, last: last)
-                    dismiss()
-                }
-                .disabled(ContactName.compose(first: first, last: last) == nil)
-            }
-        }
-        .onAppear(perform: prefill)
-    }
-
-    /// Starts from the saved name, split at its first name when known.
-    private func prefill() {
-        let contact = model.chats.contacts[id]
-        guard let full = contact?.fullName, !full.isEmpty else {
-            first = contact?.pushName ?? ""
-            return
-        }
-        if let short = contact?.firstName, !short.isEmpty, full.hasPrefix(short) {
-            first = short
-            last = String(full.dropFirst(short.count)).trimmingCharacters(in: .whitespaces)
-        } else {
-            first = full
         }
     }
 }

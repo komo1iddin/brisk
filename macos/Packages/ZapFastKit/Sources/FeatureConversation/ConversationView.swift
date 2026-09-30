@@ -9,6 +9,7 @@ public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
     @State private var scrollState = TimelineController.ScrollState()
+    @State private var infoRequest: InfoRequest?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(chatID: String, model: AppModel) {
@@ -86,8 +87,11 @@ public struct ConversationView: View {
         }
         .environment(\.chatTheme, theme)
         .tint(theme.accent)
+        // The window's name, for the Window menu and Mission Control; the
+        // toolbar shows the chat's own header in its place.
         .navigationTitle(chat.map(model.chats.title(for:)) ?? "")
-        .navigationSubtitle(subtitle(chat))
+        .toolbar(removing: .title)
+        .infoDialogs($infoRequest, model: model)
         .sheet(item: forwarding) { request in
             ForwardSheet(request: request, model: model)
         }
@@ -103,22 +107,23 @@ public struct ConversationView: View {
         .sheet(item: interactiveList) { request in
             InteractiveListSheet(request: request, model: model)
         }
-        .inspector(isPresented: inspectorPresented) {
+        .inspector(isPresented: searchPresented) {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
                     ChatSearchPanel(search: search, model: model)
-                } else if model.infoChat == chatID {
-                    ChatInfoPanel(chatID: chatID, model: model)
                 }
             }
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
         .toolbar {
-            ToolbarItem {
-                Button("Chat Info", systemImage: "info.circle") {
-                    if model.infoChat == chatID { model.closeInfo() } else { model.showInfo(in: chatID) }
+            if let chat {
+                if #available(macOS 26, *) {
+                    // The header is the chat's name, not a button in glass.
+                    ToolbarItem(placement: .navigation) { header(chat) }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .navigation) { header(chat) }
                 }
-                .help("Show chat info (⌘I)")
             }
             ToolbarItem {
                 Button("Search in Chat", systemImage: "magnifyingglass") {
@@ -178,43 +183,24 @@ public struct ConversationView: View {
         )
     }
 
-    /// The inspector holds either the chat's search or its info.
-    private var inspectorPresented: Binding<Bool> {
+    private func header(_ chat: ChatSummary) -> some View {
+        ChatHeader(chat: chat, model: model) { request in
+            // The popover goes first; the window answers.
+            model.closeInfo()
+            Task { @MainActor in infoRequest = request }
+        }
+    }
+
+    /// The inspector holds the chat's search; its info opens from the header.
+    private var searchPresented: Binding<Bool> {
         Binding(
-            get: { model.search.chat?.chat == chatID || model.infoChat == chatID },
-            set: { presented in
-                guard !presented else { return }
-                model.closeChatSearch()
-                model.closeInfo()
-            }
+            get: { model.search.chat?.chat == chatID },
+            set: { if !$0 { model.closeChatSearch() } }
         )
     }
 
     private func canSend(_ chat: ChatSummary) -> Bool {
         !chat.locked && !chat.left && !(chat.readOnly && !chat.admin) && !(chat.isChannel && !chat.admin)
-    }
-
-    /// Typing, presence, or group members, under the title.
-    private func subtitle(_ chat: ChatSummary?) -> String {
-        guard let chat else { return "" }
-        if let senders = model.conversations.typing[chatID], !senders.isEmpty {
-            if chat.kind == .group, let first = senders.first {
-                return String(localized: "\(model.chats.personName(first, hint: nil)) is typing…")
-            }
-            return String(localized: "typing…")
-        }
-        switch chat.kind {
-        case .group:
-            return model.chats.participantNames(chat)
-        case .broadcast:
-            return chat.isChannel ? String(localized: "Channel") : String(localized: "Broadcast list")
-        case .direct:
-            if let presence = model.conversations.presence[chatID] {
-                if presence.online { return String(localized: "online") }
-                if let seen = presence.lastSeen { return DateText.lastSeen(seen) }
-            }
-            return chat.phone ?? ""
-        }
     }
 }
 

@@ -94,9 +94,9 @@ public final class AppModel {
     /// Members picked from the `@` suggestions, per chat, until sent.
     public private(set) var composerMentions: [String: [ComposerMention]] = [:]
 
-    /// The open chat's info panel is showing.
+    /// The open chat's info is showing.
     public var infoShown: Bool { infoChat != nil }
-    /// The chat whose info panel shows, in the main window or its own.
+    /// The chat whose info shows over it, in the main window or its own.
     public private(set) var infoChat: String?
     /// Chats shown in windows of their own, and how many of each: they
     /// are open as the main window's chat is, for reading and notifying.
@@ -473,11 +473,10 @@ public final class AppModel {
 
     // MARK: Intents: chat info
 
-    /// Shows the open chat's info in place of its search, which shares the
-    /// same side of the window.
+    /// Shows the chat's info over it, as a click on its header does. The
+    /// chat's search stays open beside it.
     public func showInfo(in chat: String? = nil) {
         guard let chat = chat ?? selectedChatID else { return }
-        closeChatSearch()
         infoChat = chat
     }
 
@@ -2011,7 +2010,7 @@ public final class AppModel {
     }
 
     /// Opens the search inside the open chat, keeping one already open,
-    /// and puts the cursor in its field.
+    /// and puts the cursor in its field. The info over the chat closes.
     public func openChatSearch(in chat: String? = nil) {
         guard let chat = chat ?? selectedChatID else { return }
         infoChat = nil

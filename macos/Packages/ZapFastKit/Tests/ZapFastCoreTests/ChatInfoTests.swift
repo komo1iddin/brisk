@@ -45,18 +45,22 @@ struct ChatInfoTests {
         #expect(names.count == 4)
     }
 
-    @Test func infoAndSearchShareTheInspector() {
+    @Test func infoOpensOverTheSearchAndSearchingClosesIt() {
         let (model, _) = model()
         model.selectedChatID = "g@g.us"
         model.openChatSearch()
         model.showInfo()
-        #expect(model.search.chat == nil)
-        #expect(model.infoShown)
+        // The search sits beside the chat; the info is over it.
+        #expect(model.search.chat?.chat == "g@g.us")
+        #expect(model.infoChat == "g@g.us")
 
+        // The info's Search closes the info.
         model.openChatSearch()
         #expect(!model.infoShown)
+        model.showInfo()
         model.selectedChatID = "other@s.whatsapp.net"
         #expect(model.search.chat == nil)
+        #expect(!model.infoShown)
     }
 
     @Test func messagingSomeoneWithoutAChatCreatesItFirst() {

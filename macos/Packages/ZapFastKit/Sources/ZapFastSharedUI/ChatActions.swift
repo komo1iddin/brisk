@@ -15,6 +15,10 @@ public struct ChatActions: View {
     }
 
     public var body: some View {
+        Button("Chat Info", systemImage: "info.circle") {
+            if !model.isOpen(chat.id) { model.selectedChatID = chat.id }
+            model.showInfo(in: chat.id)
+        }
         Button("Open in New Window", systemImage: "macwindow.badge.plus") {
             openWindow(id: ChatWindowScene.id, value: chat.id)
         }

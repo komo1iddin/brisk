@@ -261,6 +261,10 @@ first, and + opens every emoji by category with a search field;
 choosing yours again takes it back. Everything else stays in the
 message's context menu.
 
+A downloaded photo, video or document drags out of its bubble to the
+Finder or another app, under the name it was sent with (a copy, so
+ZapFast's own file stays).
+
 A document shows the icon the Finder gives its kind (Excel's or Word's
 when they are installed) and, above it, the top of its first page: a
 PDF's drawn by Quick Look once the file is here, else the sender's

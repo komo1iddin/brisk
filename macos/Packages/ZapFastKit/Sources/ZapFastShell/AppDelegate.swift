@@ -39,6 +39,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.windows.first(where: \.canBecomeMain)?.makeKeyAndOrderFront(nil)
         }
         model.start(verbose: verbose)
+        // Copies handed to drags and to Contacts last time are done with.
+        for leftover in ["ZapFast Drags", "ZapFast Contacts"] {
+            try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appending(path: leftover))
+        }
         observeBadge()
         watchInput()
         #if DEBUG

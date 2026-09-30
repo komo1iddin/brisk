@@ -271,6 +271,7 @@ private struct VisualMedia: View {
         .frame(width: size.width, height: size.height)
         .clipShape(shape)
         .onHover { hovering = $0 }
+        .draggableAttachment(message)
         .task(id: "\(message.id)-\(media.path ?? "")") { await load(size) }
         .onDisappear {
             if case .video = message.content { model.videoHidden(message) }
@@ -480,6 +481,7 @@ private struct DocumentContent: View {
             .contentShape(.rect(cornerRadius: Metrics.controlRadius))
         }
         .buttonStyle(.plain)
+        .draggableAttachment(message)
         .task(id: "\(message.id)-\(media.path ?? "")") { await load() }
     }
 

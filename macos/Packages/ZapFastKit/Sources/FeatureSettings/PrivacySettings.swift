@@ -16,6 +16,15 @@ struct PrivacySettings: View {
         Form {
             AccountPrivacySection(model: model)
             Section {
+                Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
+                Toggle("Show when you are typing", isOn: $preferences.sendTyping)
+            } header: {
+                Text("This Mac")
+            } footer: {
+                Text("With read receipts off, people don't see blue ticks or played voice messages from this Mac.")
+                    .settingsFootnote()
+            }
+            Section {
                 LabeledContent("App lock") {
                     if lock.isEnabled {
                         Button("Change Password…") { form = .change }
@@ -56,9 +65,7 @@ struct PrivacySettings: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
+        .settingsPane(height: 520)
         .onChange(of: preferences.appLockAfter) { model.appLock.noteInput() }
         .sheet(item: $form) { mode in
             PasswordForm(mode: mode, lock: lock)

@@ -61,6 +61,12 @@ the events, and calls Swift's `EventListener`, which replays them on the
 main queue in order. `Context::run_logic` re-arms the callback after each
 drain, and a one-second timeout backs it up.
 
+Settings has a tab for each area, as the Mac's own apps do: General
+(login, menu bar, running in the background, downloads), Account, Chats
+(text size, Return, voice message photos, contacts), Notifications,
+Appearance, Privacy and Advanced (proxy, GIPHY key, log). Each keeps a
+set height and scrolls, so the window fits the screen.
+
 ## Keyboard
 
 | Keys | Does |
@@ -148,7 +154,7 @@ pointer is over them, as upstream's do.
 Notifications sound as upstream's do: its receive sound for new
 messages and its alert for a mention of you or a reply to you (Pidgin's
 sounds, GPL-2.0 data files bundled from `assets/sounds`), the system's,
-none, or a file of yours, chosen in Settings › Chats. Group messages can
+none, or a file of yours, chosen in Settings › Notifications. Group messages can
 stay quiet while mentions still sound, and a chat's menu gives it its
 own sound.
 
@@ -160,7 +166,7 @@ after asking, here and on the phone; both need a connection.
 Settings › Privacy also shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and
 calls. The values live on the phone: they are read each time Settings
-opens and changed one at a time.
+opens and changed one at a time. Read receipts and typing for this Mac sit there too.
 
 Settings › Privacy sets an app lock, as upstream's: a password asked at
 start and after 1 minute, 15 minutes or an hour without use, or at once
@@ -209,7 +215,7 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
-Settings › Chats › Files sends new downloads to a folder of your
+Settings › General › Files sends new downloads to a folder of your
 choosing (upstream's `download_folder`) instead of ZapFast's cache;
 files already downloaded stay where they are. Settings › Advanced takes
 a proxy for WhatsApp, media and GIF search (`http://`, `socks5://` or
@@ -217,7 +223,7 @@ a proxy for WhatsApp, media and GIF search (`http://`, `socks5://` or
 connection and reconnecting when changed; empty follows `ALL_PROXY` or
 `HTTPS_PROXY`.
 
-Settings › Advanced › System opens ZapFast at login (a login item, the
+Settings › General opens ZapFast at login (a login item, the
 system's own record, as upstream keeps none of its own), shows its icon
 in the menu bar with upstream's tray menu (open, lock, quit; never a
 chat's name), and keeps it linked in the background when the window

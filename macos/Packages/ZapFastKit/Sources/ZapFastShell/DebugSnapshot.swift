@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import FeatureSettings
 import FeatureConversation
 import SwiftUI
 import ZapFastCore
@@ -39,6 +40,37 @@ enum DebugSnapshot {
         if let menu = NSApp.mainMenu { dump(menu, depth: 0) }
         fflush(stdout)
         NSApp.terminate(nil)
+    }
+
+    /// A folder to draw the Settings tabs into, each from a real window so
+    /// AppKit's controls draw; then the app quits.
+    static var settingsPath: String? {
+        ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_SETTINGS"]
+    }
+
+    static func renderSettingsAndQuit(model: AppModel) {
+        guard let folder = settingsPath else { return }
+        let dark = ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_DARK"] != nil
+        var windows: [NSWindow] = []
+        for pane in SettingsDebug.panes(model: model) {
+            let host = NSHostingController(rootView: pane.view.frame(width: 560))
+            let window = NSWindow(contentViewController: host)
+            window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            window.setFrameOrigin(NSPoint(x: -4000, y: -4000))
+            window.orderFrontRegardless()
+            window.title = pane.name
+            windows.append(window)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            for window in windows {
+                guard let view = window.contentView,
+                      let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+                view.cacheDisplay(in: view.bounds, to: rep)
+                let url = URL(filePath: folder).appending(path: "settings-\(window.title)\(dark ? "-dark" : "").png")
+                try? rep.representation(using: .png, properties: [:])?.write(to: url)
+            }
+            NSApp.terminate(nil)
+        }
     }
 
     static var galleryPath: String? {

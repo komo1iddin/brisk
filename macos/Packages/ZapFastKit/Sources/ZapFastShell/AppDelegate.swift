@@ -14,6 +14,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         #if DEBUG
+        if DebugSnapshot.settingsPath != nil {
+            DebugSnapshot.renderSettingsAndQuit(model: model)
+            return
+        }
         if DebugSnapshot.galleryPath != nil {
             DispatchQueue.main.async { DebugSnapshot.renderGalleryAndQuit() }
             return

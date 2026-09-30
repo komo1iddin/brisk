@@ -25,27 +25,32 @@ public struct SettingsView: View {
                 .frame(height: 220)
             } else {
                 TabView {
+                    Tab("General", systemImage: "gearshape") {
+                        GeneralSettings(model: model)
+                    }
                     Tab("Account", systemImage: "person.crop.circle") {
                         AccountSettings(model: model)
                     }
                     Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
-                        ChatSettings(preferences: model.preferences, model: model)
+                        ChatSettings(preferences: model.preferences)
+                    }
+                    Tab("Notifications", systemImage: "bell.badge") {
+                        NotificationSettings(preferences: model.preferences)
                     }
                     Tab("Appearance", systemImage: "paintpalette") {
                         ChatThemeEditor(chat: nil, model: model)
                             .frame(height: 560)
                     }
-                    Tab("Privacy", systemImage: "lock") {
+                    Tab("Privacy", systemImage: "hand.raised") {
                         PrivacySettings(model: model)
                     }
-                    Tab("Advanced", systemImage: "gearshape") {
+                    Tab("Advanced", systemImage: "gearshape.2") {
                         AdvancedSettings(model: model)
                     }
                 }
             }
         }
-        .frame(width: 480)
-        .scenePadding()
+        .frame(width: 560)
     }
 }
 
@@ -99,9 +104,7 @@ private struct AccountSettings: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
+        .settingsPane(height: 400)
         .confirmationDialog("Unlink this Mac?", isPresented: $confirmUnlink) {
             Button("Unlink", role: .destructive) { model.unlink() }
         }
@@ -139,136 +142,12 @@ private struct AccountSettings: View {
     }
 }
 
-private struct ChatSettings: View {
-    @Bindable var preferences: Preferences
+/// How ZapFast runs on this Mac, and where its files go.
+private struct GeneralSettings: View {
     let model: AppModel
-    @State private var choosingFolder = false
-
-    var body: some View {
-        Form {
-            Section {
-                Toggle("Download media automatically", isOn: $preferences.autoDownload)
-            } footer: {
-                Text("Photos, videos, voice messages and documents download when they scroll into view, up to 64 MB each. Stickers always do.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section {
-                Slider(value: $preferences.textScale, in: 0.8...1.6, step: 0.1) {
-                    Text("Text size")
-                } minimumValueLabel: {
-                    Text(verbatim: "A").font(.caption)
-                } maximumValueLabel: {
-                    Text(verbatim: "A").font(.title2)
-                }
-            } footer: {
-                Text("Messages and the message field. View › Bigger (⌘+) and Smaller (⌘−) change it too, and Actual Size (⌘0) resets it.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section {
-                LabeledContent("Download to") {
-                    HStack(spacing: Metrics.s) {
-                        let folder = model.downloadFolderInUse
-                        Label {
-                            Text(preferences.downloadFolder == nil
-                                ? String(localized: "ZapFast's cache")
-                                : FileManager.default.displayName(atPath: folder.path(percentEncoded: false)))
-                        } icon: {
-                            Image(nsImage: NSWorkspace.shared.icon(for: .folder))
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                        }
-                        .help(folder.path(percentEncoded: false))
-                        Menu {
-                            Button("Choose Folder…") { choosingFolder = true }
-                            Button("Show in Finder") {
-                                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                                NSWorkspace.shared.activateFileViewerSelecting([folder])
-                            }
-                            if preferences.downloadFolder != nil {
-                                Divider()
-                                Button("Use ZapFast's Cache") { model.setDownloadFolder(nil) }
-                            }
-                        } label: {
-                            Text("Change")
-                        }
-                        .fixedSize()
-                    }
-                }
-            } header: {
-                Text("Files")
-            } footer: {
-                Text("New downloads go here. Files already downloaded stay where they are. Save As… in a message's menu saves a copy anywhere.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
-                if case .success(let folder) = result { model.setDownloadFolder(folder) }
-            }
-            Section {
-                Toggle("Return sends", isOn: $preferences.enterSends)
-            } footer: {
-                Text(preferences.enterSends
-                    ? "Shift-Return or Option-Return starts a new line."
-                    : "Return starts a new line; Command-Return sends.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section {
-                Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
-            } footer: {
-                Text("The photo of whoever recorded the message sits beside its player, as on the phone.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section("Notifications") {
-                Toggle("Show notifications for new messages", isOn: $preferences.notifications)
-                Toggle("Show sender and message", isOn: $preferences.notificationPreviews)
-                    .disabled(!preferences.notifications)
-            }
-            Section {
-                SoundPicker(title: "New message", sound: $preferences.messageSound)
-                SoundPicker(title: "Mention or reply to you", sound: $preferences.mentionSound)
-                Toggle("Sounds for group messages", isOn: $preferences.groupSounds)
-            } header: {
-                Text("Sounds")
-            } footer: {
-                Text("A chat can have its own sound, from its menu. Mentions of you sound even in quiet groups.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .disabled(!preferences.notifications)
-            Section {
-                Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
-                Toggle("Show when you are typing", isOn: $preferences.sendTyping)
-            } footer: {
-                Text("When off, people don't see blue ticks or played voice messages from this Mac.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section {
-                Toggle("Save contacts to the phone too", isOn: $preferences.saveContactsToPhone)
-            } footer: {
-                Text("Names you save here are also added to your phone's address book.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-private struct AdvancedSettings: View {
-    let model: AppModel
-
-    @State private var proxy = ""
-    @State private var proxyProblem: String?
-    @FocusState private var editingProxy: Bool
     @State private var loginItem = LoginItem.state
     @State private var loginItemProblem: String?
+    @State private var choosingFolder = false
 
     var body: some View {
         @Bindable var preferences = model.preferences
@@ -283,8 +162,6 @@ private struct AdvancedSettings: View {
                 ))
                 Toggle("Show in menu bar", isOn: $preferences.menuBarIcon)
                 Toggle("Keep running when the window closes", isOn: $preferences.keepRunning)
-            } header: {
-                Text("System")
             } footer: {
                 Group {
                     if let loginItemProblem {
@@ -299,15 +176,156 @@ private struct AdvancedSettings: View {
                         Text("Running in the background keeps ZapFast linked for notifications. Quit from the menu bar icon or with ⌘Q.")
                     }
                 }
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .settingsFootnote()
             }
             .onAppear { loginItem = LoginItem.state }
+
+            Section {
+                Toggle("Download media automatically", isOn: $preferences.autoDownload)
+                LabeledContent("Download to") {
+                    DownloadFolderControl(model: model, choosing: $choosingFolder)
+                }
+            } header: {
+                Text("Files")
+            } footer: {
+                Text("Photos, videos, voice messages and documents download as they scroll into view, up to 64 MB each; stickers always do. Files already downloaded stay where they are.")
+                    .settingsFootnote()
+            }
+            .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
+                if case .success(let folder) = result { model.setDownloadFolder(folder) }
+            }
+        }
+        .settingsPane(height: 360)
+    }
+}
+
+/// The download folder by name, and a menu to change it.
+private struct DownloadFolderControl: View {
+    let model: AppModel
+    @Binding var choosing: Bool
+
+    /// The Finder's folder icon at menu size.
+    private static let folderIcon: NSImage = {
+        let icon = NSWorkspace.shared.icon(for: .folder).copy() as! NSImage
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }()
+
+    var body: some View {
+        let folder = model.downloadFolderInUse
+        let custom = model.preferences.downloadFolder != nil
+        Menu {
+            Button("Choose Folder…") { choosing = true }
+            Button("Show in Finder") {
+                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                NSWorkspace.shared.activateFileViewerSelecting([folder])
+            }
+            if custom {
+                Divider()
+                Button("Use ZapFast's Cache") { model.setDownloadFolder(nil) }
+            }
+        } label: {
+            Label {
+                Text(custom
+                    ? FileManager.default.displayName(atPath: folder.path(percentEncoded: false))
+                    : String(localized: "ZapFast's cache"))
+            } icon: {
+                Image(nsImage: Self.folderIcon)
+            }
+        }
+        .fixedSize()
+        .help(folder.path(percentEncoded: false))
+    }
+}
+
+/// Reading and writing messages.
+private struct ChatSettings: View {
+    @Bindable var preferences: Preferences
+
+    var body: some View {
+        Form {
+            Section {
+                Slider(value: $preferences.textScale, in: 0.8...1.6, step: 0.1) {
+                    Text("Text size")
+                } minimumValueLabel: {
+                    Text(verbatim: "A").font(.caption)
+                } maximumValueLabel: {
+                    Text(verbatim: "A").font(.title3)
+                }
+                Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
+            } header: {
+                Text("Messages")
+            } footer: {
+                Text("Text size is also in View › Bigger (⌘+), Smaller (⌘−) and Actual Size (⌘0).")
+                    .settingsFootnote()
+            }
+            Section {
+                Toggle("Return sends", isOn: $preferences.enterSends)
+            } header: {
+                Text("Writing")
+            } footer: {
+                Text(preferences.enterSends
+                    ? "Shift-Return or Option-Return starts a new line."
+                    : "Return starts a new line; Command-Return sends.")
+                    .settingsFootnote()
+            }
+            Section {
+                Toggle("Save contacts to the phone too", isOn: $preferences.saveContactsToPhone)
+            } header: {
+                Text("Contacts")
+            } footer: {
+                Text("Names you save here are also added to your phone's address book.")
+                    .settingsFootnote()
+            }
+        }
+        .settingsPane(height: 400)
+    }
+}
+
+/// What announces a new message.
+private struct NotificationSettings: View {
+    @Bindable var preferences: Preferences
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Show notifications for new messages", isOn: $preferences.notifications)
+                Toggle("Show sender and message", isOn: $preferences.notificationPreviews)
+                    .disabled(!preferences.notifications)
+            }
+            Section {
+                SoundPicker(title: "New message", sound: $preferences.messageSound)
+                SoundPicker(title: "Mention or reply to you", sound: $preferences.mentionSound)
+                Toggle("Sounds for group messages", isOn: $preferences.groupSounds)
+            } header: {
+                Text("Sounds")
+            } footer: {
+                Text("A chat can have its own sound, from its menu. Mentions of you sound even in quiet groups.")
+                    .settingsFootnote()
+            }
+            .disabled(!preferences.notifications)
+        }
+        .settingsPane(height: 300)
+    }
+}
+
+private struct AdvancedSettings: View {
+    let model: AppModel
+
+    @State private var proxy = ""
+    @State private var proxyProblem: String?
+    @FocusState private var editingProxy: Bool
+
+    var body: some View {
+        @Bindable var preferences = model.preferences
+        Form {
             Section {
                 TextField("Proxy", text: $proxy, prompt: Text(verbatim: "socks5h://127.0.0.1:9050"))
                     .focused($editingProxy)
                     .onSubmit(applyProxy)
                     .onChange(of: editingProxy) { if !editingProxy { applyProxy() } }
+            } header: {
+                Text("Network")
             } footer: {
                 Group {
                     if let proxyProblem {
@@ -318,16 +336,14 @@ private struct AdvancedSettings: View {
                         Text("For WhatsApp, media, and GIF search: http://, socks5:// or socks5h://, with user:password@ if needed. Changing it reconnects.")
                     }
                 }
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .settingsFootnote()
             }
             .onAppear { proxy = preferences.proxy }
             Section {
                 TextField("GIPHY API key", text: $preferences.giphyKey, prompt: Text("Built-in key, if any"))
             } footer: {
                 Text("GIF search asks GIPHY with this key. Create a free one at developers.giphy.com.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .settingsFootnote()
             }
             Section {
                 LabeledContent("Log file") {
@@ -335,19 +351,31 @@ private struct AdvancedSettings: View {
                         NSWorkspace.shared.activateFileViewerSelecting([model.logFile])
                     }
                 }
+            } header: {
+                Text("Troubleshooting")
             } footer: {
                 Text("The log never contains message text, phone numbers, or keys. Attach it to bug reports.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .settingsFootnote()
             }
         }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
+        .settingsPane(height: 350)
     }
 
     private func applyProxy() {
         proxyProblem = model.setProxy(proxy)
+    }
+}
+
+extension View {
+    /// A Settings tab: a grouped form at a set height that scrolls when its
+    /// content is taller, so the window never outgrows the screen.
+    func settingsPane(height: CGFloat) -> some View {
+        formStyle(.grouped).frame(height: height)
+    }
+
+    /// The small print under a section.
+    func settingsFootnote() -> some View {
+        foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -395,3 +423,20 @@ private struct SoundPicker: View {
         )
     }
 }
+
+#if DEBUG
+/// Settings tabs for the debug snapshot, which draws each in a window of
+/// its own. The account tab stays out: it shows the person's name and
+/// number.
+public enum SettingsDebug {
+    public static func panes(model: AppModel) -> [(name: String, view: AnyView)] {
+        [
+            ("general", AnyView(GeneralSettings(model: model))),
+            ("chats", AnyView(ChatSettings(preferences: model.preferences))),
+            ("notifications", AnyView(NotificationSettings(preferences: model.preferences))),
+            ("privacy", AnyView(PrivacySettings(model: model))),
+            ("advanced", AnyView(AdvancedSettings(model: model))),
+        ]
+    }
+}
+#endif

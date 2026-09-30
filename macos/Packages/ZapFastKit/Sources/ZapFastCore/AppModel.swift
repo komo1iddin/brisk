@@ -52,6 +52,8 @@ public final class AppModel {
                 flushDraft(for: oldValue)
             }
             if let selectedChatID { opened(selectedChatID) }
+            // What is open now opens at the next start; a locked chat never does.
+            preferences.lastChat = selectedChatID.flatMap { chats.chat($0)?.locked == true ? nil : $0 }
         }
     }
 
@@ -206,6 +208,7 @@ public final class AppModel {
     /// A video asked to play before it was here (upstream's `video_wanted`);
     /// it starts once its download lands, if its chat is still open.
     @ObservationIgnored private var videoWanted: MessageKey?
+    @ObservationIgnored private var lastChatRestored = false
     /// A jump waiting for its message to load, and whether the archive was
     /// already asked for the pages up to it.
     @ObservationIgnored private var pendingJump: MessageKey?
@@ -1263,6 +1266,19 @@ public final class AppModel {
         ZapFastBridge.emojiSuggestions(query: query, recent: preferences.recentEmoji)
     }
 
+    /// Opens the chat that was open when ZapFast last ran, once, when the
+    /// chats first arrive; one since removed or locked is forgotten.
+    private func restoreLastChat() {
+        guard !lastChatRestored else { return }
+        lastChatRestored = true
+        guard selectedChatID == nil, let id = preferences.lastChat else { return }
+        if let chat = chats.chat(id), !chat.locked {
+            selectedChatID = id
+        } else {
+            preferences.lastChat = nil
+        }
+    }
+
     /// Upstream's `remember_emoji`: the latest first, 36 kept.
     public func rememberEmoji(_ emoji: String) {
         var recent = preferences.recentEmoji.filter { $0 != emoji }
@@ -1862,6 +1878,7 @@ public final class AppModel {
             session.account = .init(id: id, lid: lid, name: name, about: about)
         case .chats(let list):
             chats.replaceAll(list)
+            restoreLastChat()
         case .chatUpdated(let chat):
             chats.upsert(chat)
             // A chat locked on the phone leaves the window unless the

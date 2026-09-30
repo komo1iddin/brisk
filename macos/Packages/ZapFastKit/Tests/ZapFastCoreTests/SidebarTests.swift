@@ -67,4 +67,29 @@ struct SidebarTests {
         #expect(backend.sent.suffix(2).count == 2)
         #expect(backend.sent.contains(.setMuted(chat: "sport@newsletter", until: nil)))
     }
+
+    @Test func theLastOpenChatOpensAtTheNextStart() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let root = FileManager.default.temporaryDirectory.appending(path: "zapfast-last-\(UUID().uuidString)")
+        func launch() -> AppModel {
+            AppModel(backend: PreviewBackend(), paths: AppPaths(data: root, caches: root), preferences: Preferences(defaults: defaults))
+        }
+        let first = launch()
+        first.apply([.chats(chats: [chat("read"), chat("unread", unread: 1)])])
+        first.selectedChatID = "unread"
+
+        let second = launch()
+        second.apply([.chats(chats: [chat("read"), chat("unread", unread: 1)])])
+        #expect(second.selectedChatID == "unread")
+        // Only at start: a later list does not reopen it.
+        second.selectedChatID = nil
+        second.apply([.chats(chats: [chat("read"), chat("unread", unread: 1)])])
+        #expect(second.selectedChatID == nil)
+
+        second.selectedChatID = "read"
+        let third = launch()
+        third.apply([.chats(chats: [chat("unread", unread: 1)])])
+        #expect(third.selectedChatID == nil, "a chat gone since is forgotten")
+        #expect(third.preferences.lastChat == nil)
+    }
 }

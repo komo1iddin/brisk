@@ -208,6 +208,9 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
+The chat open when ZapFast quits opens again at the next start, as
+upstream's `last_chat` does; one removed or locked since is forgotten.
+
 A chat opened from the Unread list stays listed there once read, so its
 row does not leave from under the pointer, until the filter changes, as
 upstream's does. With channels followed, the filter menu mutes or

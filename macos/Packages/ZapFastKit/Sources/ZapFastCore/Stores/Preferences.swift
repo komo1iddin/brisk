@@ -71,6 +71,12 @@ public final class Preferences {
         didSet { defaults.set(try? JSONEncoder().encode(reactionEmoji), forKey: Key.reactionEmoji) }
     }
 
+    /// The chat open when ZapFast last ran, opened again at start
+    /// (upstream's `last_chat`).
+    public internal(set) var lastChat: String? {
+        didSet { defaults.set(lastChat, forKey: Key.lastChat) }
+    }
+
     /// Return sends; off, Return starts a new line and ⌘Return sends.
     public var enterSends: Bool {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
@@ -144,6 +150,7 @@ public final class Preferences {
         voiceAvatars = defaults.bool(forKey: Key.voiceAvatars)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
+        lastChat = defaults.string(forKey: Key.lastChat)
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
         sendTyping = defaults.bool(forKey: Key.sendTyping)
@@ -168,6 +175,7 @@ public final class Preferences {
         static let voiceAvatars = "voiceAvatars"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
+        static let lastChat = "lastChat"
         static let reactionEmoji = "reactionEmoji"
         static let sendTyping = "sendTyping"
         static let appLockVerifier = "appLockVerifier"

@@ -491,6 +491,44 @@ public final class AppModel {
         ))
     }
 
+    // MARK: Intents: shared contacts
+
+    /// A contact card's name, number and WhatsApp account, read as
+    /// upstream's bubble reads it.
+    public func sharedContact(in message: MessageRecord) -> SharedContact? {
+        guard case let .contact(displayName, vcard) = message.content else { return nil }
+        return ZapFastBridge.sharedContact(vcard: vcard, fallbackName: displayName)
+    }
+
+    /// The chat id of a shared contact's WhatsApp account.
+    public static func chatID(ofAccount account: String) -> String {
+        "\(account)@s.whatsapp.net"
+    }
+
+    /// The account is already among the contacts WhatsApp knows.
+    public func isKnownContact(_ account: String) -> Bool {
+        chats.contacts[Self.chatID(ofAccount: account)] != nil
+    }
+
+    /// "Message": the chat with the card's account (upstream's StartChat).
+    public func chat(with contact: SharedContact) {
+        guard let account = contact.account else { return }
+        startChat(with: Self.chatID(ofAccount: account), name: contact.name)
+    }
+
+    /// "Add": saves the card as a contact, the name split at its first
+    /// space as upstream's `split_name` does.
+    public func addContact(_ contact: SharedContact) {
+        guard let account = contact.account else { return }
+        let name = contact.name.trimmingCharacters(in: .whitespaces)
+        let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
+        newContact(
+            phone: account,
+            first: parts.first ?? name,
+            last: parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : ""
+        )
+    }
+
     // MARK: Intents: group invites
 
     /// A link was clicked: a WhatsApp group invite opens here (upstream's

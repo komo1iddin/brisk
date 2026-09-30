@@ -23,6 +23,7 @@ mod helpers;
 mod logging;
 mod pump;
 pub mod types;
+mod vcard;
 
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;

@@ -41,16 +41,19 @@ struct MessageContentView: View {
             DocumentContent(message: message, media: media, fileName: fileName, pages: pages, model: model)
             caption.map { BodyText(text: $0, message: message, model: model) }
         case let .location(latitude, longitude, name, address):
-            LocationContent(latitude: latitude, longitude: longitude, title: name, detail: address, live: false)
-        case let .liveLocation(latitude, longitude, _, _, _, ended, _):
             LocationContent(
-                latitude: latitude, longitude: longitude,
-                title: String(localized: ended ? "Live location ended" : "Live location"),
-                detail: nil, live: !ended
+                message: message, latitude: latitude, longitude: longitude,
+                title: name ?? String(localized: "Location"), detail: address, live: false, model: model
             )
-        case let .contact(displayName, _):
-            Label(displayName, systemImage: "person.crop.circle")
-                .font(.body.weight(.medium))
+        case let .liveLocation(latitude, longitude, accuracy, speed, _, ended, updated):
+            LocationContent(
+                message: message, latitude: latitude, longitude: longitude,
+                title: String(localized: ended ? "Live location ended" : "Live location"),
+                detail: LocationContent.liveDetail(updated: updated, speed: speed, accuracy: accuracy),
+                live: !ended, model: model, version: updated
+            )
+        case let .contact(displayName, vcard):
+            ContactCard(message: message, displayName: displayName, vcard: vcard, model: model)
         case let .poll(question, options, state):
             PollContent(message: message, question: question, options: options, state: state, model: model)
         case let .stickerPack(name, publisher, count, _):
@@ -128,6 +131,66 @@ private struct Placeholder: View {
         Label(text, systemImage: symbol)
             .font(.body.italic())
             .opacity(0.75)
+    }
+}
+
+// MARK: - Contact
+
+/// A shared contact, as on the phone: the person and their number, then
+/// Message and Add when the number is a WhatsApp account (upstream's
+/// contact bubble). A card without a number still shows its name.
+private struct ContactCard: View {
+    let message: MessageRecord
+    let displayName: String
+    let vcard: String
+    let model: AppModel
+
+    var body: some View {
+        let contact = model.sharedContact(in: message)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: Metrics.s) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 36))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(contact?.name ?? displayName)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(2)
+                    if let number = contact?.number {
+                        Text(number).font(.callout).opacity(0.75).textSelection(.enabled)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(Metrics.s)
+
+            if let contact, let account = contact.account {
+                Divider().opacity(0.6)
+                HStack(spacing: 0) {
+                    action("Message") { model.chat(with: contact) }
+                    if !model.isKnownContact(account) {
+                        Divider().frame(height: 20).opacity(0.6)
+                        action("Add") { model.addContact(contact) }
+                            .disabled(!model.session.isConnected)
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 240)
+        .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func action(_ title: LocalizedStringKey, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            Text(title)
+                .font(.callout.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 32)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.tint)
     }
 }
 
@@ -628,28 +691,99 @@ private struct WaveformView: View {
     }
 }
 
+/// A place: the sender's map picture when there is one, a pin and the
+/// place's name, and for a live location when it last moved, how fast and
+/// how precisely (upstream's `location_card`). A click opens it in Maps.
 private struct LocationContent: View {
+    let message: MessageRecord
     let latitude: Double
     let longitude: Double
-    let title: String?
+    let title: String
     let detail: String?
     let live: Bool
+    let model: AppModel
+    /// A live location's latest update, so its picture is reloaded.
+    var version: Int64 = 0
+
+    @State private var picture: NSImage?
+
+    private static let width: CGFloat = 260
+    private static let previewHeight: CGFloat = 146
 
     var body: some View {
-        Button {
-            if let url = URL(string: "https://maps.apple.com/?ll=\(latitude),\(longitude)") {
-                NSWorkspace.shared.open(url)
-            }
-        } label: {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title ?? String(localized: "Location")).font(.body.weight(.medium))
-                    if let detail { Text(detail).font(.caption).opacity(0.8) }
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Room kept from the start, as the row is measured once.
+                if message.thumbnail != nil {
+                    Rectangle()
+                        .fill(.quaternary)
+                        .frame(width: Self.width, height: Self.previewHeight)
+                        .overlay {
+                            if let picture {
+                                Image(nsImage: picture)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: Self.width, height: Self.previewHeight)
+                            }
+                        }
+                        .overlay {
+                            Image(systemName: live ? "location.circle.fill" : "mappin.circle.fill")
+                                .font(.system(size: 30))
+                                .foregroundStyle(.white, live ? Color.blue : Color.red)
+                                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                        }
+                        .clipped()
+                        .accessibilityHidden(true)
                 }
-            } icon: {
-                Image(systemName: live ? "location.fill" : "map")
+                HStack(alignment: .top, spacing: Metrics.s) {
+                    Image(systemName: live ? "location.fill" : "mappin.and.ellipse")
+                        .foregroundStyle(live ? AnyShapeStyle(.blue) : AnyShapeStyle(.tint))
+                        .frame(width: 18)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title).font(.body.weight(.medium)).lineLimit(2)
+                        if let detail {
+                            Text(detail).font(.caption).opacity(0.75).lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(Metrics.s)
             }
+            .frame(width: Self.width)
+            .background(Palette.quoteBar.opacity(0.5))
+            .clipShape(.rect(cornerRadius: Metrics.controlRadius))
+            .contentShape(.rect(cornerRadius: Metrics.controlRadius))
         }
         .buttonStyle(.plain)
+        .help("Open in Maps")
+        .task(id: "\(message.id)-\(version)") {
+            guard let thumbnail = message.thumbnail else { return }
+            picture = await Thumbnails.load(thumbnail, key: "map-\(message.id)-\(version)", points: Self.width)
+        }
+    }
+
+    /// "Updated 14:05 · 31 km/h · ±12 m", as upstream words a live location.
+    static func liveDetail(updated: Int64, speed: Float?, accuracy: UInt32?) -> String? {
+        var parts: [String] = []
+        if updated > 0 {
+            parts.append(String(localized: "Updated \(DateText.bubble(updated))"))
+        }
+        if let speed, speed >= 0.5 {
+            let kmh = Measurement(value: Double(speed), unit: UnitSpeed.metersPerSecond).converted(to: .kilometersPerHour)
+            parts.append(kmh.formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0)))))
+        }
+        if let accuracy, accuracy > 0 {
+            parts.append("±\(accuracy) m")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func open() {
+        var components = URLComponents(string: "https://maps.apple.com/")!
+        components.queryItems = [URLQueryItem(name: "ll", value: "\(latitude),\(longitude)")]
+        if !live, title != String(localized: "Location") {
+            components.queryItems?.append(URLQueryItem(name: "q", value: title))
+        }
+        if let url = components.url { NSWorkspace.shared.open(url) }
     }
 }

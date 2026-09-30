@@ -237,6 +237,16 @@ row does not leave from under the pointer, until the filter changes, as
 upstream's does. With channels followed, the filter menu mutes or
 unmutes them all.
 
+A shared contact shows the person and their number, read from the card
+by upstream's rules (the `waid` WhatsApp adds, else an international
+number): Message opens their chat, Add saves them when they are not a
+contact yet, and the message's menu has Save to Contacts… (the card goes
+to the Contacts app, which asks first) and Copy Number. A place shows
+the sender's map picture with a pin, its name and address; a live
+location says when it last moved, how fast and how precisely. A click
+opens Apple Maps (upstream opens OpenStreetMap); Copy Coordinates is in
+the menu. No map tiles are fetched.
+
 Select in a message's menu, or ⌘-click, starts selecting messages: a
 click adds or removes one, ⇧-click a run of them, and the bar in place of
 the composer forwards them (oldest first) or deletes them from ZapFast on

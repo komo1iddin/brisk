@@ -31,6 +31,27 @@ public struct BubbleGallery: View {
 
     private static let base: Int64 = 1_790_000_000
 
+    /// A made-up map: streets on a pale ground, as a sender's preview.
+    static let mapPicture: Data = {
+        let image = NSImage(size: NSSize(width: 320, height: 180), flipped: false) { rect in
+            NSColor(red: 0.93, green: 0.92, blue: 0.88, alpha: 1).setFill()
+            rect.fill()
+            NSColor(red: 0.78, green: 0.88, blue: 0.74, alpha: 1).setFill()
+            NSRect(x: 30, y: 20, width: 90, height: 60).fill()
+            NSColor.white.setStroke()
+            for x in stride(from: 0.0, through: 320, by: 64) {
+                let path = NSBezierPath()
+                path.lineWidth = 6
+                path.move(to: NSPoint(x: x, y: 0))
+                path.line(to: NSPoint(x: x + 40, y: 180))
+                path.stroke()
+            }
+            return true
+        }
+        let rep = image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:))
+        return rep?.representation(using: .jpeg, properties: [:]) ?? Data()
+    }()
+
     static let messages: [MessageRecord] = [
         .sample("1", from: "a", text: "Salom! Qalaysiz?"),
         .sample("2", from: "a", text: "Ertaga *soat 10* da uchrashamizmi? Manzil: https://maps.apple.com"),
@@ -90,6 +111,17 @@ public struct BubbleGallery: View {
                 historyComplete: true, refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []
             )
         )),
+        .sample("20", from: "b", content: .contact(
+            displayName: "Dilnoza",
+            vcard: "BEGIN:VCARD\nVERSION:3.0\nFN:Dilnoza Karimova\nitem1.TEL;waid=998901234567:+998 90 123 45 67\nEND:VCARD"
+        )),
+        .sample("21", from: "a", content: .location(
+            latitude: 41.3111, longitude: 69.2797, name: "Amir Temur xiyoboni", address: "Toshkent"
+        ), thumbnail: mapPicture),
+        .sample("22", from: "b", content: .liveLocation(
+            latitude: 41.31, longitude: 69.28, accuracyM: 12, speedMps: 8.5, headingDeg: 90,
+            ended: false, updated: 1_790_001_300
+        ), thumbnail: mapPicture),
     ]
 }
 
@@ -116,7 +148,8 @@ private extension MessageRecord {
         reactions: [ReactionInfo] = [],
         forwarded: Bool = false,
         edited: Bool = false,
-        status: DeliveryState = .none
+        status: DeliveryState = .none,
+        thumbnail: Data? = nil
     ) -> MessageRecord {
         MessageRecord(
             id: id, chat: "gallery@g.us", sender: "\(sender)@s.whatsapp.net",
@@ -124,7 +157,7 @@ private extension MessageRecord {
             timestamp: 1_790_000_000 + (Int64(id) ?? 0) * 60,
             content: content ?? .text(text: text ?? "", preview: nil), status: status,
             deliveredAt: nil, readAt: nil, quoted: quoted, reactions: reactions, edited: edited,
-            mentions: [], forwarded: forwarded, thumbnail: nil, summary: text ?? "Attachment"
+            mentions: [], forwarded: forwarded, thumbnail: thumbnail, summary: text ?? "Attachment"
         )
     }
 }

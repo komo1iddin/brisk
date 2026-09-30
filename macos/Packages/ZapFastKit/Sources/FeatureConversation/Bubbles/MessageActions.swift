@@ -43,6 +43,25 @@ struct MessageActions: View {
             Button("Select", systemImage: "checkmark.circle") { model.select(message) }
         }
 
+        if let place = coordinates {
+            Button("Copy Coordinates", systemImage: "mappin.and.ellipse") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(place, forType: .string)
+            }
+        }
+
+        if case let .contact(displayName, vcard) = message.content {
+            Button("Save to Contacts…", systemImage: "person.crop.circle.badge.plus") {
+                ContactCardExport.openInContacts(vcard: vcard, name: model.sharedContact(in: message)?.name ?? displayName)
+            }
+            if let number = model.sharedContact(in: message)?.number {
+                Button("Copy Number", systemImage: "phone") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(number, forType: .string)
+                }
+            }
+        }
+
         if model.canShowInfo(message) {
             Button("Info", systemImage: "info.circle") { model.showInfo(message) }
         }
@@ -88,6 +107,15 @@ struct MessageActions: View {
     private func suggestedName(for url: URL) -> String {
         if case let .document(_, fileName, _, _) = message.content, !fileName.isEmpty { return fileName }
         return url.lastPathComponent
+    }
+
+    /// "latitude,longitude", as upstream copies a place.
+    private var coordinates: String? {
+        switch message.content {
+        case let .location(latitude, longitude, _, _), let .liveLocation(latitude, longitude, _, _, _, _, _):
+            "\(latitude),\(longitude)"
+        default: nil
+        }
     }
 
     private var isLive: Bool {

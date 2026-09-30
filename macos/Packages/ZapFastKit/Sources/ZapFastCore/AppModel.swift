@@ -1809,8 +1809,7 @@ public final class AppModel {
 
     /// Upstream's "Mute all channels" / "Unmute all channels".
     public var allChannelsMuted: Bool {
-        let channels = chats.channels
-        return !channels.isEmpty && channels.allSatisfy { chats.isMuted($0) }
+        chats.channelCount > 0 && chats.mutedChannelCount == chats.channelCount
     }
 
     public func muteAllChannels(_ mute: Bool) {

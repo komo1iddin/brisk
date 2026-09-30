@@ -46,11 +46,21 @@ public struct ZapFastScenes: Scene {
         MenuBarExtra(isInserted: menuBarIcon) {
             MenuBarMenu(model: model)
         } label: {
-            // Never a chat's name or a count, so nothing shows while locked.
-            Image(systemName: model.chats.unreadChatCount > 0 && !model.appLock.isLocked
-                ? "message.badge.filled.fill" : "message")
-                .accessibilityLabel("ZapFast")
+            MenuBarLabel(model: model)
         }
+    }
+}
+
+/// The menu bar icon, apart from the scenes: read in the scenes' body, the
+/// unread count rebuilt every window, menu and command with each change.
+private struct MenuBarLabel: View {
+    let model: AppModel
+
+    var body: some View {
+        // Never a chat's name or a count, so nothing shows while locked.
+        Image(systemName: model.chats.unreadChatCount > 0 && !model.appLock.isLocked
+            ? "message.badge.filled.fill" : "message")
+            .accessibilityLabel("ZapFast")
     }
 }
 

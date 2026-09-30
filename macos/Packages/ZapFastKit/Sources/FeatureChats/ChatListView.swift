@@ -243,7 +243,7 @@ private struct FilterMenu: View {
             }
             .pickerStyle(.inline)
 
-            if !model.chats.channels.isEmpty {
+            if model.chats.channelCount > 0 {
                 let muted = model.allChannelsMuted
                 Button(
                     muted ? "Unmute All Channels" : "Mute All Channels",

@@ -182,6 +182,8 @@ struct HoverActions: View {
     /// How far the pair sits from the bubble's edge it is pinned to: its
     /// own width and the gap.
     static let reach = size * 2 + spacing + gap
+    /// Both discs side by side.
+    static let pairSize = CGSize(width: size * 2 + spacing, height: size)
 
     var body: some View {
         // Reply nearest the bubble, React beyond it, on either side.

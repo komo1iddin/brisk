@@ -111,6 +111,40 @@ struct StoreObservationTests {
         #expect(chats.pinnedCount == 2)
     }
 
+    /// The menu bar icon, the Dock badge and the filter menu read these;
+    /// a message that leaves them as they were must not redraw them.
+    @Test func unreadAndChannelCountsChangeOnlyWithTheirValue() {
+        let chats = ChatStore(session: SessionStore())
+        chats.replaceAll([summary("a", unread: 1), summary("b"), summary("c", channel: true, muted: true)])
+        #expect(chats.unreadChatCount == 1)
+        #expect(chats.channelCount == 1 && chats.mutedChannelCount == 1)
+        #expect(!notified(reading: { _ = chats.unreadChatCount; _ = chats.channelCount }, after: {
+            chats.upsert(summary("a", unread: 5))
+        }))
+        #expect(notified(reading: { _ = chats.unreadChatCount }, after: { chats.upsert(summary("b", unread: 1)) }))
+        #expect(chats.unreadChatCount == 2)
+        // Channels and muted chats never count toward the badge.
+        chats.upsert(summary("c", unread: 9, channel: true))
+        chats.upsert(summary("d", unread: 4, muted: true))
+        #expect(chats.unreadChatCount == 2)
+        #expect(chats.mutedChannelCount == 0)
+    }
+
+    @Test func theSidebarKeepsUpstreamsOrder() {
+        let chats = ChatStore(session: SessionStore())
+        var pinned = summary("p", pinned: true)
+        pinned.pinnedAt = 5
+        var older = summary("o")
+        older.lastActivity = 10
+        var newer = summary("n")
+        newer.lastActivity = 20
+        var tie = summary("m")
+        tie.lastActivity = 20
+        chats.replaceAll([older, newer, pinned, tie])
+        let order = chats.visibleChats(filter: .all, query: "", archived: false).map(\.id)
+        #expect(order == ["p", "m", "n", "o"])
+    }
+
     @Test func daySeparatorsFollowTheCalendar() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Tashkent")!
@@ -121,13 +155,15 @@ struct StoreObservationTests {
         #expect(days == [start, start + 86_400, start + 3 * 86_400].map { "day-\($0)" })
     }
 
-    private func summary(_ id: String, unread: UInt32 = 0, pinned: Bool = false) -> ChatSummary {
+    private func summary(
+        _ id: String, unread: UInt32 = 0, pinned: Bool = false, channel: Bool = false, muted: Bool = false
+    ) -> ChatSummary {
         ChatSummary(
             id: id, name: id, groupSubjectKnown: true, kind: .direct, lastActivity: 0,
-            unread: unread, markedUnread: false, archived: false, pinned: pinned, pinnedAt: 0, mutedUntil: nil,
+            unread: unread, markedUnread: false, archived: false, pinned: pinned, pinnedAt: 0, mutedUntil: muted ? 0 : nil,
             last: nil, favorite: false, favoritePosition: 0, participants: [], readOnly: false, left: false,
             infoLocked: nil, admin: false, locked: false, ephemeralExpiration: nil, labels: [],
-            hasCustomSound: false, isChannel: false, looksUnread: unread > 0, phone: nil
+            hasCustomSound: false, isChannel: channel, looksUnread: unread > 0, phone: nil
         )
     }
 }

@@ -8,8 +8,15 @@ public final class ChatStore {
     public private(set) var chats: [String: ChatSummary] = [:] {
         didSet {
             untracked = chats
-            let count = chats.values.count(where: \.pinned)
-            if count != pinnedCount { pinnedCount = count }
+            var tally = Tally()
+            for chat in chats.values { tally.count(chat, muted: isMuted(chat)) }
+            // Set only when they change: the menu bar icon, the Dock badge and
+            // the sidebar's filter menu read these, and would otherwise be
+            // redrawn by every message in any chat.
+            if tally.pinned != pinnedCount { pinnedCount = tally.pinned }
+            if tally.unread != unreadChatCount { unreadChatCount = tally.unread }
+            if tally.channels != channelCount { channelCount = tally.channels }
+            if tally.mutedChannels != mutedChannelCount { mutedChannelCount = tally.mutedChannels }
             for (id, slot) in slots where slot.value != chats[id] {
                 slot.value = chats[id]
             }
@@ -23,6 +30,12 @@ public final class ChatStore {
     /// Pinned chats, kept apart so menus that check the pin limit are not
     /// redrawn by every chat that changes.
     public private(set) var pinnedCount = 0
+    /// Chats with unread messages that count toward badges: not archived,
+    /// locked, a channel or muted.
+    public private(set) var unreadChatCount = 0
+    /// Followed channels, and how many of them are muted.
+    public private(set) var channelCount = 0
+    public private(set) var mutedChannelCount = 0
     public private(set) var contacts: [String: ContactRecord] = [:]
     /// Unsent composer text per chat, as the backend stored it.
     public private(set) var drafts: [String: String] = [:]
@@ -69,7 +82,10 @@ public final class ChatStore {
             return filter.matches(chat) || (filter == .unread && kept.contains(chat.id))
         }
         let favoritesOrder = !searching && !archived && label == nil && filter == .favorites
-        return filtered.sorted { a, b in
+        // Positions are sorted, not the chats: moving whole summaries about
+        // was most of the sidebar's work for each message.
+        let order = filtered.indices.sorted { i, j in
+            let a = filtered[i], b = filtered[j]
             if a.pinned != b.pinned { return a.pinned }
             if a.pinned {
                 return a.pinnedAt != b.pinnedAt ? a.pinnedAt > b.pinnedAt : a.id < b.id
@@ -79,6 +95,7 @@ public final class ChatStore {
             }
             return a.lastActivity != b.lastActivity ? a.lastActivity > b.lastActivity : a.id < b.id
         }
+        return order.map { filtered[$0] }
     }
 
     /// Where messages can be forwarded (upstream's `forwardable`): not
@@ -115,10 +132,21 @@ public final class ChatStore {
 
     /// Chats with something unread, for the Dock badge. Muted chats and
     /// channels do not count, as on the phone.
-    public var unreadChatCount: Int {
-        chats.values.count { chat in
-            chat.unread > 0 && !chat.archived && !chat.locked && !chat.isChannel
-                && !isMuted(chat)
+    /// The counts kept beside the chats.
+    private struct Tally {
+        var pinned = 0
+        var unread = 0
+        var channels = 0
+        var mutedChannels = 0
+
+        mutating func count(_ chat: ChatSummary, muted: Bool) {
+            if chat.pinned { pinned += 1 }
+            if chat.isChannel {
+                channels += 1
+                if muted { mutedChannels += 1 }
+            } else if chat.unread > 0, !chat.archived, !chat.locked, !muted {
+                unread += 1
+            }
         }
     }
 

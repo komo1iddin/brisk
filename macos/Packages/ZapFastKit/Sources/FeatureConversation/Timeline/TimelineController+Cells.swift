@@ -71,7 +71,9 @@ extension TimelineController: TimelineCellDelegate {
         let view = NSHostingView(rootView: HoverActions(message: message, model: model)
             .environment(\.chatTheme, style.theme))
         view.sizingOptions = []
-        view.frame.size = view.fittingSize
+        // Its own measures: a hosting view outside a window reports no
+        // fitting size for the glass group, and would centre it on nothing.
+        view.frame.size = HoverActions.pairSize
         return view
     }
 

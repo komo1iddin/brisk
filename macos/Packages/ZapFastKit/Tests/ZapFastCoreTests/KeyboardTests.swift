@@ -27,6 +27,16 @@ struct KeyboardTests {
         #expect(model.selectedChatID == "a")
     }
 
+    @Test func commandNumbersOpenTheFirstNineChats() {
+        let model = model()
+        model.sidebarOrder = (1...12).map { "chat\($0)" }
+        #expect(model.sidebarShortcuts.count == 9)
+        model.selectChat(atSidebarPlace: 2)
+        #expect(model.selectedChatID == "chat3")
+        model.selectChat(atSidebarPlace: 20)
+        #expect(model.selectedChatID == "chat3", "no chat there, nothing changes")
+    }
+
     @Test func scrollsAndFocusNeedAnOpenChat() {
         let model = model()
         model.scrollTimeline(.pageUp)

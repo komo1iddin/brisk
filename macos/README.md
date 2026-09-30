@@ -73,6 +73,7 @@ set height and scrolls, so the window fits the screen.
 |---|---|
 | ⌘N | New chat: a contact, yourself, or a phone number |
 | ⇧⌘] / ⇧⌘[ | Next / previous chat in the sidebar, wrapping around |
+| ⌘1 … ⌘9 | The first nine chats in the sidebar (Chat › Go to Chat; names hidden while locked) |
 | ⌘L | Put the cursor in the composer |
 | ⌥⌘↓ | Scroll to the newest message |
 | Page Up / Page Down | Scroll the messages, also from the composer |

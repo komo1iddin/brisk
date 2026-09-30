@@ -172,7 +172,7 @@ public final class AppModel {
     public private(set) var timelineScroll: TimelineScrollRequest?
     /// The sidebar's chats in the order shown, for stepping through them
     /// from the keyboard; the sidebar keeps it current.
-    @ObservationIgnored public var sidebarOrder: [String] = []
+    public var sidebarOrder: [String] = []
     /// The message whose reaction picker is open.
     public var reactionTarget: MessageKey?
     /// Messages picked in the open chat (upstream's `selection`), for
@@ -1575,6 +1575,19 @@ public final class AppModel {
         // Stepping through the Unread list must not shift it underfoot.
         keepUnread(next)
         selectedChatID = next
+    }
+
+    /// ⌘1 to ⌘9: the chat at that place in the sidebar, as Messages does.
+    public func selectChat(atSidebarPlace place: Int) {
+        guard sidebarOrder.indices.contains(place) else { return }
+        let chat = sidebarOrder[place]
+        keepUnread(chat)
+        selectedChatID = chat
+    }
+
+    /// The sidebar's first nine chats, for the Go to Chat menu.
+    public var sidebarShortcuts: [String] {
+        Array(sidebarOrder.prefix(9))
     }
 
     /// A chat opened from the sidebar: kept while it shows the Unread list.

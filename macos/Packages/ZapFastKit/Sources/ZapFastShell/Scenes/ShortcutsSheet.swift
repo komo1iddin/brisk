@@ -16,6 +16,7 @@ struct ShortcutsSheet: View {
         ("Chats", [
             Shortcut(keys: "⌘N", does: "New chat"),
             Shortcut(keys: "⇧⌘] / ⇧⌘[", does: "Next / previous chat"),
+            Shortcut(keys: "⌘1 … ⌘9", does: "The first nine chats in the sidebar"),
             Shortcut(keys: "⌥⌘F", does: "Search all chats"),
             Shortcut(keys: "⌘I", does: "Chat info"),
             Shortcut(keys: "⇧⌘R / ⇧⌘U", does: "Mark read / unread"),

@@ -7953,6 +7953,7 @@ name = "zapfast-bridge"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "emojis",
  "fastframe-log",
  "log",
  "thiserror 2.0.20",

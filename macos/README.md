@@ -160,6 +160,11 @@ GIPHY, with your own key from Settings or one built in at compile time
 through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
 system's Character Viewer (⌃⌘Space).
 
+Typing `:` and part of a name (`:grin`) offers matching emoji above the
+field, ranked as upstream ranks them (its `emojis` data, exact shortcodes
+first); ↑ ↓ choose, Return or Tab picks, Escape closes. A bare `:`
+offers the ones picked most recently.
+
 Picking a match, or clicking the quote in a reply, scrolls to the message,
 loading older history from the archive first when needed, and marks it for
 a moment.

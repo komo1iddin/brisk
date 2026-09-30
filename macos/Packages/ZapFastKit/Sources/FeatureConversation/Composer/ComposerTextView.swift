@@ -20,6 +20,8 @@ struct ComposerTextView: NSViewRepresentable {
     var onUpInEmpty: () -> Bool = { false }
     /// Follows `@` queries and takes the keys while suggestions show.
     var mentions: MentionTracker?
+    /// Follows `:shortcode` queries the same way.
+    var emoji: EmojiTracker?
     /// Picked `@name`s, drawn in the accent colour.
     var mentionNames: [String] = []
 
@@ -58,6 +60,7 @@ struct ComposerTextView: NSViewRepresentable {
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
         mentions?.textView = textView
+        emoji?.textView = textView
         return scrollView
     }
 
@@ -67,9 +70,11 @@ struct ComposerTextView: NSViewRepresentable {
         if textView.string != text {
             textView.string = text
             mentions?.cancel()
+            emoji?.cancel()
             context.coordinator.measure()
         }
         mentions?.textView = textView
+        emoji?.textView = textView
         context.coordinator.highlightMentions()
         if context.coordinator.focusedToken != focusToken {
             context.coordinator.focusedToken = focusToken
@@ -94,17 +99,22 @@ struct ComposerTextView: NSViewRepresentable {
             guard let textView else { return }
             parent.text = textView.string
             parent.onEdit()
+            // A `:` starting a shortcode ends a mention, as upstream's does.
+            if parent.emoji?.textChanged(in: textView) == true { parent.mentions?.cancel() }
             parent.mentions?.textChanged(in: textView)
+            if parent.mentions?.query != nil { parent.emoji?.cancel() }
             measure()
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView else { return }
             parent.mentions?.selectionChanged(in: textView)
+            parent.emoji?.selectionChanged(in: textView)
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            if !textView.hasMarkedText(), parent.mentions?.handle(selector) == true {
+            if !textView.hasMarkedText(),
+               parent.emoji?.handle(selector) == true || parent.mentions?.handle(selector) == true {
                 return true
             }
             if selector == #selector(NSResponder.moveUp(_:)), textView.string.isEmpty {

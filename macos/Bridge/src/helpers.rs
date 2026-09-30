@@ -158,6 +158,84 @@ pub fn doodle_ink(background_hex: String) -> String {
 }
 
 /// Upstream's shortest app-lock password, in characters.
+/// One `:shortcode` completion: the emoji, its `:code:`, and its name.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct EmojiSuggestionInfo {
+    pub emoji: String,
+    pub shortcode: String,
+    pub name: String,
+}
+
+/// Upstream's `emoji_candidates` (`src/ui/conversation.rs`, private there,
+/// so its ranking is repeated here over the same `emojis` data): six
+/// completions for `:query`, the recently used ones first for an empty
+/// query, otherwise exact shortcodes, then shortcode prefixes, names, and
+/// substrings.
+#[uniffi::export]
+pub fn emoji_suggestions(query: String, recent: Vec<String>) -> Vec<EmojiSuggestionInfo> {
+    const LIMIT: usize = 6;
+    let query = query.to_lowercase();
+    let mut seen = std::collections::HashSet::new();
+    if query.is_empty() {
+        return recent
+            .iter()
+            .filter_map(|emoji| emojis::get(emoji))
+            .chain(emojis::iter())
+            .filter(|emoji| seen.insert(emoji.as_str()))
+            .take(LIMIT)
+            .map(emoji_suggestion)
+            .collect();
+    }
+    let mut found: Vec<_> = emojis::iter()
+        .enumerate()
+        .filter_map(|(order, emoji)| {
+            emoji_match_score(emoji, &query).map(|score| (score, order, emoji))
+        })
+        .collect();
+    found.sort_by_key(|(score, order, _)| (*score, *order));
+    found
+        .into_iter()
+        .filter(|(_, _, emoji)| seen.insert(emoji.as_str()))
+        .take(LIMIT)
+        .map(|(_, _, emoji)| emoji_suggestion(emoji))
+        .collect()
+}
+
+fn emoji_match_score(emoji: &emojis::Emoji, query: &str) -> Option<u8> {
+    let name = emoji.name();
+    let shortcodes = emoji.shortcodes();
+    if shortcodes.clone().any(|code| code == query) {
+        Some(0)
+    } else if shortcodes.clone().any(|code| code.starts_with(query)) {
+        Some(1)
+    } else if name == query {
+        Some(2)
+    } else if name.starts_with(query)
+        || name
+            .split([' ', '-', '_'])
+            .any(|word| word.starts_with(query))
+    {
+        Some(3)
+    } else if shortcodes.clone().any(|code| code.contains(query)) {
+        Some(4)
+    } else if name.contains(query) {
+        Some(5)
+    } else {
+        None
+    }
+}
+
+fn emoji_suggestion(emoji: &'static emojis::Emoji) -> EmojiSuggestionInfo {
+    let shortcode = emoji
+        .shortcode()
+        .map_or_else(|| emoji.name().replace([' ', '-'], "_"), str::to_owned);
+    EmojiSuggestionInfo {
+        emoji: emoji.as_str().to_owned(),
+        shortcode: format!(":{shortcode}:"),
+        name: emoji.name().to_owned(),
+    }
+}
+
 #[uniffi::export]
 pub fn app_lock_min_password_chars() -> u32 {
     count(zapfast::app_lock::MIN_PASSWORD_CHARS)
@@ -302,6 +380,34 @@ mod tests {
         assert!(red(&dark_ink) < 0x40, "{dark_ink}");
         assert!(red(&light_ink) > 0xe0, "{light_ink}");
         assert_eq!(dark_ink.len(), 9);
+    }
+
+    #[test]
+    fn emoji_suggestions_rank_as_upstreams() {
+        let first = |query: &str| {
+            emoji_suggestions(query.into(), vec![])
+                .first()
+                .map(|found| found.emoji.clone())
+        };
+        assert_eq!(first("grinning").as_deref(), Some("😀"));
+        assert!(
+            emoji_suggestions("thumbsup".into(), vec![])
+                .iter()
+                .any(|found| found.emoji == "👍")
+        );
+        assert!(
+            emoji_suggestions("pregnant".into(), vec![])
+                .iter()
+                .any(|found| found.emoji == "🤰")
+        );
+        assert_eq!(
+            emoji_suggestions("GRINNING".into(), vec![])[0].shortcode,
+            ":grinning:"
+        );
+        let recent = emoji_suggestions(String::new(), vec!["🚀".into(), "nope".into()]);
+        assert_eq!(recent.len(), 6);
+        assert_eq!(recent[0].emoji, "🚀");
+        assert!(emoji_suggestions("zzzzqqq".into(), vec![]).is_empty());
     }
 
     #[test]

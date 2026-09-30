@@ -13,12 +13,17 @@ struct ComposerBar: View {
     @State private var pickingSticker = false
     @State private var makerPicture: StickerPicture?
     @State private var mentions = MentionTracker()
+    @State private var emoji = EmojiTracker()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let suggesting = !mentions.suggestions.isEmpty
+        let completing = !emoji.suggestions.isEmpty
+        let suggesting = completing || !mentions.suggestions.isEmpty
         VStack(spacing: Metrics.s) {
-            if suggesting {
+            if completing {
+                EmojiSuggestions(tracker: emoji)
+                    .transition(.opacity)
+            } else if suggesting {
                 MentionSuggestions(tracker: mentions, model: model)
                     .transition(.opacity)
             }
@@ -73,6 +78,7 @@ struct ComposerBar: View {
         .onAppear(perform: bindMentions)
         .onChange(of: chatID) {
             mentions.cancel()
+            emoji.cancel()
             bindMentions()
         }
     }
@@ -90,6 +96,8 @@ struct ComposerBar: View {
         let chat = chatID, model = model
         mentions.candidates = { model.mentionCandidates(in: chat, query: $0) }
         mentions.onPick = { model.addMention($0, in: chat) }
+        emoji.candidates = { model.emojiSuggestions(for: $0) }
+        emoji.onPick = { model.rememberEmoji($0) }
     }
 
     /// As in Messages: a + button with the attach and create menu, the
@@ -178,6 +186,7 @@ struct ComposerBar: View {
                     },
                     onUpInEmpty: { model.editLastMessage(in: chatID) },
                     mentions: mentions,
+                    emoji: emoji,
                     mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)
                 )
                 .frame(height: fieldHeight)

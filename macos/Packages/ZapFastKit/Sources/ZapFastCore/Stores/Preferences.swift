@@ -59,6 +59,12 @@ public final class Preferences {
         didSet { defaults.set(groupSounds, forKey: Key.groupSounds) }
     }
 
+    /// Emoji picked from `:shortcode` completion, newest first (upstream's
+    /// `recent_emoji`), offered first for a bare `:`.
+    public internal(set) var recentEmoji: [String] {
+        didSet { defaults.set(recentEmoji, forKey: Key.recentEmoji) }
+    }
+
     /// Voice messages show who recorded them, as on the phone.
     public var voiceAvatars: Bool {
         didSet { defaults.set(voiceAvatars, forKey: Key.voiceAvatars) }
@@ -112,6 +118,7 @@ public final class Preferences {
         mentionSound = defaults.string(forKey: Key.mentionSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .alert
         groupSounds = defaults.bool(forKey: Key.groupSounds)
         voiceAvatars = defaults.bool(forKey: Key.voiceAvatars)
+        recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
         unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
@@ -130,6 +137,7 @@ public final class Preferences {
         static let mentionSound = "mentionSound"
         static let groupSounds = "groupSounds"
         static let voiceAvatars = "voiceAvatars"
+        static let recentEmoji = "recentEmoji"
         static let appLockVerifier = "appLockVerifier"
         static let appLockAfter = "appLockAfter"
         static let unlockWithTouchID = "unlockWithTouchID"

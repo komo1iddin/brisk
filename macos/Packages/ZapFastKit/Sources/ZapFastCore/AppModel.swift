@@ -978,6 +978,18 @@ public final class AppModel {
 
     /// The composer changed: tell the chat we are typing, and that we
     /// stopped once the keys have been quiet for a few seconds.
+    /// Completions for a `:shortcode` typed in the composer.
+    public func emojiSuggestions(for query: String) -> [EmojiSuggestionInfo] {
+        ZapFastBridge.emojiSuggestions(query: query, recent: preferences.recentEmoji)
+    }
+
+    /// Upstream's `remember_emoji`: the latest first, 36 kept.
+    public func rememberEmoji(_ emoji: String) {
+        var recent = preferences.recentEmoji.filter { $0 != emoji }
+        recent.insert(emoji, at: 0)
+        preferences.recentEmoji = Array(recent.prefix(36))
+    }
+
     public func composerEdited(in chat: String) {
         if composingIn[chat] == nil {
             backend.send(.composing(chat: chat, composing: true))

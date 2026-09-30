@@ -128,7 +128,7 @@ let package = Package(
 
         .testTarget(
             name: "ZapFastCoreTests",
-            dependencies: ["ZapFastCore"],
+            dependencies: ["ZapFastCore", "ZapFastDesign"],
             swiftSettings: uiSettings
         ),
         .testTarget(

@@ -204,6 +204,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     ) {
         self.onReachTop = onReachTop
         self.onScrollState = onScrollState
+        // Pictures are decoded for the display the timeline is on.
+        if let space = scrollView.window?.colorSpace?.cgColorSpace, space != DisplayImage.colorSpace {
+            DisplayImage.colorSpace = space
+        }
         if self.model !== model {
             self.model = model
             observeHighlight()

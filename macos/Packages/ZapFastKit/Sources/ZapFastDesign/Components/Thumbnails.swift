@@ -63,9 +63,10 @@ public enum Thumbnails {
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: max(1, Int(points * scale)),
         ]
-        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+        guard let decoded = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
             return nil
         }
+        let image = DisplayImage.prepare(decoded)
         let result = NSImage(
             cgImage: image,
             size: NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale)

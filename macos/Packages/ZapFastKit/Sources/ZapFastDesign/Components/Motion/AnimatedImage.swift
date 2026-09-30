@@ -86,7 +86,7 @@ nonisolated final class AnimatedFrames: Sendable {
         var delays: [TimeInterval] = []
         for index in 0..<count {
             guard let frame = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else { continue }
-            frames.append(frame)
+            frames.append(DisplayImage.prepare(frame))
             delays.append(delay(of: source, at: index))
         }
         guard frames.count > 1 else { return nil }

@@ -2,6 +2,7 @@ import AppKit
 import FeatureConversation
 import Observation
 import ZapFastCore
+import ZapFastDesign
 
 /// App lifecycle: starts the backend, reports whether the person is looking,
 /// keeps the Dock badge current, and shuts down cleanly on quit.
@@ -14,6 +15,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Avatars decode before any timeline is open to say which display.
+        if let space = NSScreen.main?.colorSpace?.cgColorSpace { DisplayImage.colorSpace = space }
         if TimelineBenchmark.isRequested {
             TimelineBenchmark.start(model: model)
             return

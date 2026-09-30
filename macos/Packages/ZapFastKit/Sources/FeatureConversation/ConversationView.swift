@@ -100,7 +100,7 @@ public struct ConversationView: View {
             Group {
                 if let search = model.search.chat, search.chat == chatID {
                     ChatSearchPanel(search: search, model: model)
-                } else if model.infoShown {
+                } else if model.infoChat == chatID {
                     ChatInfoPanel(chatID: chatID, model: model)
                 }
             }
@@ -109,7 +109,7 @@ public struct ConversationView: View {
         .toolbar {
             ToolbarItem {
                 Button("Chat Info", systemImage: "info.circle") {
-                    if model.infoShown { model.closeInfo() } else { model.showInfo() }
+                    if model.infoChat == chatID { model.closeInfo() } else { model.showInfo(in: chatID) }
                 }
                 .help("Show chat info (⌘I)")
             }
@@ -118,7 +118,7 @@ public struct ConversationView: View {
                     if model.search.chat?.chat == chatID {
                         model.closeChatSearch()
                     } else {
-                        model.openChatSearch()
+                        model.openChatSearch(in: chatID)
                     }
                 }
                 .help("Search in this chat (⌘F)")
@@ -174,7 +174,7 @@ public struct ConversationView: View {
     /// The inspector holds either the chat's search or its info.
     private var inspectorPresented: Binding<Bool> {
         Binding(
-            get: { model.search.chat?.chat == chatID || model.infoShown },
+            get: { model.search.chat?.chat == chatID || model.infoChat == chatID },
             set: { presented in
                 guard !presented else { return }
                 model.closeChatSearch()

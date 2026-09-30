@@ -1,6 +1,7 @@
 import FeatureSettings
 import SwiftUI
 import ZapFastCore
+import ZapFastSharedUI
 
 /// Every scene of the app. The app target only declares `@main` and hands
 /// its model here.
@@ -26,6 +27,14 @@ public struct ZapFastScenes: Scene {
             ToolbarCommands()
             ZapFastCommands(model: model)
         }
+
+        // A chat in a window of its own, from its menu.
+        WindowGroup("Chat", id: ChatWindowScene.id, for: String.self) { $chat in
+            if let chat {
+                ChatWindow(chatID: chat, model: model)
+            }
+        }
+        .defaultSize(width: 520, height: 680)
 
         Settings {
             SettingsView(model: model)

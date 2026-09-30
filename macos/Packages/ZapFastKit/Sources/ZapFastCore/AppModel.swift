@@ -32,11 +32,11 @@ public final class AppModel {
             guard selectedChatID != oldValue else { return }
             // No player outlives its chat until there is a mini player,
             // and a recording belongs to the chat it started in.
-            if voice.current?.chat != selectedChatID { voice.stop() }
-            if video.current?.chat != selectedChatID { video.stop() }
+            if let playing = voice.current?.chat, !isOpen(playing) { voice.stop() }
+            if let playing = video.current?.chat, !isOpen(playing) { video.stop() }
             if recorder.isRecording { recorder.cancel() }
-            if search.chat?.chat != selectedChatID { search.chat = nil }
-            infoShown = false
+            if let searched = search.chat?.chat, !isOpen(searched) { search.chat = nil }
+            if infoChat == oldValue { infoChat = nil }
             if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if videoWanted?.chat != selectedChatID { videoWanted = nil }
@@ -94,7 +94,12 @@ public final class AppModel {
     public private(set) var composerMentions: [String: [ComposerMention]] = [:]
 
     /// The open chat's info panel is showing.
-    public private(set) var infoShown = false
+    public var infoShown: Bool { infoChat != nil }
+    /// The chat whose info panel shows, in the main window or its own.
+    public private(set) var infoChat: String?
+    /// Chats shown in windows of their own, and how many of each: they
+    /// are open as the main window's chat is, for reading and notifying.
+    public private(set) var windowChats: [String: Int] = [:]
 
     /// Chats opened from the Unread list, which stay listed there after
     /// they are read (upstream's `unread_kept`), until the list changes.
@@ -462,14 +467,44 @@ public final class AppModel {
 
     /// Shows the open chat's info in place of its search, which shares the
     /// same side of the window.
-    public func showInfo() {
-        guard selectedChatID != nil else { return }
+    public func showInfo(in chat: String? = nil) {
+        guard let chat = chat ?? selectedChatID else { return }
         closeChatSearch()
-        infoShown = true
+        infoChat = chat
     }
 
     public func closeInfo() {
-        infoShown = false
+        infoChat = nil
+    }
+
+    // MARK: Intents: chat windows
+
+    /// The chat shows in the main window or one of its own.
+    public func isOpen(_ chat: String) -> Bool {
+        selectedChatID == chat || windowChats[chat, default: 0] > 0
+    }
+
+    /// A window of its own now shows `chat`: loaded, and read as the main
+    /// window's chat is when opened.
+    public func chatWindowAppeared(_ chat: String) {
+        windowChats[chat, default: 0] += 1
+        if composerText[chat] == nil, let draft = chats.drafts[chat] {
+            composerText[chat] = draft
+        }
+        ensureLoaded(chat)
+        if chats.chat(chat)?.looksUnread == true, !appLock.isLocked { markRead(chat) }
+        notifier?.clear(chat: chat)
+    }
+
+    public func chatWindowDisappeared(_ chat: String) {
+        let left = windowChats[chat, default: 1] - 1
+        windowChats[chat] = left > 0 ? left : nil
+        guard !isOpen(chat) else { return }
+        flushDraft(for: chat)
+        if infoChat == chat { infoChat = nil }
+        if search.chat?.chat == chat { closeChatSearch() }
+        if let playing = voice.current?.chat, playing == chat { voice.stop() }
+        if let playing = video.current?.chat, playing == chat { video.stop() }
     }
 
     public func messageYourself() {
@@ -1793,9 +1828,9 @@ public final class AppModel {
 
     /// Opens the search inside the open chat, keeping one already open,
     /// and puts the cursor in its field.
-    public func openChatSearch() {
-        guard let chat = selectedChatID else { return }
-        infoShown = false
+    public func openChatSearch(in chat: String? = nil) {
+        guard let chat = chat ?? selectedChatID else { return }
+        infoChat = nil
         if search.chat?.chat != chat { search.chat = ChatSearch(chat: chat) }
         chatSearchFocusRequests += 1
     }
@@ -1993,7 +2028,7 @@ public final class AppModel {
             if chat.locked, chat.id == selectedChatID, !lockedChats.isOpen { selectedChatID = nil }
             if !chat.looksUnread { notifier?.clear(chat: chat.id) }
             // An open chat that turns unread was read by the person looking at it.
-            if chat.id == selectedChatID, chat.looksUnread, !chat.markedUnread, !appLock.isLocked {
+            if isOpen(chat.id), chat.looksUnread, !chat.markedUnread, !appLock.isLocked {
                 markRead(chat.id)
             }
         case .chatRemoved(let chat):
@@ -2014,7 +2049,7 @@ public final class AppModel {
             let bare = conversations.applyMessages(
                 chat: chat, messages: messages, older: older, complete: complete
             )
-            if bare, chat == selectedChatID { loadOlder(in: chat) }
+            if bare, isOpen(chat) { loadOlder(in: chat) }
             if unreadDivider?.chat == chat { resolveUnreadDivider() }
             if pendingJump?.chat == chat { continueJump() }
         case .messageUpdated(let message):
@@ -2091,7 +2126,7 @@ public final class AppModel {
             let key = MessageKey(chat: chat, message: message)
             if videoWanted == key {
                 videoWanted = nil
-                if path != nil, error == nil, selectedChatID == chat, !appLock.isLocked,
+                if path != nil, error == nil, isOpen(chat), !appLock.isLocked,
                    let record = conversations.conversation(chat).message(message) {
                     playVideo(record)
                 }
@@ -2253,7 +2288,7 @@ public final class AppModel {
         let now = Int64(Date.now.timeIntervalSince1970)
         guard !chat.archived, chat.unread > 0, !chats.isMuted(chat), !chat.locked,
               now - message.timestamp <= 60 else { return }
-        let reading = isReading && selectedChatID == id
+        let reading = isReading && isOpen(id)
         guard !reading else { return }
 
         // A locked app says nothing about who wrote or what.

@@ -239,6 +239,11 @@ row does not leave from under the pointer, until the filter changes, as
 upstream's does. With channels followed, the filter menu mutes or
 unmutes them all.
 
+A chat's menu opens it in a window of its own (Open in New Window),
+with its composer, search and info; a chat there is read and kept quiet
+in notifications as the main window's is. The window shows nothing while
+the app lock is closed.
+
 A shared contact shows the person and their number, read from the card
 by upstream's rules (the `waid` WhatsApp adds, else an international
 number): Message opens their chat, Add saves them when they are not a

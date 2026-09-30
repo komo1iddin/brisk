@@ -39,7 +39,7 @@ macos/
 │       ├── ZapFastSharedUI/   components that need both the model and the kit
 │       ├── FeatureOnboarding/ linking: QR, phone pairing, connection states
 │       ├── FeatureChats/      the sidebar chat list
-│       ├── FeatureConversation/ timeline (NSTableView), bubbles, composer (NSTextView)
+│       ├── FeatureConversation/ chat pane (AppKit), timeline (NSTableView, drawn cells), composer
 │       ├── FeatureSettings/   the Settings window
 │       ├── FeatureLock/       the app lock's lock screen
 │       └── ZapFastShell/      scenes, split view, menus, app delegate

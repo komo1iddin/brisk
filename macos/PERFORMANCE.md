@@ -55,6 +55,7 @@ chat, 200 chats, three alternating runs of each build.
 | 09-30 | Photos, videos, GIFs and stickers drawn by Core Animation, measured off the main actor | open 2,000 messages 940 → 550 ms; open again 127 → 92 ms; jump p50 13 → 8 ms; scroll hitches unchanged within noise: the SwiftUI rows left (documents, voice, link previews) and the window's root are most of the scroll now |
 | 10-01 | Documents, link previews and voice messages drawn too: no SwiftUI rows left in the benchmark | open 2,000 messages 550 → 160–185 ms; open again 92 → 58–72 ms; jump p50 8 → 3.5 ms; scroll hitches 60–100 → 38–62 ms/s, flicks 8–12; with the pointer over the timeline 200–350 → 44–66 ms/s; memory 240 → 120–134 MB |
 | 10-01 | A message changed in place (a download, a receipt, a reaction) remakes its row only, not the chat's | scroll hitches 38–62 → 15–22 ms/s, flicks 4–6; with the pointer over the timeline 22–24 ms/s. The gaps between frames had been whole rebuilds of 2,000 rows as downloads finished |
+| 10-01 | The chat's content in AppKit (`ConversationViewController`): the timeline a plain subview, the composer and what floats over it SwiftUI islands; the toolbar, sheets and search stay SwiftUI | scroll hitches 15–22 → 1–4 ms/s, flicks 0–3; open again 58 → 52 ms; resize step unchanged at 24 ms (the window's SwiftUI split view) |
 
 ### On the linked account
 
@@ -84,14 +85,15 @@ one keeps loading and drawing all sixteen. Its p99 is lower.
   `zapfast.log`), so the marker that would skip it is never saved and each
   launch waits for the attempt to fail. This is upstream and whatsapp-rust
   behaviour; a new link starts with an incremental sync instead.
-- While scrolling the linked account, the window's SwiftUI layout is still
-  about a third of the main thread, and AppKit's cursor update hit-tests
-  the SwiftUI hierarchy on every frame (about a tenth).
+- Resizing the window still lays out its SwiftUI root (the split view,
+  toolbar and sidebar) on every step, about 24 ms. An AppKit window with
+  an AppKit split view would take that away too.
 
 - A message elsewhere still costs up to ~37 ms at the 99th percentile,
   the first time a chat moves to the top of the list.
-- While scrolling, the window's root `NSHostingView.layout()` and tracking
-  area updates still show in traces; their source is not found yet.
+- The source of the window's root `NSHostingView.layout()` while
+  scrolling was the chat's own SwiftUI content around the timeline: every
+  row the table added or moved invalidated it. It is AppKit now.
 - Documents, voice messages, link previews, polls and cards are still
   SwiftUI rows, measured on the main thread once per bubble width. In a
   trace with media they were a quarter of the main thread while
@@ -146,3 +148,9 @@ Each of these came from a trace or a benchmark.
    and calling main-actor code from a `DispatchQueue` closure or an
    animation's completion handler is only a warning, which stops the app at
    run time. `make check` fails on any warning in ZapFastKit's sources.
+13. **The timeline has no SwiftUI view above it that lays out on its
+    changes.** Its pane is an AppKit view controller; the composer and what
+    floats over the timeline are small SwiftUI islands beside it, not
+    around it. Rows the table adds while scrolling invalidate layout up
+    the view tree, and a SwiftUI ancestor answers by laying out and
+    rendering all it holds again.

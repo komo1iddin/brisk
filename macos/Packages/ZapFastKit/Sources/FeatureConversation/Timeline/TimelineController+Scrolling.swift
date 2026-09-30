@@ -10,6 +10,28 @@ extension TimelineController {
         clip.bounds.maxY >= tableView.bounds.height - edgeSlack
     }
 
+    /// Where the timeline goes in its pane, and the room left at its top
+    /// for the title bar. A reader at the newest message stays there as the
+    /// composer grows or shrinks.
+    func place(frame: CGRect, topInset: CGFloat) {
+        let insets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
+        let moved = scrollView.frame != frame
+        let reinset = clip.contentInsets.top != topInset
+        guard moved || reinset else { return }
+        let follow = followsBottom
+        let anchor = follow ? nil : readingAnchor()
+        scrollView.frame = frame
+        if reinset {
+            scrollView.contentInsets = insets
+            scrollView.scrollerInsets = insets
+        }
+        if follow {
+            scrollToBottom()
+        } else if let anchor {
+            restore(anchor)
+        }
+    }
+
     func scrollToBottom(animated: Bool = false) {
         guard !items.isEmpty else { return }
         tableView.layoutSubtreeIfNeeded()

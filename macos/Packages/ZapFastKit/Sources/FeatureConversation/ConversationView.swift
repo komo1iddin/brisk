@@ -4,11 +4,11 @@ import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
-/// An open chat: the timeline under the title bar, and the composer.
+/// An open chat: the timeline under the title bar, and the composer, in
+/// AppKit (`ConversationPane`); the toolbar, sheets and search here.
 public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
-    @State private var scrollState = TimelineController.ScrollState()
     @State private var infoRequest: InfoRequest?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -21,37 +21,12 @@ public struct ConversationView: View {
         let chat = model.chats.chat(chatID)
         let theme = model.chatTheme(for: chatID)
 
-        TimelineContainer(
-            chatID: chatID,
-            isGroup: chat?.kind == .group,
-            theme: theme,
-            model: model,
-            onScrollState: { scrollState = $0 }
-        )
+        // The timeline, what floats over it and the composer, in AppKit:
+        // the timeline stays out of SwiftUI's layout and hit testing.
+        ConversationPane(chatID: chatID, model: model)
         .background { WallpaperView(theme.wallpaper).ignoresSafeArea() }
-        // The table scrolls under the title bar; AppKit insets its content.
+        // The table scrolls under the title bar; the pane insets its content.
         .ignoresSafeArea(edges: .top)
-        // Apart, so paging flags redraw these alone, not the title and
-        // toolbar with them.
-        .overlay { EmptyConversation(chatID: chatID, model: model) }
-        .overlay(alignment: .top) { LoadingOlder(chatID: chatID, model: model) }
-        .overlay(alignment: .bottomTrailing) {
-            if !scrollState.atBottom {
-                NewestMessageButton(newBelow: scrollState.newBelow) { model.scrollTimeline(.bottom) }
-                    .padding(Metrics.l)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
-            }
-        }
-        .animation(.zf(reduceMotion), value: scrollState.atBottom)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let selection = model.selection, selection.chat == chatID {
-                SelectionBar(selection: selection, model: model)
-            } else if let chat, !canSend(chat) {
-                ReadOnlyBar(chat: chat)
-            } else {
-                ComposerBar(chatID: chatID, model: model)
-            }
-        }
         // Photos and videos about to go out, in a window over this one.
         .background {
             MediaEditorPresenter(
@@ -66,21 +41,12 @@ public struct ConversationView: View {
         }
         .dropDestination(for: URL.self) { urls, _ in
             let files = urls.filter(\.isFileURL)
-            guard !files.isEmpty, chat.map(canSend) ?? true else { return false }
+            guard !files.isEmpty, chat.map(Self.canSend) ?? true else { return false }
             model.stage(files: files, in: chatID)
             return true
         }
-        // A new chat gets a new timeline and composer; the toolbar, title and
-        // sheets below stay, since rebuilding toolbar items took about half
-        // of opening a chat.
-        .id(chatID)
-        // The chat opened fades in; the one left goes at once, so two
-        // timelines never draw together.
-        .transition(.asymmetric(insertion: .opacity, removal: .identity))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: chatID)
         // What belonged to the chat left behind.
         .onChange(of: chatID) {
-            scrollState = TimelineController.ScrollState()
             infoRequest = nil
         }
         .environment(\.chatTheme, theme)
@@ -202,7 +168,7 @@ public struct ConversationView: View {
         )
     }
 
-    private func canSend(_ chat: ChatSummary) -> Bool {
+    static func canSend(_ chat: ChatSummary) -> Bool {
         !chat.locked && !chat.left && !(chat.readOnly && !chat.admin) && !(chat.isChannel && !chat.admin)
     }
 }
@@ -240,7 +206,7 @@ private struct WindowMenuTitle: NSViewRepresentable {
 }
 
 /// Shown when the chat has nothing, once the archive and phone have said so.
-private struct EmptyConversation: View {
+struct EmptyConversation: View {
     let chatID: String
     let model: AppModel
 
@@ -255,7 +221,7 @@ private struct EmptyConversation: View {
 /// A spinner while older messages are on their way, if they take a while:
 /// the archive usually answers within a frame, and a glass card shown and
 /// removed for every page cost more than the page.
-private struct LoadingOlder: View {
+struct LoadingOlder: View {
     let chatID: String
     let model: AppModel
     @State private var shown = false
@@ -283,7 +249,7 @@ private struct LoadingOlder: View {
     }
 }
 
-private struct ReadOnlyBar: View {
+struct ReadOnlyBar: View {
     let chat: ChatSummary
 
     var body: some View {
@@ -318,7 +284,7 @@ private struct ReadOnlyBar: View {
 
 /// Floats over the timeline while older messages are being read and
 /// scrolls back to the newest one, with a count of those that arrived.
-private struct NewestMessageButton: View {
+struct NewestMessageButton: View {
     let newBelow: Int
     let action: () -> Void
 
@@ -350,7 +316,7 @@ private struct NewestMessageButton: View {
 
 /// In place of the composer while messages are selected: how many, and
 /// what can be done with them. Escape ends selecting.
-private struct SelectionBar: View {
+struct SelectionBar: View {
     let selection: MessageSelection
     let model: AppModel
     @State private var confirmingDelete = false

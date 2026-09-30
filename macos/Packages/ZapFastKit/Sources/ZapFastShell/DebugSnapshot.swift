@@ -77,6 +77,12 @@ enum DebugSnapshot {
             .environment(\.colorScheme, scheme)
             write(presets, to: path.replacingOccurrences(of: ".png", with: "-themes\(suffix).png"))
         }
+        // The media editor in each of its tools.
+        for mode in MediaEditorGallery.modes {
+            let editor = MediaEditorGallery.view(mode: mode, model: model)
+                .frame(width: 1000, height: 680)
+            write(editor, to: path.replacingOccurrences(of: ".png", with: "-editor-\(mode).png"))
+        }
         NSApp.terminate(nil)
     }
 

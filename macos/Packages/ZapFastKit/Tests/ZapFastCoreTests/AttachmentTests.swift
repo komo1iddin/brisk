@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 import ZapFastBridge
 @testable import ZapFastCore
 
@@ -32,7 +34,7 @@ struct AttachmentTests {
 
     @Test func stagedFilesWaitForSendAndTakeTheCaptionAndReply() {
         let (model, backend) = model()
-        model.stage(files: [URL(filePath: "/tmp/a.pdf"), URL(filePath: "/tmp/b.jpg")], in: chat)
+        model.stage(files: [URL(filePath: "/tmp/a.pdf"), URL(filePath: "/tmp/b.zip")], in: chat)
         #expect(model.attachments[chat]?.count == 2)
         #expect(backend.sent.allSatisfy { if case .sendFiles = $0 { false } else { true } })
 
@@ -41,26 +43,83 @@ struct AttachmentTests {
         model.sendText(in: chat)
 
         #expect(backend.sent.last == .sendFiles(
-            chat: chat, paths: ["/tmp/a.pdf", "/tmp/b.jpg"], caption: "look", mentions: [], quoting: "q"
+            chat: chat, paths: ["/tmp/a.pdf", "/tmp/b.zip"], caption: "look", mentions: [], quoting: "q"
         ))
         #expect(model.attachments[chat] == nil)
         #expect(model.composerText[chat] == "")
         #expect(model.replyingTo[chat] == nil)
     }
 
-    @Test func aPastedImageGoesFirstWithTheCaptionAndFilesFollowBare() {
-        let (model, backend) = model()
-        model.stage(image: pixel, in: chat)
+    @Test func photosOpenTheEditorAndTakeTheTypedTextAsTheirCaption() {
+        let (model, _) = model()
+        model.composerText[chat] = "look"
         model.stage(files: [URL(filePath: "/tmp/a.pdf")], in: chat)
-        model.sendText(in: chat)
+        #expect(!model.isEditingMedia(in: chat), "a document waits in the strip")
+        #expect(model.composerText[chat] == "look")
 
-        let sends = backend.sent.filter {
-            switch $0 { case .sendImage, .sendFiles: true; default: false }
+        model.stage(image: pixel, in: chat)
+        #expect(model.isEditingMedia(in: chat))
+        #expect(model.attachments[chat]?.map(\.caption) == ["look", ""])
+        #expect(model.composerText[chat] == "")
+
+        model.discardAttachments(in: chat)
+        #expect(model.attachments[chat] == nil)
+        #expect(model.composerText[chat] == "look", "discarding keeps what was typed")
+    }
+
+    @Test func mediaGoesOneByOneWithItsOwnCaptionAndTheReplyOnTheFirst() async throws {
+        let (model, backend) = model()
+        let photo = try Self.picture(width: 2400, height: 1200)
+        model.stage(files: [photo, URL(filePath: "/tmp/a.pdf")], in: chat)
+        let staged = try #require(model.attachments[chat])
+        #expect(staged.map(\.media) == [.photo, .none])
+        model.setCaption("one", for: staged[0].id, in: chat)
+        model.setCaption("two", for: staged[1].id, in: chat)
+        var edit = MediaEdit()
+        edit.rotateLeft()
+        model.setEdit(edit, for: staged[0].id, in: chat)
+        model.reply(to: message("q"))
+
+        model.sendText(in: chat)
+        #expect(model.attachments[chat] == nil)
+        #expect(model.preparingMedia[chat] == 2)
+        for _ in 0..<200 where model.preparingMedia[chat] != nil {
+            try await Task.sleep(for: .milliseconds(20))
         }
-        #expect(sends == [
-            .sendImage(chat: chat, width: 1, height: 1, rgba: Data([1, 2, 3, 4]), caption: nil, mentions: [], quoting: nil),
-            .sendFiles(chat: chat, paths: ["/tmp/a.pdf"], caption: nil, mentions: [], quoting: nil),
-        ])
+        #expect(model.preparingMedia[chat] == nil)
+
+        let sends = backend.sent.compactMap { command -> (paths: [String], caption: String?, quoting: String?)? in
+            if case let .sendFiles(_, paths, caption, _, quoting) = command { (paths, caption, quoting) } else { nil }
+        }
+        try #require(sends.count == 2)
+        #expect(sends[0].caption == "one" && sends[0].quoting == "q")
+        #expect(sends[1].paths == ["/tmp/a.pdf"] && sends[1].caption == "two" && sends[1].quoting == nil)
+
+        // The photo was turned and brought to standard quality, as a JPEG.
+        let sent = URL(filePath: try #require(sends[0].paths.first))
+        #expect(sent.pathExtension == "jpg")
+        let source = try #require(CGImageSourceCreateWithURL(sent as CFURL, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        #expect(properties[kCGImagePropertyPixelWidth] as? Int == 800)
+        #expect(properties[kCGImagePropertyPixelHeight] as? Int == 1600)
+    }
+
+    /// A PNG on disk, red on the left half and blue on the right.
+    static func picture(width: Int, height: Int) throws -> URL {
+        let context = try #require(CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.setFillColor(CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))
+        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 1, alpha: 1))
+        context.fill(CGRect(x: width / 2, y: 0, width: width - width / 2, height: height))
+        let image = try #require(context.makeImage())
+        let url = FileManager.default.temporaryDirectory.appending(path: "zapfast-picture-\(UUID().uuidString).png")
+        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        return url
     }
 
     @Test func removingAndLeavingTheChatDropsThem() {
@@ -81,7 +140,10 @@ struct AttachmentTests {
             files: ["/tmp/a.pdf"], image: pixel, caption: "look", voice: []
         )])
         #expect(model.attachments[chat]?.count == 2)
-        #expect(model.composerText[chat] == "look")
+        // The pasted picture reopens the editor, with the caption on the first.
+        #expect(model.isEditingMedia(in: chat))
+        #expect(model.attachments[chat]?.first?.caption == "look")
+        #expect(model.composerText[chat] == "")
         #expect(model.unsentVoice == nil)
     }
 

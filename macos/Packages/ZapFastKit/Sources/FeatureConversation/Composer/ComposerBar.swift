@@ -50,7 +50,14 @@ struct ComposerBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            if let staged = model.attachments[chatID], !staged.isEmpty, !model.recorder.isRecording {
+            if let preparing = model.preparingMedia[chatID] {
+                PreparingStrip(count: preparing)
+                    .modifier(ComposerPanelSurface())
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            if let staged = model.attachments[chatID], !staged.isEmpty, !model.isEditingMedia(in: chatID),
+               !model.recorder.isRecording {
                 AttachmentStrip(attachments: staged) { id in
                     withAnimation(.zf(reduceMotion)) { model.removeAttachment(id, in: chatID) }
                 }
@@ -441,6 +448,26 @@ private struct Pulse: ViewModifier {
                 guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { dim = true }
             }
+    }
+}
+
+/// Photos and videos being made ready to send (redrawn at their quality,
+/// or re-encoded), until each goes to WhatsApp.
+private struct PreparingStrip: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: Metrics.s) {
+            ProgressView().controlSize(.small)
+            Text(count == 1 ? "Preparing 1 item to send…" : "Preparing \(count) items to send…")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .contentTransition(.numericText())
+            Spacer()
+        }
+        .frame(height: 30)
+        .padding(.horizontal, Metrics.xs)
+        .animation(.snappy, value: count)
     }
 }
 

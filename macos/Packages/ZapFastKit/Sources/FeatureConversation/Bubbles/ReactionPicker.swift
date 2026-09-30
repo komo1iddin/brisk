@@ -46,7 +46,7 @@ struct ReactionPicker: View {
 
 /// Every emoji by category, with a search field and a row of category
 /// tabs that scroll to each.
-private struct EmojiCatalog: View {
+struct EmojiCatalog: View {
     let frequent: [String]
     let mine: String?
     let choose: (String) -> Void

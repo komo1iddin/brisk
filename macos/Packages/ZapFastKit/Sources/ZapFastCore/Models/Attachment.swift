@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 import ZapFastBridge
 
 /// Something staged above the composer, sent with the composer's text as
@@ -10,19 +12,49 @@ public struct Attachment: Identifiable, Equatable, Sendable {
         case image(PastedImage)
     }
 
+    /// What the media editor can do with it.
+    public enum Media: Equatable, Sendable {
+        /// A still picture ImageIO reads: edited and sent as JPEG.
+        case photo
+        /// A movie AVFoundation plays: trimmed, silenced, drawn on.
+        case video
+        /// Anything else (a document, a GIF): sent as it is.
+        case none
+    }
+
     public let id = UUID()
     public let kind: Kind
+    public let media: Media
+    /// Its own caption, set in the media editor.
+    public var caption = ""
+    public var edit = MediaEdit()
 
     public init(_ kind: Kind) {
         self.kind = kind
+        media = switch kind {
+        case .image: .photo
+        case .file(let url): Self.media(of: url)
+        }
     }
 
     public var fileURL: URL? {
         if case .file(let url) = kind { url } else { nil }
     }
+
+    public var isMedia: Bool { media != .none }
+
+    /// Photos are what ImageIO reads, except GIFs, which move and go as
+    /// they are; videos are movies.
+    static func media(of url: URL) -> Media {
+        guard let type = UTType(filenameExtension: url.pathExtension.lowercased()) else { return .none }
+        if type.conforms(to: .movie) { return .video }
+        guard type.conforms(to: .image), !type.conforms(to: .gif) else { return .none }
+        let readable = CGImageSourceCopyTypeIdentifiers() as? [String] ?? []
+        return readable.contains(type.identifier) ? .photo : .none
+    }
 }
 
-extension PastedImage {
+nonisolated extension PastedImage {
     /// A pasted picture as upstream's `SendImage` wants it: straight-alpha
     /// RGBA rows, no padding.
     public init?(_ image: CGImage) {

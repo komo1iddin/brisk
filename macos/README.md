@@ -88,10 +88,30 @@ Glass on macOS 26): + opens a panel of tiles for a file,
 photos and videos, a poll or a new sticker; the stickers button sits in the field; Send
 replaces the microphone once there is something to send.
 
-Files picked with +, dropped on the chat, or pasted (⌘V, including a
-copied picture or screenshot) wait above the field with a Quick Look
-thumbnail; the text typed goes with them as the caption, and the reply
-with the first. A send refused offline puts them back. A voice message refused
+Documents picked with +, dropped on the chat, or pasted wait above the
+field with a Quick Look thumbnail; the text typed goes with them as the
+caption, and the reply with the first. A send refused offline puts them back.
+
+Photos and videos (picked, dropped, or pasted with ⌘V, including a copied
+picture or screenshot) open the media editor, as on the phone: a dark window
+laid over the whole ZapFast window, sidebar and toolbar included, that
+follows it as it moves and resizes. Its title bar drags and zooms the
+window, and its red traffic light or ⌘W closes it.
+Each gets its own caption, and the strip at the bottom switches between them
+(← →) or adds more. Photos can be cropped (free or to an aspect ratio),
+straightened with the dial, turned and flipped; drawn on with a pen, marker,
+highlighter, or a pixelate brush that hides faces and numbers; and given
+text (three styles, any colour) or emoji, which move with a drag and size and
+turn with a pinch and twist on the trackpad or the corner knob. Videos can be
+trimmed and sent without sound, and take text, emoji and drawings too. ⌘Z and
+⇧⌘Z undo and redo, Delete removes the picked text or emoji, Escape leaves a
+tool and then closes (asking first when there are edits); the caption goes
+back to the field. The HD button chooses the quality, kept for next time:
+Standard sends photos at most 1600 pixels on the longer side and videos at
+960 × 540, HD at 4096 pixels and 1920 × 1080 (an untouched HD video goes as
+it is). Photos are always redrawn as JPEG, which leaves their location and
+camera details behind. Prepared files wait in the caches folder's
+`Outgoing` until upstream has read them and are cleared after a day. A voice message refused
 the same way waits above the field ("Voice message (0:07) not sent")
 until Send tries it again or the cross discards it.
 

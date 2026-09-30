@@ -107,6 +107,12 @@ public final class Preferences {
         didSet { defaults.set(chatLockVerifier, forKey: Key.chatLockVerifier) }
     }
 
+    /// How large photos and videos go out; the media editor's choice is
+    /// kept for the next time, as WhatsApp keeps it.
+    public var mediaQuality: MediaQuality {
+        didSet { defaults.set(mediaQuality.rawValue, forKey: Key.mediaQuality) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -145,6 +151,7 @@ public final class Preferences {
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
         unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
         chatLockVerifier = defaults.string(forKey: Key.chatLockVerifier)
+        mediaQuality = defaults.string(forKey: Key.mediaQuality).flatMap(MediaQuality.init(rawValue:)) ?? .standard
     }
 
     private enum Key {
@@ -167,6 +174,7 @@ public final class Preferences {
         static let appLockAfter = "appLockAfter"
         static let unlockWithTouchID = "unlockWithTouchID"
         static let chatLockVerifier = "chatLockVerifier"
+        static let mediaQuality = "mediaQuality"
     }
 }
 

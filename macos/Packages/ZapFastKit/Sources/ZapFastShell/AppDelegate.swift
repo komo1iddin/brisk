@@ -1,4 +1,5 @@
 import AppKit
+import FeatureConversation
 import Observation
 import ZapFastCore
 
@@ -15,6 +16,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         if DebugSnapshot.galleryPath != nil {
             DispatchQueue.main.async { DebugSnapshot.renderGalleryAndQuit() }
+            return
+        }
+        if MediaEditorScript.steps != nil {
+            for window in NSApp.windows { window.orderOut(nil) }
+            MediaEditorScript.run(model: model)
             return
         }
         if DebugSnapshot.dumpsMenus {

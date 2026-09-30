@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Observation
 import OSLog
 import ZapFastBridge
@@ -43,8 +44,9 @@ public final class AppModel {
             if selection?.chat != selectedChatID { selection = nil }
             reactionTarget = nil
             if let oldValue {
-                // Staged attachments belong to the chat left, as upstream's do.
-                attachments[oldValue] = nil
+                // Staged attachments belong to the chat left, as upstream's
+                // do; a caption written for them stays as the draft.
+                discardAttachments(in: oldValue)
                 // An unfinished edit is dropped, not kept as a draft.
                 cancelEditing(in: oldValue)
                 flushDraft(for: oldValue)
@@ -66,7 +68,25 @@ public final class AppModel {
     public var replyingTo: [String: MessageRecord] = [:]
 
     /// Files and pasted images waiting above the composer, per chat.
-    public private(set) var attachments: [String: [Attachment]] = [:]
+    public private(set) var attachments: [String: [Attachment]] = [:] {
+        didSet {
+            // Kept apart so that editing a photo does not redraw the chat
+            // under the editor, which only needs to know it is open.
+            let chats = Set(attachments.filter { $0.value.contains(where: \.isMedia) }.keys)
+            if chats != mediaEditorChats { mediaEditorChats = chats }
+        }
+    }
+
+    /// Chats whose staged photos or videos have the media editor open.
+    public private(set) var mediaEditorChats: Set<String> = []
+
+    /// Photos and videos being prepared to send, per chat: counted down as
+    /// each goes to upstream.
+    public private(set) var preparingMedia: [String: Int] = [:]
+
+    /// Draws the media editor's words and emoji for an export; the editor
+    /// sets it, so what is sent is what was seen.
+    @ObservationIgnored public var overlayRenderer: OverlayRenderer?
 
     /// Members picked from the `@` suggestions, per chat, until sent.
     public private(set) var composerMentions: [String: [ComposerMention]] = [:]
@@ -241,6 +261,7 @@ public final class AppModel {
         }
         self.verbose = verbose
         appLock.startIdleTimer()
+        Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
         do {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
@@ -362,6 +383,10 @@ public final class AppModel {
     /// their caption, or the text alone.
     public func sendText(in chat: String) {
         let text = (composerText[chat] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if editing[chat] == nil, isEditingMedia(in: chat) {
+            sendMedia(in: chat)
+            return
+        }
         if editing[chat] == nil, !(attachments[chat] ?? []).isEmpty {
             sendAttachments(in: chat, caption: text)
             return
@@ -1037,21 +1062,159 @@ public final class AppModel {
     public func stage(files urls: [URL], in chat: String) {
         let files = urls.filter(\.isFileURL)
         guard !files.isEmpty else { return }
-        cancelEditing(in: chat)
-        attachments[chat, default: []] += files.map { Attachment(.file($0)) }
-        composerFocusRequests += 1
+        stage(files.map { Attachment(.file($0)) }, in: chat)
     }
 
     /// Stages a pasted picture.
     public func stage(image: PastedImage, in chat: String) {
+        stage([Attachment(.image(image))], in: chat)
+    }
+
+    /// A photo or video opens the media editor over the chat, as on the
+    /// phone; the text typed so far becomes the first one's caption.
+    private func stage(_ added: [Attachment], in chat: String) {
         cancelEditing(in: chat)
-        attachments[chat, default: []].append(Attachment(.image(image)))
+        var added = added
+        if !isEditingMedia(in: chat), added.contains(where: \.isMedia) {
+            let text = composerText[chat] ?? ""
+            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let first = (attachments[chat] ?? []).isEmpty ? 0 : nil
+                if let first {
+                    added[first].caption = text
+                } else {
+                    attachments[chat]?[0].caption = text
+                }
+                composerText[chat] = ""
+            }
+        }
+        attachments[chat, default: []] += added
         composerFocusRequests += 1
     }
 
     public func removeAttachment(_ id: Attachment.ID, in chat: String) {
-        attachments[chat]?.removeAll { $0.id == id }
-        if attachments[chat]?.isEmpty == true { attachments[chat] = nil }
+        guard let index = attachments[chat]?.firstIndex(where: { $0.id == id }) else { return }
+        let removed = attachments[chat]!.remove(at: index)
+        if attachments[chat]?.isEmpty == true {
+            attachments[chat] = nil
+            // The last caption goes back to the field, as the text came.
+            restoreCaption(removed.caption, in: chat)
+        } else if index == 0, !removed.caption.isEmpty, attachments[chat]![0].caption.isEmpty {
+            attachments[chat]![0].caption = removed.caption
+        }
+    }
+
+    // MARK: Intents: the media editor
+
+    /// Photos or videos are staged, so the media editor shows.
+    public func isEditingMedia(in chat: String) -> Bool {
+        mediaEditorChats.contains(chat)
+    }
+
+    public func setEdit(_ edit: MediaEdit, for id: Attachment.ID, in chat: String) {
+        guard let index = attachments[chat]?.firstIndex(where: { $0.id == id }) else { return }
+        attachments[chat]![index].edit = edit
+    }
+
+    public func setCaption(_ caption: String, for id: Attachment.ID, in chat: String) {
+        guard let index = attachments[chat]?.firstIndex(where: { $0.id == id }) else { return }
+        attachments[chat]![index].caption = caption
+    }
+
+    /// Closes the editor without sending. The first caption returns to the
+    /// field, so nothing typed is lost.
+    public func discardAttachments(in chat: String) {
+        guard let staged = attachments.removeValue(forKey: chat) else { return }
+        restoreCaption(staged.first(where: { !$0.caption.isEmpty })?.caption ?? "", in: chat)
+    }
+
+    private func restoreCaption(_ caption: String, in chat: String) {
+        guard !caption.isEmpty, (composerText[chat] ?? "").isEmpty else { return }
+        composerText[chat] = caption
+    }
+
+    /// Sends what the editor holds, each with its own caption and the
+    /// reply on the first, in order. Photos are redrawn at the chosen
+    /// quality and videos re-encoded first, off the main thread; a
+    /// document among them goes as it is.
+    public func sendMedia(in chat: String) {
+        guard let staged = attachments.removeValue(forKey: chat), !staged.isEmpty else { return }
+        let quality = preferences.mediaQuality
+        let picked = composerMentions.removeValue(forKey: chat) ?? []
+        let participants = chats.chat(chat)?.participants ?? []
+        var quoting = replyingTo.removeValue(forKey: chat)?.id
+        stopComposing(in: chat)
+        preparingMedia[chat, default: 0] += staged.count
+        let outgoing = MediaExport.outgoingDirectory(in: paths.caches)
+        Task {
+            for attachment in staged {
+                defer {
+                    preparingMedia[chat, default: 1] -= 1
+                    if preparingMedia[chat] == 0 { preparingMedia[chat] = nil }
+                }
+                let path: String
+                do {
+                    path = try await prepare(attachment, quality: quality, outgoing: outgoing)
+                } catch {
+                    post(.error, error.localizedDescription)
+                    continue
+                }
+                let caption = attachment.caption.trimmingCharacters(in: .whitespacesAndNewlines)
+                let (encoded, mentions) = MentionEncoding.encode(caption, picked: picked, participants: participants)
+                backend.send(.sendFiles(
+                    chat: chat, paths: [path], caption: encoded.isEmpty ? nil : encoded,
+                    mentions: mentions, quoting: quoting
+                ))
+                quoting = nil
+            }
+        }
+    }
+
+    /// The file upstream sends for an attachment.
+    private func prepare(_ attachment: Attachment, quality: MediaQuality, outgoing: URL) async throws -> String {
+        let edit = attachment.edit
+        // A file prepared before (a refused send come back) goes as it is.
+        let prepared = attachment.fileURL.map { $0.deletingLastPathComponent().standardizedFileURL == outgoing.standardizedFileURL } ?? false
+        switch attachment.media {
+        case .none:
+            guard let url = attachment.fileURL else { throw MediaExport.Failure.unreadable }
+            return url.path(percentEncoded: false)
+        case .video:
+            guard let url = attachment.fileURL else { throw MediaExport.Failure.noVideo }
+            if edit.isEmpty, quality == .hd || prepared { return url.path(percentEncoded: false) }
+            let info = try await MediaExport.videoInfo(url)
+            let overlays = renderOverlays(edit.overlays, longSide: max(info.size.width, info.size.height))
+            let destination = try outgoingFile(in: outgoing, extension: "mp4")
+            try await MediaExport.exportVideo(url, edit: edit, overlays: overlays, quality: quality, to: destination)
+            return destination.path(percentEncoded: false)
+        case .photo:
+            if prepared, edit.isEmpty, let url = attachment.fileURL { return url.path(percentEncoded: false) }
+            let plan: MediaExport.PhotoPlan
+            switch attachment.kind {
+            case .file(let url):
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { throw MediaExport.Failure.unreadable }
+                plan = try await MediaExport.planPhoto(source, edit: edit, quality: quality)
+            case .image(let image):
+                guard let picture = image.cgImage else { throw MediaExport.Failure.unreadable }
+                plan = MediaExport.planPhoto(picture, edit: edit, quality: quality)
+            }
+            let overlays = renderOverlays(edit.overlays, longSide: max(plan.canvas.width, plan.canvas.height))
+            let data = try await MediaExport.renderPhoto(plan, edit: edit, overlays: overlays, quality: quality)
+            let destination = try outgoingFile(in: outgoing, extension: "jpg")
+            try data.write(to: destination)
+            return destination.path(percentEncoded: false)
+        }
+    }
+
+    private func renderOverlays(_ overlays: [MediaOverlay], longSide: CGFloat) -> [RenderedOverlay] {
+        guard let overlayRenderer else { return [] }
+        return overlays.compactMap { overlay in
+            overlayRenderer(overlay, longSide).map { RenderedOverlay(overlay: overlay, image: $0) }
+        }
+    }
+
+    private func outgoingFile(in directory: URL, extension ext: String) throws -> URL {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appending(path: "\(UUID().uuidString).\(ext)")
     }
 
     /// Upstream's `send_pending`: the caption, its mentions and the reply
@@ -1817,7 +1980,8 @@ public final class AppModel {
             if chat == selectedChatID {
                 let returned = files.map { Attachment(.file(URL(filePath: $0))) }
                     + (image.map { [Attachment(.image($0))] } ?? [])
-                if !returned.isEmpty { attachments[chat, default: []] += returned }
+                // Photos among them reopen the editor, the caption with them.
+                if !returned.isEmpty { stage(returned, in: chat) }
             }
             post(.error, reason == .offline
                 ? String(localized: "Not sent: you are offline.")

@@ -65,6 +65,12 @@ public struct ConversationView: View {
                 ComposerBar(chatID: chatID, model: model)
             }
         }
+        // Photos and videos about to go out, in a window over this one.
+        .background {
+            MediaEditorPresenter(
+                chatID: chatID, model: model, isPresented: model.isEditingMedia(in: chatID), theme: theme
+            )
+        }
         .dropDestination(for: URL.self) { urls, _ in
             let files = urls.filter(\.isFileURL)
             guard !files.isEmpty, chat.map(canSend) ?? true else { return false }

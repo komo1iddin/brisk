@@ -239,6 +239,13 @@ row does not leave from under the pointer, until the filter changes, as
 upstream's does. With channels followed, the filter menu mutes or
 unmutes them all.
 
+The Share menu of other apps (Finder, Photos, Safari and the rest) lists
+ZapFast: the extension, in its own sandbox, only notes what was shared
+and opens ZapFast, which asks which chat it goes to (Send to…) and puts
+the files above that chat's field and any text in it, so a caption can
+be added and nothing is sent until Send. System Settings › General ›
+Login Items & Extensions › Sharing turns the entry on or off.
+
 A chat's menu opens it in a window of its own (Open in New Window),
 with its composer, search and info; a chat there is read and kept quiet
 in notifications as the main window's is. The window shows nothing while

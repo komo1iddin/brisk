@@ -108,6 +108,9 @@ public final class AppModel {
     @ObservationIgnored public var sidebarKeepsUnread = false
 
     /// The keyboard shortcuts sheet is open.
+    /// Something shared from another app, waiting for its chat.
+    public var shareRequest: ShareRequest?
+
     public var shortcutsShown = false
 
     /// The label manager is open.
@@ -478,6 +481,33 @@ public final class AppModel {
     }
 
     // MARK: Intents: chat windows
+
+    // MARK: Intents: the Share menu
+
+    /// A `zapfast-mac://share` link from the Share extension: asks which
+    /// chat it goes to. Returns whether the link was one.
+    @discardableResult
+    public func receiveShare(_ url: URL) -> Bool {
+        guard let request = ShareRequest.read(url) else { return false }
+        shareRequest = request
+        bringToFront()
+        return true
+    }
+
+    /// Puts what was shared in `chat`'s composer, to be sent from there
+    /// with a caption or a reply: files wait above the field, text joins
+    /// what is typed.
+    public func deliverShare(to chat: String) {
+        guard let request = shareRequest else { return }
+        shareRequest = nil
+        selectedChatID = chat
+        if !request.files.isEmpty { stage(files: request.files, in: chat) }
+        if !request.text.isEmpty {
+            let typed = composerText[chat] ?? ""
+            composerText[chat] = typed.isEmpty ? request.text : typed + "\n" + request.text
+        }
+        composerFocusRequests += 1
+    }
 
     /// The chat shows in the main window or one of its own.
     public func isOpen(_ chat: String) -> Bool {

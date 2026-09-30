@@ -22,6 +22,8 @@ public struct ZapFastScenes: Scene {
             RootView(model: model)
         }
         .defaultSize(width: 1100, height: 740)
+        // Links (the Share menu's) come to the main window.
+        .handlesExternalEvents(matching: ["share"])
         .commands {
             SidebarCommands()
             ToolbarCommands()
@@ -35,6 +37,7 @@ public struct ZapFastScenes: Scene {
             }
         }
         .defaultSize(width: 520, height: 680)
+        .handlesExternalEvents(matching: [])
 
         Settings {
             SettingsView(model: model)

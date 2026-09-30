@@ -31,11 +31,21 @@ struct RootView: View {
         .groupInviteSheet(model: model)
         .chatThemeSheet(model: model)
         .sheet(isPresented: $model.shortcutsShown) { ShortcutsSheet() }
+        // The Share menu's link; its sheet waits for the lock and the link.
+        .onOpenURL { model.receiveShare($0) }
+        .sheet(item: sharing) { request in ShareSheet(request: request, model: model) }
         .opensInviteLinks(model: model)
         .overlay(alignment: .top) {
             NoticeStack(model: model)
         }
         .animation(.zf(reduceMotion), value: model.notices)
+    }
+
+    private var sharing: Binding<ShareRequest?> {
+        Binding(
+            get: { model.appLock.isLocked || !model.isLinked ? nil : model.shareRequest },
+            set: { if $0 == nil, !model.appLock.isLocked { model.shareRequest = nil } }
+        )
     }
 }
 

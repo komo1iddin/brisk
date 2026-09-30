@@ -154,6 +154,8 @@ private final class BenchmarkRun: NSObject {
     // MARK: Opening
 
     private func open(_ chat: String, rows: Int) async -> BenchmarkReport.Open {
+        let interval = Self.signposter.beginInterval("Open")
+        defer { Self.signposter.endInterval("Open", interval) }
         let wall = CACurrentMediaTime()
         let cpu = Self.mainThreadCPU()
         model.selectedChatID = chat

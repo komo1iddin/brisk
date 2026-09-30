@@ -44,8 +44,8 @@ extension TimelineController: TimelineCellDelegate {
 
     /// One message's text is selectable at a time, as before: another's
     /// text view goes unless it holds a selection.
-    func bodyHovered(in cell: TextBubbleCell) {
-        forEachTextCell { other in
+    func bodyHovered(in cell: BubbleCell) {
+        forEachBubbleCell { other in
             guard other !== cell, let text = other.bodyText, text.selectedRange().length == 0 else { return }
             other.removeBodyText()
         }
@@ -53,7 +53,7 @@ extension TimelineController: TimelineCellDelegate {
     }
 
     func bodyTextBecameActive(_ view: BodyTextView) {
-        forEachTextCell { other in
+        forEachBubbleCell { other in
             if let text = other.bodyText, text !== view { other.removeBodyText() }
         }
     }

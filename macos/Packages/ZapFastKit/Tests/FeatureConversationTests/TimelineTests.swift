@@ -33,16 +33,16 @@ struct TimelineDiffTests {
 }
 
 @MainActor
-struct TextBubbleLayoutTests {
+struct BubbleLayoutTests {
     private func source(
         _ text: String,
         fromMe: Bool = false,
         emojiOnly: Bool = false,
-        quote: TextBubbleSource.Quote? = nil,
+        quote: BubbleSource.Quote? = nil,
         reactions: [ReactionInfo] = [],
         textScale: Double = 1
-    ) -> TextBubbleSource {
-        TextBubbleSource(
+    ) -> BubbleSource {
+        BubbleSource(
             id: "m", fromMe: fromMe, startsRun: true, text: text, emojiOnly: emojiOnly, mentions: [],
             mentionNames: [:], senderName: fromMe ? nil : "Aziza", senderID: "a@s.whatsapp.net",
             forwarded: false, quote: quote, edited: false, timestamp: 1_780_000_000,

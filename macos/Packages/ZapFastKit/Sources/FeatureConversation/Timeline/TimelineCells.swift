@@ -65,7 +65,7 @@ final class ChipCell: NSView {
         text.setNeedsDisplay()
     }
 
-    /// Set directly rather than in `layout()`, as `TextBubbleCell` does.
+    /// Set directly rather than in `layout()`, as `BubbleCell` does.
     override func setFrameSize(_ newSize: NSSize) {
         let widthChanged = newSize.width != frame.width
         super.setFrameSize(newSize)
@@ -179,7 +179,7 @@ final class TimelineTableView: NSTableView {
     /// The drawn row under the pointer. One tracking area for the table
     /// stands in for one per cell: AppKit moved every cell's areas and
     /// cursor rects on each frame of a scroll, a fifth of the main thread.
-    private weak var hovered: TextBubbleCell?
+    private weak var hovered: BubbleCell?
     private var tracking: NSTrackingArea?
     private var settle: Task<Void, Never>?
 
@@ -210,7 +210,7 @@ final class TimelineTableView: NSTableView {
         hovered = nil
         settle?.cancel()
         settle = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(TextBubbleCell.restDelay))
+            try? await Task.sleep(for: .milliseconds(BubbleCell.restDelay))
             guard let self, !Task.isCancelled, let window = self.window, window.isKeyWindow else { return }
             let point = self.convert(window.mouseLocationOutsideOfEventStream, from: nil)
             self.pointer(at: self.visibleRect.contains(point) ? point : nil)
@@ -218,10 +218,10 @@ final class TimelineTableView: NSTableView {
     }
 
     private func pointer(at point: NSPoint?) {
-        var cell: TextBubbleCell?
+        var cell: BubbleCell?
         if let point {
             let row = row(at: point)
-            if row >= 0 { cell = view(atColumn: 0, row: row, makeIfNecessary: false) as? TextBubbleCell }
+            if row >= 0 { cell = view(atColumn: 0, row: row, makeIfNecessary: false) as? BubbleCell }
         }
         if cell !== hovered {
             hovered?.pointerLeft()

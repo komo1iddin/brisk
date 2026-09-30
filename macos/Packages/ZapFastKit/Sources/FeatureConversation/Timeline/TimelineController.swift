@@ -12,7 +12,7 @@ import ZapFastSharedUI
 /// What Telefast's spike measured, applied here:
 /// - Row heights are known before the table asks. Plain text messages, most
 ///   of any chat, are measured off the main actor in parallel
-///   (`TimelineLayoutEngine`) and drawn by Core Animation (`TextBubbleCell`);
+///   (`TimelineLayoutEngine`) and drawn by Core Animation (`BubbleCell`);
 ///   only richer messages are SwiftUI rows, measured once per bubble width.
 /// - A row depends on the width only through the widest a bubble may be, so
 ///   resizing a wide window costs nothing, and a narrow one is re-measured
@@ -33,33 +33,33 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     enum Plan {
         /// A chip centred in the timeline: a day, or the unread divider.
         case chip(id: String, title: String, isDay: Bool)
-        case text(TimelineRow, TextBubbleSource)
+        case bubble(TimelineRow, BubbleSource)
         case hosted(TimelineRow)
     }
 
     enum Item {
         case chip(id: String, title: String, isDay: Bool, height: CGFloat)
-        case text(TimelineRow, TextBubbleLayout)
+        case bubble(TimelineRow, BubbleLayout)
         case hosted(TimelineRow, height: CGFloat)
 
         var id: String {
             switch self {
             case .chip(let id, _, _, _): id
-            case .text(let row, _), .hosted(let row, _): row.id
+            case .bubble(let row, _), .hosted(let row, _): row.id
             }
         }
 
         var height: CGFloat {
             switch self {
             case .chip(_, _, _, let height), .hosted(_, let height): height
-            case .text(_, let layout): layout.rowHeight
+            case .bubble(_, let layout): layout.rowHeight
             }
         }
 
         var message: MessageRecord? {
             switch self {
             case .chip: nil
-            case .text(let row, _), .hosted(let row, _):
+            case .bubble(let row, _), .hosted(let row, _):
                 if case .message(let message, _) = row { message } else { nil }
             }
         }
@@ -67,7 +67,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         func differs(from other: Item) -> Bool {
             switch (self, other) {
             case let (.chip(_, a, _, _), .chip(_, b, _, _)): a != b
-            case let (.text(_, a), .text(_, b)): a !== b
+            case let (.bubble(_, a), .bubble(_, b)): a !== b
             case let (.hosted(a, ha), .hosted(b, hb)): a != b || ha != hb
             default: true
             }
@@ -93,7 +93,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// The bubble width the items are laid out for.
     private var widthLimit: CGFloat = 0
 
-    private var textLayouts: [String: (source: TextBubbleSource, layout: TextBubbleLayout)] = [:]
+    private var bubbleLayouts: [String: (source: BubbleSource, layout: BubbleLayout)] = [:]
     private var hostedHeights: [String: (row: TimelineRow, limit: CGFloat, scale: Double, height: CGFloat)] = [:]
     private var chipHeights: [String: CGFloat] = [:]
     /// Bumped by every preparation; a background layout that finishes after
@@ -221,7 +221,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             // Layouts and heights stay, keyed by message: going back to a
             // chat read a moment ago measures nothing again. Only their
             // number is bounded.
-            if textLayouts.count > 8_000 { textLayouts = [:] }
+            if bubbleLayouts.count > 8_000 { bubbleLayouts = [:] }
             if hostedHeights.count > 3_000 { hostedHeights = [:] }
             generation += 1
             followsBottom = true
@@ -289,7 +289,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 case let .message(message, startsRun):
                     guard !selecting, case .text(let text, nil) = message.content else { return .hosted(row) }
                     let chats = model.chats
-                    return .text(row, TextBubbleSource(
+                    return .bubble(row, BubbleSource(
                         id: message.id,
                         fromMe: message.fromMe,
                         startsRun: startsRun,
@@ -340,10 +340,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private func prepare(limit: CGFloat, restyled: Bool = false) {
         generation += 1
         let generation = generation
-        var missing: [TextBubbleSource] = []
+        var missing: [BubbleSource] = []
         for plan in plans {
-            guard case .text(_, let source) = plan else { continue }
-            if let cached = textLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit { continue }
+            guard case .bubble(_, let source) = plan else { continue }
+            if let cached = bubbleLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit { continue }
             missing.append(source)
         }
 
@@ -362,15 +362,15 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     @concurrent
-    private static func measure(_ sources: [TextBubbleSource], limit: CGFloat) async -> [TextBubbleLayout] {
+    private static func measure(_ sources: [BubbleSource], limit: CGFloat) async -> [BubbleLayout] {
         let state = signposter.beginInterval("Layout", "\(sources.count) messages")
         defer { signposter.endInterval("Layout", state) }
         return TimelineLayoutEngine.layouts(for: sources, widthLimit: limit)
     }
 
-    private func store(_ layouts: [TextBubbleLayout], for sources: [TextBubbleSource]) {
+    private func store(_ layouts: [BubbleLayout], for sources: [BubbleSource]) {
         for (source, layout) in zip(sources, layouts) {
-            textLayouts[source.id] = (source, layout)
+            bubbleLayouts[source.id] = (source, layout)
         }
     }
 
@@ -385,13 +385,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 let height = chipHeights[title] ?? ChipCell.measure(title).rowHeight
                 chipHeights[title] = height
                 return .chip(id: id, title: title, isDay: isDay, height: height)
-            case let .text(row, source):
-                if let cached = textLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
-                    return .text(row, cached.layout)
+            case let .bubble(row, source):
+                if let cached = bubbleLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
+                    return .bubble(row, cached.layout)
                 }
                 let layout = TimelineLayoutEngine.layout(for: source, widthLimit: limit)
-                textLayouts[source.id] = (source, layout)
-                return .text(row, layout)
+                bubbleLayouts[source.id] = (source, layout)
+                return .bubble(row, layout)
             case let .hosted(row):
                 if let cached = hostedHeights[row.id], cached.row == row, cached.limit == limit, cached.scale == scale {
                     return .hosted(row, height: cached.height)
@@ -515,7 +515,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             }
         }
         highlighted = key
-        forEachTextCell { cell in
+        forEachBubbleCell { cell in
             cell.setHighlighted(isHighlighted(cell.messageID), animated: true)
         }
     }
@@ -530,7 +530,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             }
         }
         reactionTarget = target
-        forEachTextCell { cell in
+        forEachBubbleCell { cell in
             if let target, target.chat == chatID, target.message == cell.messageID {
                 cell.showReactionPicker()
             } else {
@@ -545,15 +545,15 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     private func refreshVisibleColors() {
-        forEachTextCell { $0.refreshColors() }
+        forEachBubbleCell { $0.refreshColors() }
         tableView.enumerateAvailableRowViews { rowView, _ in
             for case let cell as ChipCell in rowView.subviews { cell.refreshColors() }
         }
     }
 
-    func forEachTextCell(_ body: (TextBubbleCell) -> Void) {
+    func forEachBubbleCell(_ body: (BubbleCell) -> Void) {
         tableView.enumerateAvailableRowViews { rowView, _ in
-            for case let cell as TextBubbleCell in rowView.subviews { body(cell) }
+            for case let cell as BubbleCell in rowView.subviews { body(cell) }
         }
     }
 
@@ -573,9 +573,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             let cell = tableView.makeView(withIdentifier: ChipCell.identifier, owner: nil) as? ChipCell ?? ChipCell()
             cell.configure(title: title, isHeader: isDay, colors: colors)
             return cell
-        case let .text(row, layout):
-            let cell = tableView.makeView(withIdentifier: TextBubbleCell.identifier, owner: nil) as? TextBubbleCell
-                ?? TextBubbleCell()
+        case let .bubble(row, layout):
+            let cell = tableView.makeView(withIdentifier: BubbleCell.identifier, owner: nil) as? BubbleCell
+                ?? BubbleCell()
             cell.delegate = self
             cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id))
             return cell

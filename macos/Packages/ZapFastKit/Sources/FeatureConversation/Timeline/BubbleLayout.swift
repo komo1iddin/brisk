@@ -5,7 +5,7 @@ import ZapFastDesign
 
 /// Everything a plain text message's row shows, resolved on the main actor
 /// (names come from the stores) so the layout can run anywhere.
-nonisolated struct TextBubbleSource: Equatable, Sendable {
+nonisolated struct BubbleSource: Equatable, Sendable {
     struct Quote: Equatable, Sendable {
         var name: String
         var summary: String
@@ -48,7 +48,7 @@ nonisolated struct TextPiece: @unchecked Sendable {
 
 /// A plain text message's row, measured for one bubble width. Immutable,
 /// so it is built off the main actor and read on it.
-nonisolated final class TextBubbleLayout: @unchecked Sendable {
+nonisolated final class BubbleLayout: @unchecked Sendable {
     struct QuoteLayout {
         var rect: CGRect
         var bar: CGRect
@@ -258,7 +258,7 @@ nonisolated enum TimelineText {
     }
 
     /// WhatsApp markup, links and mentions, in AppKit attributes.
-    static func body(_ source: TextBubbleSource, fonts: BodyFonts, color: NSColor, link: NSColor) -> NSMutableAttributedString {
+    static func body(_ source: BubbleSource, fonts: BodyFonts, color: NSColor, link: NSColor) -> NSMutableAttributedString {
         if source.emojiOnly {
             return NSMutableAttributedString(string: source.text, attributes: [.font: fonts.largeEmoji, .foregroundColor: color])
         }

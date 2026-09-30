@@ -3,18 +3,18 @@ import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
-/// Measures plain text messages the way `TextBubbleCell` draws them, with
+/// Measures plain text messages the way `BubbleCell` draws them, with
 /// the same strings and the same text system, off the main actor. A
 /// timeline's worth runs in parallel: 10,000 messages take a fraction of a
 /// second on Apple silicon, which the main actor never waits for.
 nonisolated enum TimelineLayoutEngine {
-    static func layouts(for sources: [TextBubbleSource], widthLimit: CGFloat) -> [TextBubbleLayout] {
+    static func layouts(for sources: [BubbleSource], widthLimit: CGFloat) -> [BubbleLayout] {
         guard sources.count > 32 else {
             return sources.map { layout(for: $0, widthLimit: widthLimit) }
         }
         let chunkSize = 64
         let chunkCount = (sources.count + chunkSize - 1) / chunkSize
-        let results = UnsafeMutableBufferPointer<TextBubbleLayout?>.allocate(capacity: sources.count)
+        let results = UnsafeMutableBufferPointer<BubbleLayout?>.allocate(capacity: sources.count)
         results.initialize(repeating: nil)
         defer { results.deallocate() }
         // Each chunk writes its own range, so sharing the buffer is race-free.
@@ -28,7 +28,7 @@ nonisolated enum TimelineLayoutEngine {
         return results.map { $0! }
     }
 
-    static func layout(for source: TextBubbleSource, widthLimit: CGFloat) -> TextBubbleLayout {
+    static func layout(for source: BubbleSource, widthLimit: CGFloat) -> BubbleLayout {
         typealias G = TimelineGeometry
         typealias T = TimelineText
         let fromMe = source.fromMe
@@ -105,7 +105,7 @@ nonisolated enum TimelineLayoutEngine {
             return TextPiece(string: string, rect: CGRect(x: x, y: top, width: width - (x - left), height: height))
         }
 
-        var quote: TextBubbleLayout.QuoteLayout?
+        var quote: BubbleLayout.QuoteLayout?
         if let source = source.quote, let quoteName, let quoteSummary {
             let textWidth = max(1, width - quoteChrome)
             let nameHeight = T.height(ofLines: 1, T.captionSemibold)
@@ -153,7 +153,7 @@ nonisolated enum TimelineLayoutEngine {
 
         let (pills, pillsSize) = reactionPills(source.reactions)
 
-        return TextBubbleLayout(
+        return BubbleLayout(
             widthLimit: widthLimit,
             fromMe: fromMe,
             startsRun: source.startsRun,
@@ -184,13 +184,13 @@ nonisolated enum TimelineLayoutEngine {
     private static let twoCalloutLines = TimelineText.height(ofLines: 2, TimelineText.callout)
 
     /// Reactions grouped by emoji, most chosen first, as `ReactionPills`.
-    private static func reactionPills(_ reactions: [ReactionInfo]) -> ([TextBubbleLayout.Pill], CGSize) {
+    private static func reactionPills(_ reactions: [ReactionInfo]) -> ([BubbleLayout.Pill], CGSize) {
         guard !reactions.isEmpty else { return ([], .zero) }
         let groups = Dictionary(grouping: reactions, by: \.emoji)
             .map { (emoji: $0.key, count: $0.value.count, mine: $0.value.contains(where: \.fromMe)) }
             .sorted { $0.count != $1.count ? $0.count > $1.count : $0.emoji < $1.emoji }
         let padding = CGSize(width: 6, height: 2)
-        var pills: [TextBubbleLayout.Pill] = []
+        var pills: [BubbleLayout.Pill] = []
         var x: CGFloat = 0
         var height: CGFloat = 0
         for group in groups {
@@ -223,7 +223,7 @@ nonisolated enum TimelineLayoutEngine {
         return (pills, CGSize(width: x - Metrics.xxs, height: height))
     }
 
-    private static func accessibilityLabel(_ source: TextBubbleSource, time: String) -> String {
+    private static func accessibilityLabel(_ source: BubbleSource, time: String) -> String {
         var parts: [String] = []
         if source.fromMe {
             parts.append(String(localized: "You"))

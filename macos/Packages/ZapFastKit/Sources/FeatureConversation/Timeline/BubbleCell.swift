@@ -14,7 +14,7 @@ protocol TimelineCellDelegate: AnyObject {
     func menu(forMessage id: String, selection: String?) -> NSMenu?
     func open(_ url: URL)
     /// The pointer is over a message's text: it becomes selectable.
-    func bodyHovered(in cell: TextBubbleCell)
+    func bodyHovered(in cell: BubbleCell)
     func bodyTextBecameActive(_ view: BodyTextView)
     /// ⌘-click: start selecting messages with this one.
     func startSelecting(fromMessage id: String)
@@ -38,12 +38,12 @@ protocol TimelineCellDelegate: AnyObject {
 /// one is laid over the text only while the pointer is on it (or while it
 /// keeps a selection), set up with the same string and width so nothing
 /// moves when it appears.
-final class TextBubbleCell: NSView {
-    static let identifier = NSUserInterfaceItemIdentifier("TimelineTextBubble")
+final class BubbleCell: NSView {
+    static let identifier = NSUserInterfaceItemIdentifier("TimelineBubble")
 
     weak var delegate: TimelineCellDelegate?
     private(set) var messageID: String?
-    private(set) var bubbleLayout: TextBubbleLayout?
+    private(set) var bubbleLayout: BubbleLayout?
     private let bubble = BubbleView()
     private let pills = ReactionPillsView()
     private var highlighted = false
@@ -70,7 +70,7 @@ final class TextBubbleCell: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(id: String, layout: TextBubbleLayout, highlighted: Bool) {
+    func configure(id: String, layout: BubbleLayout, highlighted: Bool) {
         if id != messageID || layout !== bubbleLayout {
             if id != messageID {
                 // A reused cell shows another message.
@@ -251,7 +251,7 @@ final class TextBubbleCell: NSView {
     }
 }
 
-extension TextBubbleCell: NSPopoverDelegate {
+extension BubbleCell: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         popover = nil
         if let id = messageID { delegate?.reactionPickerClosed(forMessage: id) }
@@ -264,11 +264,11 @@ extension TextBubbleCell: NSPopoverDelegate {
 /// The bubble: its shape as a layer background, text in two layers (the
 /// body alone, so a text view can stand in for it).
 private final class BubbleView: NSView {
-    weak var cell: TextBubbleCell?
+    weak var cell: BubbleCell?
     private(set) var bodyText: BodyTextView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
-    private var bubbleLayout: TextBubbleLayout?
+    private var bubbleLayout: BubbleLayout?
     private var bodyHover: Task<Void, Never>?
     private var overBody = false
 
@@ -291,7 +291,7 @@ private final class BubbleView: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(_ layout: TextBubbleLayout) {
+    func configure(_ layout: BubbleLayout) {
         bubbleLayout = layout
         chrome.layout = layout
         body.piece = TextPiece(string: layout.body.string, rect: CGRect(origin: .zero, size: layout.body.rect.size))
@@ -378,7 +378,7 @@ private final class BubbleView: NSView {
         bodyHover?.cancel()
         if body {
             bodyHover = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(TextBubbleCell.restDelay))
+                try? await Task.sleep(for: .milliseconds(BubbleCell.restDelay))
                 guard let self, !Task.isCancelled, let cell = self.cell else { return }
                 cell.delegate?.bodyHovered(in: cell)
             }
@@ -428,7 +428,7 @@ private final class BubbleView: NSView {
 nonisolated private final class BubbleChromeLayer: CALayer {
     // Set on the main thread; read in draw(in:), which Core Animation also
     // calls on the main thread, during the commit.
-    nonisolated(unsafe) var layout: TextBubbleLayout?
+    nonisolated(unsafe) var layout: BubbleLayout?
     nonisolated(unsafe) var appearance: NSAppearance?
 
     override init() {
@@ -454,7 +454,7 @@ nonisolated private final class BubbleChromeLayer: CALayer {
     }
 
     @MainActor
-    private static func draw(_ layout: TextBubbleLayout) {
+    private static func draw(_ layout: BubbleLayout) {
         layout.name?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         if let forwarded = layout.forwarded, let icon = layout.forwardedIcon {
             Symbols.draw("arrowshape.turn.up.right", in: icon, pointSize: TimelineText.caption.pointSize, weight: .regular, color: layout.footer.secondary)
@@ -529,7 +529,7 @@ private final class ReactionPillsView: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(_ layout: TextBubbleLayout) {
+    func configure(_ layout: BubbleLayout) {
         drawing.layout = layout
         needsRedraw()
     }
@@ -562,7 +562,7 @@ private final class ReactionPillsView: NSView {
 }
 
 nonisolated private final class PillsLayer: CALayer {
-    nonisolated(unsafe) var layout: TextBubbleLayout?
+    nonisolated(unsafe) var layout: BubbleLayout?
     nonisolated(unsafe) var appearance: NSAppearance?
 
     override init() {
@@ -618,10 +618,10 @@ nonisolated private final class PillsLayer: CALayer {
 /// drawing that measured it. The footer's room at the end is never selected
 /// or copied.
 final class BodyTextView: NSTextView, NSTextViewDelegate {
-    weak var cell: TextBubbleCell?
+    weak var cell: BubbleCell?
     private let visibleLength: Int
 
-    init(layout: TextBubbleLayout) {
+    init(layout: BubbleLayout) {
         visibleLength = layout.bodyLength
         let storage = NSTextStorage(attributedString: layout.body.string)
         let manager = NSLayoutManager()

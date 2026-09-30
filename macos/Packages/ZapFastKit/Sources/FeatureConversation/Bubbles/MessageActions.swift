@@ -8,14 +8,12 @@ struct MessageActions: View {
     let message: MessageRecord
     let model: AppModel
 
-    private static let quickReactions = ["👍", "❤️", "😂", "😮", "😢", "🙏"]
-
     var body: some View {
         if isLive {
             Button("Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
 
             Menu("React", systemImage: "face.smiling") {
-                ForEach(Self.quickReactions, id: \.self) { emoji in
+                ForEach(QuickReactions.emoji, id: \.self) { emoji in
                     Button(emoji) { model.react(emoji, to: message) }
                 }
                 if let mine = message.reactions.first(where: \.fromMe) {

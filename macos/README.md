@@ -164,6 +164,10 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
+Pointing at a message brings React and Reply beside it, as upstream's
+hover controls; React offers the quick reactions, and choosing yours
+again takes it back. Everything else stays in the message's context menu.
+
 ## Build
 
 Requirements: Xcode 26+, Rust via rustup (the toolchain comes from

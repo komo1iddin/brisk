@@ -6,16 +6,16 @@ enum AttachChoice: CaseIterable, Identifiable {
     var id: Self { self }
 }
 
-/// What + offers, as tiles in its popover: each kind of attachment with
-/// its own colour, as the phone's attach sheet has, drawn like the
-/// system's app icons.
+/// What + offers, as tiles in its popover, the way the phone's attach
+/// sheet has them: each kind's own coloured symbol on a quiet disc,
+/// Liquid Glass on macOS 26.
 struct AttachPanel: View {
     /// Polls and stickers are new messages, not part of an edit.
     let creates: Bool
     let choose: (AttachChoice) -> Void
 
     var body: some View {
-        HStack(spacing: Metrics.xs) {
+        HStack(spacing: Metrics.xxs) {
             ForEach(AttachChoice.allCases) { choice in
                 AttachTile(choice: choice) { choose(choice) }
                     .disabled(!creates && (choice == .poll || choice == .sticker))
@@ -35,37 +35,30 @@ private struct AttachTile: View {
         Button(action: action) {
             VStack(spacing: Metrics.s) {
                 Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(tint.gradient, in: .circle)
-                    .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
-                    .shadow(color: tint.opacity(hovered ? 0.45 : 0.25), radius: hovered ? 6 : 3, y: 2)
-                    .scaleEffect(hovered && isEnabled ? 1.06 : 1)
+                    .font(.system(size: 24))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(tint)
+                    .frame(width: 56, height: 56)
+                    .modifier(AttachDisc(hovered: hovered && isEnabled))
                 Text(title)
                     .font(.callout)
+                    .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2, reservesSpace: true)
-                    .frame(width: 84)
+                    .frame(width: 80)
             }
-            .padding(.vertical, Metrics.s)
-            .padding(.horizontal, Metrics.xxs)
-            .background {
-                RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
-                    .fill(.primary.opacity(hovered && isEnabled ? 0.06 : 0))
-            }
+            .padding(.vertical, Metrics.xs)
             .contentShape(.rect(cornerRadius: Metrics.cardRadius))
         }
         .buttonStyle(.plain)
         .opacity(isEnabled ? 1 : 0.4)
         .onHover { hovered = $0 }
-        .animation(.snappy(duration: 0.15), value: hovered)
         .accessibilityLabel(title)
     }
 
     private var title: LocalizedStringKey {
         switch choice {
-        case .document: "Document"
+        case .document: "File"
         case .media: "Photos and Videos"
         case .poll: "Poll"
         case .sticker: "New Sticker"
@@ -74,19 +67,35 @@ private struct AttachTile: View {
 
     private var symbol: String {
         switch choice {
-        case .document: "doc.fill"
-        case .media: "photo.on.rectangle.angled"
-        case .poll: "chart.bar.fill"
-        case .sticker: "face.smiling.inverse"
+        case .document: "folder.fill"
+        case .media: "photo.fill.on.rectangle.fill"
+        case .poll: "text.alignleft"
+        case .sticker: "face.smiling.fill"
         }
     }
 
     private var tint: Color {
         switch choice {
-        case .document: .indigo
-        case .media: .blue
-        case .poll: .orange
-        case .sticker: .pink
+        case .document: Color(red: 0.23, green: 0.56, blue: 0.93)
+        case .media: Color(red: 0.16, green: 0.45, blue: 0.95)
+        case .poll: Color(red: 0.96, green: 0.70, blue: 0.19)
+        case .sticker: Color(red: 0.07, green: 0.66, blue: 0.56)
+        }
+    }
+}
+
+/// The disc behind a tile's symbol: glass that answers the pointer on
+/// macOS 26, a soft fill before it.
+private struct AttachDisc: ViewModifier {
+    let hovered: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            content
+                .background(.primary.opacity(hovered ? 0.1 : 0.05), in: .circle)
+                .animation(.snappy(duration: 0.15), value: hovered)
         }
     }
 }

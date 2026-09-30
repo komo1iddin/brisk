@@ -78,7 +78,7 @@ drain, and a one-second timeout backs it up.
 | ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
 The composer is laid out as in Messages, with system buttons (Liquid
-Glass on macOS 26): + opens a panel of coloured tiles for a document,
+Glass on macOS 26): + opens a panel of tiles for a file,
 photos and videos, a poll or a new sticker; the stickers button sits in the field; Send
 replaces the microphone once there is something to send.
 

@@ -160,6 +160,9 @@ struct ComposerBar: View {
 
     /// The side buttons' size, matching the one-line field.
     private static let control: CGFloat = 22
+    /// The field's inside height for one line: with its padding, as tall
+    /// as the round buttons beside it.
+    private static let fieldLine: CGFloat = 30
 
     private func sendButton(title: LocalizedStringKey, systemImage: String) -> some View {
         Button {
@@ -202,6 +205,8 @@ struct ComposerBar: View {
                 )
                 .frame(height: fieldHeight)
             }
+            // One line sits centred beside the round buttons.
+            .frame(minHeight: Self.fieldLine)
 
             Button {
                 pickingSticker.toggle()
@@ -209,7 +214,7 @@ struct ComposerBar: View {
                 Label("Stickers and GIFs", systemImage: "face.smiling")
                     .labelStyle(.iconOnly)
                     .font(.system(size: 16))
-                    .frame(width: 24, height: 26)
+                    .frame(width: 24, height: Self.fieldLine)
                     .contentShape(.rect)
             }
             .buttonStyle(.borderless)

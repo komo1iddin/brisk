@@ -168,7 +168,9 @@ struct ComposerTextView: NSViewRepresentable {
                   let layout = textView.layoutManager else { return }
             layout.ensureLayout(for: container)
             let used = layout.usedRect(for: container).height + textView.textContainerInset.height * 2
-            let line = (textView.font?.boundingRectForFont.height ?? 17) + textView.textContainerInset.height * 2
+            // One line as the layout sets it, so a single line sits centred.
+            let font = textView.font ?? .preferredFont(forTextStyle: .body)
+            let line = layout.defaultLineHeight(for: font) + textView.textContainerInset.height * 2
             let height = min(parent.maxHeight, max(line, ceil(used)))
             scrollView?.hasVerticalScroller = used > parent.maxHeight
             if abs(height - parent.height) > 0.5 {

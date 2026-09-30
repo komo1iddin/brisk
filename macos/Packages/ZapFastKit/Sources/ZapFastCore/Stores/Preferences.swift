@@ -71,6 +71,12 @@ public final class Preferences {
         didSet { defaults.set(try? JSONEncoder().encode(reactionEmoji), forKey: Key.reactionEmoji) }
     }
 
+    /// Message text size, a multiple of the body size (upstream's `zoom`,
+    /// for the text of the chats): 0.8 to 1.6 in tenths.
+    public var textScale: Double {
+        didSet { defaults.set(textScale, forKey: Key.textScale) }
+    }
+
     /// ZapFast's icon in the menu bar, with its menu (upstream's tray).
     public var menuBarIcon: Bool {
         didSet { defaults.set(menuBarIcon, forKey: Key.menuBarIcon) }
@@ -159,6 +165,7 @@ public final class Preferences {
             Key.voiceAvatars: true,
             Key.enterSends: true,
             Key.menuBarIcon: true,
+            Key.textScale: 1.0,
             Key.keepRunning: true,
             Key.sendTyping: true,
             Key.unlockWithTouchID: true,
@@ -179,6 +186,7 @@ public final class Preferences {
         lastChat = defaults.string(forKey: Key.lastChat)
         downloadFolder = defaults.string(forKey: Key.downloadFolder)
         menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
+        textScale = defaults.double(forKey: Key.textScale)
         keepRunning = defaults.bool(forKey: Key.keepRunning)
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
@@ -208,6 +216,7 @@ public final class Preferences {
         static let lastChat = "lastChat"
         static let downloadFolder = "downloadFolder"
         static let menuBarIcon = "menuBarIcon"
+        static let textScale = "textScale"
         static let keepRunning = "keepRunning"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"

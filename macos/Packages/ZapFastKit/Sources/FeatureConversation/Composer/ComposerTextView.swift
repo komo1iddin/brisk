@@ -14,6 +14,8 @@ struct ComposerTextView: NSViewRepresentable {
     let maxHeight: CGFloat
     /// Return sends; otherwise it starts a line and ⌘Return sends.
     var enterSends = true
+    /// The message text size, as in the bubbles.
+    var textScale: Double = 1
     let onSubmit: () -> Void
     let onEdit: () -> Void
     let onPasteFiles: ([URL]) -> Void
@@ -54,7 +56,7 @@ struct ComposerTextView: NSViewRepresentable {
         textView.importsGraphics = false
         textView.allowsUndo = true
         textView.drawsBackground = false
-        textView.font = .preferredFont(forTextStyle: .body)
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize * textScale)
         textView.textColor = .labelColor
         textView.textContainerInset = NSSize(width: 0, height: 4)
         textView.textContainer?.lineFragmentPadding = 0
@@ -76,6 +78,11 @@ struct ComposerTextView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = context.coordinator.textView else { return }
+        let size = NSFont.systemFontSize * CGFloat(textScale)
+        if textView.font?.pointSize != size {
+            textView.font = .systemFont(ofSize: size)
+            context.coordinator.measure()
+        }
         if textView.string != text {
             textView.string = text
             mentions?.cancel()

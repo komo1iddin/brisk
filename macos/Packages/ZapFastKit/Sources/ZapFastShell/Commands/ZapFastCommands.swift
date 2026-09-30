@@ -77,6 +77,19 @@ struct ZapFastCommands: Commands {
             }
         }
 
+        CommandGroup(after: .toolbar) {
+            Divider()
+            Button("Bigger") { model.changeTextSize(bigger: true) }
+                .keyboardShortcut("+")
+                .disabled(!model.canMakeTextBigger)
+            Button("Smaller") { model.changeTextSize(bigger: false) }
+                .keyboardShortcut("-")
+                .disabled(!model.canMakeTextSmaller)
+            Button("Actual Size") { model.resetTextSize() }
+                .keyboardShortcut("0")
+                .disabled(model.preferences.textScale == 1)
+        }
+
         CommandGroup(after: .help) {
             Button("Keyboard Shortcuts") { model.shortcutsShown = true }
                 .keyboardShortcut("/")

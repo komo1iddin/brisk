@@ -96,6 +96,7 @@ struct BodyText: View {
     let model: AppModel
     /// Clear text appended so the last line leaves room for an overlaid footer.
     var reserve: String?
+    @Environment(\.messageTextScale) private var scale
 
     var body: some View {
         let styled = Text(WhatsAppMarkup.attributed(
@@ -105,7 +106,7 @@ struct BodyText: View {
         ))
         let spaced = reserve.map { styled + Text($0).font(.caption2.monospacedDigit()).foregroundStyle(.clear) } ?? styled
         spaced
-        .font(Self.isOnlyEmoji(text) ? .system(size: 40) : .body)
+        .font(.system(size: (Self.isOnlyEmoji(text) ? 40 : NSFont.systemFontSize) * scale))
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
     }

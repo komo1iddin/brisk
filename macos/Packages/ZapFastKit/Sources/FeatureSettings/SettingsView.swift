@@ -154,6 +154,19 @@ private struct ChatSettings: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Section {
+                Slider(value: $preferences.textScale, in: 0.8...1.6, step: 0.1) {
+                    Text("Text size")
+                } minimumValueLabel: {
+                    Text(verbatim: "A").font(.caption)
+                } maximumValueLabel: {
+                    Text(verbatim: "A").font(.title2)
+                }
+            } footer: {
+                Text("Messages and the message field. View › Bigger (⌘+) and Smaller (⌘−) change it too, and Actual Size (⌘0) resets it.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Section {
                 LabeledContent("Download to") {
                     HStack(spacing: Metrics.s) {
                         let folder = model.downloadFolderInUse

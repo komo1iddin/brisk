@@ -38,6 +38,7 @@ struct ShortcutsSheet: View {
             Shortcut(keys: "⌘V", does: "Paste text, a picture or files"),
         ]),
         ("ZapFast", [
+            Shortcut(keys: "⌘+ / ⌘− / ⌘0", does: "Bigger / smaller / actual size text"),
             Shortcut(keys: "⌘,", does: "Settings"),
             Shortcut(keys: "⌃⌘L", does: "Lock ZapFast"),
             Shortcut(keys: "⌘/", does: "These shortcuts"),

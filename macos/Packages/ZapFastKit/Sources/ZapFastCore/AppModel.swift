@@ -1269,6 +1269,25 @@ public final class AppModel {
         ZapFastBridge.emojiSuggestions(query: query, recent: preferences.recentEmoji)
     }
 
+    // MARK: Intents: text size
+
+    public static let textScales = stride(from: 0.8, through: 1.6, by: 0.1).map { ($0 * 10).rounded() / 10 }
+
+    /// View › Bigger / Smaller: a tenth at a time, as upstream's zoom steps.
+    public func changeTextSize(bigger: Bool) {
+        let scales = Self.textScales
+        let current = scales.firstIndex { abs($0 - preferences.textScale) < 0.05 } ?? scales.firstIndex(of: 1)!
+        let next = min(max(current + (bigger ? 1 : -1), 0), scales.count - 1)
+        preferences.textScale = scales[next]
+    }
+
+    public func resetTextSize() {
+        preferences.textScale = 1
+    }
+
+    public var canMakeTextBigger: Bool { preferences.textScale < Self.textScales.last! - 0.05 }
+    public var canMakeTextSmaller: Bool { preferences.textScale > Self.textScales.first! + 0.05 }
+
     // MARK: Intents: files and network
 
     /// Where downloads go now: the chosen folder, or the media cache.

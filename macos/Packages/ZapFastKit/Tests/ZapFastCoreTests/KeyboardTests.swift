@@ -42,3 +42,24 @@ struct KeyboardTests {
         #expect(model.timelineScroll != first, "each press scrolls again")
     }
 }
+
+@MainActor
+struct TextSizeTests {
+    @Test func textGrowsAndShrinksByTenthsWithinItsRange() {
+        let root = FileManager.default.temporaryDirectory.appending(path: "zapfast-size-\(UUID().uuidString)")
+        let model = AppModel(
+            backend: PreviewBackend(), paths: AppPaths(data: root, caches: root),
+            preferences: Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        )
+        #expect(model.preferences.textScale == 1)
+        model.changeTextSize(bigger: true)
+        #expect(model.preferences.textScale == 1.1)
+        for _ in 0..<20 { model.changeTextSize(bigger: true) }
+        #expect(model.preferences.textScale == 1.6)
+        #expect(!model.canMakeTextBigger)
+        for _ in 0..<20 { model.changeTextSize(bigger: false) }
+        #expect(model.preferences.textScale == 0.8)
+        model.resetTextSize()
+        #expect(model.preferences.textScale == 1)
+    }
+}

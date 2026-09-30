@@ -61,6 +61,8 @@ public enum WallpaperFill {
 
 extension EnvironmentValues {
     @Entry public var chatTheme: ChatTheme = .standard
+    /// Message text size, as a multiple of the body size (View › Bigger).
+    @Entry public var messageTextScale: Double = 1
 }
 
 // MARK: - Colour arithmetic

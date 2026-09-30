@@ -31,7 +31,9 @@ struct MessageTimeline: NSViewRepresentable {
         context.coordinator.update(
             chatID: chatID,
             rows: rows,
-            content: TimelineController.Content(chat: chat, model: model, theme: theme),
+            content: TimelineController.Content(
+                chat: chat, model: model, theme: theme, textScale: model.preferences.textScale
+            ),
             jump: jump,
             scrollRequest: scrollRequest,
             onReachTop: onReachTop,

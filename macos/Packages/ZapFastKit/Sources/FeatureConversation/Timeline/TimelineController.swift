@@ -15,6 +15,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         var chat: ChatSummary?
         var model: AppModel?
         var theme: ChatTheme = .standard
+        var textScale: Double = 1
     }
 
     /// Whether the reader is at the newest message, and how many incoming
@@ -99,6 +100,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         onScrollState: @escaping (ScrollState) -> Void
     ) {
         let restyled = content.theme != self.content.theme
+        let resized = content.textScale != self.content.textScale
         self.content = content
         self.onReachTop = onReachTop
         self.onScrollState = onScrollState
@@ -113,6 +115,14 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             newBelow = 0
             handledScroll = scrollRequest?.token
             scrollToBottom()
+        } else if resized {
+            // Every row changes height; keep the reader where they were.
+            rows = new
+            heights.removeAll()
+            let follow = followsBottom
+            let anchor = topAnchor()
+            tableView.reloadData()
+            if follow { scrollToBottom() } else { restore(anchor, shiftedBy: 0) }
         } else if new != rows {
             apply(new)
         } else if restyled, !rows.isEmpty {
@@ -380,9 +390,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     @ViewBuilder
     private func rowView(_ row: TimelineRow) -> some View {
         if let model = content.model {
-            rowContent(row).opensInviteLinks(model: model).environment(\.chatTheme, content.theme)
+            rowContent(row).opensInviteLinks(model: model)
+                .environment(\.chatTheme, content.theme)
+                .environment(\.messageTextScale, content.textScale)
         } else {
-            rowContent(row).environment(\.chatTheme, content.theme)
+            rowContent(row)
+                .environment(\.chatTheme, content.theme)
+                .environment(\.messageTextScale, content.textScale)
         }
     }
 

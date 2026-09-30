@@ -11,6 +11,8 @@ struct ComposerTextView: NSViewRepresentable {
     /// Changing this moves keyboard focus into the field (a new chat opened).
     let focusToken: String
     let maxHeight: CGFloat
+    /// Return sends; otherwise it starts a line and ⌘Return sends.
+    var enterSends = true
     let onSubmit: () -> Void
     let onEdit: () -> Void
     let onPasteFiles: ([URL]) -> Void
@@ -38,6 +40,9 @@ struct ComposerTextView: NSViewRepresentable {
         scrollView.borderType = .noBorder
 
         let textView = ComposerNSTextView()
+        textView.onCommandReturn = { [weak coordinator = context.coordinator] in
+            coordinator?.commandReturn() ?? false
+        }
         textView.onPasteFiles = onPasteFiles
         textView.onPasteImage = onPasteImage
         textView.delegate = context.coordinator
@@ -122,13 +127,20 @@ struct ComposerTextView: NSViewRepresentable {
             }
             guard selector == #selector(NSResponder.insertNewline(_:)) else { return false }
             let flags = NSApp.currentEvent?.modifierFlags ?? []
-            if flags.contains(.shift) || flags.contains(.option) {
+            if !parent.enterSends || flags.contains(.shift) || flags.contains(.option) {
                 textView.insertNewlineIgnoringFieldEditor(nil)
             } else if !textView.hasMarkedText() {
                 parent.onSubmit()
             } else {
                 return false
             }
+            return true
+        }
+
+        /// ⌘Return sends, whichever way Return is set.
+        func commandReturn() -> Bool {
+            guard let textView, !textView.hasMarkedText() else { return false }
+            parent.onSubmit()
             return true
         }
 
@@ -171,6 +183,24 @@ struct ComposerTextView: NSViewRepresentable {
 private final class ComposerNSTextView: NSTextView {
     var onPasteFiles: ([URL]) -> Void = { _ in }
     var onPasteImage: (CGImage) -> Void = { _ in }
+    var onCommandReturn: () -> Bool = { false }
+
+    override func keyDown(with event: NSEvent) {
+        let returnKeys: Set<UInt16> = [36, 76]
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if returnKeys.contains(event.keyCode), flags == .command, onCommandReturn() { return }
+        super.keyDown(with: event)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // ⌘Return reaches the window's key equivalents first.
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if window?.firstResponder === self, [36, 76].contains(event.keyCode), flags == .command,
+           onCommandReturn() {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 
     override func paste(_ sender: Any?) {
         let board = NSPasteboard.general

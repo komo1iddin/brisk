@@ -65,6 +65,16 @@ public final class Preferences {
         didSet { defaults.set(recentEmoji, forKey: Key.recentEmoji) }
     }
 
+    /// Return sends; off, Return starts a new line and ⌘Return sends.
+    public var enterSends: Bool {
+        didSet { defaults.set(enterSends, forKey: Key.enterSends) }
+    }
+
+    /// Tell the chat we are typing while the composer changes.
+    public var sendTyping: Bool {
+        didSet { defaults.set(sendTyping, forKey: Key.sendTyping) }
+    }
+
     /// Voice messages show who recorded them, as on the phone.
     public var voiceAvatars: Bool {
         didSet { defaults.set(voiceAvatars, forKey: Key.voiceAvatars) }
@@ -105,6 +115,8 @@ public final class Preferences {
             Key.mentionSound: NotificationSoundInfo.alert.storageValue,
             Key.groupSounds: true,
             Key.voiceAvatars: true,
+            Key.enterSends: true,
+            Key.sendTyping: true,
             Key.unlockWithTouchID: true,
         ])
         autoDownload = defaults.bool(forKey: Key.autoDownload)
@@ -119,6 +131,8 @@ public final class Preferences {
         groupSounds = defaults.bool(forKey: Key.groupSounds)
         voiceAvatars = defaults.bool(forKey: Key.voiceAvatars)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
+        enterSends = defaults.bool(forKey: Key.enterSends)
+        sendTyping = defaults.bool(forKey: Key.sendTyping)
         appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
         unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
@@ -138,6 +152,8 @@ public final class Preferences {
         static let groupSounds = "groupSounds"
         static let voiceAvatars = "voiceAvatars"
         static let recentEmoji = "recentEmoji"
+        static let enterSends = "enterSends"
+        static let sendTyping = "sendTyping"
         static let appLockVerifier = "appLockVerifier"
         static let appLockAfter = "appLockAfter"
         static let unlockWithTouchID = "unlockWithTouchID"

@@ -152,6 +152,15 @@ private struct ChatSettings: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Section {
+                Toggle("Return sends", isOn: $preferences.enterSends)
+            } footer: {
+                Text(preferences.enterSends
+                    ? "Shift-Return or Option-Return starts a new line."
+                    : "Return starts a new line; Command-Return sends.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Section {
                 Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
             } footer: {
                 Text("The photo of whoever recorded the message sits beside its player, as on the phone.")
@@ -177,6 +186,7 @@ private struct ChatSettings: View {
             .disabled(!preferences.notifications)
             Section {
                 Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
+                Toggle("Show when you are typing", isOn: $preferences.sendTyping)
             } footer: {
                 Text("When off, people don't see blue ticks or played voice messages from this Mac.")
                     .foregroundStyle(.secondary)

@@ -70,7 +70,7 @@ drain, and a one-second timeout backs it up.
 | ⌥⌘F | Search all chats: names in the sidebar, then matching messages |
 | ⌘G / ⇧⌘G | Next / previous match in the open chat (older / newer) |
 | ↑ ↓ Return | Walk the matches from the search field; Esc closes it |
-| Return / ⇧Return | Send / new line in the composer |
+| Return / ⇧Return / ⌘Return | Send / new line / send in the composer (with Return sends off in Settings › Chats: new line / new line / send) |
 | ↑ in an empty composer | Edit your newest message (up to 15 minutes old); Esc cancels |
 | @ in a group's composer | Suggest members to mention; ↑ ↓ choose, Return or Tab picks, Esc closes |
 | ⇧⌘R / ⇧⌘U | Mark the chat read / unread |

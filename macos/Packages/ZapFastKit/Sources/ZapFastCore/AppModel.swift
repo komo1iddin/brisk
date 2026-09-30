@@ -991,6 +991,7 @@ public final class AppModel {
     }
 
     public func composerEdited(in chat: String) {
+        guard preferences.sendTyping else { return }
         if composingIn[chat] == nil {
             backend.send(.composing(chat: chat, composing: true))
         }

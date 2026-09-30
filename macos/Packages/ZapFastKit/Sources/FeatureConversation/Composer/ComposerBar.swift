@@ -178,6 +178,7 @@ struct ComposerBar: View {
                     height: $fieldHeight,
                     focusToken: "\(chatID)#\(model.composerFocusRequests)",
                     maxHeight: 180,
+                    enterSends: model.preferences.enterSends,
                     onSubmit: { model.sendText(in: chatID) },
                     onEdit: { model.composerEdited(in: chatID) },
                     onPasteFiles: { model.stage(files: $0, in: chatID) },

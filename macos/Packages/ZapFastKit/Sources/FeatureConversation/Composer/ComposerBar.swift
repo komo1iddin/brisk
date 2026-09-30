@@ -219,6 +219,7 @@ struct ComposerBar: View {
                         if let image = PastedImage(picture) { model.stage(image: image, in: chatID) }
                     },
                     onUpInEmpty: { model.editLastMessage(in: chatID) },
+                    onScrollMessages: { model.scrollTimeline($0) },
                     mentions: mentions,
                     emoji: emoji,
                     mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)

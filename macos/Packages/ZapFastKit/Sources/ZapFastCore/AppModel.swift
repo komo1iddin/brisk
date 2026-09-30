@@ -74,6 +74,9 @@ public final class AppModel {
     /// The open chat's info panel is showing.
     public private(set) var infoShown = false
 
+    /// The keyboard shortcuts sheet is open.
+    public var shortcutsShown = false
+
     /// The label manager is open.
     public var labelsManagerShown = false
 
@@ -136,6 +139,12 @@ public final class AppModel {
     public private(set) var jump: JumpRequest?
     /// The message just jumped to, marked for a moment so the eye finds it.
     public private(set) var highlighted: MessageKey?
+    /// A scroll the timeline should make once (keys, the newest-message
+    /// button).
+    public private(set) var timelineScroll: TimelineScrollRequest?
+    /// The sidebar's chats in the order shown, for stepping through them
+    /// from the keyboard; the sidebar keeps it current.
+    @ObservationIgnored public var sidebarOrder: [String] = []
     /// The message whose reaction picker is open.
     public var reactionTarget: MessageKey?
     /// Messages picked in the open chat (upstream's `selection`), for
@@ -1267,6 +1276,31 @@ public final class AppModel {
         )
     }
 
+    // MARK: Intents: keyboard
+
+    public func scrollTimeline(_ kind: TimelineScroll) {
+        guard selectedChatID != nil else { return }
+        timelineScroll = TimelineScrollRequest(kind: kind)
+    }
+
+    /// Opens the chat above or below the open one in the sidebar, wrapping
+    /// around, as upstream's Alt+↑ / Alt+↓ do; with none open, the first.
+    public func selectAdjacentChat(forward: Bool) {
+        let order = sidebarOrder
+        guard !order.isEmpty else { return }
+        guard let current = selectedChatID, let index = order.firstIndex(of: current) else {
+            selectedChatID = order.first
+            return
+        }
+        selectedChatID = order[(index + (forward ? 1 : order.count - 1)) % order.count]
+    }
+
+    /// Puts the cursor in the composer (upstream's Ctrl+L).
+    public func focusComposer() {
+        guard selectedChatID != nil else { return }
+        composerFocusRequests += 1
+    }
+
     public func showReactionPicker(for message: MessageRecord) {
         reactionTarget = MessageKey(chat: message.chat, message: message.id)
     }
@@ -2047,6 +2081,15 @@ public struct UnreadDivider: Equatable, Sendable {
     public let chat: String
     public let count: UInt32
     public internal(set) var message: String?
+}
+
+public enum TimelineScroll: Sendable {
+    case pageUp, pageDown, top, bottom
+}
+
+public struct TimelineScrollRequest: Equatable, Sendable {
+    public let kind: TimelineScroll
+    public let token = UUID()
 }
 
 public struct JumpRequest: Equatable, Sendable {

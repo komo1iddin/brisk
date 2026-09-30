@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ZapFastCore
 
 /// The message field: a real `NSTextView`, so input methods, spelling,
 /// dictation, Writing Tools, and Services all work. Return sends;
@@ -20,6 +21,9 @@ struct ComposerTextView: NSViewRepresentable {
     var onPasteImage: (CGImage) -> Void = { _ in }
     /// Up Arrow in an empty field; returns whether it was used.
     var onUpInEmpty: () -> Bool = { false }
+    /// Page Up and Down, and Home and End in an empty field, scroll the
+    /// messages (upstream's PgUp / PgDn and Home / End).
+    var onScrollMessages: (TimelineScroll) -> Void = { _ in }
     /// Follows `@` queries and takes the keys while suggestions show.
     var mentions: MentionTracker?
     /// Follows `:shortcode` queries the same way.
@@ -124,6 +128,22 @@ struct ComposerTextView: NSViewRepresentable {
             }
             if selector == #selector(NSResponder.moveUp(_:)), textView.string.isEmpty {
                 return parent.onUpInEmpty()
+            }
+            switch selector {
+            case #selector(NSResponder.scrollPageUp(_:)), #selector(NSResponder.pageUp(_:)):
+                parent.onScrollMessages(.pageUp)
+                return true
+            case #selector(NSResponder.scrollPageDown(_:)), #selector(NSResponder.pageDown(_:)):
+                parent.onScrollMessages(.pageDown)
+                return true
+            case #selector(NSResponder.scrollToBeginningOfDocument(_:)) where textView.string.isEmpty:
+                parent.onScrollMessages(.top)
+                return true
+            case #selector(NSResponder.scrollToEndOfDocument(_:)) where textView.string.isEmpty:
+                parent.onScrollMessages(.bottom)
+                return true
+            default:
+                break
             }
             guard selector == #selector(NSResponder.insertNewline(_:)) else { return false }
             let flags = NSApp.currentEvent?.modifierFlags ?? []

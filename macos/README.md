@@ -66,6 +66,12 @@ drain, and a one-second timeout backs it up.
 | Keys | Does |
 |---|---|
 | ⌘N | New chat: a contact, yourself, or a phone number |
+| ⇧⌘] / ⇧⌘[ | Next / previous chat in the sidebar, wrapping around |
+| ⌘L | Put the cursor in the composer |
+| ⌥⌘↓ | Scroll to the newest message |
+| Page Up / Page Down | Scroll the messages, also from the composer |
+| Home / End in an empty composer | Oldest loaded / newest message |
+| ⌘/ | Keyboard shortcuts (Help › Keyboard Shortcuts) |
 | ⌘F | Search the open chat (a panel beside it lists the matches) |
 | ⌥⌘F | Search all chats: names in the sidebar, then matching messages |
 | ⌘G / ⇧⌘G | Next / previous match in the open chat (older / newer) |

@@ -36,8 +36,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var followsBottom = true
     /// The last jump scrolled to, so each is done once.
     private var handledJump: UUID?
-    /// The last "newest message" request, so each is done once.
-    private var handledBottom: UUID?
+    /// The last scroll asked for (keys, the newest-message button), so
+    /// each is done once.
+    private var handledScroll: UUID?
     /// The chat just opened; its unread divider goes to the top once its
     /// messages are here.
     private var placesUnread = false
@@ -93,7 +94,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         rows new: [TimelineRow],
         content: Content,
         jump: JumpRequest?,
-        bottomRequest: UUID?,
+        scrollRequest: TimelineScrollRequest?,
         onReachTop: @escaping () -> Void,
         onScrollState: @escaping (ScrollState) -> Void
     ) {
@@ -110,7 +111,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             followsBottom = true
             placesUnread = true
             newBelow = 0
-            handledBottom = bottomRequest
+            handledScroll = scrollRequest?.token
             scrollToBottom()
         } else if new != rows {
             apply(new)
@@ -128,9 +129,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 scroll(toTopOf: index)
             }
         }
-        if let bottomRequest, bottomRequest != handledBottom {
-            handledBottom = bottomRequest
-            scrollToBottom(animated: true)
+        if let scrollRequest, scrollRequest.token != handledScroll {
+            handledScroll = scrollRequest.token
+            perform(scrollRequest.kind)
         }
         report()
     }
@@ -233,6 +234,43 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 self.scrollView.reflectScrolledClipView(self.clip)
                 // Rows that arrived during the animation are below it now.
                 if self.followsBottom { self.scrollToBottom() }
+            }
+        }
+    }
+
+    private func perform(_ kind: TimelineScroll) {
+        switch kind {
+        case .bottom:
+            scrollToBottom(animated: true)
+        case .top:
+            scroll(toY: -clip.contentInsets.top)
+        case .pageUp, .pageDown:
+            let insets = clip.contentInsets
+            let page = max(40, clip.bounds.height - insets.top - insets.bottom - 40)
+            scroll(toY: clip.bounds.minY + (kind == .pageUp ? -page : page))
+        }
+    }
+
+    /// Scrolls to `y`, kept within the content, animated unless Reduce
+    /// Motion is on.
+    private func scroll(toY y: CGFloat) {
+        tableView.layoutSubtreeIfNeeded()
+        let insets = clip.contentInsets
+        let lowest = -insets.top
+        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
+        let target = NSPoint(x: clip.bounds.minX, y: min(max(y, lowest), highest))
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            clip.scroll(to: target)
+            scrollView.reflectScrolledClipView(clip)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            clip.animator().setBoundsOrigin(target)
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.scrollView.reflectScrolledClipView(self.clip)
             }
         }
     }

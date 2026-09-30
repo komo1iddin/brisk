@@ -14,8 +14,8 @@ struct MessageTimeline: NSViewRepresentable {
     let model: AppModel
     let jump: JumpRequest?
     let theme: ChatTheme
-    /// Changed to scroll to the newest message.
-    let bottomRequest: UUID?
+    /// A scroll to make once.
+    let scrollRequest: TimelineScrollRequest?
     let onReachTop: () -> Void
     let onScrollState: (TimelineController.ScrollState) -> Void
 
@@ -33,7 +33,7 @@ struct MessageTimeline: NSViewRepresentable {
             rows: rows,
             content: TimelineController.Content(chat: chat, model: model, theme: theme),
             jump: jump,
-            bottomRequest: bottomRequest,
+            scrollRequest: scrollRequest,
             onReachTop: onReachTop,
             onScrollState: onScrollState
         )

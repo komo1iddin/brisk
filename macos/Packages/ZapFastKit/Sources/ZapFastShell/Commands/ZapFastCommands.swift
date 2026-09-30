@@ -25,6 +25,23 @@ struct ZapFastCommands: Commands {
 
             Divider()
 
+            // As Safari's tabs, and WhatsApp's own keys for chats.
+            Button("Next Chat") { model.selectAdjacentChat(forward: true) }
+                .keyboardShortcut("]", modifiers: [.command, .shift])
+                .disabled(locked)
+            Button("Previous Chat") { model.selectAdjacentChat(forward: false) }
+                .keyboardShortcut("[", modifiers: [.command, .shift])
+                .disabled(locked)
+
+            Button("Write a Message") { model.focusComposer() }
+                .keyboardShortcut("l")
+                .disabled(model.selectedChatID == nil || locked)
+            Button("Scroll to Newest Message") { model.scrollTimeline(.bottom) }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                .disabled(model.selectedChatID == nil || locked)
+
+            Divider()
+
             Button("Close Chat") { model.selectedChatID = nil }
                 .disabled(model.selectedChatID == nil || locked)
         }
@@ -58,6 +75,12 @@ struct ZapFastCommands: Commands {
                     .keyboardShortcut("g", modifiers: [.command, .shift])
                     .disabled(!hasChatHits || locked)
             }
+        }
+
+        CommandGroup(after: .help) {
+            Button("Keyboard Shortcuts") { model.shortcutsShown = true }
+                .keyboardShortcut("/")
+                .disabled(locked)
         }
 
         CommandGroup(after: .appInfo) {

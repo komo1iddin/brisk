@@ -9,7 +9,6 @@ public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
     @State private var scrollState = TimelineController.ScrollState()
-    @State private var bottomRequest: UUID?
 
     public init(chatID: String, model: AppModel) {
         self.chatID = chatID
@@ -28,7 +27,7 @@ public struct ConversationView: View {
             model: model,
             jump: model.jump,
             theme: theme,
-            bottomRequest: bottomRequest,
+            scrollRequest: model.timelineScroll,
             onReachTop: { model.loadOlder(in: chatID) },
             onScrollState: { scrollState = $0 }
         )
@@ -51,7 +50,7 @@ public struct ConversationView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             if !scrollState.atBottom {
-                NewestMessageButton(newBelow: scrollState.newBelow) { bottomRequest = UUID() }
+                NewestMessageButton(newBelow: scrollState.newBelow) { model.scrollTimeline(.bottom) }
                     .padding(Metrics.l)
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             }

@@ -30,6 +30,7 @@ struct RootView: View {
         .chatConfirmationAlert(model: model)
         .groupInviteSheet(model: model)
         .chatThemeSheet(model: model)
+        .sheet(isPresented: $model.shortcutsShown) { ShortcutsSheet() }
         .opensInviteLinks(model: model)
         .overlay(alignment: .top) {
             NoticeStack(model: model)

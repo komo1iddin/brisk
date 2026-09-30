@@ -56,6 +56,8 @@ public struct ChatListView: View {
         .searchable(text: $query, placement: .sidebar, prompt: "Search")
         .searchFocused($searchFocused)
         .onChange(of: query) { model.searchMessages(query) }
+        // ⌃Tab and ⌃⇧Tab step through the chats as listed here.
+        .onChange(of: chats.map(\.id), initial: true) { _, ids in model.sidebarOrder = ids }
         .onChange(of: model.sidebarSearchRequests) { searchFocused = true }
         .overlay {
             if chats.isEmpty, hits.isEmpty {

@@ -62,7 +62,7 @@ struct ChatHeader: View {
 
     /// Typing, presence, or group members.
     private var subtitle: String {
-        if let senders = model.conversations.typing[chat.id], !senders.isEmpty {
+        if case let senders = model.conversations.typing(in: chat.id), !senders.isEmpty {
             if chat.kind == .group, let first = senders.first {
                 return String(localized: "\(model.chats.personName(first, hint: nil)) is typing…")
             }
@@ -74,7 +74,7 @@ struct ChatHeader: View {
         case .broadcast:
             return chat.isChannel ? String(localized: "Channel") : String(localized: "Broadcast list")
         case .direct:
-            if let presence = model.conversations.presence[chat.id] {
+            if let presence = model.conversations.presence(of: chat.id) {
                 if presence.online { return String(localized: "online") }
                 if let seen = presence.lastSeen { return DateText.lastSeen(seen) }
             }

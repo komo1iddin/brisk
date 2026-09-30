@@ -102,6 +102,30 @@ struct StoreObservationTests {
         #expect(chats.chat("a") == nil)
     }
 
+    /// Typing in a busy group changes several times a second; each visible
+    /// chat row and the open chat's header read their own chat's only.
+    @Test func typingDraftsAndPresenceAreToldPerChat() {
+        let conversations = ConversationStore()
+        #expect(!notified(reading: { _ = conversations.typing(in: "a") }, after: {
+            conversations.applyTyping(chat: "b", sender: "s", composing: true)
+        }))
+        #expect(notified(reading: { _ = conversations.typing(in: "a") }, after: {
+            conversations.applyTyping(chat: "a", sender: "s", composing: true)
+        }))
+        #expect(conversations.typing(in: "a") == ["s"])
+        #expect(!notified(reading: { _ = conversations.presence(of: "a") }, after: {
+            conversations.applyPresence(id: "b", online: true, lastSeen: nil)
+        }))
+        #expect(notified(reading: { _ = conversations.presence(of: "a") }, after: {
+            conversations.applyPresence(id: "a", online: true, lastSeen: nil)
+        }))
+
+        let chats = ChatStore(session: SessionStore())
+        #expect(!notified(reading: { _ = chats.draft(for: "a") }, after: { chats.setDraft("hi", for: "b") }))
+        #expect(notified(reading: { _ = chats.draft(for: "a") }, after: { chats.setDraft("hey", for: "a") }))
+        #expect(chats.draft(for: "a") == "hey")
+    }
+
     @Test func pinnedChatsAreCountedApart() {
         let chats = ChatStore(session: SessionStore())
         chats.replaceAll([summary("a", pinned: true), summary("b")])

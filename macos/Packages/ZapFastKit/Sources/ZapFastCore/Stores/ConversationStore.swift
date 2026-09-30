@@ -111,9 +111,25 @@ public final class ConversationStore {
     /// Chats the store has an entry for; a slot can exist only because a
     /// view read it.
     @ObservationIgnored private var known: Set<String> = []
-    /// Who is typing, per chat.
-    public private(set) var typing: [String: Set<String>] = [:]
-    public private(set) var presence: [String: Presence] = [:]
+    /// Who is typing, per chat, and who is online. Views read one chat's
+    /// with `typing(in:)` and `presence(of:)`: typing in a busy group
+    /// changes several times a second.
+    @ObservationIgnored public private(set) var typing: [String: Set<String>] = [:] {
+        didSet {
+            for (chat, slot) in typingSlots where slot.value != typing[chat, default: []] {
+                slot.value = typing[chat, default: []]
+            }
+        }
+    }
+    @ObservationIgnored public private(set) var presence: [String: Presence] = [:] {
+        didSet {
+            for (id, slot) in presenceSlots where slot.value != presence[id] {
+                slot.value = presence[id]
+            }
+        }
+    }
+    @ObservationIgnored private var typingSlots: [String: Slot<Set<String>>] = [:]
+    @ObservationIgnored private var presenceSlots: [String: Slot<Presence?>] = [:]
     /// Carousel card images on their way, by message and card index.
     public private(set) var cardDownloads: [CardKey: DownloadState] = [:]
 
@@ -123,6 +139,22 @@ public final class ConversationStore {
     }
 
     public init() {}
+
+    /// Who is typing in one chat.
+    public func typing(in chat: String) -> Set<String> {
+        if let slot = typingSlots[chat] { return slot.value }
+        let slot = Slot(typing[chat, default: []])
+        typingSlots[chat] = slot
+        return slot.value
+    }
+
+    /// Whether someone is online, and when they were last seen.
+    public func presence(of id: String) -> Presence? {
+        if let slot = presenceSlots[id] { return slot.value }
+        let slot = Slot(presence[id])
+        presenceSlots[id] = slot
+        return slot.value
+    }
 
     public func conversation(_ chat: String) -> Conversation {
         slot(chat).value

@@ -42,7 +42,7 @@ struct ChatRow: View {
     @ViewBuilder private var preview: some View {
         if let typing = typingLine {
             Text(typing).foregroundStyle(.tint)
-        } else if let draft = model.chats.drafts[chat.id], !draft.isEmpty, chat.id != model.selectedChatID {
+        } else if let draft = model.chats.draft(for: chat.id), !draft.isEmpty, chat.id != model.selectedChatID {
             Text("Draft: ").foregroundStyle(.red) + Text(draft)
         } else if let last = chat.last {
             HStack(spacing: Metrics.xxs) {
@@ -57,7 +57,8 @@ struct ChatRow: View {
     }
 
     private var typingLine: String? {
-        guard let senders = model.conversations.typing[chat.id], !senders.isEmpty else { return nil }
+        let senders = model.conversations.typing(in: chat.id)
+        guard !senders.isEmpty else { return nil }
         if chat.kind == .group, let first = senders.first {
             return String(localized: "\(model.chats.personName(first, hint: nil)) is typing…")
         }

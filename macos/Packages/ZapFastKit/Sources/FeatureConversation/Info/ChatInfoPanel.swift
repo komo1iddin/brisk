@@ -250,7 +250,7 @@ private struct InfoPage: View {
     }
 
     private func status(_ chat: ChatSummary?) -> String? {
-        guard chat?.kind != .group, let presence = model.conversations.presence[id] else { return nil }
+        guard chat?.kind != .group, let presence = model.conversations.presence(of: id) else { return nil }
         if presence.online { return String(localized: "online") }
         return presence.lastSeen.map { DateText.lastSeen($0) }
     }

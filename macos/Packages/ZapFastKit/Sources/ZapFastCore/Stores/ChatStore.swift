@@ -37,8 +37,16 @@ public final class ChatStore {
     public private(set) var channelCount = 0
     public private(set) var mutedChannelCount = 0
     public private(set) var contacts: [String: ContactRecord] = [:]
-    /// Unsent composer text per chat, as the backend stored it.
-    public private(set) var drafts: [String: String] = [:]
+    /// Unsent composer text per chat, as the backend stored it. Views read
+    /// one chat's with `draft(for:)`.
+    @ObservationIgnored public private(set) var drafts: [String: String] = [:] {
+        didSet {
+            for (id, slot) in draftSlots where slot.value != drafts[id] {
+                slot.value = drafts[id]
+            }
+        }
+    }
+    @ObservationIgnored private var draftSlots: [String: Slot<String?>] = [:]
     /// Labels in creation order; kept on this computer only.
     public private(set) var labels: [LabelInfo] = []
 
@@ -46,6 +54,14 @@ public final class ChatStore {
 
     public init(session: SessionStore) {
         self.session = session
+    }
+
+    /// One chat's draft; a row reading it is not redrawn by another's.
+    public func draft(for id: String) -> String? {
+        if let slot = draftSlots[id] { return slot.value }
+        let slot = Slot(drafts[id])
+        draftSlots[id] = slot
+        return slot.value
     }
 
     public func chat(_ id: String) -> ChatSummary? {

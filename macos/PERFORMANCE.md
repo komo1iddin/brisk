@@ -28,6 +28,12 @@ that decide whether two numbers can be compared:
 - **Trace a slow moment** with Time Profiler attached to that run:
   `xcrun xctrace record --template 'Time Profiler' --time-limit 60s --attach <pid>`.
   `xctrace --launch` starts the app inactive and hides hitches.
+- **On the linked account:** `open -n -a …/ZapFast.app --env ZAPFAST_STRESS=40`
+  opens twelve chats that have nothing unread (so nothing is marked read),
+  scrolls each, resizes the window, logs each round's cost (subsystem
+  `ZapFast`, category `Stress`) and quits. Quit your own ZapFast first: only
+  one copy runs. Category `Events` logs the backend events per kind and what
+  applying them cost, every ten seconds.
 - **Launch time:** the app logs `Launch: <step> after N ms` from the
   moment the process started (Console.app, subsystem `ZapFast`, category
   `Launch`, or the Xcode console). A slow start under Xcode that is fast
@@ -45,11 +51,37 @@ chat, 200 chats, three alternating runs of each build.
 | 09-30 | Unread and channel counts kept beside the chats; menu bar icon its own view; sidebar sorted by position | message elsewhere p50 18–21 → 4–5 ms |
 | 09-30 | All of the above against `main` | resize 2.3–2.7 s → 23–25 ms; jump p95 98–126 → 5–10 ms; reopen 290–446 → 59–87 ms; message elsewhere p50 22–30 → 4–7 ms; memory 132–184 → 98–102 MB |
 
+### On the linked account
+
+`ZAPFAST_STRESS=40` (see below) on the author's account: twelve chats read
+already, 40 rounds. Main-thread time per step, median.
+
+| Build | Open a chat | Scroll 2 s (chats of 100+ rows) | Resize | Longest frame gap |
+|---|---|---|---|---|
+| Branch as first delivered | 145 ms | 568 ms (960 ms) | 291 ms | 79 ms |
+| Scroll kept out of Auto Layout and cursor passes, AppKit menu bar icon, caches across chats | 135 ms | 453 ms (858 ms) | 300 ms | 76 ms |
+
+The account's chats hold documents, photos and voice messages, which are
+still SwiftUI rows, so it gains less than the benchmark's text. Five
+minutes of live traffic cost 1–3 ms of event handling and no idle CPU:
+slowdowns come from what a person does, not from what arrives.
+
 Paging frame work p50 went from 0.3 to 3–4.5 ms: the old timeline stopped
 paging after two or three pages and then sat idle at the top, while the new
 one keeps loading and drawing all sixteen. Its p99 is lower.
 
 ## Open
+
+- **Launch waits about three seconds for the chat list on this account.**
+  The Rust worker withholds chats and messages until it has confirmed which
+  chats are locked on the phone. Here that recovery fails at every launch
+  (`chat settings recovery failed (Snapshot): snapshot MAC mismatch` in
+  `zapfast.log`), so the marker that would skip it is never saved and each
+  launch waits for the attempt to fail. This is upstream and whatsapp-rust
+  behaviour; a new link starts with an incremental sync instead.
+- While scrolling the linked account, the window's SwiftUI layout is still
+  about a third of the main thread, and AppKit's cursor update hit-tests
+  the SwiftUI hierarchy on every frame (about a tenth).
 
 - A message elsewhere still costs up to ~37 ms at the 99th percentile,
   the first time a chat moves to the top of the list.
@@ -89,7 +121,16 @@ Each of these came from a trace or a benchmark.
 8. **Lists change by their own operations,** not by reloading: moves slide,
    rows arriving from far away fade in, and when the reader has scrolled
    away the first row on screen keeps its place.
-9. **Anything a background queue runs is `nonisolated`,** and has a test
+9. **Views inside a scrolled AppKit table stay out of Auto Layout**
+   (`translatesAutoresizingMaskIntoConstraints` answers no), row views,
+   cells, their subviews and hosting views alike. The table changes their
+   frames constantly, and each change reached SwiftUI through the window's
+   constraint host as a reason to lay out the whole window.
+10. **No per-cell tracking areas, cursor rects or tooltips.** The table
+    tracks the pointer once and finds the row under it.
+11. **No SwiftUI `MenuBarExtra`.** It is rebuilt with nearly every update in
+    the app; an `NSStatusItem` changes only when its icon does.
+12. **Anything a background queue runs is `nonisolated`,** and has a test
    that runs it on one. The package isolates to the main actor by default,
    and calling main-actor code from a `DispatchQueue` closure or an
    animation's completion handler is only a warning, which stops the app at

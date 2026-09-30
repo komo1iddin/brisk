@@ -1645,6 +1645,26 @@ public final class AppModel {
         recorder.cancel()
     }
 
+    /// Pauses the take, letting go of the microphone, or goes on with it.
+    public func toggleRecordingPause() {
+        if recorder.isPaused {
+            if !recorder.resume() {
+                post(.error, String(localized: "ZapFast couldn't use the microphone to go on recording."))
+            }
+        } else {
+            recorder.pause()
+        }
+    }
+
+    /// Plays a paused take back, or stops it.
+    public func toggleRecordingPreview() {
+        recorder.togglePreview()
+    }
+
+    /// A take this long asks before it is thrown away, so a stray Escape
+    /// cannot lose it.
+    public static let discardAskAfter: TimeInterval = 10
+
     /// Sends the refused voice message again, with the reply if one is set.
     public func resendVoice(in chat: String) {
         guard let unsent = unsentVoice, unsent.chat == chat else { return }

@@ -68,6 +68,10 @@ struct ComposerBar: View {
             if model.recorder.isRecording {
                 RecordingBar(recorder: model.recorder) {
                     model.cancelRecording()
+                } togglePause: {
+                    model.toggleRecordingPause()
+                } togglePreview: {
+                    model.toggleRecordingPreview()
                 } send: {
                     model.sendRecording(in: chatID)
                 }
@@ -368,15 +372,26 @@ private extension View {
 }
 
 /// While recording: discard, a red dot with the elapsed time, the live
-/// input level, and send.
+/// input level, pause, and send. Paused, the dot becomes a play button
+/// to listen back and pause becomes a microphone to go on. A take of ten
+/// seconds or more asks before it is discarded, Escape included.
 private struct RecordingBar: View {
     let recorder: VoiceRecorder
     let cancel: () -> Void
+    let togglePause: () -> Void
+    let togglePreview: () -> Void
     let send: () -> Void
+    @State private var confirmingDiscard = false
 
     var body: some View {
         HStack(spacing: Metrics.m) {
-            Button(action: cancel) {
+            Button {
+                if recorder.elapsed() >= AppModel.discardAskAfter {
+                    confirmingDiscard = true
+                } else {
+                    cancel()
+                }
+            } label: {
                 Label("Discard Recording", systemImage: "trash")
                     .labelStyle(.iconOnly)
                     .font(.system(size: 15, weight: .medium))
@@ -386,20 +401,57 @@ private struct RecordingBar: View {
             .foregroundStyle(.red)
             .keyboardShortcut(.cancelAction)
             .help("Discard recording")
+            .confirmationDialog(
+                Text("Discard this voice message?"),
+                isPresented: $confirmingDiscard
+            ) {
+                Button("Discard", role: .destructive, action: cancel)
+            } message: {
+                Text("\(Self.time(recorder.elapsed())) recorded will be lost.")
+            }
 
-            Circle().fill(.red).frame(width: 10, height: 10)
-                .symbolEffectPulseIfAvailable()
-
-            if case .recording(let since) = recorder.state {
-                TimelineView(.periodic(from: since, by: 0.5)) { context in
-                    Text(Duration.seconds(Int(context.date.timeIntervalSince(since))).formatted(.time(pattern: .minuteSecond)))
-                        .font(.body.monospacedDigit())
+            if recorder.isPaused {
+                Button(action: togglePreview) {
+                    Label(
+                        recorder.isPreviewing ? "Stop" : "Play Recording",
+                        systemImage: recorder.isPreviewing ? "stop.fill" : "play.fill"
+                    )
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 13))
+                    .frame(width: 14, height: 14)
+                    .contentTransition(.symbolEffect(.replace))
                 }
+                .buttonStyle(.borderless)
+                .help(recorder.isPreviewing ? "Stop playing" : "Listen to the recording so far")
+            } else {
+                Circle().fill(.red).frame(width: 10, height: 10)
+                    .symbolEffectPulseIfAvailable()
+                    .frame(width: 14, height: 14)
+            }
+
+            // Ticks only while the time moves; a paused take stays still.
+            TimelineView(.animation(minimumInterval: 0.25, paused: recorder.isPaused && !recorder.isPreviewing)) { context in
+                Text(Self.time(shownTime(at: context.date)))
+                    .font(.body.monospacedDigit())
             }
 
             LevelMeter(levels: recorder.levels)
                 .frame(height: 24)
                 .frame(maxWidth: .infinity)
+
+            Button(action: togglePause) {
+                Label(
+                    recorder.isPaused ? "Resume Recording" : "Pause Recording",
+                    systemImage: recorder.isPaused ? "mic.fill" : "pause.fill"
+                )
+                .labelStyle(.iconOnly)
+                .font(.system(size: 15, weight: .medium))
+                .frame(width: 22, height: 22)
+                .contentTransition(.symbolEffect(.replace))
+            }
+            .composerButton()
+            .foregroundStyle(recorder.isPaused ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            .help(recorder.isPaused ? "Go on recording" : "Pause recording")
 
             Button(action: send) {
                 Label("Send Voice Message", systemImage: "arrow.up")
@@ -414,6 +466,17 @@ private struct RecordingBar: View {
         .padding(.leading, Metrics.xs)
         .frame(minHeight: 34)
         .modifier(ComposerPanelSurface())
+    }
+
+    /// The length recorded, or while listening back, how far it has played.
+    private func shownTime(at now: Date) -> TimeInterval {
+        let elapsed = recorder.elapsed(at: now)
+        guard let started = recorder.previewStarted else { return elapsed }
+        return min(elapsed, now.timeIntervalSince(started))
+    }
+
+    private static func time(_ seconds: TimeInterval) -> String {
+        Duration.seconds(Int(seconds)).formatted(.time(pattern: .minuteSecond))
     }
 }
 

@@ -129,6 +129,13 @@ it is). Photos are always redrawn as JPEG, which leaves their location and
 camera details behind. Prepared files wait in the caches folder's
 `Outgoing` until upstream has read them and are cleared after a day.
 
+While a voice message records, pause stops it and lets go of the
+microphone (the system's indicator goes out); paused, the play button
+plays back what is recorded so far and the microphone goes on recording.
+The bars follow the voice's loudness, with silence as a dotted line.
+Return sends; Escape or the bin discards, asking first once the take is
+ten seconds or longer.
+
 A voice message refused offline waits above the field ("Voice message
 (0:07) not sent") until Send tries it again or the cross discards it.
 

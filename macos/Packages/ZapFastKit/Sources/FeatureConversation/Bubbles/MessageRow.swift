@@ -15,6 +15,7 @@ struct MessageRow: View {
     @State private var reacting = false
 
     var body: some View {
+        let selecting = model.selection?.chat == message.chat
         HStack(alignment: .bottom, spacing: 0) {
             if message.fromMe { Spacer(minLength: 72) }
             VStack(alignment: message.fromMe ? .trailing : .leading, spacing: -Metrics.xs) {
@@ -25,7 +26,7 @@ struct MessageRow: View {
                 )
                 .contextMenu { MessageActions(message: message, model: model) }
                 .overlay(alignment: message.fromMe ? .leading : .trailing) {
-                    if isLive, hovering || reacting {
+                    if isLive, !selecting, hovering || reacting {
                         // Beside the bubble, clear of it, on the side away
                         // from the window's edge.
                         HoverActions(message: message, model: model, reacting: $reacting)
@@ -41,12 +42,39 @@ struct MessageRow: View {
                 }
             }
             .frame(maxWidth: Metrics.bubbleMaxWidth, alignment: message.fromMe ? .trailing : .leading)
+            // Room for the checkbox, without changing the row's height.
+            .offset(x: selecting && !message.fromMe ? Self.checkboxRoom : 0)
             if !message.fromMe { Spacer(minLength: 72) }
         }
         .padding(.horizontal, Metrics.l)
+        .overlay(alignment: .leading) {
+            if selecting {
+                SelectionCheckbox(selected: model.isSelected(message), enabled: model.canSelect(message))
+                    .padding(.leading, Metrics.m)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
         .padding(.top, startsRun ? Metrics.s : Metrics.xxs)
         .padding(.bottom, Metrics.xxs)
         .contentShape(.rect)
+        .overlay {
+            // While selecting, a click anywhere on the row picks it, and
+            // nothing inside (links, text) takes the click.
+            if selecting {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        if NSEvent.modifierFlags.contains(.shift) {
+                            model.selectRange(to: message)
+                        } else {
+                            model.toggleSelected(message)
+                        }
+                    }
+            }
+        }
+        // ⌘-click starts selecting, as upstream's Command-click does.
+        .simultaneousGesture(TapGesture().modifiers(.command).onEnded { model.select(message) })
+        .animation(.snappy(duration: 0.2), value: selecting)
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.12), value: hovering)
         // A reused cell shows another message.
@@ -59,10 +87,14 @@ struct MessageRow: View {
             // A search hit or quote just jumped to, marked for a moment.
             if isHighlighted {
                 Rectangle().fill(.tint.opacity(0.18)).transition(.opacity)
+            } else if model.isSelected(message) {
+                Rectangle().fill(.tint.opacity(0.12))
             }
         }
         .animation(.zf(reduceMotion, duration: 0.6), value: isHighlighted)
     }
+
+    private static let checkboxRoom: CGFloat = 28
 
     private var isLive: Bool {
         if case .revoked = message.content { false } else { true }
@@ -219,5 +251,21 @@ struct QuickReactions: View {
             }
         }
         .padding(Metrics.s)
+    }
+}
+
+/// A row's round checkbox while messages are being selected.
+private struct SelectionCheckbox: View {
+    let selected: Bool
+    let enabled: Bool
+
+    var body: some View {
+        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 20))
+            .foregroundStyle(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            .symbolRenderingMode(selected ? .monochrome : .hierarchical)
+            .contentTransition(.symbolEffect(.replace))
+            .opacity(enabled ? 1 : 0.3)
+            .accessibilityLabel(selected ? Text("Selected") : Text("Not selected"))
     }
 }

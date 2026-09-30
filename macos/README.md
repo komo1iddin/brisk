@@ -178,6 +178,12 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
+Select in a message's menu, or ⌘-click, starts selecting messages: a
+click adds or removes one, ⇧-click a run of them, and the bar in place of
+the composer forwards them (oldest first) or deletes them from ZapFast on
+this Mac after asking; Esc stops. Deleted, phone-only and unsupported
+messages cannot be selected, as upstream's.
+
 Pointing at a message brings Reply and React beside it, as discs clear
 of the bubble, as upstream's hover controls; React offers the quick reactions, and choosing yours
 again takes it back. Everything else stays in the message's context menu.

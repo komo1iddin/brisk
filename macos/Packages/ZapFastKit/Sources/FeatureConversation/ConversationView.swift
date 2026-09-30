@@ -58,7 +58,9 @@ public struct ConversationView: View {
         }
         .animation(.snappy(duration: 0.2), value: scrollState.atBottom)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let chat, !canSend(chat) {
+            if let selection = model.selection, selection.chat == chatID {
+                SelectionBar(selection: selection, model: model)
+            } else if let chat, !canSend(chat) {
                 ReadOnlyBar(chat: chat)
             } else {
                 ComposerBar(chatID: chatID, model: model)
@@ -254,5 +256,97 @@ private struct NewestMessageButton: View {
         }
         .help("Scroll to the newest message")
         .accessibilityLabel(newBelow > 0 ? Text("Newest message, \(newBelow) new") : Text("Newest message"))
+    }
+}
+
+/// In place of the composer while messages are selected: how many, and
+/// what can be done with them. Escape ends selecting.
+private struct SelectionBar: View {
+    let selection: MessageSelection
+    let model: AppModel
+    @State private var confirmingDelete = false
+
+    var body: some View {
+        HStack(spacing: Metrics.m) {
+            Button {
+                model.cancelSelection()
+            } label: {
+                Label("Cancel Selection", systemImage: "xmark")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 22, height: 22)
+            }
+            .selectionButton()
+            .keyboardShortcut(.cancelAction)
+            .help("Cancel selection (Esc)")
+
+            Text("\(selection.ids.count) selected")
+                .font(.body.weight(.medium))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(.snappy, value: selection.ids.count)
+
+            Spacer()
+
+            Button {
+                confirmingDelete = true
+            } label: {
+                Label("Delete for Me", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 22, height: 22)
+            }
+            .selectionButton()
+            .help("Delete for me")
+
+            Button {
+                model.forwardSelection()
+            } label: {
+                Label("Forward…", systemImage: "arrowshape.turn.up.right")
+                    .padding(.horizontal, Metrics.xs)
+                    .frame(height: 22)
+            }
+            .selectionButton(prominent: true)
+            .disabled(model.forwardableSelection.isEmpty)
+            .help("Forward the selected messages")
+        }
+        .padding(.horizontal, Metrics.m)
+        .padding(.vertical, Metrics.s)
+        .modifier(SelectionBarSurface())
+        .confirmationDialog(
+            Text("Delete \(selection.ids.count) messages for you?"),
+            isPresented: $confirmingDelete
+        ) {
+            Button("Delete for Me", role: .destructive) { model.deleteSelectionForMe() }
+        } message: {
+            Text("They are removed from ZapFast on this Mac. Your phone and the chat keep them.")
+        }
+    }
+}
+
+private struct SelectionBarSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+        } else {
+            content
+                .background(.bar)
+                .overlay(alignment: .top) { Divider() }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func selectionButton(prominent: Bool = false) -> some View {
+        if #available(macOS 26, *) {
+            if prominent {
+                buttonStyle(.glassProminent).controlSize(.large)
+            } else {
+                buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
+            }
+        } else if prominent {
+            buttonStyle(.borderedProminent).controlSize(.large)
+        } else {
+            buttonStyle(.bordered).buttonBorderShape(.circle).controlSize(.large)
+        }
     }
 }

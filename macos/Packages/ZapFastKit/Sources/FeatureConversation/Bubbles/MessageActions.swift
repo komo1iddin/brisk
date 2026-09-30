@@ -38,6 +38,10 @@ struct MessageActions: View {
             }
         }
 
+        if model.canSelect(message) {
+            Button("Select", systemImage: "checkmark.circle") { model.select(message) }
+        }
+
         if model.canShowInfo(message) {
             Button("Info", systemImage: "info.circle") { model.showInfo(message) }
         }

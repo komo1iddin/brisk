@@ -40,6 +40,7 @@ public final class AppModel {
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if videoWanted?.chat != selectedChatID { videoWanted = nil }
             if unreadDivider?.chat != selectedChatID { unreadDivider = nil }
+            if selection?.chat != selectedChatID { selection = nil }
             if let oldValue {
                 // Staged attachments belong to the chat left, as upstream's do.
                 attachments[oldValue] = nil
@@ -134,6 +135,9 @@ public final class AppModel {
     public private(set) var jump: JumpRequest?
     /// The message just jumped to, marked for a moment so the eye finds it.
     public private(set) var highlighted: MessageKey?
+    /// Messages picked in the open chat (upstream's `selection`), for
+    /// forwarding or deleting together.
+    public private(set) var selection: MessageSelection?
     /// A voice message the backend refused (offline, or its quote gone),
     /// kept for the composer to send again or discard, as upstream's
     /// `unsent_voice`. It lives until then, in memory only.
@@ -294,6 +298,7 @@ public final class AppModel {
         video.stop()
         videoWanted = nil
         if recorder.isRecording { recorder.cancel() }
+        selection = nil
         messageInfo = nil
         forwarding = nil
         // Sheets over the whole window would show over the lock screen.
@@ -856,6 +861,90 @@ public final class AppModel {
 
     public func cancelForward() {
         forwarding = nil
+    }
+
+    // MARK: Intents: selecting messages
+
+    /// Upstream's `add_range` leaves out what cannot be acted on.
+    public func canSelect(_ message: MessageRecord) -> Bool {
+        switch message.content {
+        case .revoked, .phoneOnly, .unsupported: false
+        default: true
+        }
+    }
+
+    public func isSelected(_ message: MessageRecord) -> Bool {
+        selection?.chat == message.chat && selection?.ids.contains(message.id) == true
+    }
+
+    /// Starts selecting with this message ("Select", or ⌘-click).
+    public func select(_ message: MessageRecord) {
+        guard canSelect(message) else { return }
+        if selection?.chat == message.chat {
+            toggleSelected(message)
+        } else {
+            selection = MessageSelection(chat: message.chat, ids: [message.id], anchor: message.id)
+        }
+    }
+
+    /// A click while selecting: in or out. Ids stay in chat order, so a
+    /// forward arrives as it was sent; the last one out ends selecting.
+    public func toggleSelected(_ message: MessageRecord) {
+        guard var current = selection, current.chat == message.chat, canSelect(message) else { return }
+        if current.ids.contains(message.id) {
+            current.ids.removeAll { $0 == message.id }
+        } else {
+            current.ids.append(message.id)
+        }
+        current.anchor = message.id
+        current.ids = inChatOrder(current.ids, chat: message.chat)
+        selection = current.ids.isEmpty ? nil : current
+    }
+
+    /// A Shift-click while selecting: everything from the last click to
+    /// this one joins.
+    public func selectRange(to message: MessageRecord) {
+        guard var current = selection, current.chat == message.chat else { return select(message) }
+        let messages = conversations.conversation(message.chat).messages
+        guard let from = messages.firstIndex(where: { $0.id == current.anchor }),
+              let to = messages.firstIndex(where: { $0.id == message.id }) else { return toggleSelected(message) }
+        let range = messages[min(from, to)...max(from, to)].filter(canSelect).map(\.id)
+        current.ids = inChatOrder(Array(Set(current.ids).union(range)), chat: message.chat)
+        current.anchor = message.id
+        selection = current
+    }
+
+    public func cancelSelection() {
+        selection = nil
+    }
+
+    /// The selected messages that can be forwarded, oldest first.
+    public var forwardableSelection: [String] {
+        guard let selection else { return [] }
+        let conversation = conversations.conversation(selection.chat)
+        return selection.ids.filter { id in conversation.message(id).map(canForward) ?? false }
+    }
+
+    public func forwardSelection() {
+        guard let chat = selection?.chat else { return }
+        let ids = forwardableSelection
+        guard !ids.isEmpty else { return }
+        selection = nil
+        forwarding = ForwardRequest(chat: chat, messages: ids)
+    }
+
+    /// Deletes the selected messages here, after the person confirmed.
+    public func deleteSelectionForMe() {
+        guard let selection else { return }
+        self.selection = nil
+        for id in selection.ids {
+            backend.send(.deleteLocal(chat: selection.chat, id: id))
+        }
+    }
+
+    private func inChatOrder(_ ids: [String], chat: String) -> [String] {
+        let wanted = Set(ids)
+        return conversations.conversation(chat).messages.map(\.id).filter(wanted.contains)
     }
 
     // MARK: Intents: editing
@@ -1887,6 +1976,14 @@ public struct StickerPackPreview: Identifiable, Equatable, Sendable {
     /// The chat it was shared in, where its stickers can be sent.
     public let chat: String
     public internal(set) var state: State
+}
+
+public struct MessageSelection: Equatable, Sendable {
+    public let chat: String
+    /// In chat order.
+    public internal(set) var ids: [String]
+    /// The last message clicked, where a Shift-click range starts.
+    var anchor: String
 }
 
 public struct UnsentVoice: Equatable, Sendable {

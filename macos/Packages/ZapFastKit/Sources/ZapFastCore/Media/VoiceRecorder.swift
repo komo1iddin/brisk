@@ -24,6 +24,10 @@ public final class VoiceRecorder {
     /// Recent input levels, 0...1, newest last, for a live meter: about
     /// eleven a second, enough to fill the widest window.
     public private(set) var levels: [Float] = []
+    /// When the newest level came, and the usual time between levels, so
+    /// the meter can slide each bar in over that time.
+    @ObservationIgnored public private(set) var lastLevelAt: Date?
+    @ObservationIgnored public private(set) var levelInterval: TimeInterval = 0.09
     /// When listening back to a paused take began, while it plays.
     public private(set) var previewStarted: Date?
 
@@ -31,6 +35,7 @@ public final class VoiceRecorder {
     @ObservationIgnored private var samples = SampleBuffer()
     @ObservationIgnored private var converter: AVAudioConverter?
     @ObservationIgnored private var preview: AVAudioEngine?
+    @ObservationIgnored private var scale = MeterScale()
 
     public init() {}
 
@@ -75,10 +80,12 @@ public final class VoiceRecorder {
 
         samples = SampleBuffer()
         levels = []
+        scale = MeterScale()
+        lastLevelAt = nil
         self.converter = converter
-        let tap = Self.makeTap(converter: converter, target: target, samples: samples) { [weak self] level in
+        let tap = Self.makeTap(converter: converter, target: target, samples: samples) { [weak self] decibels in
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.push(level) }
+                MainActor.assumeIsolated { self?.push(decibels) }
             }
         }
         input.installTap(onBus: 0, bufferSize: 4096, format: format, block: tap)
@@ -176,9 +183,15 @@ public final class VoiceRecorder {
         previewStarted = nil
     }
 
-    private func push(_ level: Float) {
+    private func push(_ decibels: Float) {
         guard case .recording = state else { return }
-        levels.append(level)
+        let now = Date.now
+        // A gap across a pause is not the usual pace.
+        if let last = lastLevelAt, now.timeIntervalSince(last) < 0.5 {
+            levelInterval = levelInterval * 0.8 + now.timeIntervalSince(last) * 0.2
+        }
+        lastLevelAt = now
+        levels.append(scale.level(decibels: decibels))
         if levels.count > Self.levelsKept { levels.removeFirst(levels.count - Self.levelsKept) }
     }
 
@@ -192,15 +205,12 @@ public final class VoiceRecorder {
 
     static let levelsKept = 400
 
-    /// Loudness for the meter: the buffer's RMS in decibels, from -50 dB
-    /// (silence, the dotted baseline) to -12 dB, where a voice close to the
-    /// microphone already fills the bar, so bars move with the voice
-    /// instead of jumping to the top at every peak.
-    nonisolated static func level(of chunk: UnsafeBufferPointer<Float>) -> Float {
-        guard !chunk.isEmpty else { return 0 }
+    /// A buffer's loudness: its RMS in decibels below full scale, so bars
+    /// follow the voice rather than jumping at every click.
+    nonisolated static func decibels(of chunk: UnsafeBufferPointer<Float>) -> Float {
+        guard !chunk.isEmpty else { return -100 }
         let power = chunk.reduce(Float(0)) { $0 + $1 * $1 } / Float(chunk.count)
-        let decibels = 10 * log10(max(power, 1e-10))
-        return min(1, max(0, (decibels + 50) / 38))
+        return 10 * log10(max(power, 1e-10))
     }
 
     /// The player's completion runs on an audio thread, so it is set up
@@ -220,7 +230,7 @@ public final class VoiceRecorder {
         converter: AVAudioConverter,
         target: AVAudioFormat,
         samples: SampleBuffer,
-        level: @escaping @Sendable (Float) -> Void
+        decibels: @escaping @Sendable (Float) -> Void
     ) -> AVAudioNodeTapBlock {
         return { buffer, _ in
             let ratio = target.sampleRate / buffer.format.sampleRate
@@ -240,8 +250,34 @@ public final class VoiceRecorder {
             guard error == nil, let channel = output.floatChannelData?[0], output.frameLength > 0 else { return }
             let chunk = UnsafeBufferPointer(start: channel, count: Int(output.frameLength))
             samples.append(chunk)
-            level(Self.level(of: chunk))
+            decibels(Self.decibels(of: chunk))
         }
+    }
+}
+
+/// Turns loudness into bar heights the way the phone seems to: relative to
+/// the loudest the voice has lately been, so every microphone and distance
+/// uses the whole height. The top follows a louder voice at once and sinks
+/// back about a decibel and a half a second, never below -30 dB, so room
+/// noise stays on the dotted baseline.
+struct MeterScale {
+    /// Silence, the baseline.
+    static let floor: Float = -50
+    /// The lowest the top sinks to, and where a take starts.
+    static let lowestTop: Float = -30
+    /// A voice this loud fills the bar however loud it has been.
+    static let highestTop: Float = -6
+    static let sink: Float = 0.15
+
+    private(set) var top: Float = MeterScale.lowestTop
+
+    mutating func level(decibels: Float) -> Float {
+        if decibels > top {
+            top = min(decibels, Self.highestTop)
+        } else {
+            top = max(Self.lowestTop, top - Self.sink)
+        }
+        return min(1, max(0, (decibels - Self.floor) / (top - Self.floor)))
     }
 }
 

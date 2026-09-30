@@ -65,6 +65,7 @@ struct ComposerBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // The two share one shape, so they only cross-fade.
             if model.recorder.isRecording {
                 RecordingBar(recorder: model.recorder) {
                     model.cancelRecording()
@@ -75,10 +76,13 @@ struct ComposerBar: View {
                 } send: {
                     model.sendRecording(in: chatID)
                 }
+                .transition(.opacity)
             } else {
                 editor
+                    .transition(.opacity)
             }
         }
+        .animation(.zf(reduceMotion, duration: 0.18), value: model.recorder.isRecording)
         .padding(.horizontal, Metrics.m)
         .padding(.vertical, Metrics.s)
         .modifier(ComposerBarSurface())
@@ -192,10 +196,10 @@ struct ComposerBar: View {
     }
 
     /// The side buttons' size, matching the one-line field.
-    private static let control: CGFloat = 22
+    fileprivate static let control: CGFloat = 22
     /// The field's inside height for one line: with its padding, as tall
     /// as the round buttons beside it.
-    private static let fieldLine: CGFloat = 30
+    fileprivate static let fieldLine: CGFloat = 30
 
     private func sendButton(title: LocalizedStringKey, systemImage: String) -> some View {
         Button {
@@ -371,10 +375,12 @@ private extension View {
     }
 }
 
-/// While recording: discard, a red dot with the elapsed time, the live
-/// input level, pause, and send. Paused, the dot becomes a play button
-/// to listen back and pause becomes a microphone to go on. A take of ten
-/// seconds or more asks before it is discarded, Escape included.
+/// While recording, in the editor's own shape so nothing jumps: the bin
+/// where + was, a field holding a red dot, the time and the live meter,
+/// pause where the microphone was, and send. Paused, the dot becomes a
+/// play button to listen back and pause becomes a microphone to go on. A
+/// take of ten seconds or more asks before it is discarded, Escape
+/// included.
 private struct RecordingBar: View {
     let recorder: VoiceRecorder
     let cancel: () -> Void
@@ -384,32 +390,64 @@ private struct RecordingBar: View {
     @State private var confirmingDiscard = false
 
     var body: some View {
-        HStack(spacing: Metrics.m) {
-            Button {
-                if recorder.elapsed() >= AppModel.discardAskAfter {
-                    confirmingDiscard = true
-                } else {
-                    cancel()
+        GlassGroup(spacing: Metrics.s) {
+            HStack(alignment: .bottom, spacing: Metrics.s) {
+                Button {
+                    if recorder.elapsed() >= AppModel.discardAskAfter {
+                        confirmingDiscard = true
+                    } else {
+                        cancel()
+                    }
+                } label: {
+                    Label("Discard Recording", systemImage: "trash")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: ComposerBar.control, height: ComposerBar.control)
                 }
-            } label: {
-                Label("Discard Recording", systemImage: "trash")
+                .composerButton()
+                .keyboardShortcut(.cancelAction)
+                .help("Discard recording")
+                .confirmationDialog(
+                    Text("Discard this voice message?"),
+                    isPresented: $confirmingDiscard
+                ) {
+                    Button("Discard", role: .destructive, action: cancel)
+                } message: {
+                    Text("\(Self.time(recorder.elapsed())) recorded will be lost.")
+                }
+
+                field
+
+                Button(action: togglePause) {
+                    Label(
+                        recorder.isPaused ? "Resume Recording" : "Pause Recording",
+                        systemImage: recorder.isPaused ? "mic.fill" : "pause.fill"
+                    )
                     .labelStyle(.iconOnly)
                     .font(.system(size: 15, weight: .medium))
-                    .frame(width: 22, height: 22)
-            }
-            .composerButton()
-            .foregroundStyle(.red)
-            .keyboardShortcut(.cancelAction)
-            .help("Discard recording")
-            .confirmationDialog(
-                Text("Discard this voice message?"),
-                isPresented: $confirmingDiscard
-            ) {
-                Button("Discard", role: .destructive, action: cancel)
-            } message: {
-                Text("\(Self.time(recorder.elapsed())) recorded will be lost.")
-            }
+                    .frame(width: ComposerBar.control, height: ComposerBar.control)
+                    .contentTransition(.symbolEffect(.replace))
+                }
+                .composerButton()
+                .foregroundStyle(recorder.isPaused ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+                .help(recorder.isPaused ? "Go on recording" : "Pause recording")
 
+                Button(action: send) {
+                    Label("Send Voice Message", systemImage: "arrow.up")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: ComposerBar.control, height: ComposerBar.control)
+                }
+                .composerButton(prominent: true)
+                .keyboardShortcut(.defaultAction)
+                .help("Send voice message")
+            }
+        }
+    }
+
+    /// The editor's field, one line tall: the dot (or play), the time, the meter.
+    private var field: some View {
+        HStack(spacing: Metrics.s) {
             if recorder.isPaused {
                 Button(action: togglePreview) {
                     Label(
@@ -435,37 +473,15 @@ private struct RecordingBar: View {
                     .font(.body.monospacedDigit())
             }
 
-            LevelMeter(levels: recorder.levels)
-                .frame(height: 26)
+            LevelMeter(recorder: recorder)
+                .frame(height: 22)
                 .frame(maxWidth: .infinity)
-
-            Button(action: togglePause) {
-                Label(
-                    recorder.isPaused ? "Resume Recording" : "Pause Recording",
-                    systemImage: recorder.isPaused ? "mic.fill" : "pause.fill"
-                )
-                .labelStyle(.iconOnly)
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 22, height: 22)
-                .contentTransition(.symbolEffect(.replace))
-            }
-            .composerButton()
-            .foregroundStyle(recorder.isPaused ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
-            .help(recorder.isPaused ? "Go on recording" : "Pause recording")
-
-            Button(action: send) {
-                Label("Send Voice Message", systemImage: "arrow.up")
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 22, height: 22)
-            }
-            .composerButton(prominent: true)
-            .keyboardShortcut(.defaultAction)
-            .help("Send voice message")
         }
-        .padding(.leading, Metrics.xs)
-        .frame(minHeight: 34)
-        .modifier(ComposerPanelSurface())
+        .frame(height: ComposerBar.fieldLine)
+        .padding(.leading, Metrics.m)
+        .padding(.trailing, Metrics.m)
+        .padding(.vertical, Metrics.xxs + 1)
+        .modifier(ComposerFieldSurface())
     }
 
     /// The length recorded, or while listening back, how far it has played.
@@ -481,39 +497,61 @@ private struct RecordingBar: View {
 }
 
 /// The take's loudness as the phone draws it: thin rounded bars at a fixed
-/// pitch, filling from the left and then scrolling, newest on the right;
-/// quiet moments are dots, and the room still to fill a faint line.
+/// pitch entering at the right and sliding left, newest on the right;
+/// quiet moments are dots, and the room not yet recorded a faint line.
+/// Each bar glides in over the time until the next level, so the strip
+/// moves smoothly rather than a step at a time.
 private struct LevelMeter: View {
-    let levels: [Float]
+    let recorder: VoiceRecorder
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let bar: CGFloat = 3
     private static let pitch: CGFloat = 5
     /// Below this a moment counts as silence and draws as a dot.
-    private static let quiet: Float = 0.08
+    private static let quiet: Float = 0.1
 
     var body: some View {
-        Canvas { context, size in
-            let count = max(1, Int(size.width / Self.pitch))
-            let shown = levels.suffix(count)
-            let middle = size.height / 2
-            for (index, level) in shown.enumerated() {
-                let x = CGFloat(index) * Self.pitch
-                if level < Self.quiet {
-                    let dot = CGRect(x: x + 0.25, y: middle - 1.25, width: 2.5, height: 2.5)
-                    context.fill(Path(ellipseIn: dot), with: .color(.secondary))
-                } else {
-                    let height = max(5, size.height * CGFloat(level))
-                    let rect = CGRect(x: x, y: middle - height / 2, width: Self.bar, height: height)
-                    context.fill(Path(roundedRect: rect, cornerRadius: Self.bar / 2), with: .color(.secondary))
-                }
-            }
-            let filled = CGFloat(shown.count) * Self.pitch
-            if filled < size.width {
-                let rest = CGRect(x: filled, y: middle - 0.5, width: size.width - filled, height: 1)
-                context.fill(Path(rest), with: .color(.secondary.opacity(0.35)))
+        let levels = recorder.levels
+        let still = recorder.isPaused || reduceMotion
+        TimelineView(.animation(paused: still)) { context in
+            Canvas { canvas, size in
+                let slide = still ? 1 : progress(at: context.date)
+                draw(levels, slide: slide, in: &canvas, size: size)
             }
         }
+        .clipped()
         .accessibilityHidden(true)
+    }
+
+    /// How far the newest bar has come in, 0 as it arrives, 1 when the
+    /// next is due.
+    private func progress(at now: Date) -> CGFloat {
+        guard let last = recorder.lastLevelAt else { return 1 }
+        return CGFloat(min(1, max(0, now.timeIntervalSince(last) / recorder.levelInterval)))
+    }
+
+    private func draw(_ levels: [Float], slide: CGFloat, in canvas: inout GraphicsContext, size: CGSize) {
+        let middle = size.height / 2
+        let count = Int(size.width / Self.pitch) + 2
+        let shown = levels.suffix(count)
+        var oldest = size.width
+        // From the newest, right to left.
+        for (age, level) in shown.reversed().enumerated() {
+            let x = size.width - (CGFloat(age) + slide) * Self.pitch
+            oldest = x
+            if level < Self.quiet {
+                let dot = CGRect(x: x + 0.25, y: middle - 1.25, width: 2.5, height: 2.5)
+                canvas.fill(Path(ellipseIn: dot), with: .color(.secondary))
+            } else {
+                let height = max(5, size.height * CGFloat(level))
+                let rect = CGRect(x: x, y: middle - height / 2, width: Self.bar, height: height)
+                canvas.fill(Path(roundedRect: rect, cornerRadius: Self.bar / 2), with: .color(.secondary))
+            }
+        }
+        if oldest > Self.pitch {
+            let rest = CGRect(x: 0, y: middle - 0.5, width: oldest - Self.pitch + Self.bar, height: 1)
+            canvas.fill(Path(rest), with: .color(.secondary.opacity(0.35)))
+        }
     }
 }
 

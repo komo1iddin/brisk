@@ -132,7 +132,9 @@ camera details behind. Prepared files wait in the caches folder's
 While a voice message records, pause stops it and lets go of the
 microphone (the system's indicator goes out); paused, the play button
 plays back what is recorded so far and the microphone goes on recording.
-The bars follow the voice's loudness, with silence as a dotted line.
+The bars glide in from the right and follow the voice's loudness, scaled
+to the loudest it has lately been, with silence as a dotted line; the
+recording field has the message field's shape, so the two swap in place.
 Return sends; Escape or the bin discards, asking first once the take is
 ten seconds or longer.
 

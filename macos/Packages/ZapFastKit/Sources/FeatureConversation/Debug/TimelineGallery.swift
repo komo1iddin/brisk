@@ -120,6 +120,23 @@ public enum TimelineGallery {
             extra("45", fromMe: true, content: .video(caption: nil, media: MediaInfo(
                 mime: "video/mp4", size: 2_000_000, width: 640, height: 480, path: "/dev/null"
             ), seconds: 4, gif: true, note: false), thumbnail: landscape.thumbnail),
+            extra("50", from: "a", content: .document(media: MediaInfo(
+                mime: "application/pdf", size: 2_400_000, width: nil, height: nil, path: nil
+            ), fileName: "Loyiha rejasi va arxitektura bo'yicha batafsil hujjat.pdf", caption: "Ko'rib chiqing", pages: 12), thumbnail: portrait.thumbnail),
+            extra("51", fromMe: true, content: .document(media: MediaInfo(
+                mime: "application/zip", size: 18_300_000, width: nil, height: nil, path: sticker.path
+            ), fileName: "Build logs.zip", caption: nil, pages: nil)),
+            extra("52", from: "b", content: .text(
+                text: "Buni o'qing: https://developer.apple.com/design/",
+                preview: LinkPreviewInfo(
+                    url: "https://developer.apple.com/design/", title: "Design - Apple Developer",
+                    description: "Get the resources to design great apps and games for all Apple platforms, with guidelines, videos and templates."
+                )
+            ), thumbnail: landscape.thumbnail),
+            extra("53", fromMe: true, content: .text(
+                text: "https://github.com/crmne/zapfast",
+                preview: LinkPreviewInfo(url: "https://github.com/crmne/zapfast", title: "crmne/zapfast", description: nil)
+            )),
         ]
     }
 

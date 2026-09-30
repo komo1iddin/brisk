@@ -59,13 +59,18 @@ protocol TimelineCellDelegate: AnyObject {
 /// moves when it appears.
 final class BubbleCell: NSView {
     static let identifier = NSUserInterfaceItemIdentifier("TimelineBubble")
-    /// Cells with a picture are reused for pictures, so the picture's view
-    /// is made once per cell.
-    static let pictureIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-picture")
-
+    /// Cells with a picture, a file or a link's card are reused for the
+    /// same, so each view is made once per cell.
     static func identifier(for layout: BubbleLayout) -> NSUserInterfaceItemIdentifier {
-        layout.picture == nil ? identifier : pictureIdentifier
+        if layout.picture != nil { return pictureIdentifier }
+        if layout.document != nil { return documentIdentifier }
+        if layout.linkPreview != nil { return linkIdentifier }
+        return identifier
     }
+
+    private static let pictureIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-picture")
+    private static let documentIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-document")
+    private static let linkIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-link")
 
     weak var delegate: TimelineCellDelegate?
     private(set) var messageID: String?
@@ -102,7 +107,7 @@ final class BubbleCell: NSView {
         if id != messageID || layout !== bubbleLayout {
             if id != messageID {
                 // A reused cell shows another message.
-                if let messageID, bubbleLayout?.picture != nil { delegate?.attachmentHidden(inMessage: messageID) }
+                if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
                 hideHoverActions(animated: false)
                 popover?.close()
             }
@@ -123,7 +128,7 @@ final class BubbleCell: NSView {
     func leftScreen() {
         watches.stopAll()
         bubble.pictureView?.setMoving(false)
-        if let messageID, bubbleLayout?.picture != nil { delegate?.attachmentHidden(inMessage: messageID) }
+        if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
         hideHoverActions(animated: false)
         messageID = nil
     }
@@ -132,8 +137,20 @@ final class BubbleCell: NSView {
     /// the file is not here, and a video that may play in place.
     private func watchAttachment() {
         watches.stopAll()
-        guard let id = messageID, let picture = bubbleLayout?.picture else { return }
+        setAccessibilityValue(nil)
+        guard let id = messageID, let layout = bubbleLayout, layout.hasAttachment else { return }
         delegate?.attachmentShown(inMessage: id)
+        if let document = layout.document {
+            if document.document.path == nil {
+                watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
+                    self?.bubble.documentView?.setDownload(state)
+                    self?.setAccessibilityValue(Self.accessibilityValue(state))
+                }
+            } else {
+                bubble.documentView?.setDownload(nil)
+            }
+        }
+        guard let picture = layout.picture else { return }
         if picture.picture.path == nil, !picture.picture.isSticker {
             watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
                 self?.bubble.pictureView?.setDownload(state)
@@ -141,7 +158,6 @@ final class BubbleCell: NSView {
             }
         } else {
             bubble.pictureView?.setDownload(nil)
-            setAccessibilityValue(nil)
         }
         if picture.picture.kind == .video || picture.picture.kind == .roundVideo {
             watches.watch({ [weak self] in self?.delegate?.isPlayingInPlace(id) ?? false }) { [weak self] playing in
@@ -162,6 +178,8 @@ final class BubbleCell: NSView {
     func refreshColors() {
         bubble.refreshColors()
         bubble.pictureView?.refreshColors()
+        bubble.documentView?.refreshColors()
+        bubble.linkView?.refreshColors()
         pills.needsRedraw()
     }
 
@@ -338,6 +356,8 @@ private final class BubbleView: NSView {
     weak var cell: BubbleCell?
     private(set) var bodyText: BodyTextView?
     private(set) var pictureView: PictureView?
+    private(set) var documentView: DocumentView?
+    private(set) var linkView: LinkPreviewView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
     private var bubbleLayout: BubbleLayout?
@@ -368,17 +388,25 @@ private final class BubbleView: NSView {
     func configure(_ layout: BubbleLayout, messageID: String) {
         bubbleLayout = layout
         if let picture = layout.picture {
-            let view = pictureView ?? PictureView()
-            if view.superview == nil {
-                view.cell = cell
-                addSubview(view)
-                pictureView = view
-            }
-            view.frame = picture.frame
+            let view = install(&pictureView, frame: picture.frame) { PictureView() }
+            view.cell = cell
             view.configure(picture, messageID: messageID)
-        } else if let view = pictureView {
-            view.removeFromSuperview()
-            pictureView = nil
+        } else {
+            remove(&pictureView)
+        }
+        if let document = layout.document {
+            let view = install(&documentView, frame: document.frame) { DocumentView() }
+            view.cell = cell
+            view.configure(document, messageID: messageID, color: layout.textColor)
+        } else {
+            remove(&documentView)
+        }
+        if let preview = layout.linkPreview {
+            let view = install(&linkView, frame: preview.frame) { LinkPreviewView() }
+            view.cell = cell
+            view.configure(preview, messageID: messageID)
+        } else {
+            remove(&linkView)
         }
         overPicture = false
         chrome.layout = layout
@@ -400,6 +428,20 @@ private final class BubbleView: NSView {
         applyAppearance()
         chrome.setNeedsDisplay()
         body.setNeedsDisplay()
+    }
+
+    /// The attachment's view, made the first time a message needs it.
+    private func install<View: NSView>(_ view: inout View?, frame: CGRect, make: () -> View) -> View {
+        let made = view ?? make()
+        if made.superview == nil { addSubview(made) }
+        made.frame = frame
+        view = made
+        return made
+    }
+
+    private func remove<View: NSView>(_ view: inout View?) {
+        view?.removeFromSuperview()
+        view = nil
     }
 
     private func applyAppearance() {
@@ -460,6 +502,7 @@ private final class BubbleView: NSView {
     func pointerMoved(to point: NSPoint) {
         guard let layout = bubbleLayout else { return }
         let clickable = layout.quote?.rect.contains(point) == true || layout.name?.rect.contains(point) == true
+            || layout.linkPreview?.frame.contains(point) == true
         if bodyText == nil { (clickable ? NSCursor.pointingHand : NSCursor.arrow).set() }
         let picture = layout.picture?.frame.contains(point) == true
         if picture != overPicture {

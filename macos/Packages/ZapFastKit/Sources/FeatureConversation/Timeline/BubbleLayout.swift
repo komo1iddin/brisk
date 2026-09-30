@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
@@ -18,10 +19,53 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         /// line, as `Placeholder` draws them.
         case placeholder(symbol: String, text: String)
         case picture(Picture)
+        case document(Document)
 
         var picture: Picture? {
             if case .picture(let picture) = self { picture } else { nil }
         }
+    }
+
+    /// A file, as `DocumentContent` shows it: its first page when there is
+    /// one, then its icon, name and what it is.
+    struct Document: Equatable, Sendable {
+        var fileName: String
+        var mime: String
+        var bytes: UInt64
+        var pages: UInt32?
+        var path: String?
+        /// The sender's preview of its first page.
+        var thumbnail: Data?
+
+        var isPDF: Bool {
+            DocumentType.of(fileName: fileName, mime: mime).conforms(to: .pdf)
+        }
+
+        /// A page to show: the sender's preview, or a PDF that is here.
+        var hasPreview: Bool {
+            thumbnail != nil || (path != nil && isPDF)
+        }
+
+        /// "3 pages · 1.2 MB · PDF".
+        var detail: String {
+            var parts: [String] = []
+            if let pages {
+                parts.append(String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters))
+            }
+            if bytes > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) }
+            if let ext = fileName.split(separator: ".").last, fileName.contains("."), ext.count <= 5 {
+                parts.append(ext.uppercased())
+            }
+            return parts.joined(separator: " · ")
+        }
+    }
+
+    /// The card under a message's text for the link in it.
+    struct LinkPreview: Equatable, Sendable {
+        var url: String
+        var title: String?
+        var description: String?
+        var thumbnail: Data?
     }
 
     /// A photo, video, GIF or sticker, as `VisualMedia` shows it.
@@ -87,6 +131,7 @@ nonisolated struct BubbleSource: Equatable, Sendable {
     /// The chat's theme and text size.
     var colors: BubbleColors
     var attachment: Attachment?
+    var linkPreview: LinkPreview?
 }
 
 /// Text drawn at a place, in the coordinates of whatever holds it.
@@ -159,6 +204,32 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var accessibilityTitle: String
     }
 
+    /// A file's card. Everything but `frame` is in the card's coordinates.
+    struct DocumentLayout {
+        var document: BubbleSource.Document
+        /// In the bubble's coordinates.
+        var frame: CGRect
+        /// The first page, on white, above the rest.
+        var preview: CGRect?
+        var icon: CGRect
+        var name: TextPiece
+        var detail: TextPiece
+        /// The download arrow or the spinner, while the file is not here.
+        var indicator: CGRect?
+        var accessibilityTitle: String
+    }
+
+    /// The card for a link. Everything but `frame` is in the card's
+    /// coordinates.
+    struct LinkPreviewLayout {
+        var preview: BubbleSource.LinkPreview
+        var frame: CGRect
+        var image: CGRect?
+        var title: TextPiece?
+        var description: TextPiece?
+        var host: TextPiece
+    }
+
     /// A symbol and a line of italic text, for a deleted message or one
     /// that cannot be shown here.
     struct Placeholder {
@@ -183,6 +254,8 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var quote: QuoteLayout?
         var placeholder: Placeholder?
         var picture: PictureLayout?
+        var document: DocumentLayout?
+        var linkPreview: LinkPreviewLayout?
         /// The text, with room for the footer at its end when the footer
         /// shares its last line. `bodyLength` is where the visible text
         /// stops. Nil for an attachment without a caption. Drawn without
@@ -222,6 +295,11 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         parts[keyPath: keyPath]
     }
 
+    /// A photo, video, sticker or file: something that downloads.
+    var hasAttachment: Bool {
+        parts.picture != nil || parts.document != nil
+    }
+
     /// The bubble's frame in a row of the given width.
     func bubbleFrame(rowWidth: CGFloat) -> CGRect {
         let x = parts.fromMe ? rowWidth - Metrics.l - parts.bubbleSize.width : Metrics.l
@@ -246,6 +324,13 @@ nonisolated enum TimelineGeometry {
     /// them keeps the usual inset (`insetForMedia`).
     static let mediaPadding = Metrics.xs
     static let mediaTextInset = Metrics.s
+    /// `DocumentContent`'s card.
+    static let documentWidth: CGFloat = 280
+    static let documentPreviewHeight: CGFloat = 150
+    static let documentIcon: CGFloat = 32
+    static let documentIndicator: CGFloat = 17
+    /// `LinkPreviewCard`'s picture.
+    static let linkImage: CGFloat = 56
     static let partSpacing = Metrics.xs
     static let rowBottom = Metrics.xxs
     static let reactionOverlap = Metrics.xs
@@ -320,6 +405,19 @@ nonisolated enum TimelineText {
     nonisolated(unsafe) static let callout = NSFont.preferredFont(forTextStyle: .callout)
     nonisolated(unsafe) static let bodyItalic = styled(body, .italic)
     nonisolated(unsafe) static let captionBold = NSFont.systemFont(ofSize: caption.pointSize, weight: .bold)
+    nonisolated(unsafe) static let bodyMedium = NSFont.systemFont(ofSize: body.pointSize, weight: .medium)
+    nonisolated(unsafe) static let calloutSemibold = NSFont.systemFont(ofSize: callout.pointSize, weight: .semibold)
+
+    /// Wraps at words, and at most `lines` lines are drawn, the last cut
+    /// short with an ellipsis.
+    static func lines(_ text: String, _ font: NSFont, _ color: NSColor) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: color, .paragraphStyle: wrapping])
+    }
+
+    /// Height of `string` in `width`, no taller than `lines` lines.
+    static func height(_ string: NSAttributedString, width: CGFloat, lines: Int, font: NSFont) -> CGFloat {
+        min(size(string, width: width).height, height(ofLines: lines, font))
+    }
     /// Wraps at words, for text measured at a width.
     nonisolated(unsafe) static let wrapping: NSParagraphStyle = {
         let paragraph = NSMutableParagraphStyle()

@@ -48,6 +48,13 @@ public enum Thumbnails {
         cache.object(forKey: "\(key)@\(Int(points * scale))" as NSString)
     }
 
+    /// The page `document(_:size:)` gave for this file, if it is still kept.
+    public nonisolated static func cachedDocument(_ url: URL, size: CGSize, scale: CGFloat = 2) -> NSImage? {
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+            .contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
+        return cache.object(forKey: "page:\(url.path(percentEncoded: false))#\(modified)@\(Int(size.width * scale))x\(Int(size.height * scale))" as NSString)
+    }
+
     /// A document's first page as Quick Look draws it (a PDF's cover), fit
     /// within `size`.
     @concurrent

@@ -192,8 +192,8 @@ struct BubbleSourceTests {
             refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []
         )))
         #expect(BubbleSource.make(poll, startsRun: true, isGroup: false, colors: colors, chats: chats) == nil)
-        let preview = message(.text(text: "https://apple.com", preview: LinkPreviewInfo(url: "https://apple.com", title: nil, description: nil)))
-        #expect(BubbleSource.make(preview, startsRun: true, isGroup: false, colors: colors, chats: chats) == nil)
+        let contact = message(.contact(displayName: "Dilnoza", vcard: "BEGIN:VCARD\nEND:VCARD"))
+        #expect(BubbleSource.make(contact, startsRun: true, isGroup: false, colors: colors, chats: chats) == nil)
     }
 
     @Test func aPlaceholderHasItsTimeOnALineOfItsOwn() throws {
@@ -297,5 +297,69 @@ struct PictureBubbleTests {
         let frame = try #require(layout.picture?.frame)
         #expect(frame.width == 200 - TimelineGeometry.mediaPadding * 2)
         #expect(abs(frame.width / frame.height - 300 / 225) < 0.02)
+    }
+}
+
+@MainActor
+struct DocumentAndLinkBubbleTests {
+    private let chats = ChatStore(session: SessionStore())
+    private let colors = BubbleColors(.standard)
+
+    private func layout(_ content: MessageContent, thumbnail: Data? = nil, width: CGFloat = 560) throws -> BubbleLayout {
+        let message = MessageRecord(
+            id: "d", chat: "c@s.whatsapp.net", sender: "a@s.whatsapp.net", senderName: nil, fromMe: false,
+            timestamp: 1_780_000_000, content: content, status: .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: thumbnail, summary: ""
+        )
+        let source = try #require(BubbleSource.make(message, startsRun: true, isGroup: false, colors: colors, chats: chats))
+        return TimelineLayoutEngine.layout(for: source, widthLimit: width)
+    }
+
+    private func pdf(path: String? = nil) -> MediaInfo {
+        MediaInfo(mime: "application/pdf", size: 2_400_000, width: nil, height: nil, path: path)
+    }
+
+    @Test func aDocumentIsACardOfItsIconNameAndDetail() throws {
+        let layout = try layout(.document(media: pdf(), fileName: "Hisobot.pdf", caption: "Ko'ring", pages: 3), thumbnail: Data([1]))
+        let card = try #require(layout.document)
+        #expect(card.frame.width == TimelineGeometry.documentWidth)
+        #expect(card.preview?.height == TimelineGeometry.documentPreviewHeight)
+        #expect(card.document.detail.contains("3 pages"))
+        #expect(card.document.detail.hasSuffix("PDF"))
+        // Not here yet: room for the arrow, and the name stays clear of it.
+        let indicator = try #require(card.indicator)
+        #expect(card.name.rect.maxX <= indicator.minX)
+        #expect(card.icon.minY >= (card.preview?.maxY ?? 0))
+        // The caption follows the card; the time is a line of its own.
+        let body = try #require(layout.body)
+        #expect(body.rect.minY > card.frame.maxY)
+        #expect(layout.footer.rect.minY >= body.rect.maxY)
+        #expect(layout.accessibilityLabel.contains("Hisobot.pdf"))
+    }
+
+    @Test func aDocumentHereHasNoArrowAndAPDFShowsItsPage() throws {
+        let here = try layout(.document(media: pdf(path: "/tmp/a.pdf"), fileName: "a.pdf", caption: nil, pages: nil))
+        #expect(here.document?.indicator == nil)
+        #expect(here.document?.preview != nil)
+        let zip = try layout(.document(
+            media: MediaInfo(mime: "application/zip", size: 10, width: nil, height: nil, path: "/tmp/a.zip"),
+            fileName: "a.zip", caption: nil, pages: nil
+        ))
+        #expect(zip.document?.preview == nil)
+        #expect(zip.body == nil)
+    }
+
+    @Test func aLinkPreviewFollowsTheTextWithTheTimeUnderIt() throws {
+        let preview = LinkPreviewInfo(url: "https://apple.com/design", title: "Design", description: "Resources for Apple platforms.")
+        let layout = try layout(.text(text: "Mana: https://apple.com/design", preview: preview), thumbnail: Data([1]))
+        let card = try #require(layout.linkPreview)
+        let body = try #require(layout.body)
+        #expect(card.frame.minY >= body.rect.maxY + TimelineGeometry.mediaTextInset - 0.5)
+        #expect(card.image?.size == CGSize(width: TimelineGeometry.linkImage, height: TimelineGeometry.linkImage))
+        #expect(card.host.string.string == "apple.com")
+        #expect(card.frame.height >= TimelineGeometry.linkImage + TimelineGeometry.mediaTextInset * 2)
+        #expect(layout.footer.rect.minY >= card.frame.maxY)
+        // Its text keeps its links for the selectable view.
+        #expect(layout.linkedBody?.attribute(.link, at: 7, effectiveRange: nil) != nil)
     }
 }

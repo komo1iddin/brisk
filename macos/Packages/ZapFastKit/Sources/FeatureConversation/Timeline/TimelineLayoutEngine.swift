@@ -55,7 +55,7 @@ nonisolated enum TimelineLayoutEngine {
         // The time tucks into the last line of plain text; after large
         // emoji or an attachment it is a line of its own on the trailing
         // edge, as `MessageBubble` places it.
-        let inlineFooter = hasText && !source.emojiOnly && source.attachment == nil
+        let inlineFooter = hasText && !source.emojiOnly && source.attachment == nil && source.linkPreview == nil
         let capsuleInset: CGFloat = bare ? Metrics.s : 0
 
         // Footer: edited, time, ticks.
@@ -92,6 +92,9 @@ nonisolated enum TimelineLayoutEngine {
         let bodyLength = body?.length ?? 0
         if inlineFooter { body?.append(T.reserve(width: footerWidth + G.footerSpacing * 2, fonts: fonts)) }
 
+        let document: BubbleSource.Document? = if case .document(let document) = source.attachment { document } else { nil }
+        let linkCard = source.linkPreview.map { linkCardTexts($0, color: textColor) }
+
         // A picture keeps its shape; one too wide for the timeline shrinks.
         var pictureSize = picture?.displaySize ?? .zero
         if pictureSize.width > contentLimit {
@@ -115,6 +118,8 @@ nonisolated enum TimelineLayoutEngine {
             }
             if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
             ideal = max(ideal, pictureSize.width)
+            if document != nil { ideal = max(ideal, G.documentWidth) }
+            if let card = linkCard { ideal = max(ideal, card.ideal) }
             width = min(ceil(ideal), contentLimit)
         }
 
@@ -183,12 +188,26 @@ nonisolated enum TimelineLayoutEngine {
             return pictureOverlays(picture, frame: frame)
         }
 
+        let documentLayout = document.map { document in
+            var card = documentCard(document, width: min(G.documentWidth, width), color: textColor)
+            card.frame.origin = CGPoint(x: left, y: advance(card.frame.height))
+            return card
+        }
+
         let bodyPiece = body.map { body in
             let height = T.size(body, width: textWidth).height
             let drawn = NSMutableAttributedString(attributedString: body)
             drawn.removeAttribute(.link, range: NSRange(location: 0, length: drawn.length))
             return TextPiece(string: drawn, rect: CGRect(x: textLeft, y: advance(height), width: textWidth, height: height))
         }
+        let linkLayout = linkCard.map { texts in
+            // `MessageContentView` spaces the card from the text by more.
+            if bodyPiece != nil { y += Metrics.s - G.partSpacing }
+            var card = linkPreviewCard(texts, width: width)
+            card.frame.origin = CGPoint(x: left, y: advance(card.frame.height))
+            return card
+        }
+
         let footerRect: CGRect
         var capsule: CGRect?
         if inlineFooter, let bodyRect = bodyPiece?.rect {
@@ -230,6 +249,8 @@ nonisolated enum TimelineLayoutEngine {
             quote: quote,
             placeholder: placeholder,
             picture: pictureLayout,
+            document: documentLayout,
+            linkPreview: linkLayout,
             body: bodyPiece,
             bodyLength: bodyLength,
             linkedBody: body,
@@ -245,8 +266,91 @@ nonisolated enum TimelineLayoutEngine {
             accent: colors.accent,
             pills: pills,
             pillsSize: pillsSize,
-            accessibilityLabel: accessibilityLabel(source, title: pictureLayout?.accessibilityTitle, time: time.string)
+            accessibilityLabel: accessibilityLabel(
+                source, title: pictureLayout?.accessibilityTitle ?? documentLayout?.accessibilityTitle, time: time.string
+            )
         ))
+    }
+
+    /// `DocumentContent`'s card at `width`: the first page, 150 points of
+    /// it, above the row of icon, name and detail, and the download arrow
+    /// while the file is not here. Its origin is set by the caller.
+    private static func documentCard(_ document: BubbleSource.Document, width: CGFloat, color: NSColor) -> BubbleLayout.DocumentLayout {
+        typealias G = TimelineGeometry
+        typealias T = TimelineText
+        let s = Metrics.s
+        let top: CGFloat = document.hasPreview ? G.documentPreviewHeight : 0
+        let waiting = document.path == nil
+        // icon · text · spacer (at least s) · arrow, s apart, s inside.
+        let textX = s + G.documentIcon + s
+        let textWidth = max(1, width - textX - s - s - s - (waiting ? s + G.documentIndicator : 0))
+        let name = T.lines(document.fileName, T.bodyMedium, color)
+        let nameHeight = T.height(name, width: textWidth, lines: 2, font: T.bodyMedium)
+        let detail = T.line(document.detail, T.caption, T.faded(color, 0.75))
+        let detailHeight = T.size(detail).height
+        let texts = nameHeight + 2 + detailHeight
+        let inner = max(G.documentIcon, texts)
+        let row = top + s
+        return .init(
+            document: document,
+            frame: CGRect(x: 0, y: 0, width: width, height: top + inner + s * 2),
+            preview: document.hasPreview ? CGRect(x: 0, y: 0, width: width, height: top) : nil,
+            icon: CGRect(x: s, y: row + ((inner - G.documentIcon) / 2).rounded(), width: G.documentIcon, height: G.documentIcon),
+            name: TextPiece(string: name, rect: CGRect(x: textX, y: row + ((inner - texts) / 2).rounded(), width: textWidth, height: nameHeight)),
+            detail: TextPiece(string: detail, rect: CGRect(
+                x: textX, y: row + ((inner - texts) / 2).rounded() + nameHeight + 2, width: textWidth, height: detailHeight
+            )),
+            indicator: waiting ? CGRect(
+                x: width - s - G.documentIndicator, y: row + ((inner - G.documentIndicator) / 2).rounded(),
+                width: G.documentIndicator, height: G.documentIndicator
+            ) : nil,
+            accessibilityTitle: [document.fileName, document.detail].filter { !$0.isEmpty }.joined(separator: ", ")
+        )
+    }
+
+    /// `LinkPreviewCard`'s texts and how wide the card would like to be.
+    private struct LinkCardTexts {
+        var preview: BubbleSource.LinkPreview
+        var title: NSAttributedString?
+        var description: NSAttributedString?
+        var host: NSAttributedString
+        var ideal: CGFloat
+    }
+
+    private static func linkCardTexts(_ preview: BubbleSource.LinkPreview, color: NSColor) -> LinkCardTexts {
+        typealias T = TimelineText
+        let title = preview.title.map { T.lines($0, T.calloutSemibold, color) }
+        let description = preview.description.map { T.lines($0, T.caption, T.faded(color, 0.8)) }
+        let host = T.line(URL(string: preview.url)?.host() ?? preview.url, T.caption2, T.faded(color, 0.7))
+        let widest = [title, description, host].compactMap { $0.map { T.size($0).width } }.max() ?? 0
+        let image = preview.thumbnail == nil ? 0 : TimelineGeometry.linkImage + Metrics.s
+        return .init(preview: preview, title: title, description: description, host: host, ideal: Metrics.s * 2 + image + widest)
+    }
+
+    /// The card at `width`: the picture top left, the texts beside it. Its
+    /// origin is set by the caller.
+    private static func linkPreviewCard(_ texts: LinkCardTexts, width: CGFloat) -> BubbleLayout.LinkPreviewLayout {
+        typealias T = TimelineText
+        let s = Metrics.s
+        let image = texts.preview.thumbnail == nil ? nil : CGRect(x: s, y: s, width: TimelineGeometry.linkImage, height: TimelineGeometry.linkImage)
+        let textX = image.map { $0.maxX + s } ?? s
+        let textWidth = max(1, width - textX - s)
+        var y = s
+        func piece(_ string: NSAttributedString?, lines: Int, font: NSFont) -> TextPiece? {
+            guard let string else { return nil }
+            if y > s { y += 2 }
+            let height = T.height(string, width: textWidth, lines: lines, font: font)
+            defer { y += height }
+            return TextPiece(string: string, rect: CGRect(x: textX, y: y, width: textWidth, height: height))
+        }
+        let title = piece(texts.title, lines: 2, font: T.calloutSemibold)
+        let description = piece(texts.description, lines: 2, font: T.caption)
+        let host = piece(texts.host, lines: 1, font: T.caption2)!
+        let height = max(image.map { $0.maxY } ?? 0, y) + s
+        return .init(
+            preview: texts.preview, frame: CGRect(x: 0, y: 0, width: width, height: height),
+            image: image, title: title, description: description, host: host
+        )
     }
 
     /// The play button, the length and "GIF", placed as `VisualMedia`'s

@@ -11,10 +11,8 @@ import ZapFastDesign
 /// Heavier things wait: a GIF loops and an animated sticker moves only
 /// once the pointer rests on it, and a video's player is made only while it
 /// plays in place.
-final class PictureView: NSView, NSDraggingSource {
-    weak var cell: BubbleCell?
+final class PictureView: AttachmentView {
     private(set) var pictureLayout: BubbleLayout.PictureLayout?
-    private var messageID: String?
 
     private let picture = CALayer()
     /// "photo" and the like, over the grey ground while nothing is decoded.
@@ -33,12 +31,9 @@ final class PictureView: NSView, NSDraggingSource {
     private var loads = 0
     private var download: DownloadState?
     private(set) var moving = false
-    private var mouseDownAt: NSPoint?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        wantsLayer = true
-        layerContentsRedrawPolicy = .never
         layer?.masksToBounds = true
         layer?.cornerCurve = .continuous
         picture.contentsGravity = .resizeAspectFill
@@ -60,12 +55,6 @@ final class PictureView: NSView, NSDraggingSource {
         )
         addSubview(badge)
     }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not used") }
-
-    override var isFlipped: Bool { true }
-    override var wantsUpdateLayer: Bool { true }
 
     private static let noActions: [String: any CAAction] = [
         "bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull(),
@@ -232,7 +221,7 @@ final class PictureView: NSView, NSDraggingSource {
     }
 
     /// The picture as it shows, for dragging.
-    private var snapshot: NSImage? {
+    override var dragImage: NSImage? {
         image.map { NSImage(cgImage: $0, size: bounds.size) }
     }
 
@@ -292,49 +281,6 @@ final class PictureView: NSView, NSDraggingSource {
             player = nil
         }
         refreshOverlays()
-    }
-
-    // MARK: Clicks and dragging
-
-    override func mouseDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.command) {
-            // ⌘-click selects messages; the cell handles it.
-            cell?.mouseDown(with: event)
-            return
-        }
-        mouseDownAt = event.locationInWindow
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard let start = mouseDownAt else { return }
-        let now = event.locationInWindow
-        guard hypot(now.x - start.x, now.y - start.y) > 4 else { return }
-        mouseDownAt = nil
-        startDragging(event)
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        guard mouseDownAt != nil, let id = messageID else { return }
-        mouseDownAt = nil
-        cell?.delegate?.activateAttachment(ofMessage: id)
-    }
-
-    override func menu(for event: NSEvent) -> NSMenu? {
-        superview?.menu(for: event)
-    }
-
-    /// A downloaded file drags out under the name it was sent with, as a
-    /// copy, as `draggableAttachment` hands it over.
-    private func startDragging(_ event: NSEvent) {
-        guard let id = messageID, let file = cell?.delegate?.attachmentFile(ofMessage: id),
-              let copy = AttachmentFiles.dragCopy(of: file.url, named: file.name) else { return }
-        let item = NSDraggingItem(pasteboardWriter: copy as NSURL)
-        item.setDraggingFrame(bounds, contents: snapshot ?? NSWorkspace.shared.icon(forFile: copy.path(percentEncoded: false)))
-        beginDraggingSession(with: [item], event: event, source: self)
-    }
-
-    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        .copy
     }
 }
 

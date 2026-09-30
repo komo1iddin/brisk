@@ -18,10 +18,19 @@ extension BubbleSource {
         var text = ""
         var emojiOnly = false
         var attachment: Attachment?
+        var linkPreview: LinkPreview?
         switch message.content {
         case .text(let body, nil):
             text = body
             emojiOnly = BodyText.isOnlyEmoji(body)
+        case let .text(body, preview?):
+            text = body
+            linkPreview = LinkPreview(url: preview.url, title: preview.title, description: preview.description, thumbnail: message.thumbnail)
+        case let .document(media, fileName, caption, pages):
+            text = caption ?? ""
+            attachment = .document(Document(
+                fileName: fileName, mime: media.mime, bytes: media.size, pages: pages, path: media.path, thumbnail: message.thumbnail
+            ))
         case let .image(caption, media):
             text = caption ?? ""
             attachment = .picture(.init(message: message, media: media, kind: .photo, seconds: nil))
@@ -40,7 +49,7 @@ extension BubbleSource {
                 : liveLocation
                     ? String(localized: "Live location. See it on your phone.")
                     : String(localized: "This message is only on your phone."))
-        case .text, .interactive, .audio, .document, .location, .liveLocation, .contact, .poll, .stickerPack:
+        case .interactive, .audio, .location, .liveLocation, .contact, .poll, .stickerPack:
             return nil
         }
         return BubbleSource(
@@ -66,7 +75,8 @@ extension BubbleSource {
             status: message.status,
             reactions: message.reactions,
             colors: colors,
-            attachment: attachment
+            attachment: attachment,
+            linkPreview: linkPreview
         )
     }
 }

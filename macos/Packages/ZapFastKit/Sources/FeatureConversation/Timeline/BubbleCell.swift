@@ -231,8 +231,8 @@ final class BubbleCell: NSView {
     var bodyText: BodyTextView? { bubble.bodyText }
 
     func installBodyText() -> BodyTextView? {
-        guard let layout = bubbleLayout, bubble.bodyText == nil else { return bubble.bodyText }
-        let view = BodyTextView(layout: layout)
+        guard let layout = bubbleLayout, let body = layout.body, bubble.bodyText == nil else { return bubble.bodyText }
+        let view = BodyTextView(layout: layout, body: body)
         view.cell = self
         bubble.showBodyText(view)
         return view
@@ -294,12 +294,13 @@ private final class BubbleView: NSView {
     func configure(_ layout: BubbleLayout) {
         bubbleLayout = layout
         chrome.layout = layout
-        body.piece = TextPiece(string: layout.body.string, rect: CGRect(origin: .zero, size: layout.body.rect.size))
+        body.piece = layout.body.map { TextPiece(string: $0.string, rect: CGRect(origin: .zero, size: $0.rect.size)) }
+        body.isHidden = layout.body == nil
         applyAppearance()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         chrome.frame = CGRect(origin: .zero, size: layout.bubbleSize)
-        body.frame = layout.body.rect
+        body.frame = layout.body?.rect ?? .zero
         CATransaction.commit()
         chrome.setNeedsDisplay()
         body.setNeedsDisplay()
@@ -372,7 +373,7 @@ private final class BubbleView: NSView {
         guard let layout = bubbleLayout else { return }
         let clickable = layout.quote?.rect.contains(point) == true || layout.name?.rect.contains(point) == true
         if bodyText == nil { (clickable ? NSCursor.pointingHand : NSCursor.arrow).set() }
-        let body = layout.body.rect.contains(point)
+        let body = layout.body?.rect.contains(point) == true
         guard body != overBody else { return }
         overBody = body
         bodyHover?.cancel()
@@ -409,7 +410,7 @@ private final class BubbleView: NSView {
             cell.delegate?.showSender(ofMessage: id)
             return
         }
-        if let layout = bubbleLayout, layout.body.rect.contains(point), let cell, let view = cell.installBodyText() {
+        if let bodyRect = bubbleLayout?.body?.rect, bodyRect.contains(point), let cell, let view = cell.installBodyText() {
             view.mouseDown(with: event)
             return
         }
@@ -456,6 +457,10 @@ nonisolated private final class BubbleChromeLayer: CALayer {
     @MainActor
     private static func draw(_ layout: BubbleLayout) {
         layout.name?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+        if let placeholder = layout.placeholder {
+            Symbols.draw(placeholder.symbol, in: placeholder.icon, pointSize: TimelineText.body.pointSize, weight: .regular, color: placeholder.color)
+            placeholder.text.draw()
+        }
         if let forwarded = layout.forwarded, let icon = layout.forwardedIcon {
             Symbols.draw("arrowshape.turn.up.right", in: icon, pointSize: TimelineText.caption.pointSize, weight: .regular, color: layout.footer.secondary)
             forwarded.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
@@ -621,15 +626,15 @@ final class BodyTextView: NSTextView, NSTextViewDelegate {
     weak var cell: BubbleCell?
     private let visibleLength: Int
 
-    init(layout: BubbleLayout) {
+    init(layout: BubbleLayout, body: TextPiece) {
         visibleLength = layout.bodyLength
-        let storage = NSTextStorage(attributedString: layout.body.string)
+        let storage = NSTextStorage(attributedString: layout.linkedBody ?? body.string)
         let manager = NSLayoutManager()
         storage.addLayoutManager(manager)
-        let container = NSTextContainer(size: CGSize(width: layout.body.rect.width, height: .greatestFiniteMagnitude))
+        let container = NSTextContainer(size: CGSize(width: body.rect.width, height: .greatestFiniteMagnitude))
         container.lineFragmentPadding = 0
         manager.addTextContainer(container)
-        super.init(frame: layout.body.rect, textContainer: container)
+        super.init(frame: body.rect, textContainer: container)
         isEditable = false
         isSelectable = true
         drawsBackground = false
@@ -712,22 +717,32 @@ enum Symbols {
     private static var cache: [String: NSImage] = [:]
 
     static func draw(_ name: String, in rect: CGRect, pointSize: CGFloat, weight: NSFont.Weight, color: NSColor, offset: CGFloat = 0) {
-        let resolved = color.usingColorSpace(.sRGB) ?? color
-        let key = "\(name)|\(pointSize)|\(weight.rawValue)|\(resolved.description)"
-        let image: NSImage
-        if let cached = cache[key] {
-            image = cached
-        } else {
-            let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
-                .applying(.init(paletteColors: [resolved]))
-            guard let made = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-                .withSymbolConfiguration(configuration) else { return }
-            cache[key] = made
-            image = made
-        }
+        guard let (image, alpha) = image(name, pointSize: pointSize, weight: weight, color: color) else { return }
         let size = image.size
         let origin = CGPoint(x: rect.minX + offset, y: rect.midY - size.height / 2)
-        image.draw(in: CGRect(origin: origin, size: size), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        image.draw(in: CGRect(origin: origin, size: size), from: .zero, operation: .sourceOver, fraction: alpha, respectFlipped: true, hints: nil)
+    }
+
+    /// The symbol in the colour, opaque, and the alpha to draw it at.
+    /// Monochrome, as SwiftUI draws a symbol in text: palette colours fill
+    /// some symbols' inner layers (the iPhone's screen).
+    static func image(_ name: String, pointSize: CGFloat, weight: NSFont.Weight, color: NSColor) -> (NSImage, CGFloat)? {
+        let resolved = color.usingColorSpace(.sRGB) ?? color
+        let alpha = resolved.alphaComponent
+        let opaque = resolved.withAlphaComponent(1)
+        let key = "\(name)|\(pointSize)|\(weight.rawValue)|\(opaque.description)"
+        if let cached = cache[key] { return (cached, alpha) }
+        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        guard let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(configuration) else { return nil }
+        let made = NSImage(size: symbol.size, flipped: false) { rect in
+            symbol.draw(in: rect)
+            opaque.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        cache[key] = made
+        return (made, alpha)
     }
 
     /// `DeliveryTicks`, drawn: one tick sent, two delivered, two tinted read.

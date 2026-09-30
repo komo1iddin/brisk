@@ -84,6 +84,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var colors = BubbleColors(TimelineStyle.standard)
     private var unread: UnreadDivider?
     private var selecting = false
+    /// `ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI
+    /// row, to compare the two, in the app or the benchmark.
+    var drawsBubbles = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
     weak var model: AppModel?
     var onReachTop: () -> Void = {}
     var onScrollState: (ScrollState) -> Void = { _ in }
@@ -277,7 +280,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         guard let model else { return [] }
         let isGroup = isGroup
         let colors = colors
-        let selecting = selecting
+        let selecting = selecting || !drawsBubbles
         return withObservationTracking {
             rows.map { row -> Plan in
                 switch row {
@@ -287,32 +290,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                     let title = String(AttributedString(localized: "^[\(count) unread message](inflect: true)").characters)
                     return .chip(id: row.id, title: title, isDay: false)
                 case let .message(message, startsRun):
-                    guard !selecting, case .text(let text, nil) = message.content else { return .hosted(row) }
-                    let chats = model.chats
-                    return .bubble(row, BubbleSource(
-                        id: message.id,
-                        fromMe: message.fromMe,
-                        startsRun: startsRun,
-                        text: text,
-                        emojiOnly: BodyText.isOnlyEmoji(text),
-                        mentions: message.mentions,
-                        mentionNames: Dictionary(
-                            message.mentions.map { ($0.id, chats.displayName($0.id)) },
-                            uniquingKeysWith: { first, _ in first }
-                        ),
-                        senderName: startsRun && !message.fromMe && isGroup
-                            ? chats.personName(message.sender, hint: message.senderName) : nil,
-                        senderID: message.sender,
-                        forwarded: message.forwarded,
-                        quote: message.quoted.map {
-                            .init(name: chats.displayName($0.sender, hint: $0.senderName), summary: $0.summary, senderID: $0.sender)
-                        },
-                        edited: message.edited,
-                        timestamp: message.timestamp,
-                        status: message.status,
-                        reactions: message.reactions,
-                        colors: colors
-                    ))
+                    guard !selecting, let source = BubbleSource.make(
+                        message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats
+                    ) else { return .hosted(row) }
+                    return .bubble(row, source)
                 }
             }
         } onChange: { [weak self] in

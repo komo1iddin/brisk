@@ -67,7 +67,8 @@ extension TimelineController: TimelineCellDelegate {
     /// Reply and React beside the bubble under the pointer, the SwiftUI
     /// rows' own view, made only while the pointer is there.
     func hoverActions(forMessage id: String) -> NSView? {
-        guard let model, let message = message(id) else { return nil }
+        // A deleted message takes no reply or reaction, as `MessageRow`.
+        guard let model, let message = message(id), !message.isRevoked else { return nil }
         let view = NSHostingView(rootView: HoverActions(message: message, model: model)
             .environment(\.chatTheme, style.theme))
         view.sizingOptions = []
@@ -100,13 +101,20 @@ extension TimelineController: TimelineCellDelegate {
     /// What the pointer finds beside the bubble, as actions for VoiceOver.
     func accessibilityActions(forMessage id: String) -> [NSAccessibilityCustomAction] {
         guard let model, let message = message(id) else { return [] }
-        var actions = [
-            NSAccessibilityCustomAction(name: String(localized: "Reply")) { model.reply(to: message); return true },
-            NSAccessibilityCustomAction(name: String(localized: "React")) { model.showReactionPicker(for: message); return true },
-        ]
+        var actions: [NSAccessibilityCustomAction] = []
+        if !message.isRevoked {
+            actions.append(NSAccessibilityCustomAction(name: String(localized: "Reply")) { model.reply(to: message); return true })
+            actions.append(NSAccessibilityCustomAction(name: String(localized: "React")) { model.showReactionPicker(for: message); return true })
+        }
         if model.canSelect(message) {
             actions.append(NSAccessibilityCustomAction(name: String(localized: "Select")) { model.select(message); return true })
         }
         return actions
+    }
+}
+
+private extension MessageRecord {
+    var isRevoked: Bool {
+        if case .revoked = content { true } else { false }
     }
 }

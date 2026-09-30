@@ -3,7 +3,7 @@ import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
-/// Everything a plain text message's row shows, resolved on the main actor
+/// Everything a drawn message's row shows, resolved on the main actor
 /// (names come from the stores) so the layout can run anywhere.
 nonisolated struct BubbleSource: Equatable, Sendable {
     struct Quote: Equatable, Sendable {
@@ -12,9 +12,17 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         var senderID: String
     }
 
+    /// What a bubble holds besides text, between its headers and its text.
+    enum Attachment: Equatable, Sendable {
+        /// A deleted message, or one ZapFast cannot show: a symbol and a
+        /// line, as `Placeholder` draws them.
+        case placeholder(symbol: String, text: String)
+    }
+
     var id: String
     var fromMe: Bool
     var startsRun: Bool
+    /// The message's text, or an attachment's caption; empty when none.
     var text: String
     /// Up to three emoji and nothing else: drawn large, and without a
     /// bubble unless it quotes something.
@@ -33,6 +41,7 @@ nonisolated struct BubbleSource: Equatable, Sendable {
     var reactions: [ReactionInfo]
     /// The chat's theme and text size.
     var colors: BubbleColors
+    var attachment: Attachment?
 }
 
 /// Text drawn at a place, in the coordinates of whatever holds it.
@@ -46,8 +55,10 @@ nonisolated struct TextPiece: @unchecked Sendable {
     }
 }
 
-/// A plain text message's row, measured for one bubble width. Immutable,
-/// so it is built off the main actor and read on it.
+/// A drawn message's row, measured for one bubble width. Immutable, so it
+/// is built off the main actor and read on it. Its parts read as its own
+/// properties (`layout.name`, `layout.footer`).
+@dynamicMemberLookup
 nonisolated final class BubbleLayout: @unchecked Sendable {
     struct QuoteLayout {
         var rect: CGRect
@@ -77,80 +88,80 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var mine: Bool
     }
 
-    let widthLimit: CGFloat
-    let fromMe: Bool
-    let startsRun: Bool
-    /// No bubble behind it: large emoji alone.
-    let bare: Bool
-    let bubbleSize: CGSize
-    /// Parts, in the bubble's coordinates (top left origin).
-    let name: TextPiece?
-    let forwarded: TextPiece?
-    let forwardedIcon: CGRect?
-    let quote: QuoteLayout?
-    /// The text with room for the footer at its end. `bodyLength` is where
-    /// the visible text stops.
-    let body: TextPiece
-    let bodyLength: Int
-    let footer: Footer
-    let textColor: NSColor
-    let linkColor: NSColor
-    /// Behind the bubble; nil without one.
-    let bubbleColor: NSColor?
-    /// Over a wallpaper bubbles lift a little, as on the phone.
-    let lifted: Bool
-    /// The chat's accent, for the highlight of a message jumped to.
-    let accent: NSColor
-    /// Reaction pills, in their own strip's coordinates.
-    let pills: [Pill]
-    let pillsSize: CGSize
-    let rowHeight: CGFloat
-    let accessibilityLabel: String
+    /// A symbol and a line of italic text, for a deleted message or one
+    /// that cannot be shown here.
+    struct Placeholder {
+        var symbol: String
+        var icon: CGRect
+        var text: TextPiece
+        var color: NSColor
+    }
 
-    init(
-        widthLimit: CGFloat, fromMe: Bool, startsRun: Bool, bare: Bool, bubbleSize: CGSize,
-        name: TextPiece?, forwarded: TextPiece?, forwardedIcon: CGRect?, quote: QuoteLayout?,
-        body: TextPiece, bodyLength: Int, footer: Footer, textColor: NSColor, linkColor: NSColor,
-        bubbleColor: NSColor?, lifted: Bool, accent: NSColor,
-        pills: [Pill], pillsSize: CGSize, accessibilityLabel: String
-    ) {
-        self.widthLimit = widthLimit
-        self.fromMe = fromMe
-        self.startsRun = startsRun
-        self.bare = bare
-        self.bubbleSize = bubbleSize
-        self.name = name
-        self.forwarded = forwarded
-        self.forwardedIcon = forwardedIcon
-        self.quote = quote
-        self.body = body
-        self.bodyLength = bodyLength
-        self.footer = footer
-        self.textColor = textColor
-        self.linkColor = linkColor
-        self.bubbleColor = bubbleColor
-        self.lifted = lifted
-        self.accent = accent
-        self.pills = pills
-        self.pillsSize = pillsSize
-        self.accessibilityLabel = accessibilityLabel
-        let reactions = pills.isEmpty ? 0 : pillsSize.height - TimelineGeometry.reactionOverlap
-        rowHeight = TimelineGeometry.topInset(startsRun: startsRun) + bubbleSize.height + reactions
+    /// Everything the engine measured, in the bubble's coordinates (top
+    /// left origin) unless said otherwise.
+    struct Parts {
+        var widthLimit: CGFloat
+        var fromMe: Bool
+        var startsRun: Bool
+        /// No bubble behind it: large emoji alone.
+        var bare: Bool
+        var bubbleSize: CGSize
+        var name: TextPiece?
+        var forwarded: TextPiece?
+        var forwardedIcon: CGRect?
+        var quote: QuoteLayout?
+        var placeholder: Placeholder?
+        /// The text, with room for the footer at its end when the footer
+        /// shares its last line. `bodyLength` is where the visible text
+        /// stops. Nil for an attachment without a caption. Drawn without
+        /// its links: string drawing paints a link in the system's blue,
+        /// whatever colour it carries.
+        var body: TextPiece?
+        var bodyLength: Int
+        /// The same text with its links, for the text view that makes it
+        /// selectable and its links clickable.
+        var linkedBody: NSAttributedString?
+        var footer: Footer
+        var textColor: NSColor
+        var linkColor: NSColor
+        /// Behind the bubble; nil without one.
+        var bubbleColor: NSColor?
+        /// Over a wallpaper bubbles lift a little, as on the phone.
+        var lifted: Bool
+        /// The chat's accent, for the highlight of a message jumped to.
+        var accent: NSColor
+        /// Reaction pills, in their own strip's coordinates.
+        var pills: [Pill]
+        var pillsSize: CGSize
+        var accessibilityLabel: String
+    }
+
+    let parts: Parts
+    let rowHeight: CGFloat
+
+    init(_ parts: Parts) {
+        self.parts = parts
+        let reactions = parts.pills.isEmpty ? 0 : parts.pillsSize.height - TimelineGeometry.reactionOverlap
+        rowHeight = TimelineGeometry.topInset(startsRun: parts.startsRun) + parts.bubbleSize.height + reactions
             + TimelineGeometry.rowBottom
+    }
+
+    subscript<Value>(dynamicMember keyPath: KeyPath<Parts, Value>) -> Value {
+        parts[keyPath: keyPath]
     }
 
     /// The bubble's frame in a row of the given width.
     func bubbleFrame(rowWidth: CGFloat) -> CGRect {
-        let x = fromMe ? rowWidth - Metrics.l - bubbleSize.width : Metrics.l
-        return CGRect(origin: CGPoint(x: x, y: TimelineGeometry.topInset(startsRun: startsRun)), size: bubbleSize)
+        let x = parts.fromMe ? rowWidth - Metrics.l - parts.bubbleSize.width : Metrics.l
+        return CGRect(origin: CGPoint(x: x, y: TimelineGeometry.topInset(startsRun: parts.startsRun)), size: parts.bubbleSize)
     }
 
     /// The reaction strip's frame, overlapping the bubble's bottom edge.
     func pillsFrame(rowWidth: CGFloat) -> CGRect {
         let bubble = bubbleFrame(rowWidth: rowWidth)
         let inset = TimelineGeometry.reactionInset
-        let x = fromMe ? bubble.maxX - inset - pillsSize.width : bubble.minX + inset
-        return CGRect(x: x, y: bubble.maxY - TimelineGeometry.reactionOverlap, width: pillsSize.width, height: pillsSize.height)
+        let x = parts.fromMe ? bubble.maxX - inset - parts.pillsSize.width : bubble.minX + inset
+        return CGRect(x: x, y: bubble.maxY - TimelineGeometry.reactionOverlap, width: parts.pillsSize.width, height: parts.pillsSize.height)
     }
 }
 
@@ -170,6 +181,9 @@ nonisolated enum TimelineGeometry {
     static let quotePadding = Metrics.s
     static let quoteBarWidth: CGFloat = 3
     static let forwardedIconWidth: CGFloat = 13
+    /// `Placeholder`'s label: a symbol, then the text.
+    static let placeholderIconWidth: CGFloat = 18
+    static let placeholderSpacing: CGFloat = 5
 
     static func topInset(startsRun: Bool) -> CGFloat {
         startsRun ? Metrics.s : Metrics.xxs
@@ -228,9 +242,27 @@ nonisolated enum TimelineText {
     nonisolated(unsafe) static let caption2 = NSFont.preferredFont(forTextStyle: .caption2)
     nonisolated(unsafe) static let caption2Digits = NSFont.monospacedDigitSystemFont(ofSize: caption2.pointSize, weight: .regular)
     nonisolated(unsafe) static let callout = NSFont.preferredFont(forTextStyle: .callout)
+    nonisolated(unsafe) static let bodyItalic = styled(body, .italic)
+    /// Wraps at words, for text measured at a width.
+    nonisolated(unsafe) static let wrapping: NSParagraphStyle = {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+        return paragraph
+    }()
     fileprivate static func styled(_ font: NSFont, _ trait: NSFontDescriptor.SymbolicTraits) -> NSFont {
         let descriptor = font.fontDescriptor.withSymbolicTraits(font.fontDescriptor.symbolicTraits.union(trait))
         return NSFont(descriptor: descriptor, size: font.pointSize) ?? font
+    }
+
+    /// `color` at `alpha`, still following light and dark. On a system
+    /// colour, `withAlphaComponent` gives one fixed for the appearance that
+    /// is current where it is made: off the main actor, always light.
+    static func faded(_ color: NSColor, _ alpha: CGFloat) -> NSColor {
+        NSColor(name: nil) { appearance in
+            var resolved = color
+            appearance.performAsCurrentDrawingAppearance { resolved = color.usingColorSpace(.sRGB) ?? color }
+            return resolved.withAlphaComponent(alpha * resolved.alphaComponent)
+        }
     }
 
     /// Size of text laid out in `width`, rounded up to whole points.

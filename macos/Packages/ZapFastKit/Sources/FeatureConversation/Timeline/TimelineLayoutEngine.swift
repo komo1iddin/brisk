@@ -3,8 +3,8 @@ import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
-/// Measures plain text messages the way `BubbleCell` draws them, with
-/// the same strings and the same text system, off the main actor. A
+/// Measures drawn messages the way `BubbleCell` draws them, with the same
+/// strings and the same text system, off the main actor. A
 /// timeline's worth runs in parallel: 10,000 messages take a fraction of a
 /// second on Apple silicon, which the main actor never waits for.
 nonisolated enum TimelineLayoutEngine {
@@ -32,19 +32,21 @@ nonisolated enum TimelineLayoutEngine {
         typealias G = TimelineGeometry
         typealias T = TimelineText
         let fromMe = source.fromMe
+        let hasText = !source.text.isEmpty
         // Emoji alone float without a bubble, in the ordinary text colours.
-        let bare = source.emojiOnly && source.quote == nil
+        let bare = source.emojiOnly && source.quote == nil && source.attachment == nil
         let onAccent = fromMe && !bare
         let colors = source.colors
         let fonts = T.bodyFonts(scale: colors.textScale)
         let textColor: NSColor = onAccent ? colors.outgoingText : .labelColor
-        let secondary: NSColor = onAccent ? colors.outgoingText.withAlphaComponent(0.7) : .secondaryLabelColor
+        let secondary: NSColor = onAccent ? T.faded(colors.outgoingText, 0.7) : .secondaryLabelColor
         let linkColor: NSColor = onAccent ? colors.outgoingText : colors.accent
         let padding = bare ? .zero : G.bubblePadding
         let contentLimit = widthLimit - padding.width * 2
-        // The time tucks into the last line of text; after large emoji it
-        // is a line of its own on the trailing edge.
-        let inlineFooter = !source.emojiOnly
+        // The time tucks into the last line of plain text; after large
+        // emoji or an attachment it is a line of its own on the trailing
+        // edge, as `MessageBubble` places it.
+        let inlineFooter = hasText && !source.emojiOnly && source.attachment == nil
         let capsuleInset: CGFloat = bare ? Metrics.s : 0
 
         // Footer: edited, time, ticks.
@@ -66,21 +68,31 @@ nonisolated enum TimelineLayoutEngine {
             let paragraph = NSMutableParagraphStyle()
             paragraph.lineBreakMode = .byWordWrapping
             return NSAttributedString(string: quote.summary, attributes: [
-                .font: T.callout, .foregroundColor: textColor.withAlphaComponent(0.85), .paragraphStyle: paragraph,
+                .font: T.callout, .foregroundColor: T.faded(textColor, 0.85), .paragraphStyle: paragraph,
             ])
         }
-        let body = T.body(source, fonts: fonts, color: textColor, link: linkColor)
-        let bodyLength = body.length
-        if inlineFooter { body.append(T.reserve(width: footerWidth + G.footerSpacing * 2, fonts: fonts)) }
+        let placeholderColor = T.faded(textColor, 0.75)
+        let placeholderText: NSAttributedString? = if case .placeholder(_, let text) = source.attachment {
+            NSAttributedString(string: text, attributes: [
+                .font: T.bodyItalic, .foregroundColor: placeholderColor, .paragraphStyle: T.wrapping,
+            ])
+        } else {
+            nil
+        }
+        let body = hasText ? T.body(source, fonts: fonts, color: textColor, link: linkColor) : nil
+        let bodyLength = body?.length ?? 0
+        if inlineFooter { body?.append(T.reserve(width: footerWidth + G.footerSpacing * 2, fonts: fonts)) }
 
         let quoteChrome = G.quotePadding * 3 + G.quoteBarWidth
-        var ideal = T.size(body).width
+        let placeholderChrome = G.placeholderIconWidth + G.placeholderSpacing
+        var ideal = body.map { T.size($0).width } ?? 0
         if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
         if let name { ideal = max(ideal, T.size(name).width) }
         if let forwarded { ideal = max(ideal, G.forwardedIconWidth + G.footerSpacing + T.size(forwarded).width) }
         if let quoteName, let quoteSummary {
             ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, T.size(quoteSummary).width))
         }
+        if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
         let width = min(ceil(ideal), contentLimit)
 
         // Top to bottom, in the bubble's coordinates.
@@ -124,11 +136,31 @@ nonisolated enum TimelineLayoutEngine {
             )
         }
 
-        let bodyHeight = T.size(body, width: width).height
-        let bodyRect = CGRect(x: left, y: advance(bodyHeight), width: width, height: bodyHeight)
+        var placeholder: BubbleLayout.Placeholder?
+        if case .placeholder(let symbol, _) = source.attachment, let placeholderText {
+            let textWidth = max(1, width - placeholderChrome)
+            let textHeight = T.size(placeholderText, width: textWidth).height
+            let top = advance(textHeight)
+            let lineHeight = T.height(ofLines: 1, T.bodyItalic)
+            placeholder = .init(
+                symbol: symbol,
+                icon: CGRect(x: left, y: top, width: G.placeholderIconWidth, height: lineHeight),
+                text: TextPiece(string: placeholderText, rect: CGRect(
+                    x: left + placeholderChrome, y: top, width: textWidth, height: textHeight
+                )),
+                color: placeholderColor
+            )
+        }
+
+        let bodyPiece = body.map { body in
+            let height = T.size(body, width: width).height
+            let drawn = NSMutableAttributedString(attributedString: body)
+            drawn.removeAttribute(.link, range: NSRange(location: 0, length: drawn.length))
+            return TextPiece(string: drawn, rect: CGRect(x: left, y: advance(height), width: width, height: height))
+        }
         let footerRect: CGRect
         var capsule: CGRect?
-        if inlineFooter {
+        if inlineFooter, let bodyRect = bodyPiece?.rect {
             footerRect = CGRect(
                 x: left + width - footerWidth,
                 y: bodyRect.maxY + G.footerDrop - footerHeight,
@@ -153,7 +185,7 @@ nonisolated enum TimelineLayoutEngine {
 
         let (pills, pillsSize) = reactionPills(source.reactions)
 
-        return BubbleLayout(
+        return BubbleLayout(.init(
             widthLimit: widthLimit,
             fromMe: fromMe,
             startsRun: source.startsRun,
@@ -163,8 +195,10 @@ nonisolated enum TimelineLayoutEngine {
             forwarded: forwardedPiece,
             forwardedIcon: forwardedIcon,
             quote: quote,
-            body: TextPiece(string: body, rect: bodyRect),
+            placeholder: placeholder,
+            body: bodyPiece,
             bodyLength: bodyLength,
+            linkedBody: body,
             footer: .init(
                 rect: footerRect, edited: editedPiece, time: timePiece, ticks: ticks, state: source.status,
                 tint: bare ? colors.accent : colors.readTicks, secondary: secondary,
@@ -178,7 +212,7 @@ nonisolated enum TimelineLayoutEngine {
             pills: pills,
             pillsSize: pillsSize,
             accessibilityLabel: accessibilityLabel(source, time: time.string)
-        )
+        ))
     }
 
     private static let twoCalloutLines = TimelineText.height(ofLines: 2, TimelineText.callout)
@@ -234,7 +268,8 @@ nonisolated enum TimelineLayoutEngine {
         if let quote = source.quote {
             parts.append(String(localized: "Replying to \(quote.name): \(quote.summary)"))
         }
-        parts.append(source.text)
+        if case .placeholder(_, let text) = source.attachment { parts.append(text) }
+        if !source.text.isEmpty { parts.append(source.text) }
         if source.edited { parts.append(String(localized: "Edited")) }
         parts.append(time)
         return parts.joined(separator: ", ")

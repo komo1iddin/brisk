@@ -31,6 +31,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { DebugSnapshot.renderGalleryAndQuit() }
             return
         }
+        if DebugSnapshot.timelinePath != nil {
+            DispatchQueue.main.async { DebugSnapshot.renderTimelineAndQuit() }
+            return
+        }
         if MediaEditorScript.steps != nil {
             for window in NSApp.windows { window.orderOut(nil) }
             MediaEditorScript.run(model: model)

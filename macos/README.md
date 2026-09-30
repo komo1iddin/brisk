@@ -393,7 +393,12 @@ scrolling with a trackpad. `ZAPFAST_BENCHMARK_DELAY=<seconds>` waits before
 starting, to attach Instruments; each scroll step is a `Frame` interval in
 Points of Interest.
 `ZAPFAST_SWIFTUI_SIDEBAR=1` shows the chat list as the earlier SwiftUI list
-instead of the table, to compare the two, in the app or the benchmark.
+instead of the table, and `ZAPFAST_SWIFTUI_ROWS=1` every message as the
+earlier SwiftUI row instead of the drawn bubble, to compare them, in the
+app or the benchmark. In a Debug build,
+`ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` draws a gallery of messages
+through the real timeline twice, drawn bubbles on the left and SwiftUI rows
+on the right, in light and dark, and quits.
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
 
 ## Following upstream

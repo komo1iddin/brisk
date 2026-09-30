@@ -16,6 +16,9 @@ import ZapFastSharedUI
 /// `ZAPFAST_SNAPSHOT_GALLERY=/path/to.png` instead renders every kind of
 /// bubble with made-up content, without starting the backend, and quits.
 ///
+/// `ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` renders the same messages through
+/// the real timeline, drawn bubbles beside SwiftUI rows, and quits.
+///
 /// `ZAPFAST_DUMP_MENUS=1` prints the menu bar (titles, key equivalents,
 /// actions) to standard output, without starting the backend, and quits:
 /// the way to check a shortcut is really there.
@@ -75,6 +78,22 @@ enum DebugSnapshot {
 
     static var galleryPath: String? {
         ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_GALLERY"]
+    }
+
+    /// `ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png`: the gallery through the real
+    /// timeline, drawn bubbles beside SwiftUI rows, light and dark; then
+    /// the app quits.
+    static var timelinePath: String? {
+        ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_TIMELINE"]
+    }
+
+    static func renderTimelineAndQuit() {
+        guard let path = timelinePath else { return }
+        let model = AppModel(backend: PreviewBackend(), paths: AppPaths(
+            data: FileManager.default.temporaryDirectory.appending(path: "zapfast-gallery"),
+            caches: FileManager.default.temporaryDirectory.appending(path: "zapfast-gallery-cache")
+        ))
+        TimelineGallery.render(model: model, to: path) { NSApp.terminate(nil) }
     }
 
     static func renderGalleryAndQuit() {

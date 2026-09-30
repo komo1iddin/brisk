@@ -1,6 +1,7 @@
 import AppKit
 import Testing
 import ZapFastBridge
+import ZapFastCore
 @testable import FeatureConversation
 
 @MainActor
@@ -64,16 +65,17 @@ struct BubbleLayoutTests {
     /// The text view laid over a bubble for selection must place the text
     /// exactly where the layer drew it, or the text jumps under the pointer.
     @Test(arguments: [1.0, 0.8, 1.6])
-    func theSelectableTextLaysOutAsDrawn(textScale: Double) {
+    func theSelectableTextLaysOutAsDrawn(textScale: Double) throws {
         for phrase in phrases {
             for limit in [240.0, 560.0] {
                 let layout = TimelineLayoutEngine.layout(for: source(phrase, textScale: textScale), widthLimit: limit)
-                let view = BodyTextView(layout: layout)
+                let body = try #require(layout.body)
+                let view = BodyTextView(layout: layout, body: body)
                 let manager = view.layoutManager!
                 manager.ensureLayout(for: view.textContainer!)
                 let used = manager.usedRect(for: view.textContainer!)
-                #expect(abs(ceil(used.height) - layout.body.rect.height) <= 1, "\(phrase) at \(limit): text view \(used.height), drawn \(layout.body.rect.height), lines \(manager.numberOfGlyphs)")
-                #expect(used.width <= layout.body.rect.width + 0.5, "\(phrase) at \(limit)")
+                #expect(abs(ceil(used.height) - body.rect.height) <= 1, "\(phrase) at \(limit): text view \(used.height), drawn \(body.rect.height), lines \(manager.numberOfGlyphs)")
+                #expect(used.width <= body.rect.width + 0.5, "\(phrase) at \(limit)")
             }
         }
     }
@@ -85,8 +87,8 @@ struct BubbleLayoutTests {
                 let bubble = CGRect(origin: .zero, size: layout.bubbleSize)
                 #expect(layout.bubbleSize.width <= 300)
                 #expect(bubble.contains(layout.footer.rect.insetBy(dx: 0.5, dy: 0.5)), "\(phrase)")
-                #expect(layout.footer.rect.maxY <= layout.body.rect.maxY + TimelineGeometry.footerDrop + 0.5)
-                #expect(layout.body.string.length == layout.bodyLength + TimelineText.reserveLength)
+                #expect(layout.footer.rect.maxY <= (layout.body?.rect.maxY ?? 0) + TimelineGeometry.footerDrop + 0.5)
+                #expect(layout.body?.string.length == layout.bodyLength + TimelineText.reserveLength)
             }
         }
     }
@@ -102,7 +104,7 @@ struct BubbleLayoutTests {
         let alone = TimelineLayoutEngine.layout(for: source("😂", fromMe: true, emojiOnly: true), widthLimit: 560)
         #expect(alone.bare)
         #expect(alone.footer.capsule != nil)
-        #expect(alone.footer.rect.minY >= alone.body.rect.maxY)
+        #expect(alone.footer.rect.minY >= (alone.body?.rect.maxY ?? .infinity))
         let quoting = TimelineLayoutEngine.layout(
             for: source("😂", emojiOnly: true, quote: .init(name: "Bobur", summary: "Photo", senderID: "b")),
             widthLimit: 560
@@ -129,7 +131,7 @@ struct BubbleLayoutTests {
     @Test func biggerTextMakesTallerBubbles() {
         let normal = TimelineLayoutEngine.layout(for: source(phrases[2]), widthLimit: 400)
         let bigger = TimelineLayoutEngine.layout(for: source(phrases[2], textScale: 1.4), widthLimit: 400)
-        #expect(bigger.body.rect.height > normal.body.rect.height)
+        #expect((bigger.body?.rect.height ?? 0) > (normal.body?.rect.height ?? 0))
         #expect(source(phrases[2]) != source(phrases[2], textScale: 1.4))
     }
 
@@ -156,5 +158,64 @@ struct BubbleLayoutTests {
         let serial = sources.map { TimelineLayoutEngine.layout(for: $0, widthLimit: 420) }
         #expect(parallel.map(\.rowHeight) == serial.map(\.rowHeight))
         #expect(parallel.map(\.bubbleSize.width) == serial.map(\.bubbleSize.width))
+    }
+}
+
+@MainActor
+struct BubbleSourceTests {
+    private let chats = ChatStore(session: SessionStore())
+    private let colors = BubbleColors(.standard)
+
+    private func message(_ content: MessageContent, fromMe: Bool = false) -> MessageRecord {
+        MessageRecord(
+            id: "m", chat: "c@g.us", sender: "a@s.whatsapp.net", senderName: "Aziza", fromMe: fromMe,
+            timestamp: 1_780_000_000, content: content, status: .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: nil, summary: ""
+        )
+    }
+
+    @Test func deletedAndUnshownMessagesAreDrawnAsPlaceholders() throws {
+        let deleted = try #require(BubbleSource.make(message(.revoked), startsRun: true, isGroup: true, colors: colors, chats: chats))
+        #expect(deleted.attachment == .placeholder(symbol: "nosign", text: "This message was deleted"))
+        #expect(deleted.text.isEmpty)
+        #expect(deleted.senderName == "~Aziza")
+        let phone = try #require(BubbleSource.make(
+            message(.phoneOnly(viewOnce: true, liveLocation: false, once: nil)), startsRun: false, isGroup: true, colors: colors, chats: chats
+        ))
+        #expect(phone.senderName == nil)
+        if case .placeholder(let symbol, _) = phone.attachment { #expect(symbol == "iphone") } else { Issue.record("not a placeholder") }
+    }
+
+    @Test func kindsWithoutADrawnBubbleStaySwiftUIRows() {
+        let poll = message(.poll(question: "?", options: ["a"], state: PollSummary(
+            selectable: 1, counts: [0], selected: [], voters: 0, canVote: true, historyComplete: true,
+            refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []
+        )))
+        #expect(BubbleSource.make(poll, startsRun: true, isGroup: false, colors: colors, chats: chats) == nil)
+        let preview = message(.text(text: "https://apple.com", preview: LinkPreviewInfo(url: "https://apple.com", title: nil, description: nil)))
+        #expect(BubbleSource.make(preview, startsRun: true, isGroup: false, colors: colors, chats: chats) == nil)
+    }
+
+    @Test func aPlaceholderHasItsTimeOnALineOfItsOwn() throws {
+        let source = try #require(BubbleSource.make(message(.revoked, fromMe: true), startsRun: true, isGroup: false, colors: colors, chats: chats))
+        let layout = TimelineLayoutEngine.layout(for: source, widthLimit: 400)
+        let placeholder = try #require(layout.placeholder)
+        #expect(layout.body == nil)
+        #expect(layout.footer.rect.minY >= placeholder.text.rect.maxY)
+        #expect(layout.footer.rect.maxX <= layout.bubbleSize.width - TimelineGeometry.bubblePadding.width + 0.5)
+        #expect(CGRect(origin: .zero, size: layout.bubbleSize).contains(placeholder.text.rect))
+        #expect(layout.accessibilityLabel.contains("This message was deleted"))
+    }
+
+    /// Colours made off the main actor still follow the appearance.
+    @Test func fadedColoursFollowLightAndDark() {
+        let faded = TimelineText.faded(.labelColor, 0.75)
+        var light = NSColor.clear
+        var dark = NSColor.clear
+        NSAppearance(named: .aqua)!.performAsCurrentDrawingAppearance { light = faded.usingColorSpace(.sRGB)! }
+        NSAppearance(named: .darkAqua)!.performAsCurrentDrawingAppearance { dark = faded.usingColorSpace(.sRGB)! }
+        #expect(light.redComponent < 0.2)
+        #expect(dark.redComponent > 0.8)
+        #expect(abs(light.alphaComponent - NSColor.labelColor.usingColorSpace(.sRGB)!.alphaComponent * 0.75) < 0.05)
     }
 }

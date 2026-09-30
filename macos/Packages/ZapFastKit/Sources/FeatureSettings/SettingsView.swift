@@ -151,6 +151,13 @@ private struct ChatSettings: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Section {
+                Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
+            } footer: {
+                Text("The photo of whoever recorded the message sits beside its player, as on the phone.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Section("Notifications") {
                 Toggle("Show notifications for new messages", isOn: $preferences.notifications)
                 Toggle("Show sender and message", isOn: $preferences.notificationPreviews)

@@ -172,6 +172,10 @@ A document shows the icon the Finder gives its kind (Excel's or Word's
 when they are installed) and, above it, its first page: the sender's
 preview, or a PDF's cover drawn by Quick Look once the file is here.
 
+Voice messages show the photo of whoever recorded them beside the
+player, with a microphone that turns blue once yours was played; Settings
+› Chats turns the photos off.
+
 ## Build
 
 Requirements: Xcode 26+, Rust via rustup (the toolchain comes from

@@ -443,7 +443,9 @@ private struct AudioContent: View {
         let player = model.voice
         let current = player.isCurrent(key)
         let downloading = model.conversations.downloads[key] == .downloading
+        let showsAvatar = voiceNote && model.preferences.voiceAvatars
         HStack(spacing: Metrics.s) {
+            if showsAvatar, !message.fromMe { RecorderAvatar(message: message, model: model) }
             Button { model.playAudio(message) } label: {
                 Group {
                     if downloading || player.preparing == key {
@@ -481,6 +483,7 @@ private struct AudioContent: View {
                 .buttonStyle(.plain)
                 .help("Playback speed")
             }
+            if showsAvatar, message.fromMe { RecorderAvatar(message: message, model: model) }
         }
         .task(id: message.id) { model.autoDownload(message) }
     }
@@ -504,6 +507,41 @@ private struct AudioContent: View {
     private var speedLabel: String {
         let speed = model.preferences.voiceSpeed
         return speed == 1 ? "1×" : speed == 2 ? "2×" : "1.5×"
+    }
+}
+
+/// Who recorded a voice message, with a microphone on the photo as on the
+/// phone: blue once ours was played, the accent colour on theirs.
+private struct RecorderAvatar: View {
+    let message: MessageRecord
+    let model: AppModel
+    @Environment(\.chatTheme) private var theme
+
+    var body: some View {
+        let id = message.fromMe ? model.session.account?.id ?? message.sender : message.sender
+        let name = message.fromMe
+            ? model.session.account?.name ?? ""
+            : model.chats.personName(message.sender, hint: message.senderName)
+        AvatarView(
+            url: model.avatars.url(for: id),
+            seed: id,
+            placeholder: .initials(String(name.trimmingPrefix("~"))),
+            size: 40,
+            version: model.avatars.version(for: id)
+        )
+        .overlay(alignment: message.fromMe ? .bottomLeading : .bottomTrailing) {
+            Image(systemName: "mic.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(micColor)
+                .shadow(color: .black.opacity(0.35), radius: 1)
+                .offset(x: message.fromMe ? -3 : 3, y: 2)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var micColor: Color {
+        if message.fromMe { return message.status == .played ? theme.readTicks : theme.outgoingText.opacity(0.8) }
+        return theme.accent
     }
 }
 

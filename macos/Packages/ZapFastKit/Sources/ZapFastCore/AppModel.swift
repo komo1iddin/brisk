@@ -207,6 +207,7 @@ public final class AppModel {
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
     @ObservationIgnored let launch = LaunchTimer()
+    @ObservationIgnored private let eventStats = EventStats()
     @ObservationIgnored lazy var phoneHistory = PhoneHistory(defaults: preferences.defaults)
     @ObservationIgnored private var verbose = false
     @ObservationIgnored private let log = Logger(subsystem: "ZapFast", category: "AppModel")
@@ -2204,7 +2205,7 @@ public final class AppModel {
 
     func apply(_ events: [BridgeEvent]) {
         for event in events {
-            apply(event)
+            eventStats.measure(event) { apply(event) }
         }
     }
 

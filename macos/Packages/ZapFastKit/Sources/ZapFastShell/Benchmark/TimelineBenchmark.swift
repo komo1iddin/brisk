@@ -127,6 +127,7 @@ private final class BenchmarkRun: NSObject {
 
         let small = backend.history(SyntheticChats.smallChat)
         let openWarm = await open(SyntheticChats.smallChat, rows: TimelineRow.build(small).count)
+        let sidebarScroll = await scrollSidebar()
 
         return BenchmarkReport(
             messageCount: full.count,
@@ -147,6 +148,7 @@ private final class BenchmarkRun: NSObject {
             memoryFootprintMB: Self.memoryFootprintMB,
             pagingFlicks: pagingFlicks,
             fullFlicks: fullFlicks,
+            sidebarScroll: sidebarScroll,
             integrity: integrity
         )
     }
@@ -184,6 +186,28 @@ private final class BenchmarkRun: NSObject {
     private var budgets: [Double] = []
     private var work: [Double] = []
     private var stopsAtTop = true
+    /// Scrolled instead of the timeline, when set: the chat list.
+    private var scrolled: NSTableView?
+
+    /// The chat list, down and back up at 3,000 pt/s, as a person looks
+    /// for a chat.
+    private func scrollSidebar() async -> BenchmarkReport.Scroll {
+        scrolled = window.contentView.flatMap(Self.findSidebar)
+        stopsAtTop = false
+        defer {
+            scrolled = nil
+            stopsAtTop = true
+        }
+        return await scroll(speed: 3_000, duration: 4) { elapsed in elapsed < 2 ? 1 : -1 }
+    }
+
+    private static func findSidebar(in view: NSView) -> NSTableView? {
+        if let table = view as? NSTableView, table.accessibilityLabel() == String(localized: "Chats") { return table }
+        for subview in view.subviews {
+            if let table = findSidebar(in: subview) { return table }
+        }
+        return nil
+    }
     /// Each step is a "Frame" interval in Points of Interest, for tracing
     /// what the main thread does in slow frames and between them.
     private static let signposter = OSSignposter(subsystem: "ZapFast", category: .pointsOfInterest)
@@ -311,9 +335,9 @@ private final class BenchmarkRun: NSObject {
         }
         lastTimestamp = link.timestamp
 
-        guard let table = timeline, let scrollView = table.enclosingScrollView else { return }
+        guard let table = scrolled ?? timeline, let scrollView = table.enclosingScrollView else { return }
         // What AppKit's own passes left on screen since the last frame.
-        integrity.add(audit(table), at: .beforeFrame)
+        if scrolled == nil { integrity.add(audit(table), at: .beforeFrame) }
         let frame = Self.signposter.beginInterval("Frame")
         defer { Self.signposter.endInterval("Frame", frame) }
         let start = CACurrentMediaTime()
@@ -328,7 +352,7 @@ private final class BenchmarkRun: NSObject {
         // Layer contents are drawn at commit time; flush so they count toward this frame.
         CATransaction.flush()
         work.append(CACurrentMediaTime() - start)
-        integrity.add(audit(table), at: .afterFrame)
+        if scrolled == nil { integrity.add(audit(table), at: .afterFrame) }
         if y <= top { atTop += delta }
 
         let conversation = model.conversations.conversation(model.selectedChatID ?? "")

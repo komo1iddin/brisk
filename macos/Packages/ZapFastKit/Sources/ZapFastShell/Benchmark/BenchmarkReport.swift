@@ -113,6 +113,8 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     /// Up and back down fast, three times, after paging and with everything loaded.
     var pagingFlicks: Scroll
     var fullFlicks: Scroll
+    /// The chat list (200 chats) down and back up at 3,000 pt/s.
+    var sidebarScroll: Scroll
     var integrity: Integrity
 
     var summary: String {
@@ -155,6 +157,7 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
           Memory footprint      \(ms(memoryFootprintMB)) MB
           Flicks, paged         \(scroll(pagingFlicks))
           Flicks, full history  \(scroll(fullFlicks))
+          Chat list scroll      \(scroll(sidebarScroll))
           Integrity             \(integrity.checks) checks of \(integrity.rows) rows: \
         \(integrity.misplacedRows) misplaced, \(integrity.missingRows) missing
                 bad checks       \(integrity.badChecks.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))

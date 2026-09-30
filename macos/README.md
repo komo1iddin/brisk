@@ -362,8 +362,9 @@ steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`).
 linked account (no backend, no archive, own preferences), measures the
 message timeline, prints a report and quits. It times opening a chat,
 scrolling up at 5,000 pt/s while older pages of 60 arrive, scrolling a fully
-loaded chat, quick flicks up and back down, jumps, resizing, and what a
-message or presence change in another chat costs the main thread. The
+loaded chat, quick flicks up and back down, jumps, resizing, scrolling the
+chat list, and what a message or presence change in another chat costs the
+main thread. The
 phrases and speed match Telefast's benchmark, so the numbers compare.
 
 About half of each chat is what real chats hold besides text: photos,

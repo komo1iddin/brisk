@@ -436,7 +436,7 @@ private struct RecordingBar: View {
             }
 
             LevelMeter(levels: recorder.levels)
-                .frame(height: 24)
+                .frame(height: 26)
                 .frame(maxWidth: .infinity)
 
             Button(action: togglePause) {
@@ -480,19 +480,37 @@ private struct RecordingBar: View {
     }
 }
 
+/// The take's loudness as the phone draws it: thin rounded bars at a fixed
+/// pitch, filling from the left and then scrolling, newest on the right;
+/// quiet moments are dots, and the room still to fill a faint line.
 private struct LevelMeter: View {
     let levels: [Float]
 
+    private static let bar: CGFloat = 3
+    private static let pitch: CGFloat = 5
+    /// Below this a moment counts as silence and draws as a dot.
+    private static let quiet: Float = 0.08
+
     var body: some View {
         Canvas { context, size in
-            let count = 48
-            let step = size.width / CGFloat(count)
-            let padded = Array(repeating: Float(0), count: max(0, count - levels.count)) + levels.suffix(count)
-            for (index, level) in padded.enumerated() {
-                let height = max(2, size.height * CGFloat(level))
-                let rect = CGRect(x: CGFloat(index) * step, y: (size.height - height) / 2,
-                                  width: max(1.5, step * 0.5), height: height)
-                context.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(.secondary))
+            let count = max(1, Int(size.width / Self.pitch))
+            let shown = levels.suffix(count)
+            let middle = size.height / 2
+            for (index, level) in shown.enumerated() {
+                let x = CGFloat(index) * Self.pitch
+                if level < Self.quiet {
+                    let dot = CGRect(x: x + 0.25, y: middle - 1.25, width: 2.5, height: 2.5)
+                    context.fill(Path(ellipseIn: dot), with: .color(.secondary))
+                } else {
+                    let height = max(5, size.height * CGFloat(level))
+                    let rect = CGRect(x: x, y: middle - height / 2, width: Self.bar, height: height)
+                    context.fill(Path(roundedRect: rect, cornerRadius: Self.bar / 2), with: .color(.secondary))
+                }
+            }
+            let filled = CGFloat(shown.count) * Self.pitch
+            if filled < size.width {
+                let rest = CGRect(x: filled, y: middle - 0.5, width: size.width - filled, height: 1)
+                context.fill(Path(rest), with: .color(.secondary.opacity(0.35)))
             }
         }
         .accessibilityHidden(true)

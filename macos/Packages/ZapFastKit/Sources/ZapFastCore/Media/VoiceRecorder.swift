@@ -21,7 +21,8 @@ public final class VoiceRecorder {
     }
 
     public private(set) var state: State = .idle
-    /// Recent input levels, 0...1, newest last, for a live meter.
+    /// Recent input levels, 0...1, newest last, for a live meter: about
+    /// eleven a second, enough to fill the widest window.
     public private(set) var levels: [Float] = []
     /// When listening back to a paused take began, while it plays.
     public private(set) var previewStarted: Date?
@@ -178,7 +179,7 @@ public final class VoiceRecorder {
     private func push(_ level: Float) {
         guard case .recording = state else { return }
         levels.append(level)
-        if levels.count > 48 { levels.removeFirst(levels.count - 48) }
+        if levels.count > Self.levelsKept { levels.removeFirst(levels.count - Self.levelsKept) }
     }
 
     private static func microphoneAllowed() async -> Bool {
@@ -189,14 +190,17 @@ public final class VoiceRecorder {
         }
     }
 
+    static let levelsKept = 400
+
     /// Loudness for the meter: the buffer's RMS in decibels, from -50 dB
-    /// (silence, the dotted baseline) to full scale, so bars move with the
-    /// voice instead of jumping to the top at every peak.
+    /// (silence, the dotted baseline) to -12 dB, where a voice close to the
+    /// microphone already fills the bar, so bars move with the voice
+    /// instead of jumping to the top at every peak.
     nonisolated static func level(of chunk: UnsafeBufferPointer<Float>) -> Float {
         guard !chunk.isEmpty else { return 0 }
         let power = chunk.reduce(Float(0)) { $0 + $1 * $1 } / Float(chunk.count)
         let decibels = 10 * log10(max(power, 1e-10))
-        return min(1, max(0, (decibels + 50) / 50))
+        return min(1, max(0, (decibels + 50) / 38))
     }
 
     /// The player's completion runs on an audio thread, so it is set up

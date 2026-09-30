@@ -15,14 +15,15 @@ struct VoiceRecorderTests {
     }
 
     @Test func aSpeakingVoiceStaysClearOfBothEnds() {
-        // A sine at a tenth of full scale: RMS about -23 dB.
+        // A sine at a tenth of full scale, a voice at speaking distance:
+        // RMS about -23 dB, most of the bar without filling it.
         let tone = (0..<4800).map { Float(0.1 * sin(Double($0) * 2 * .pi * 440 / 48000)) }
         let bar = level(tone)
-        #expect(bar > 0.45 && bar < 0.6)
+        #expect(bar > 0.6 && bar < 0.8)
         // A single loud click no longer throws the bar to the top.
         var click = Array(repeating: Float(0.01), count: 4800)
         click[100] = 1
-        #expect(level(click) < 0.35)
+        #expect(level(click) < 0.45)
     }
 
     @Test func nothingPausesOrPlaysBeforeATakeStarts() {

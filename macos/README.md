@@ -164,17 +164,18 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
-Pointing at a message brings React and Reply beside it, as upstream's
-hover controls; React offers the quick reactions, and choosing yours
+Pointing at a message brings Reply and React beside it, as discs clear
+of the bubble, as upstream's hover controls; React offers the quick reactions, and choosing yours
 again takes it back. Everything else stays in the message's context menu.
 
 A document shows the icon the Finder gives its kind (Excel's or Word's
 when they are installed) and, above it, its first page: the sender's
 preview, or a PDF's cover drawn by Quick Look once the file is here.
 
-Voice messages show the photo of whoever recorded them beside the
-player, with a microphone that turns blue once yours was played; Settings
-› Chats turns the photos off.
+Voice messages show the photo of whoever recorded them at the end of the
+player, with a microphone that turns blue once yours was played; while
+one plays, the speed control takes the photo's place. Settings › Chats
+turns the photos off.
 
 ## Build
 

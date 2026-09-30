@@ -26,11 +26,11 @@ struct MessageRow: View {
                 .contextMenu { MessageActions(message: message, model: model) }
                 .overlay(alignment: message.fromMe ? .leading : .trailing) {
                     if isLive, hovering || reacting {
+                        // Beside the bubble, clear of it, on the side away
+                        // from the window's edge.
                         HoverActions(message: message, model: model, reacting: $reacting)
-                            // Beside the bubble, on the side away from its edge.
-                            .alignmentGuide(message.fromMe ? .leading : .trailing) { size in
-                                message.fromMe ? size[.trailing] + Metrics.s : size[.leading] - Metrics.s
-                            }
+                            .fixedSize()
+                            .offset(x: message.fromMe ? -HoverActions.reach : HoverActions.reach)
                             .transition(.opacity)
                     }
                 }
@@ -108,38 +108,74 @@ private struct ReactionPills: View {
     }
 }
 
-/// React and Reply beside the message under the pointer, as upstream's
-/// hover controls; everything else stays in the context menu.
+/// Reply and React beside the message under the pointer, as upstream's
+/// hover controls and WhatsApp's: separate discs, opaque so the wallpaper
+/// does not show through, lifted like a bubble. Everything else stays in
+/// the context menu.
 private struct HoverActions: View {
     let message: MessageRecord
     let model: AppModel
     @Binding var reacting: Bool
 
+    static let size: CGFloat = 30
+    static let spacing: CGFloat = 6
+    static let gap: CGFloat = 8
+    /// How far the pair sits from the bubble's edge it is pinned to: its
+    /// own width and the gap.
+    static let reach = size * 2 + spacing + gap
+
     var body: some View {
-        HStack(spacing: 0) {
-            button("React", systemImage: "face.smiling") { reacting = true }
-                .popover(isPresented: $reacting, arrowEdge: .top) {
-                    QuickReactions(mine: message.reactions.first(where: \.fromMe)?.emoji) { emoji in
-                        reacting = false
-                        model.react(emoji, to: message)
-                    }
-                }
-            button("Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
+        // Reply nearest the bubble, React beyond it, on either side.
+        HStack(spacing: Self.spacing) {
+            if message.fromMe {
+                react
+                reply
+            } else {
+                reply
+                react
+            }
         }
-        .padding(.horizontal, Metrics.xxs)
-        .modifier(FloatingSurface(Capsule()))
         .accessibilityHidden(true)
     }
 
-    private func button(_ title: LocalizedStringKey, systemImage: String, action: @escaping () -> Void) -> some View {
+    private var reply: some View {
+        HoverDisc(title: "Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
+    }
+
+    private var react: some View {
+        HoverDisc(title: "React", systemImage: "face.smiling") { reacting = true }
+            .popover(isPresented: $reacting, arrowEdge: .top) {
+                QuickReactions(mine: message.reactions.first(where: \.fromMe)?.emoji) { emoji in
+                    reacting = false
+                    model.react(emoji, to: message)
+                }
+            }
+    }
+}
+
+private struct HoverDisc: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let action: () -> Void
+    @State private var hovered = false
+    @Environment(\.chatTheme) private var theme
+
+    var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 28, height: 26)
-                .contentShape(.rect)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(hovered ? .primary : .secondary)
+                .frame(width: HoverActions.size, height: HoverActions.size)
+                .background {
+                    Circle()
+                        .fill(theme.chip)
+                        .overlay(Circle().fill(.primary.opacity(hovered ? 0.06 : 0)))
+                        .shadow(color: .black.opacity(0.14), radius: 1.5, y: 1)
+                }
+                .contentShape(.circle)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .onHover { hovered = $0 }
         .help(title)
     }
 }

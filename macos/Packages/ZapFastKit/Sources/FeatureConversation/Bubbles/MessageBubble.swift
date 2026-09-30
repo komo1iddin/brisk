@@ -36,6 +36,9 @@ struct MessageBubble: View {
                 // text reserves room for it and the footer sits over that room.
                 BodyText(text: text, message: message, model: model, reserve: footerReserve)
                     .overlay(alignment: .bottomTrailing) { footer.alignmentGuide(.bottom) { $0[.bottom] - 2 } }
+            } else if case .audio = message.content {
+                // The player puts the time beside its duration.
+                MessageContentView(message: message, model: model, textColor: primaryText, footer: AnyView(footer))
             } else {
                 MessageContentView(message: message, model: model, textColor: primaryText, captionInset: isMedia)
                 footer

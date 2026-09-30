@@ -12,6 +12,8 @@ struct MessageContentView: View {
     let textColor: Color
     /// Captions under edge-to-edge media keep the usual text inset.
     var captionInset = false
+    /// The bubble's time and ticks, for content that places them itself.
+    var footer: AnyView?
 
     var body: some View {
         switch message.content {
@@ -31,7 +33,10 @@ struct MessageContentView: View {
         case let .sticker(media, _):
             VisualMedia(message: message, media: media, symbol: "face.smiling", model: model, sticker: true)
         case let .audio(media, seconds, voiceNote, waveform):
-            AudioContent(message: message, media: media, seconds: seconds, voiceNote: voiceNote, waveform: waveform, model: model)
+            AudioContent(
+                message: message, media: media, seconds: seconds, voiceNote: voiceNote,
+                waveform: waveform, model: model, footer: footer
+            )
         case let .document(media, fileName, caption, pages):
             DocumentContent(message: message, media: media, fileName: fileName, pages: pages, model: model)
             caption.map { BodyText(text: $0, message: message, model: model) }
@@ -437,15 +442,22 @@ private struct AudioContent: View {
     let voiceNote: Bool
     let waveform: Data
     let model: AppModel
+    let footer: AnyView?
 
+    private static let waveWidth: CGFloat = 170
+    private static let sideWidth: CGFloat = 40
+
+    /// The play button, the waveform with the duration and time under it,
+    /// and at the end the recorder's photo, which the speed control takes
+    /// over while the message plays, as on the phone.
     var body: some View {
         let key = MessageKey(chat: message.chat, message: message.id)
         let player = model.voice
         let current = player.isCurrent(key)
         let downloading = model.conversations.downloads[key] == .downloading
         let showsAvatar = voiceNote && model.preferences.voiceAvatars
+        let showsSpeed = current && voiceNote
         HStack(spacing: Metrics.s) {
-            if showsAvatar, !message.fromMe { RecorderAvatar(message: message, model: model) }
             Button { model.playAudio(message) } label: {
                 Group {
                     if downloading || player.preparing == key {
@@ -465,25 +477,40 @@ private struct AudioContent: View {
                 WaveformView(samples: Array(waveform), progress: player.progress(of: key)) { fraction in
                     model.seekAudio(message, to: fraction)
                 }
-                .frame(width: 170, height: 26)
+                .frame(width: Self.waveWidth, height: 26)
 
-                Text(timeLabel(current: current))
-                    .font(.caption.monospacedDigit())
-                    .opacity(0.8)
-            }
-
-            if current, voiceNote {
-                Button { model.cycleVoiceSpeed() } label: {
-                    Text(speedLabel)
-                        .font(.caption.weight(.semibold).monospacedDigit())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.quaternary, in: Capsule())
+                HStack(alignment: .firstTextBaseline, spacing: Metrics.s) {
+                    Text(timeLabel(current: current))
+                        .font(.caption.monospacedDigit())
+                        .opacity(0.8)
+                    Spacer(minLength: 0)
+                    footer
                 }
-                .buttonStyle(.plain)
-                .help("Playback speed")
+                .frame(width: Self.waveWidth)
             }
-            if showsAvatar, message.fromMe { RecorderAvatar(message: message, model: model) }
+            .padding(.top, Metrics.xs)
+
+            if showsSpeed || showsAvatar {
+                ZStack {
+                    if showsSpeed {
+                        Button { model.cycleVoiceSpeed() } label: {
+                            Text(speedLabel)
+                                .font(.callout.weight(.semibold).monospacedDigit())
+                                .frame(width: Self.sideWidth, height: 26)
+                                .background(.quaternary, in: Capsule())
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Playback speed")
+                        .transition(.scale(scale: 0.7).combined(with: .opacity))
+                    } else {
+                        RecorderAvatar(message: message, model: model)
+                            .transition(.scale(scale: 0.7).combined(with: .opacity))
+                    }
+                }
+                .frame(width: Self.sideWidth, height: Self.sideWidth)
+                .animation(.snappy(duration: 0.2), value: showsSpeed)
+            }
         }
         .task(id: message.id) { model.autoDownload(message) }
     }
@@ -529,12 +556,12 @@ private struct RecorderAvatar: View {
             size: 40,
             version: model.avatars.version(for: id)
         )
-        .overlay(alignment: message.fromMe ? .bottomLeading : .bottomTrailing) {
+        .overlay(alignment: .bottomLeading) {
             Image(systemName: "mic.fill")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(micColor)
                 .shadow(color: .black.opacity(0.35), radius: 1)
-                .offset(x: message.fromMe ? -3 : 3, y: 2)
+                .offset(x: 1, y: 2)
         }
         .accessibilityHidden(true)
     }

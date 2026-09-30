@@ -25,7 +25,7 @@ public enum TimelineGallery {
                 controller.drawsBubbles = drawn
                 let scrollView = controller.makeScrollView()
                 let window = NSWindow(
-                    contentRect: NSRect(x: -4000, y: 0, width: 760, height: 5200),
+                    contentRect: NSRect(x: -4000, y: 0, width: 760, height: 4000),
                     styleMask: [.borderless], backing: .buffered, defer: false
                 )
                 window.appearance = NSAppearance(named: name)
@@ -42,25 +42,42 @@ public enum TimelineGallery {
                 windows.append((window, controller, suffix, drawn))
             }
         }
-        // Pictures decode and SwiftUI rows settle.
+        // Pictures decode and SwiftUI rows settle; then the top of each
+        // table, and its end (`-end`), which the window's height leaves
+        // out.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            for (name, suffix) in appearances {
-                _ = name
-                let pair = windows.filter { $0.2 == suffix }
-                let images = pair.map { window, controller, _, _ -> NSBitmapImageRep? in
-                    controller.tableView.scroll(.zero)
-                    let table = controller.tableView
-                    let height = min(table.bounds.height, window.frame.height)
-                    let rect = NSRect(x: 0, y: 0, width: table.bounds.width, height: height)
-                    guard let rep = table.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
-                    table.cacheDisplay(in: rect, to: rep)
-                    return rep
-                }
-                guard let drawn = images.first ?? nil, let hosted = images.last ?? nil else { continue }
-                write(side: drawn, by: hosted, background: pair[0].0, to: path.replacingOccurrences(of: ".png", with: "\(suffix).png"))
+            capture(windows, appearances: appearances, end: false, path: path)
+            for (_, controller, _, _) in windows {
+                let clip = controller.scrollView.contentView
+                clip.scroll(to: NSPoint(x: 0, y: max(0, controller.tableView.bounds.height - clip.bounds.height)))
+                controller.scrollView.reflectScrolledClipView(clip)
             }
-            for (window, _, _, _) in windows { window.orderOut(nil) }
-            done()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                capture(windows, appearances: appearances, end: true, path: path)
+                for (window, _, _, _) in windows { window.orderOut(nil) }
+                done()
+            }
+        }
+    }
+
+    private static func capture(
+        _ windows: [(NSWindow, TimelineController, String, Bool)],
+        appearances: [(NSAppearance.Name, String)],
+        end: Bool,
+        path: String
+    ) {
+        for (_, suffix) in appearances {
+            let pair = windows.filter { $0.2 == suffix }
+            let images = pair.map { _, controller, _, _ -> NSBitmapImageRep? in
+                let table = controller.tableView
+                let rect = controller.scrollView.contentView.documentVisibleRect
+                guard let rep = table.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
+                table.cacheDisplay(in: rect, to: rep)
+                return rep
+            }
+            guard let drawn = images.first ?? nil, let hosted = images.last ?? nil else { continue }
+            let name = path.replacingOccurrences(of: ".png", with: "\(suffix)\(end ? "-end" : "").png")
+            write(side: drawn, by: hosted, background: pair[0].0, to: name)
         }
     }
 
@@ -133,6 +150,14 @@ public enum TimelineGallery {
                     description: "Get the resources to design great apps and games for all Apple platforms, with guidelines, videos and templates."
                 )
             ), thumbnail: landscape.thumbnail),
+            extra("54", fromMe: true, content: .audio(
+                media: MediaInfo(mime: "audio/ogg; codecs=opus", size: 24_000, width: nil, height: nil, path: sticker.path),
+                seconds: 75, voiceNote: true, waveform: Data((0..<64).map { UInt8(10 + ($0 * 53) % 90) })
+            )),
+            extra("55", from: "a", content: .audio(
+                media: MediaInfo(mime: "audio/mpeg", size: 3_400_000, width: nil, height: nil, path: sticker.path),
+                seconds: 214, voiceNote: false, waveform: Data()
+            )),
             extra("53", fromMe: true, content: .text(
                 text: "https://github.com/crmne/zapfast",
                 preview: LinkPreviewInfo(url: "https://github.com/crmne/zapfast", title: "crmne/zapfast", description: nil)

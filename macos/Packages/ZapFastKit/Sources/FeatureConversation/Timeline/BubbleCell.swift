@@ -42,6 +42,20 @@ protocol TimelineCellDelegate: AnyObject {
     func attachmentHidden(inMessage id: String)
     /// The downloaded file and the name to give it when dragged out.
     func attachmentFile(ofMessage id: String) -> (url: URL, name: String)?
+
+    // Voice messages.
+    func voiceState(forMessage id: String) -> VoiceState
+    /// The recorder's photo and its version, for the player's side.
+    func recorderAvatar(forMessage id: String) -> AvatarSource
+    func playVoice(inMessage id: String)
+    func seekVoice(inMessage id: String, to fraction: Double)
+    func cycleVoiceSpeed()
+}
+
+/// Where a photo is and which version of it.
+struct AvatarSource: Equatable {
+    var url: URL?
+    var version: Int
 }
 
 /// A message drawn by Core Animation instead of SwiftUI: text, a deleted
@@ -65,8 +79,11 @@ final class BubbleCell: NSView {
         if layout.picture != nil { return pictureIdentifier }
         if layout.document != nil { return documentIdentifier }
         if layout.linkPreview != nil { return linkIdentifier }
+        if layout.voice != nil { return voiceIdentifier }
         return identifier
     }
+
+    private static let voiceIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-voice")
 
     private static let pictureIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-picture")
     private static let documentIdentifier = NSUserInterfaceItemIdentifier("TimelineBubble-document")
@@ -150,6 +167,17 @@ final class BubbleCell: NSView {
                 bubble.documentView?.setDownload(nil)
             }
         }
+        if let voice = layout.voice {
+            watches.watch({ [weak self] in self?.delegate?.voiceState(forMessage: id) ?? VoiceState() }) { [weak self] state in
+                self?.bubble.voiceView?.apply(state)
+            }
+            if voice.side != nil {
+                watches.watch({ [weak self] in self?.delegate?.recorderAvatar(forMessage: id) ?? AvatarSource(url: nil, version: 0) }) { [weak self] source in
+                    self?.bubble.voiceView?.showAvatar(url: source.url, version: source.version)
+                }
+            }
+            return
+        }
         guard let picture = layout.picture else { return }
         if picture.picture.path == nil, !picture.picture.isSticker {
             watches.watch({ [weak self] in self?.delegate?.downloadState(forMessage: id) }) { [weak self] state in
@@ -179,6 +207,7 @@ final class BubbleCell: NSView {
         bubble.refreshColors()
         bubble.pictureView?.refreshColors()
         bubble.documentView?.refreshColors()
+        bubble.voiceView?.refreshColors()
         bubble.linkView?.refreshColors()
         pills.needsRedraw()
     }
@@ -357,6 +386,7 @@ private final class BubbleView: NSView {
     private(set) var bodyText: BodyTextView?
     private(set) var pictureView: PictureView?
     private(set) var documentView: DocumentView?
+    private(set) var voiceView: VoiceView?
     private(set) var linkView: LinkPreviewView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
@@ -400,6 +430,13 @@ private final class BubbleView: NSView {
             view.configure(document, messageID: messageID, color: layout.textColor)
         } else {
             remove(&documentView)
+        }
+        if let voice = layout.voice {
+            let view = install(&voiceView, frame: voice.frame) { VoiceView() }
+            view.cell = cell
+            view.configure(voice, messageID: messageID)
+        } else {
+            remove(&voiceView)
         }
         if let preview = layout.linkPreview {
             let view = install(&linkView, frame: preview.frame) { LinkPreviewView() }

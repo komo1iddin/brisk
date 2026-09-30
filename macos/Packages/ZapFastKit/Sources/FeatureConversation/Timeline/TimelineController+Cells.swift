@@ -147,6 +147,47 @@ extension TimelineController: TimelineCellDelegate {
         return (url, AttachmentFiles.dragName(of: message, url: url))
     }
 
+    // MARK: Voice messages
+
+    /// Read under observation: a message that is not playing reads only
+    /// whether it is, so a playing one's ticks wake no other.
+    func voiceState(forMessage id: String) -> VoiceState {
+        guard let model, let chatID else { return VoiceState() }
+        let key = MessageKey(chat: chatID, message: id)
+        let voice = model.voice
+        var state = VoiceState()
+        state.current = voice.isCurrent(key)
+        state.busy = voice.preparing == key || model.conversations.download(key) == .downloading
+        if state.current {
+            state.playing = voice.isPlaying
+            state.progress = voice.progress(of: key)
+            state.position = voice.position
+            state.duration = voice.duration
+            state.speed = model.preferences.voiceSpeed
+        }
+        return state
+    }
+
+    func recorderAvatar(forMessage id: String) -> AvatarSource {
+        guard let model, let message = message(id) else { return AvatarSource(url: nil, version: 0) }
+        let recorder = message.fromMe ? model.session.account?.id ?? message.sender : message.sender
+        return AvatarSource(url: model.avatars.url(for: recorder), version: model.avatars.version(for: recorder))
+    }
+
+    func playVoice(inMessage id: String) {
+        guard let model, let message = message(id) else { return }
+        model.playAudio(message)
+    }
+
+    func seekVoice(inMessage id: String, to fraction: Double) {
+        guard let model, let message = message(id) else { return }
+        model.seekAudio(message, to: fraction)
+    }
+
+    func cycleVoiceSpeed() {
+        model?.cycleVoiceSpeed()
+    }
+
     /// What the pointer finds beside the bubble, as actions for VoiceOver.
     func accessibilityActions(forMessage id: String) -> [NSAccessibilityCustomAction] {
         guard let model, let message = message(id) else { return [] }
@@ -158,7 +199,10 @@ extension TimelineController: TimelineCellDelegate {
         if model.canSelect(message) {
             actions.append(NSAccessibilityCustomAction(name: String(localized: "Select")) { model.select(message); return true })
         }
-        if message.content.media != nil {
+        if case .audio = message.content {
+            let title = message.mediaURL == nil ? String(localized: "Download") : String(localized: "Play")
+            actions.append(NSAccessibilityCustomAction(name: title) { model.playAudio(message); return true })
+        } else if message.content.media != nil {
             let title = message.mediaURL == nil ? String(localized: "Download") : String(localized: "Open")
             actions.append(NSAccessibilityCustomAction(name: title) { [weak self] in
                 self?.activateAttachment(ofMessage: id)

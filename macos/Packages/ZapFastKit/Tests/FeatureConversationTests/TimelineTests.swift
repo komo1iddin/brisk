@@ -363,3 +363,77 @@ struct DocumentAndLinkBubbleTests {
         #expect(layout.linkedBody?.attribute(.link, at: 7, effectiveRange: nil) != nil)
     }
 }
+
+@MainActor
+struct VoiceBubbleTests {
+    private let chats = ChatStore(session: SessionStore())
+    private let colors = BubbleColors(.standard)
+
+    private func message(voiceNote: Bool = true, fromMe: Bool = false, id: String = "v") -> MessageRecord {
+        MessageRecord(
+            id: id, chat: "c@s.whatsapp.net", sender: "a@s.whatsapp.net", senderName: "Aziza", fromMe: fromMe,
+            timestamp: 1_780_000_000,
+            content: .audio(
+                media: MediaInfo(mime: "audio/ogg; codecs=opus", size: 9_000, width: nil, height: nil, path: nil),
+                seconds: 75, voiceNote: voiceNote, waveform: Data(repeating: 50, count: 64)
+            ),
+            status: fromMe ? .played : .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: nil, summary: ""
+        )
+    }
+
+    private func voice(_ source: BubbleSource?) -> BubbleSource.Voice? {
+        if case .voice(let voice) = source?.attachment { voice } else { nil }
+    }
+
+    @Test func theRecordersPhotoSitsBesideAVoiceMessage() throws {
+        let theirs = try #require(voice(BubbleSource.make(message(), startsRun: true, isGroup: false, colors: colors, chats: chats)))
+        #expect(theirs.hasSide)
+        #expect(theirs.recorderID == "a@s.whatsapp.net")
+        #expect(theirs.recorderName == "Aziza")
+        let ours = try #require(voice(BubbleSource.make(
+            message(fromMe: true), startsRun: true, isGroup: false, colors: colors, chats: chats, own: ("me@s.whatsapp.net", "Kamol")
+        )))
+        #expect(ours.recorderID == "me@s.whatsapp.net")
+        #expect(ours.played)
+        // A file sent, not recorded, has no photo.
+        let file = try #require(voice(BubbleSource.make(message(voiceNote: false), startsRun: true, isGroup: false, colors: colors, chats: chats)))
+        #expect(!file.hasSide)
+    }
+
+    /// With photos off, the side is there only while it plays, for its
+    /// speed; and only then is playback read.
+    @Test func withoutPhotosTheSideShowsOnlyWhilePlaying() throws {
+        var asked = 0
+        let quiet = try #require(voice(BubbleSource.make(
+            message(), startsRun: true, isGroup: false, colors: colors, chats: chats,
+            voiceAvatars: false, playingVoice: { asked += 1; return nil }
+        )))
+        #expect(!quiet.hasSide)
+        #expect(asked == 1)
+        let playing = try #require(voice(BubbleSource.make(
+            message(), startsRun: true, isGroup: false, colors: colors, chats: chats,
+            voiceAvatars: false, playingVoice: { "v" }
+        )))
+        #expect(playing.hasSide)
+        _ = try #require(voice(BubbleSource.make(
+            message(), startsRun: true, isGroup: false, colors: colors, chats: chats, playingVoice: { asked += 1; return nil }
+        )))
+        #expect(asked == 1)
+    }
+
+    @Test func thePlayerKeepsTheTimeBesideItsLength() throws {
+        let source = try #require(BubbleSource.make(message(), startsRun: true, isGroup: true, colors: colors, chats: chats))
+        let layout = TimelineLayoutEngine.layout(for: source, widthLimit: 560)
+        let player = try #require(layout.voice)
+        #expect(player.frame.width == TimelineGeometry.voiceButton + 8 + TimelineGeometry.voiceWave.width + 8 + TimelineGeometry.voiceSide)
+        #expect(player.side != nil)
+        // The footer sits right of the time, under the waveform's end.
+        let waveEnd = player.frame.minX + player.waveform.maxX
+        #expect(abs(layout.footer.rect.maxX - waveEnd) < 0.5)
+        #expect(layout.footer.rect.minY >= player.frame.minY + player.waveform.maxY)
+        #expect(layout.footer.rect.minX >= player.frame.minX + player.time.maxX)
+        #expect(layout.body == nil)
+        #expect(layout.accessibilityLabel.contains("1:15"))
+    }
+}

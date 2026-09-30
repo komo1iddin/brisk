@@ -7,13 +7,20 @@ extension BubbleSource {
     /// kinds a SwiftUI row still shows (polls, places, contacts, business
     /// cards). Reads the stores, so a caller under observation hears of a
     /// name that changes.
+    ///
+    /// A voice message's photo shows beside it with `voiceAvatars` (else
+    /// only its speed while it plays: `playingVoice` is asked then, so only
+    /// then is playback observed); `own` names our own recordings.
     @MainActor
     static func make(
         _ message: MessageRecord,
         startsRun: Bool,
         isGroup: Bool,
         colors: BubbleColors,
-        chats: ChatStore
+        chats: ChatStore,
+        voiceAvatars: Bool = true,
+        playingVoice: () -> String? = { nil },
+        own: (id: String, name: String)? = nil
     ) -> BubbleSource? {
         var text = ""
         var emojiOnly = false
@@ -49,7 +56,16 @@ extension BubbleSource {
                 : liveLocation
                     ? String(localized: "Live location. See it on your phone.")
                     : String(localized: "This message is only on your phone."))
-        case .interactive, .audio, .location, .liveLocation, .contact, .poll, .stickerPack:
+        case let .audio(media, seconds, voiceNote, waveform):
+            let recorderID = message.fromMe ? own?.id ?? message.sender : message.sender
+            let recorderName = message.fromMe ? own?.name ?? "" : chats.personName(message.sender, hint: message.senderName)
+            attachment = .voice(Voice(
+                seconds: seconds, waveform: waveform, path: media.path, mime: media.mime, voiceNote: voiceNote,
+                hasSide: voiceNote && (voiceAvatars || playingVoice() == message.id),
+                recorderID: recorderID, recorderName: String(recorderName.trimmingPrefix("~")),
+                played: message.status == .played
+            ))
+        case .interactive, .location, .liveLocation, .contact, .poll, .stickerPack:
             return nil
         }
         return BubbleSource(

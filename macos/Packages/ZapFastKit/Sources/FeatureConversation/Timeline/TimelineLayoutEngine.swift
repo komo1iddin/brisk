@@ -93,6 +93,9 @@ nonisolated enum TimelineLayoutEngine {
         if inlineFooter { body?.append(T.reserve(width: footerWidth + G.footerSpacing * 2, fonts: fonts)) }
 
         let document: BubbleSource.Document? = if case .document(let document) = source.attachment { document } else { nil }
+        let voice: BubbleSource.Voice? = if case .voice(let voice) = source.attachment { voice } else { nil }
+        // The voice player keeps the time beside its length.
+        let voiceBlock = voice.map { voiceBlockSize($0, footer: CGSize(width: footerWidth, height: footerHeight)) }
         let linkCard = source.linkPreview.map { linkCardTexts($0, color: textColor) }
 
         // A picture keeps its shape; one too wide for the timeline shrinks.
@@ -119,6 +122,7 @@ nonisolated enum TimelineLayoutEngine {
             if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
             ideal = max(ideal, pictureSize.width)
             if document != nil { ideal = max(ideal, G.documentWidth) }
+            if let voiceBlock { ideal = max(ideal, voiceBlock.width) }
             if let card = linkCard { ideal = max(ideal, card.ideal) }
             width = min(ceil(ideal), contentLimit)
         }
@@ -200,6 +204,18 @@ nonisolated enum TimelineLayoutEngine {
             drawn.removeAttribute(.link, range: NSRange(location: 0, length: drawn.length))
             return TextPiece(string: drawn, rect: CGRect(x: textLeft, y: advance(height), width: textWidth, height: height))
         }
+        var voiceFooter: CGRect?
+        let voiceLayout = voice.map { voice in
+            var player = voicePlayer(voice, footerWidth: footerWidth, footerHeight: footerHeight, color: textColor, colors: colors, fromMe: fromMe)
+            player.frame.origin = CGPoint(x: left, y: advance(player.frame.height))
+            voiceFooter = CGRect(
+                x: player.frame.minX + player.waveform.maxX - footerWidth,
+                y: player.frame.minY + player.time.minY,
+                width: footerWidth, height: footerHeight
+            )
+            return player
+        }
+
         let linkLayout = linkCard.map { texts in
             // `MessageContentView` spaces the card from the text by more.
             if bodyPiece != nil { y += Metrics.s - G.partSpacing }
@@ -210,7 +226,9 @@ nonisolated enum TimelineLayoutEngine {
 
         let footerRect: CGRect
         var capsule: CGRect?
-        if inlineFooter, let bodyRect = bodyPiece?.rect {
+        if let voiceFooter {
+            footerRect = voiceFooter
+        } else if inlineFooter, let bodyRect = bodyPiece?.rect {
             footerRect = CGRect(
                 x: textLeft + textWidth - footerWidth,
                 y: bodyRect.maxY + G.footerDrop - footerHeight,
@@ -250,6 +268,7 @@ nonisolated enum TimelineLayoutEngine {
             placeholder: placeholder,
             picture: pictureLayout,
             document: documentLayout,
+            voice: voiceLayout,
             linkPreview: linkLayout,
             body: bodyPiece,
             bodyLength: bodyLength,
@@ -267,7 +286,8 @@ nonisolated enum TimelineLayoutEngine {
             pills: pills,
             pillsSize: pillsSize,
             accessibilityLabel: accessibilityLabel(
-                source, title: pictureLayout?.accessibilityTitle ?? documentLayout?.accessibilityTitle, time: time.string
+                source, title: pictureLayout?.accessibilityTitle ?? documentLayout?.accessibilityTitle ?? voiceLayout?.accessibilityTitle,
+                time: time.string
             )
         ))
     }
@@ -305,6 +325,50 @@ nonisolated enum TimelineLayoutEngine {
                 width: G.documentIndicator, height: G.documentIndicator
             ) : nil,
             accessibilityTitle: [document.fileName, document.detail].filter { !$0.isEmpty }.joined(separator: ", ")
+        )
+    }
+
+    /// `AudioContent`'s size: the button, s, the waveform over the time
+    /// line (the time left, the footer right), s and the side when shown;
+    /// centred on each other.
+    private static func voiceBlockSize(_ voice: BubbleSource.Voice, footer: CGSize) -> CGSize {
+        typealias G = TimelineGeometry
+        let s = Metrics.s
+        let timeLine = max(TimelineText.height(ofLines: 1, TimelineText.captionDigits), footer.height)
+        let middle = Metrics.xs + G.voiceWave.height + 2 + timeLine
+        let width = G.voiceButton + s + G.voiceWave.width + (voice.hasSide ? s + G.voiceSide : 0)
+        return CGSize(width: width, height: max(G.voiceButton, middle, voice.hasSide ? G.voiceSide : 0))
+    }
+
+    private static func voicePlayer(
+        _ voice: BubbleSource.Voice,
+        footerWidth: CGFloat,
+        footerHeight: CGFloat,
+        color: NSColor,
+        colors: BubbleColors,
+        fromMe: Bool
+    ) -> BubbleLayout.VoiceLayout {
+        typealias G = TimelineGeometry
+        let s = Metrics.s
+        let size = voiceBlockSize(voice, footer: CGSize(width: footerWidth, height: footerHeight))
+        let timeLine = max(TimelineText.height(ofLines: 1, TimelineText.captionDigits), footerHeight)
+        let middle = Metrics.xs + G.voiceWave.height + 2 + timeLine
+        let waveX = G.voiceButton + s
+        let waveY = ((size.height - middle) / 2).rounded() + Metrics.xs
+        let waveform = CGRect(origin: CGPoint(x: waveX, y: waveY), size: G.voiceWave)
+        let length = voice.seconds.map { Duration.seconds(Int($0)).formatted(.time(pattern: .minuteSecond)) }
+        return .init(
+            voice: voice,
+            frame: CGRect(origin: .zero, size: size),
+            button: CGRect(x: 0, y: ((size.height - G.voiceButton) / 2).rounded(), width: G.voiceButton, height: G.voiceButton),
+            waveform: waveform,
+            time: CGRect(x: waveX, y: waveform.maxY + 2, width: G.voiceWave.width - footerWidth - s, height: timeLine),
+            side: voice.hasSide
+                ? CGRect(x: waveform.maxX + s, y: ((size.height - G.voiceSide) / 2).rounded(), width: G.voiceSide, height: G.voiceSide)
+                : nil,
+            color: color,
+            micColor: fromMe ? (voice.played ? colors.readTicks : TimelineText.faded(colors.outgoingText, 0.8)) : colors.accent,
+            accessibilityTitle: length.map { String(localized: "Voice message, \($0)") } ?? String(localized: "Voice message")
         )
     }
 

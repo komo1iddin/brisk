@@ -20,6 +20,7 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         case placeholder(symbol: String, text: String)
         case picture(Picture)
         case document(Document)
+        case voice(Voice)
 
         var picture: Picture? {
             if case .picture(let picture) = self { picture } else { nil }
@@ -58,6 +59,24 @@ nonisolated struct BubbleSource: Equatable, Sendable {
             }
             return parts.joined(separator: " · ")
         }
+    }
+
+    /// A voice message or audio file, as `AudioContent` shows it.
+    struct Voice: Equatable, Sendable {
+        var seconds: UInt32?
+        /// The sender's 64 bars, 0 to 100.
+        var waveform: Data
+        var path: String?
+        var mime: String
+        /// Recorded as a voice message (push to talk), not a file sent.
+        var voiceNote: Bool
+        /// Room beside the waveform: the recorder's photo, or the speed
+        /// while it plays.
+        var hasSide: Bool
+        /// Whose photo, and the name for its initials.
+        var recorderID: String
+        var recorderName: String
+        var played: Bool
     }
 
     /// The card under a message's text for the link in it.
@@ -219,6 +238,22 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var accessibilityTitle: String
     }
 
+    /// The player. Everything but `frame` is in the block's coordinates.
+    struct VoiceLayout {
+        var voice: BubbleSource.Voice
+        /// In the bubble's coordinates.
+        var frame: CGRect
+        var button: CGRect
+        var waveform: CGRect
+        /// Where the time played or the length shows, left of the footer.
+        var time: CGRect
+        var side: CGRect?
+        var color: NSColor
+        /// The microphone on the recorder's photo.
+        var micColor: NSColor
+        var accessibilityTitle: String
+    }
+
     /// The card for a link. Everything but `frame` is in the card's
     /// coordinates.
     struct LinkPreviewLayout {
@@ -255,6 +290,7 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var placeholder: Placeholder?
         var picture: PictureLayout?
         var document: DocumentLayout?
+        var voice: VoiceLayout?
         var linkPreview: LinkPreviewLayout?
         /// The text, with room for the footer at its end when the footer
         /// shares its last line. `bodyLength` is where the visible text
@@ -295,9 +331,10 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         parts[keyPath: keyPath]
     }
 
-    /// A photo, video, sticker or file: something that downloads.
+    /// A photo, video, sticker, file or voice message: something that
+    /// downloads.
     var hasAttachment: Bool {
-        parts.picture != nil || parts.document != nil
+        parts.picture != nil || parts.document != nil || parts.voice != nil
     }
 
     /// The bubble's frame in a row of the given width.
@@ -331,6 +368,10 @@ nonisolated enum TimelineGeometry {
     static let documentIndicator: CGFloat = 17
     /// `LinkPreviewCard`'s picture.
     static let linkImage: CGFloat = 56
+    /// `AudioContent`: the button, the waveform, the photo or speed.
+    static let voiceButton: CGFloat = 32
+    static let voiceWave = CGSize(width: 170, height: 26)
+    static let voiceSide: CGFloat = 40
     static let partSpacing = Metrics.xs
     static let rowBottom = Metrics.xxs
     static let reactionOverlap = Metrics.xs
@@ -402,6 +443,7 @@ nonisolated enum TimelineText {
     nonisolated(unsafe) static let captionItalic = styled(caption, .italic)
     nonisolated(unsafe) static let caption2 = NSFont.preferredFont(forTextStyle: .caption2)
     nonisolated(unsafe) static let caption2Digits = NSFont.monospacedDigitSystemFont(ofSize: caption2.pointSize, weight: .regular)
+    nonisolated(unsafe) static let captionDigits = NSFont.monospacedDigitSystemFont(ofSize: caption.pointSize, weight: .regular)
     nonisolated(unsafe) static let callout = NSFont.preferredFont(forTextStyle: .callout)
     nonisolated(unsafe) static let bodyItalic = styled(body, .italic)
     nonisolated(unsafe) static let captionBold = NSFont.systemFont(ofSize: caption.pointSize, weight: .bold)

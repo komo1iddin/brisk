@@ -285,6 +285,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let isGroup = isGroup
         let colors = colors
         let selecting = selecting || !drawsBubbles
+        let chat = chatID
         return withObservationTracking {
             rows.map { row -> Plan in
                 switch row {
@@ -295,7 +296,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                     return .chip(id: row.id, title: title, isDay: false)
                 case let .message(message, startsRun):
                     guard !selecting, let source = BubbleSource.make(
-                        message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats
+                        message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats,
+                        voiceAvatars: model.preferences.voiceAvatars,
+                        playingVoice: { model.voice.current.flatMap { $0.chat == chat ? $0.message : nil } },
+                        own: model.session.account.map { ($0.id, $0.name ?? "") }
                     ) else { return .hosted(row) }
                     return .bubble(row, source)
                 }

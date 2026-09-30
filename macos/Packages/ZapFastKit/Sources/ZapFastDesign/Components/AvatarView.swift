@@ -63,7 +63,7 @@ public struct AvatarView: View {
     }
 
     /// Up to two letters from the first words, skipping a leading `~`.
-    static func initials(_ name: String) -> String {
+    public static func initials(_ name: String) -> String {
         let words = name
             .trimmingCharacters(in: CharacterSet(charactersIn: "~ "))
             .split(whereSeparator: \.isWhitespace)

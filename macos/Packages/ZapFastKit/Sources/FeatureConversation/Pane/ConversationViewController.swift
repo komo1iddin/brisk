@@ -121,7 +121,7 @@ final class ConversationViewController: NSViewController {
 
     /// Hands the timeline what it shows, now and whenever any of it
     /// changes: this chat's messages, its theme, the text size, the unread
-    /// divider, whether messages are being picked, jumps and scrolls.
+    /// divider, jumps and scrolls. Picking messages each row watches itself.
     private func observeTimeline() {
         observed += 1
         let round = observed
@@ -136,7 +136,6 @@ final class ConversationViewController: NSViewController {
                 isGroup: model.chats.chat(chatID)?.kind == .group,
                 style: TimelineStyle(theme: model.chatTheme(for: chatID), textScale: model.preferences.textScale),
                 unread: model.unreadDivider?.chat == chatID ? model.unreadDivider : nil,
-                selecting: model.selection?.chat == chatID,
                 jump: model.jump,
                 scroll: model.timelineScroll
             )
@@ -156,7 +155,6 @@ final class ConversationViewController: NSViewController {
             model: model,
             style: inputs.style,
             unread: inputs.unread,
-            selecting: inputs.selecting,
             jump: inputs.jump,
             scrollRequest: inputs.scroll,
             onReachTop: { model.loadOlder(in: chatID) },

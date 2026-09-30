@@ -50,6 +50,21 @@ protocol TimelineCellDelegate: AnyObject {
     func playVoice(inMessage id: String)
     func seekVoice(inMessage id: String, to fraction: Double)
     func cycleVoiceSpeed()
+
+    // Picking messages.
+    /// Read under observation, as the attachments' state.
+    func selectionState(forMessage id: String) -> SelectionState
+    /// A click while picking: in or out, or with Shift everything from the
+    /// last click.
+    func toggleSelection(ofMessage id: String, range: Bool)
+}
+
+/// Whether messages are being picked, and this one's part in it.
+struct SelectionState: Equatable {
+    var selecting = false
+    var selected = false
+    /// A deleted message cannot be picked; its checkbox is faint.
+    var enabled = true
 }
 
 /// Where a photo is and which version of it.
@@ -103,6 +118,11 @@ final class BubbleCell: NSView {
     private var popover: NSPopover?
     /// Downloads and playback of the message's attachment.
     private var watches = CellWatches()
+    private var selection = SelectionState()
+    private let checkbox = SymbolLayer()
+    /// While picking, incoming bubbles move over for the checkboxes, as
+    /// `MessageRow` offsets them.
+    static let checkboxRoom: CGFloat = 28
 
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
@@ -112,6 +132,9 @@ final class BubbleCell: NSView {
         addSubview(bubble)
         addSubview(pills)
         bubble.cell = self
+        checkbox.isHidden = true
+        checkbox.actions = ["position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
+        layer?.addSublayer(checkbox)
     }
 
     @available(*, unavailable)
@@ -135,7 +158,7 @@ final class BubbleCell: NSView {
             pills.configure(layout)
             placeSubviews()
             setAccessibilityLabel(layout.accessibilityLabel)
-            watchAttachment()
+            watchMessage()
         }
         setHighlighted(highlighted, animated: false)
     }
@@ -150,12 +173,19 @@ final class BubbleCell: NSView {
         messageID = nil
     }
 
-    /// Only what can change for this message is watched: a download while
-    /// the file is not here, and a video that may play in place.
-    private func watchAttachment() {
+    /// Only what can change for this message is watched: picking, a
+    /// download while the file is not here, a video or voice message that
+    /// may play.
+    private func watchMessage() {
         watches.stopAll()
         setAccessibilityValue(nil)
-        guard let id = messageID, let layout = bubbleLayout, layout.hasAttachment else { return }
+        guard let id = messageID, let layout = bubbleLayout else { return }
+        let first = selection
+        watches.watch({ [weak self] in self?.delegate?.selectionState(forMessage: id) ?? SelectionState() }) { [weak self] state in
+            // A reused cell takes the state as it is; a change here moves.
+            self?.applySelection(state, animated: state.selecting != first.selecting && self?.window != nil)
+        }
+        guard layout.hasAttachment else { return }
         delegate?.attachmentShown(inMessage: id)
         if let document = layout.document {
             if document.document.path == nil {
@@ -215,10 +245,19 @@ final class BubbleCell: NSView {
     func setHighlighted(_ on: Bool, animated: Bool) {
         guard on != highlighted else { return }
         highlighted = on
+        paintBackground(animated: animated)
+    }
+
+    /// A search hit or quote jumped to is marked, else a picked message.
+    private func paintBackground(animated: Bool) {
         let accent = bubbleLayout?.accent ?? .controlAccentColor
         var color = NSColor.clear.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            if on { color = accent.withAlphaComponent(0.18).cgColor }
+            if highlighted {
+                color = accent.withAlphaComponent(0.18).cgColor
+            } else if selection.selecting, selection.selected {
+                color = accent.withAlphaComponent(0.12).cgColor
+            }
         }
         CATransaction.begin()
         if animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
@@ -235,17 +274,78 @@ final class BubbleCell: NSView {
     /// layout sends the window's layout pass through the SwiftUI hosting
     /// view at its root on every reuse, which cost more than the cells.
     override func setFrameSize(_ newSize: NSSize) {
-        let widthChanged = newSize.width != frame.width
+        let changed = newSize != frame.size
         super.setFrameSize(newSize)
-        if widthChanged { placeSubviews() }
+        if changed { placeSubviews() }
     }
 
-    private func placeSubviews() {
+    private func placeSubviews(animated: Bool = false) {
         guard let layout = bubbleLayout else { return }
-        bubble.frame = layout.bubbleFrame(rowWidth: bounds.width)
+        let shift = selection.selecting && !layout.fromMe ? Self.checkboxRoom : 0
+        let bubbleFrame = layout.bubbleFrame(rowWidth: bounds.width).offsetBy(dx: shift, dy: 0)
+        let pillsFrame = layout.pillsFrame(rowWidth: bounds.width).insetBy(dx: -2, dy: -2).offsetBy(dx: shift, dy: 0)
         pills.isHidden = layout.pills.isEmpty
-        if !layout.pills.isEmpty { pills.frame = layout.pillsFrame(rowWidth: bounds.width).insetBy(dx: -2, dy: -2) }
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                bubble.animator().frame = bubbleFrame
+                if !layout.pills.isEmpty { pills.animator().frame = pillsFrame }
+            }
+        } else {
+            bubble.frame = bubbleFrame
+            if !layout.pills.isEmpty { pills.frame = pillsFrame }
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        checkbox.frame = CGRect(x: Metrics.m, y: ((bounds.height - 24) / 2).rounded(), width: 24, height: 24)
+        CATransaction.commit()
         placeHoverActions()
+    }
+
+    // MARK: Picking
+
+    private func applySelection(_ state: SelectionState, animated: Bool) {
+        let moved = state.selecting != selection.selecting
+        selection = state
+        let animated = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if state.selecting {
+            hideHoverActions(animated: false)
+            removeBodyText()
+            checkbox.configure(
+                symbol: state.selected ? "checkmark.circle.fill" : "circle", pointSize: 20, weight: .regular,
+                palette: [state.selected ? bubbleLayout?.accent ?? .controlAccentColor : .secondaryLabelColor]
+            )
+            checkbox.opacity = state.enabled ? 1 : 0.3
+        }
+        if moved {
+            CATransaction.begin()
+            if animated {
+                CATransaction.setAnimationDuration(0.2)
+            } else {
+                CATransaction.setDisableActions(true)
+            }
+            checkbox.isHidden = !state.selecting
+            CATransaction.commit()
+            placeSubviews(animated: animated)
+        }
+        paintBackground(animated: false)
+        if state.selecting, state.enabled {
+            setAccessibilityValue(state.selected ? String(localized: "Selected") : nil)
+        }
+    }
+
+    /// While picking, the whole row is one target: a click picks it, and
+    /// nothing inside (links, text, a photo) takes the click.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard selection.selecting else { return super.hitTest(point) }
+        return frame.contains(point) ? self : nil
+    }
+
+    /// The message's menu, from anywhere on the row while picking.
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard selection.selecting, let id = messageID else { return super.menu(for: event) }
+        return delegate?.menu(forMessage: id, selection: nil)
     }
 
     // MARK: Pointer
@@ -281,7 +381,8 @@ final class BubbleCell: NSView {
     static let restDelay = 150
 
     private func showHoverActions() {
-        guard hoverActions == nil, let id = messageID, let view = delegate?.hoverActions(forMessage: id) else { return }
+        guard !selection.selecting, hoverActions == nil, let id = messageID,
+              let view = delegate?.hoverActions(forMessage: id) else { return }
         hoverActions = view
         view.alphaValue = 0
         addSubview(view)
@@ -337,6 +438,10 @@ final class BubbleCell: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        if selection.selecting, let id = messageID {
+            delegate?.toggleSelection(ofMessage: id, range: event.modifierFlags.contains(.shift))
+            return
+        }
         if event.modifierFlags.contains(.command), let id = messageID {
             delegate?.startSelecting(fromMessage: id)
             return

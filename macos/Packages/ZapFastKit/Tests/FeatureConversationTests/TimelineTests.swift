@@ -452,7 +452,7 @@ struct TimelineRefreshTests {
     private func update(_ controller: TimelineController, _ messages: [MessageRecord], revision: Int, model: AppModel) {
         controller.update(
             chatID: "c@s.whatsapp.net", messages: messages, revision: revision, isGroup: false, model: model,
-            style: .standard, unread: nil, selecting: false, jump: nil, scrollRequest: nil,
+            style: .standard, unread: nil, jump: nil, scrollRequest: nil,
             onReachTop: {}, onScrollState: { _ in }
         )
     }
@@ -482,6 +482,14 @@ struct TimelineRefreshTests {
         #expect(controller.message("m12")?.reactions.count == 1)
         let changed = controller.items.indices.filter { controller.items[$0].differs(from: before[$0]) }
         #expect(changed.map { controller.items[$0].id } == ["m12"])
+
+        // Picking messages changes no row: each cell shows its checkbox.
+        model.select(messages[5])
+        #expect(controller.selectionState(forMessage: "m5") == SelectionState(selecting: true, selected: true, enabled: true))
+        #expect(controller.selectionState(forMessage: "m6") == SelectionState(selecting: true, selected: false, enabled: true))
+        #expect(controller.generation == generation)
+        model.cancelSelection()
+        #expect(controller.selectionState(forMessage: "m5") == SelectionState())
 
         // A message arriving is a new list.
         messages.append(message(40))

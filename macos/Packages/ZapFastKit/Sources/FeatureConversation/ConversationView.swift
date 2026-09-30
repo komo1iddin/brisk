@@ -10,7 +10,6 @@ public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
     @State private var infoRequest: InfoRequest?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(chatID: String, model: AppModel) {
         self.chatID = chatID

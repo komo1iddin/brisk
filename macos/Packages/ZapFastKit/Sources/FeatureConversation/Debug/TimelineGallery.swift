@@ -17,6 +17,10 @@ public enum TimelineGallery {
         // Undownloaded media show their size, as with downloads off.
         model.preferences.autoDownload = false
         let messages = messages
+        // `ZAPFAST_SNAPSHOT_SELECTING=1`: picking messages, the second picked.
+        if ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_SELECTING"] != nil {
+            model.select(messages[1])
+        }
         let appearances: [(NSAppearance.Name, String)] = [(.aqua, ""), (.darkAqua, "-dark")]
         var windows: [(NSWindow, TimelineController, String, Bool)] = []
         for (name, suffix) in appearances {
@@ -37,7 +41,7 @@ public enum TimelineGallery {
                 controller.update(
                     chatID: "gallery@g.us", messages: messages, revision: 1, isGroup: true, model: model,
                     style: TimelineStyle(theme: model.chatTheme(for: nil), textScale: 1), unread: nil,
-                    selecting: false, jump: nil, scrollRequest: nil, onReachTop: {}, onScrollState: { _ in }
+                    jump: nil, scrollRequest: nil, onReachTop: {}, onScrollState: { _ in }
                 )
                 windows.append((window, controller, suffix, drawn))
             }
@@ -46,6 +50,12 @@ public enum TimelineGallery {
         // table, and its end (`-end`), which the window's height leaves
         // out.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            for (_, controller, _, _) in windows {
+                let clip = controller.scrollView.contentView
+                clip.scroll(to: NSPoint(x: 0, y: -clip.contentInsets.top))
+                controller.scrollView.reflectScrolledClipView(clip)
+            }
+            controller(windows).forEach { $0.tableView.layoutSubtreeIfNeeded() }
             capture(windows, appearances: appearances, end: false, path: path)
             for (_, controller, _, _) in windows {
                 let clip = controller.scrollView.contentView
@@ -58,6 +68,10 @@ public enum TimelineGallery {
                 done()
             }
         }
+    }
+
+    private static func controller(_ windows: [(NSWindow, TimelineController, String, Bool)]) -> [TimelineController] {
+        windows.map(\.1)
     }
 
     private static func capture(

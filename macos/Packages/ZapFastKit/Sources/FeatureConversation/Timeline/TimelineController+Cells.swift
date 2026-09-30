@@ -188,9 +188,28 @@ extension TimelineController: TimelineCellDelegate {
         model?.cycleVoiceSpeed()
     }
 
+    // MARK: Picking messages
+
+    func selectionState(forMessage id: String) -> SelectionState {
+        guard let model, let chatID, let selection = model.selection, selection.chat == chatID else { return SelectionState() }
+        guard let message = message(id) else { return SelectionState(selecting: true) }
+        return SelectionState(selecting: true, selected: selection.ids.contains(id), enabled: model.canSelect(message))
+    }
+
+    func toggleSelection(ofMessage id: String, range: Bool) {
+        guard let model, let message = message(id) else { return }
+        if range { model.selectRange(to: message) } else { model.toggleSelected(message) }
+    }
+
     /// What the pointer finds beside the bubble, as actions for VoiceOver.
     func accessibilityActions(forMessage id: String) -> [NSAccessibilityCustomAction] {
         guard let model, let message = message(id) else { return [] }
+        // While picking, a click picks; so does VoiceOver's one action.
+        if model.selection?.chat == chatID {
+            guard model.canSelect(message) else { return [] }
+            let title = model.isSelected(message) ? String(localized: "Deselect") : String(localized: "Select")
+            return [NSAccessibilityCustomAction(name: title) { model.toggleSelected(message); return true }]
+        }
         var actions: [NSAccessibilityCustomAction] = []
         if !message.isRevoked {
             actions.append(NSAccessibilityCustomAction(name: String(localized: "Reply")) { model.reply(to: message); return true })

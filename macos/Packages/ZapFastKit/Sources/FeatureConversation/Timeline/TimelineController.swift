@@ -86,7 +86,6 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private(set) var style = TimelineStyle.standard
     private var colors = BubbleColors(TimelineStyle.standard)
     private var unread: UnreadDivider?
-    private var selecting = false
     /// `ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI
     /// row, to compare the two, in the app or the benchmark.
     var drawsBubbles = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
@@ -209,7 +208,6 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         model: AppModel,
         style: TimelineStyle,
         unread: UnreadDivider?,
-        selecting: Bool,
         jump: JumpRequest?,
         scrollRequest: TimelineScrollRequest?,
         onReachTop: @escaping () -> Void,
@@ -248,15 +246,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
         let restyled = style != self.style
         // Anything that regroups or restyles the rows makes them all again.
-        var rebuilds = restyled || unread != self.unread || selecting != self.selecting
+        // Picking messages does not: each row shows its checkbox itself.
+        var rebuilds = restyled || unread != self.unread
         if restyled {
             self.style = style
             colors = BubbleColors(style)
-        }
-        if selecting != self.selecting {
-            // Rows swap between the drawn cell and the SwiftUI row, which
-            // draws the checkboxes.
-            self.selecting = selecting
         }
         self.unread = unread
         if revision != self.revision {
@@ -349,7 +343,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         guard let model else { return [] }
         let isGroup = isGroup
         let colors = colors
-        let selecting = selecting || !drawsBubbles
+        let swiftUIRows = !drawsBubbles
         let chat = chatID
         return withObservationTracking {
             rows.map { row -> Plan in
@@ -360,7 +354,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                     let title = String(AttributedString(localized: "^[\(count) unread message](inflect: true)").characters)
                     return .chip(id: row.id, title: title, isDay: false)
                 case let .message(message, startsRun):
-                    guard !selecting, let source = BubbleSource.make(
+                    guard !swiftUIRows, let source = BubbleSource.make(
                         message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats,
                         voiceAvatars: model.preferences.voiceAvatars,
                         playingVoice: { model.voice.current.flatMap { $0.chat == chat ? $0.message : nil } },

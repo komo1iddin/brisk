@@ -362,9 +362,17 @@ steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`).
 linked account (no backend, no archive, own preferences), measures the
 message timeline, prints a report and quits. It times opening a chat,
 scrolling up at 5,000 pt/s while older pages of 60 arrive, scrolling a fully
-loaded chat, jumps, resizing, and what a message or presence change in
-another chat costs the main thread. The phrases and speed match Telefast's
-benchmark, so the numbers compare.
+loaded chat, quick flicks up and back down, jumps, resizing, and what a
+message or presence change in another chat costs the main thread. The
+phrases and speed match Telefast's benchmark, so the numbers compare.
+
+About half of each chat is what real chats hold besides text: photos,
+documents, voice messages, videos, stickers and link previews, drawn into
+the benchmark's caches once, with downloads that finish a moment after the
+timeline asks. Every frame it also checks that each visible row, its cell
+and the cell's parts are where the table put them; the report's
+`Integrity` line counts rows that were not (a blank or flickering
+timeline), and any at all is a bug.
 
 ```bash
 cd macos
@@ -378,6 +386,12 @@ keeps the results, how they were taken, and the rules that came out of
 them.
 
 `ZAPFAST_BENCHMARK_COUNT` sets the fully loaded chat's size (default 2,000).
+`ZAPFAST_BENCHMARK_MEDIA=0` makes the chats text alone, as the first runs
+were. The window ignores the pointer unless `ZAPFAST_BENCHMARK_POINTER=1`;
+`=over` places it so the resting pointer is over the timeline, as when
+scrolling with a trackpad. `ZAPFAST_BENCHMARK_DELAY=<seconds>` waits before
+starting, to attach Instruments; each scroll step is a `Frame` interval in
+Points of Interest.
 `ZAPFAST_SWIFTUI_SIDEBAR=1` shows the chat list as the earlier SwiftUI list
 instead of the table, to compare the two, in the app or the benchmark.
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.

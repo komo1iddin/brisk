@@ -59,6 +59,38 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
         var messageElsewhereMs: Distribution
     }
 
+    /// Rows on screen that were not drawn where the table put them: the
+    /// timeline going blank or flickering. Counted every frame of every
+    /// scroll (before AppKit's frame and after ours), after each resize step
+    /// and once things rest. Any at all is a bug.
+    struct Integrity: Codable, Sendable {
+        enum Moment: String, Codable, Sendable { case beforeFrame, afterFrame, resize, rest }
+
+        struct Sample: Codable, Sendable {
+            var rows = 0
+            var misplaced = 0
+            var missing = 0
+            var kinds: [String: Int] = [:]
+        }
+
+        var checks = 0
+        var rows = 0
+        /// Checks that found at least one row wrong or missing, by moment.
+        var badChecks: [String: Int] = [:]
+        var misplacedRows = 0
+        var missingRows = 0
+        var kinds: [String: Int] = [:]
+
+        mutating func add(_ sample: Sample, at moment: Moment) {
+            checks += 1
+            rows += sample.rows
+            misplacedRows += sample.misplaced
+            missingRows += sample.missing
+            if sample.misplaced + sample.missing > 0 { badChecks[moment.rawValue, default: 0] += 1 }
+            for (kind, count) in sample.kinds { kinds[kind, default: 0] += count }
+        }
+    }
+
     var messageCount: Int
     var machine: String
     var system: String
@@ -78,6 +110,10 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     /// built before: what opening costs without first-use setup.
     var openFirstPageWarm: Open
     var memoryFootprintMB: Double
+    /// Up and back down fast, three times, after paging and with everything loaded.
+    var pagingFlicks: Scroll
+    var fullFlicks: Scroll
+    var integrity: Integrity
 
     var summary: String {
         func ms(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }
@@ -117,6 +153,12 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
           Resize step (8 pt)    \(dist(resizeStepMs))
           Open again (warm)     \(open(openFirstPageWarm))
           Memory footprint      \(ms(memoryFootprintMB)) MB
+          Flicks, paged         \(scroll(pagingFlicks))
+          Flicks, full history  \(scroll(fullFlicks))
+          Integrity             \(integrity.checks) checks of \(integrity.rows) rows: \
+        \(integrity.misplacedRows) misplaced, \(integrity.missingRows) missing
+                bad checks       \(integrity.badChecks.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
+                kinds            \(integrity.kinds.sorted { $0.value > $1.value }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
         """
     }
 }

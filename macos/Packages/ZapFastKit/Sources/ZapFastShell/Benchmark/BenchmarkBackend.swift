@@ -10,7 +10,8 @@ final class BenchmarkBackend: Backend {
     /// Upstream's `PAGE`.
     static let page = 60
 
-    private let histories: [String: [MessageRecord]]
+    private var histories: [String: [MessageRecord]]
+    private let media: SyntheticMedia?
     /// Chats whose first answer is their whole history.
     private let unpaged: Set<String> = [SyntheticChats.fullChat]
     private let chatCount: Int
@@ -19,12 +20,13 @@ final class BenchmarkBackend: Backend {
     /// Older pages answered so far.
     private(set) var pagesServed = 0
 
-    init(fullCount: Int, pagedCount: Int, chatCount: Int) {
+    init(fullCount: Int, pagedCount: Int, chatCount: Int, media: SyntheticMedia?) {
         histories = [
-            SyntheticChats.fullChat: SyntheticChats.messages(chat: SyntheticChats.fullChat, count: fullCount),
-            SyntheticChats.pagedChat: SyntheticChats.messages(chat: SyntheticChats.pagedChat, count: pagedCount, seed: 7),
-            SyntheticChats.smallChat: SyntheticChats.messages(chat: SyntheticChats.smallChat, count: Self.page, seed: 9),
+            SyntheticChats.fullChat: SyntheticChats.messages(chat: SyntheticChats.fullChat, count: fullCount, media: media),
+            SyntheticChats.pagedChat: SyntheticChats.messages(chat: SyntheticChats.pagedChat, count: pagedCount, seed: 7, media: media),
+            SyntheticChats.smallChat: SyntheticChats.messages(chat: SyntheticChats.smallChat, count: Self.page, seed: 9, media: media),
         ]
+        self.media = media
         self.chatCount = chatCount
     }
 
@@ -54,12 +56,60 @@ final class BenchmarkBackend: Backend {
             )])
         case let .fetchOlder(chat):
             post([.olderFetched(chat: chat, more: false)])
+        case let .download(chat, message, card):
+            answerDownload(chat: chat, message: message, card: card)
         default:
             break
         }
     }
 
     func shutdown() {}
+
+    /// A download finishes a quarter of a second later with the made-up
+    /// file of the message's kind, as the worker's `Event::Media` does.
+    private func answerDownload(chat: String, message id: String, card: UInt32?) {
+        guard let media, let index = histories[chat]?.firstIndex(where: { $0.id == id }),
+              let record = histories[chat]?[index] else { return }
+        let path: String? = switch record.content {
+        case .image: media.photos[0].path
+        case .video: media.videoPath
+        case .audio: media.voicePath
+        case .document: media.document.path
+        case .sticker: media.sticker.path
+        default: nil
+        }
+        guard let path else { return }
+        histories[chat]?[index] = Self.record(record, withFile: path)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [deliver] in
+            MainActor.assumeIsolated {
+                deliver?([.media(chat: chat, message: id, card: card, path: path, error: nil)])
+            }
+        }
+    }
+
+    private static func record(_ record: MessageRecord, withFile path: String) -> MessageRecord {
+        var record = record
+        switch record.content {
+        case .image(let caption, var media):
+            media.path = path
+            record.content = .image(caption: caption, media: media)
+        case .video(let caption, var media, let seconds, let gif, let note):
+            media.path = path
+            record.content = .video(caption: caption, media: media, seconds: seconds, gif: gif, note: note)
+        case .audio(var media, let seconds, let voiceNote, let waveform):
+            media.path = path
+            record.content = .audio(media: media, seconds: seconds, voiceNote: voiceNote, waveform: waveform)
+        case .document(var media, let fileName, let caption, let pages):
+            media.path = path
+            record.content = .document(media: media, fileName: fileName, caption: caption, pages: pages)
+        case .sticker(var media, let animated):
+            media.path = path
+            record.content = .sticker(media: media, animated: animated)
+        default:
+            break
+        }
+        return record
+    }
 
     /// Delivers events at once, inside the caller's measurement.
     func inject(_ events: [BridgeEvent]) {

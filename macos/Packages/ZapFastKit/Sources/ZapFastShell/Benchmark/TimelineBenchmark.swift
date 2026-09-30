@@ -1,5 +1,6 @@
 import AppKit
 import FeatureConversation
+import OSLog
 import QuartzCore
 import ZapFastBridge
 import ZapFastCore
@@ -20,7 +21,16 @@ enum TimelineBenchmark {
         ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_COUNT"].flatMap(Int.init) ?? 2_000
     }
 
-    private static let backend = BenchmarkBackend(fullCount: messageCount, pagedCount: 5_000, chatCount: 200)
+    /// `ZAPFAST_BENCHMARK_MEDIA=0` leaves the chats text alone, as the
+    /// benchmark's first runs were.
+    private static var withMedia: Bool {
+        ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_MEDIA"] != "0"
+    }
+
+    private static let backend = BenchmarkBackend(
+        fullCount: messageCount, pagedCount: 5_000, chatCount: 200,
+        media: withMedia ? SyntheticMedia(directory: AppPaths.standard().caches.appending(path: "Benchmark/media")) : nil
+    )
 
     /// A model on the made-up backend, with its own preferences (no app
     /// lock, no notifications) and folders apart from the real ones.
@@ -39,6 +49,10 @@ enum TimelineBenchmark {
 
     static func start(model: AppModel) {
         Task {
+            // Time to attach Instruments: `ZAPFAST_BENCHMARK_DELAY=<seconds>`.
+            if let delay = ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_DELAY"].flatMap(Double.init) {
+                try? await Task.sleep(for: .seconds(delay))
+            }
             let report = await BenchmarkRun(model: model, backend: backend).run()
             write(report, caches: AppPaths.standard().caches)
             NSApp.terminate(nil)
@@ -76,6 +90,20 @@ private final class BenchmarkRun: NSObject {
         await waitUntil { self.model.isLinked && self.mainWindow() != nil }
         window = mainWindow()
         window.setFrame(NSRect(x: 60, y: 60, width: 1100, height: 740), display: true)
+        // A pointer resting on the window makes hover views in the rows it
+        // crosses, which varied results from run to run; runs leave it out
+        // unless `ZAPFAST_BENCHMARK_POINTER=1`. `=over` puts the window
+        // where the pointer rests on the middle of the timeline, as when
+        // scrolling with a trackpad.
+        switch ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_POINTER"] {
+        case nil:
+            window.ignoresMouseEvents = true
+        case "over":
+            let pointer = NSEvent.mouseLocation
+            window.setFrameOrigin(NSPoint(x: pointer.x - 700, y: pointer.y - 370))
+        default:
+            break
+        }
         await pause(.milliseconds(500))
 
         let paged = backend.history(SyntheticChats.pagedChat)
@@ -85,15 +113,17 @@ private final class BenchmarkRun: NSObject {
         )
         let eventsWithFirstPage = await eventCosts()
         let pagingScroll = await scroll(speed: 5_000, duration: 8)
+        let pagingFlicks = await flicks()
 
         let full = backend.history(SyntheticChats.fullChat)
         let openFullHistory = await open(SyntheticChats.fullChat, rows: TimelineRow.build(full).count)
         await pause(.milliseconds(300))
         let timelineWidth = timeline?.bounds.width ?? 0
         let fullScroll = await scroll(speed: 5_000, duration: 8)
+        let fullFlicks = await flicks()
         let jumps = measureJumps()
         let eventsWithFullHistory = await eventCosts()
-        let resize = measureResize()
+        let resize = await measureResize()
 
         let small = backend.history(SyntheticChats.smallChat)
         let openWarm = await open(SyntheticChats.smallChat, rows: TimelineRow.build(small).count)
@@ -114,7 +144,10 @@ private final class BenchmarkRun: NSObject {
             eventsWithFullHistory: eventsWithFullHistory,
             resizeStepMs: .init(resize),
             openFirstPageWarm: openWarm,
-            memoryFootprintMB: Self.memoryFootprintMB
+            memoryFootprintMB: Self.memoryFootprintMB,
+            pagingFlicks: pagingFlicks,
+            fullFlicks: fullFlicks,
+            integrity: integrity
         )
     }
 
@@ -139,6 +172,8 @@ private final class BenchmarkRun: NSObject {
     private var link: CADisplayLink?
     private var continuation: CheckedContinuation<Void, Never>?
     private var speed = 0.0
+    /// The direction at a moment of the run: -1 scrolls up, 1 down.
+    private var direction: (Double) -> Double = { _ in -1 }
     private var duration = 0.0
     private var lastTimestamp: CFTimeInterval = 0
     private var elapsed = 0.0
@@ -146,12 +181,78 @@ private final class BenchmarkRun: NSObject {
     private var intervals: [Double] = []
     private var budgets: [Double] = []
     private var work: [Double] = []
+    private var stopsAtTop = true
+    /// Each step is a "Frame" interval in Points of Interest, for tracing
+    /// what the main thread does in slow frames and between them.
+    private static let signposter = OSSignposter(subsystem: "ZapFast", category: .pointsOfInterest)
+    private var integrity = BenchmarkReport.Integrity()
 
-    /// Scrolls up from where the timeline is, one step per display frame.
-    /// Older pages arrive as they do in use: the timeline asks near the top
-    /// and the backend answers on a later turn.
-    private func scroll(speed: Double, duration: Double) async -> BenchmarkReport.Scroll {
+    /// Up fast, then back down fast, three times, as a trackpad flick and
+    /// its return: the moment the reader saw the timeline go blank.
+    private func flicks() async -> BenchmarkReport.Scroll {
+        stopsAtTop = false
+        defer { stopsAtTop = true }
+        return await scroll(speed: 7_000, duration: 4.2) { elapsed in
+            elapsed.truncatingRemainder(dividingBy: 1.4) < 0.7 ? -1 : 1
+        }
+    }
+
+    /// Visible rows whose row view, cell or the cell's parts are not where
+    /// the table put them, are hidden, or have no view at all.
+    private func audit(_ table: NSTableView) -> BenchmarkReport.Integrity.Sample {
+        guard let clip = table.enclosingScrollView?.contentView else { return .init() }
+        let visible = table.rows(in: clip.documentVisibleRect)
+        var sample = BenchmarkReport.Integrity.Sample()
+        guard visible.location != NSNotFound, visible.length > 0 else { return sample }
+        func close(_ a: CGRect, _ b: CGRect) -> Bool {
+            abs(a.minX - b.minX) < 0.5 && abs(a.minY - b.minY) < 0.5
+                && abs(a.width - b.width) < 0.5 && abs(a.height - b.height) < 0.5
+        }
+        for row in visible.location..<min(NSMaxRange(visible), table.numberOfRows) {
+            sample.rows += 1
+            guard let rowView = table.rowView(atRow: row, makeIfNecessary: false) else {
+                sample.missing += 1
+                continue
+            }
+            var problems: [String] = []
+            if !close(rowView.frame, table.rect(ofRow: row)) { problems.append("row frame") }
+            if rowView.isHidden { problems.append("row hidden") }
+            if let layer = rowView.layer, !close(CGRect(origin: .zero, size: layer.bounds.size), CGRect(origin: .zero, size: rowView.frame.size)) {
+                problems.append("row layer")
+            }
+            if let cell = rowView.view(atColumn: 0) as? NSView {
+                if cell.isHidden || cell.alphaValue < 0.01 { problems.append("cell hidden") }
+                if abs(cell.frame.height - rowView.bounds.height) > 0.5 || cell.frame.width < 1 || abs(cell.frame.minY) > 0.5 {
+                    problems.append("cell frame")
+                }
+                if let layer = cell.layer, abs(layer.bounds.height - cell.frame.height) > 0.5 { problems.append("cell layer") }
+                for part in cell.subviews where !part.isHidden && part.alphaValue > 0.01 {
+                    if part.frame.width < 1 || part.frame.height < 1 { problems.append("part empty \(type(of: part))") }
+                    if let layer = part.layer, abs(layer.bounds.width - part.frame.width) > 0.5 {
+                        problems.append("part layer \(type(of: part))")
+                    }
+                }
+            } else {
+                problems.append("no cell")
+            }
+            if !problems.isEmpty {
+                sample.misplaced += 1
+                for problem in problems { sample.kinds[problem, default: 0] += 1 }
+            }
+        }
+        return sample
+    }
+
+    /// Scrolls up from where the timeline is (or as `direction` says), one
+    /// step per display frame. Older pages arrive as they do in use: the
+    /// timeline asks near the top and the backend answers on a later turn.
+    private func scroll(
+        speed: Double,
+        duration: Double,
+        direction: @escaping (Double) -> Double = { _ in -1 }
+    ) async -> BenchmarkReport.Scroll {
         self.speed = speed
+        self.direction = direction
         self.duration = duration
         lastTimestamp = 0
         elapsed = 0
@@ -170,6 +271,7 @@ private final class BenchmarkRun: NSObject {
             self.link = link
         }
         await pause(.milliseconds(300))
+        if let table = timeline { integrity.add(audit(table), at: .rest) }
 
         let budget = budgets.isEmpty ? 1.0 / 60 : budgets.reduce(0, +) / Double(budgets.count)
         var hitches = 0
@@ -208,10 +310,15 @@ private final class BenchmarkRun: NSObject {
         lastTimestamp = link.timestamp
 
         guard let table = timeline, let scrollView = table.enclosingScrollView else { return }
+        // What AppKit's own passes left on screen since the last frame.
+        integrity.add(audit(table), at: .beforeFrame)
+        let frame = Self.signposter.beginInterval("Frame")
+        defer { Self.signposter.endInterval("Frame", frame) }
         let start = CACurrentMediaTime()
         let clip = scrollView.contentView
         let top = -clip.contentInsets.top
-        let y = max(clip.bounds.origin.y - speed * delta, top)
+        let bottom = max(top, table.frame.height - clip.bounds.height + clip.contentInsets.bottom)
+        let y = min(max(clip.bounds.origin.y + direction(elapsed) * speed * delta, top), bottom)
         clip.scroll(to: NSPoint(x: 0, y: y))
         scrollView.reflectScrolledClipView(clip)
         table.layoutSubtreeIfNeeded()
@@ -219,11 +326,12 @@ private final class BenchmarkRun: NSObject {
         // Layer contents are drawn at commit time; flush so they count toward this frame.
         CATransaction.flush()
         work.append(CACurrentMediaTime() - start)
+        integrity.add(audit(table), at: .afterFrame)
         if y <= top { atTop += delta }
 
         let conversation = model.conversations.conversation(model.selectedChatID ?? "")
         let exhausted = conversation.complete && !conversation.loadingOlder
-        if elapsed >= duration || (y <= top && exhausted) {
+        if elapsed >= duration || (y <= top && exhausted && direction(elapsed) < 0 && stopsAtTop) {
             link.invalidate()
             self.link = nil
             continuation?.resume()
@@ -315,9 +423,10 @@ private final class BenchmarkRun: NSObject {
 
     /// Narrows the window 8 points at a time, as a resize drag does, and
     /// times each step through layout, drawing and the commit.
-    private func measureResize() -> [Double] {
+    private func measureResize() async -> [Double] {
         let original = window.frame
-        let steps = (1...10).map { index in
+        var steps: [Double] = []
+        for index in 1...10 {
             let start = CACurrentMediaTime()
             var frame = original
             frame.size.width -= CGFloat(index * 8)
@@ -325,9 +434,15 @@ private final class BenchmarkRun: NSObject {
             window.contentView?.layoutSubtreeIfNeeded()
             window.displayIfNeeded()
             CATransaction.flush()
-            return (CACurrentMediaTime() - start) * 1000
+            steps.append((CACurrentMediaTime() - start) * 1000)
+            if let table = timeline { integrity.add(audit(table), at: .resize) }
+            // A turn of the run loop, as between the frames of a drag.
+            await pause(.milliseconds(16))
+            if let table = timeline { integrity.add(audit(table), at: .resize) }
         }
         window.setFrame(original, display: true)
+        await pause(.milliseconds(100))
+        if let table = timeline { integrity.add(audit(table), at: .rest) }
         return steps
     }
 

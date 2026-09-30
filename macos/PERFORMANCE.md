@@ -50,6 +50,8 @@ chat, 200 chats, three alternating runs of each build.
 | 09-30 | Text messages drawn by Core Animation, measured off the main actor | resize step 2.1–3.4 s → 24 ms; jump p95 105–140 → 6–11 ms; reopen a chat 232–340 → 65–73 ms; full-chat scroll hitches 100–176 → 1.6–5 ms/s; paging no longer stalls (3 → 15 pages); memory 153–185 → 97–121 MB |
 | 09-30 | Unread and channel counts kept beside the chats; menu bar icon its own view; sidebar sorted by position | message elsewhere p50 18–21 → 4–5 ms |
 | 09-30 | All of the above against `main` | resize 2.3–2.7 s → 23–25 ms; jump p95 98–126 → 5–10 ms; reopen 290–446 → 59–87 ms; message elsewhere p50 22–30 → 4–7 ms; memory 132–184 → 98–102 MB |
+| 09-30 | Benchmark with media (half of each chat), the pointer optional, rows checked every frame | with media: scroll hitches 55–85 ms/s, 200–350 with the pointer over the timeline; open 2,000 messages 940 ms (SwiftUI rows measured on the main thread); 240 MB |
+| 09-30 | Rows, cells and hosting views back under Auto Layout (the overrides of `0dee224` removed) | rows found blank (a hosted row's view with no size): 2 of 5 runs → 0 of 5; scroll hitches with media unchanged within noise; text alone, frame work p50 2.3 → 2.9 ms |
 
 ### On the linked account
 
@@ -121,11 +123,14 @@ Each of these came from a trace or a benchmark.
 8. **Lists change by their own operations,** not by reloading: moves slide,
    rows arriving from far away fade in, and when the reader has scrolled
    away the first row on screen keeps its place.
-9. **Views inside a scrolled AppKit table stay out of Auto Layout**
-   (`translatesAutoresizingMaskIntoConstraints` answers no), row views,
-   cells, their subviews and hosting views alike. The table changes their
-   frames constantly, and each change reached SwiftUI through the window's
-   constraint host as a reason to lay out the whole window.
+9. **Views that a table or a cell places by frame keep
+   `translatesAutoresizingMaskIntoConstraints` as AppKit sets it.** Taking
+   rows, cells and the cells' hosting views out of Auto Layout by answering
+   no saved the window's SwiftUI layout while scrolling text, but left them
+   without constraints: a layout pass now and then gave a hosted row's view
+   no size, and the reader saw blank rows and flicker. The window's layout is
+   kept out of scrolling by not being SwiftUI around the timeline, not by
+   hiding views from Auto Layout.
 10. **No per-cell tracking areas, cursor rects or tooltips.** The table
     tracks the pointer once and finds the row under it.
 11. **No SwiftUI `MenuBarExtra`.** It is rebuilt with nearly every update in

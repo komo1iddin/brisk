@@ -9,12 +9,6 @@ import ZapFastDesign
 /// `DaySeparator` and `UnreadSeparator` drawn by Core Animation: a caption
 /// in a capsule of the theme's chip colour, centred.
 final class ChipCell: NSView {
-    /// Outside Auto Layout, as `TimelineRowView`.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-
     static let identifier = NSUserInterfaceItemIdentifier("TimelineChip")
 
     private let chip = CALayer()
@@ -125,13 +119,7 @@ final class ChipCell: NSView {
 /// A table cell showing one SwiftUI row: photos, voice, polls, cards and
 /// everything else that is not plain text.
 final class HostingCell: NSTableCellView {
-    /// Outside Auto Layout, as `TimelineRowView`.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-
-    private let host = CellHostingView(rootView: AnyView(EmptyView()))
+    private let host = NSHostingView(rootView: AnyView(EmptyView()))
 
     /// One reuse identifier per kind of content.
     static func identifier(for row: TimelineRow) -> NSUserInterfaceItemIdentifier {
@@ -157,8 +145,8 @@ final class HostingCell: NSTableCellView {
         super.init(frame: .zero)
         self.identifier = identifier
         host.sizingOptions = []
-        // Sized by its mask, not constraints: constraints in scrolled cells
-        // send each reuse through the window's layout pass.
+        // Sized by its mask, not constraints of its own: constraints in
+        // scrolled cells send each reuse through the window's layout pass.
         host.autoresizingMask = [.width, .height]
         host.frame = bounds
         addSubview(host)
@@ -169,15 +157,6 @@ final class HostingCell: NSTableCellView {
 
     func show(_ view: some View) {
         host.rootView = AnyView(view)
-    }
-}
-
-/// A SwiftUI row's hosting view, outside Auto Layout: sized by its mask,
-/// so a cell's new frame changes no constraint the window's host hears of.
-final class CellHostingView: NSHostingView<AnyView> {
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
     }
 }
 
@@ -196,25 +175,6 @@ final class RowMeasurer {
 
 /// The message table. Text laid over a bubble must take the first click,
 /// which a table otherwise keeps for row selection.
-/// A row of the timeline, outside Auto Layout (see `TimelineController`).
-final class TimelineRowView: NSTableRowView {
-    static let identifier = NSUserInterfaceItemIdentifier("TimelineRow")
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        identifier = Self.identifier
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not used") }
-
-    /// The table turns this back on as it adds the row; the answer stays no.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-}
-
 final class TimelineTableView: NSTableView {
     /// The drawn row under the pointer. One tracking area for the table
     /// stands in for one per cell: AppKit moved every cell's areas and

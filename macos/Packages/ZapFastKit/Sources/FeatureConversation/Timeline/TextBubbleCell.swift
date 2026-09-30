@@ -39,12 +39,6 @@ protocol TimelineCellDelegate: AnyObject {
 /// keeps a selection), set up with the same string and width so nothing
 /// moves when it appears.
 final class TextBubbleCell: NSView {
-    /// Outside Auto Layout, as `TimelineRowView`.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-
     static let identifier = NSUserInterfaceItemIdentifier("TimelineTextBubble")
 
     weak var delegate: TimelineCellDelegate?
@@ -270,12 +264,6 @@ extension TextBubbleCell: NSPopoverDelegate {
 /// The bubble: its shape as a layer background, text in two layers (the
 /// body alone, so a text view can stand in for it).
 private final class BubbleView: NSView {
-    /// Outside Auto Layout, as `TimelineRowView`.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-
     weak var cell: TextBubbleCell?
     private(set) var bodyText: BodyTextView?
     private let chrome = BubbleChromeLayer()
@@ -526,12 +514,6 @@ nonisolated final class TextLayer: CALayer {
 
 /// The reaction pills under a bubble.
 private final class ReactionPillsView: NSView {
-    /// Outside Auto Layout, as `TimelineRowView`.
-    override var translatesAutoresizingMaskIntoConstraints: Bool {
-        get { false }
-        set {}
-    }
-
     private let drawing = PillsLayer()
 
     override init(frame: NSRect) {

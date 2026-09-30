@@ -590,14 +590,6 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
     }
 
-    /// Rows and cells stay out of Auto Layout: each one the table added
-    /// while scrolling told the window's constraint host that its subviews
-    /// needed constraints updated, which sent the whole window through
-    /// SwiftUI layout, about a third of the main thread while scrolling.
-    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
-        tableView.makeView(withIdentifier: TimelineRowView.identifier, owner: nil) as? TimelineRowView ?? TimelineRowView()
-    }
-
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
         false
     }

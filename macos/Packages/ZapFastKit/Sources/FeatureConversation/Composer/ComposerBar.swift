@@ -9,7 +9,7 @@ struct ComposerBar: View {
     @Bindable var model: AppModel
 
     @State private var fieldHeight: CGFloat = 22
-    @State private var choosingFiles = false
+    @State private var choosing: FileChoice?
     @State private var pickingSticker = false
     @State private var makerPicture: StickerPicture?
     @State private var mentions = MentionTracker()
@@ -26,11 +26,13 @@ struct ComposerBar: View {
                 EditPreview(message: message, escapes: !suggesting) {
                     withAnimation(.zf(reduceMotion)) { model.cancelEditing(in: chatID) }
                 }
+                .modifier(ComposerPanelSurface())
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if let reply = model.replyingTo[chatID] {
                 ReplyPreview(message: reply, model: model, escapes: !suggesting) {
                     withAnimation(.zf(reduceMotion)) { model.cancelReply(in: chatID) }
                 }
+                .modifier(ComposerPanelSurface())
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
@@ -38,6 +40,7 @@ struct ComposerBar: View {
                 AttachmentStrip(attachments: staged) { id in
                     withAnimation(.zf(reduceMotion)) { model.removeAttachment(id, in: chatID) }
                 }
+                .modifier(ComposerPanelSurface())
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
@@ -53,12 +56,15 @@ struct ComposerBar: View {
         }
         .padding(.horizontal, Metrics.m)
         .padding(.vertical, Metrics.s)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+        .modifier(ComposerBarSurface())
         .sheet(isPresented: pollSheet) {
             CreatePollSheet(chatID: chatID, model: model)
         }
-        .fileImporter(isPresented: $choosingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+        .fileImporter(
+            isPresented: Binding(get: { choosing != nil }, set: { if !$0 { choosing = nil } }),
+            allowedContentTypes: choosing == .media ? [.image, .movie] : [.item],
+            allowsMultipleSelection: true
+        ) { result in
             if case .success(let urls) = result { model.stage(files: urls, in: chatID) }
         }
         .sheet(item: $makerPicture) { picture in
@@ -86,110 +92,123 @@ struct ComposerBar: View {
         mentions.onPick = { model.addMention($0, in: chat) }
     }
 
+    /// As in Messages: a + button with the attach and create menu, the
+    /// field with the stickers button inside it, then Send, or the
+    /// microphone while there is nothing to send. System buttons: Liquid
+    /// Glass on macOS 26, bordered before it.
     private var editor: some View {
-            HStack(alignment: .bottom, spacing: Metrics.s) {
-                Menu {
-                    Button("Attach Files…", systemImage: "paperclip") { choosingFiles = true }
-                    Button("Create Poll…", systemImage: "chart.bar.doc.horizontal") {
-                        model.pollComposerChat = chatID
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title3)
-                        .frame(width: 28, height: 28)
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help("Attach files or create a poll")
-                .accessibilityLabel("Attach")
+        HStack(alignment: .bottom, spacing: Metrics.s) {
+            Menu {
+                Button("Photos & Videos…", systemImage: "photo.on.rectangle") { choosing = .media }
+                Button("Document…", systemImage: "doc") { choosing = .files }
+                Divider()
+                Button("Poll…", systemImage: "chart.bar.xaxis") { model.pollComposerChat = chatID }
+                    .disabled(isEditing)
+                Button("New Sticker…", systemImage: "face.dashed") { choosePicture() }
+                    .disabled(isEditing)
+            } label: {
+                Label("Attach", systemImage: "plus")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: Self.control, height: Self.control)
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .composerButton()
+            .fixedSize()
+            .help("Attach photos, videos or documents, or create a poll or sticker")
 
-                Button {
-                    pickingSticker.toggle()
-                } label: {
-                    Image(systemName: "face.smiling")
-                        .font(.title3)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.borderless)
-                .help("Stickers and GIFs")
-                .accessibilityLabel("Stickers and GIFs")
-                .disabled(isEditing)
-                .popover(isPresented: $pickingSticker, arrowEdge: .top) {
-                    StickerPicker(chatID: chatID, model: model) {
-                        pickingSticker = false
-                    } makeSticker: {
-                        pickingSticker = false
-                        choosePicture()
-                    }
-                }
+            field
 
-                ZStack(alignment: .topLeading) {
-                    if text.isEmpty {
-                        Text(hasAttachments ? "Add a caption" : "Message")
-                            .foregroundStyle(.tertiary)
-                            .padding(.top, 4)
-                            .allowsHitTesting(false)
-                    }
-                    ComposerTextView(
-                        text: textBinding,
-                        height: $fieldHeight,
-                        focusToken: "\(chatID)#\(model.composerFocusRequests)",
-                        maxHeight: 180,
-                        onSubmit: { model.sendText(in: chatID) },
-                        onEdit: { model.composerEdited(in: chatID) },
-                        onPasteFiles: { model.stage(files: $0, in: chatID) },
-                        onPasteImage: { picture in
-                            if let image = PastedImage(picture) { model.stage(image: image, in: chatID) }
-                        },
-                        onUpInEmpty: { model.editLastMessage(in: chatID) },
-                        mentions: mentions,
-                        mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)
-                    )
-                    .frame(height: fieldHeight)
-                }
-                .padding(.horizontal, Metrics.m)
-                .padding(.vertical, Metrics.xs + 1)
-                .background(.background, in: .rect(cornerRadius: 17))
-                .overlay(RoundedRectangle(cornerRadius: 17).strokeBorder(.separator))
-
-                if isEditing {
-                    Button {
-                        model.sendText(in: chatID)
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 26))
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                    .buttonStyle(.borderless)
+            if isEditing {
+                sendButton(title: "Save Changes", systemImage: "checkmark")
                     .disabled(isBlank)
-                    .help("Save changes")
-                    .accessibilityLabel("Save changes")
-                } else if isBlank, !hasAttachments {
-                    Button {
-                        model.startRecording()
-                    } label: {
-                        Image(systemName: "mic.fill")
-                            .font(.title3)
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Record a voice message")
-                    .accessibilityLabel("Record a voice message")
-                } else {
-                    Button {
-                        model.sendText(in: chatID)
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 26))
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Send")
-                    .accessibilityLabel("Send")
+            } else if isBlank, !hasAttachments {
+                Button {
+                    model.startRecording()
+                } label: {
+                    Label("Record Voice Message", systemImage: "mic")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: Self.control, height: Self.control)
+                }
+                .composerButton()
+                .help("Record a voice message")
+            } else {
+                sendButton(title: "Send", systemImage: "arrow.up")
+            }
+        }
+    }
+
+    /// The side buttons' size, matching the one-line field.
+    private static let control: CGFloat = 22
+
+    private func sendButton(title: LocalizedStringKey, systemImage: String) -> some View {
+        Button {
+            model.sendText(in: chatID)
+        } label: {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: Self.control, height: Self.control)
+        }
+        .composerButton(prominent: true)
+        .help(title)
+    }
+
+    private var field: some View {
+        HStack(alignment: .bottom, spacing: Metrics.xs) {
+            ZStack(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text(hasAttachments ? "Add a caption" : "Message")
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 4)
+                        .allowsHitTesting(false)
+                }
+                ComposerTextView(
+                    text: textBinding,
+                    height: $fieldHeight,
+                    focusToken: "\(chatID)#\(model.composerFocusRequests)",
+                    maxHeight: 180,
+                    onSubmit: { model.sendText(in: chatID) },
+                    onEdit: { model.composerEdited(in: chatID) },
+                    onPasteFiles: { model.stage(files: $0, in: chatID) },
+                    onPasteImage: { picture in
+                        if let image = PastedImage(picture) { model.stage(image: image, in: chatID) }
+                    },
+                    onUpInEmpty: { model.editLastMessage(in: chatID) },
+                    mentions: mentions,
+                    mentionNames: (model.composerMentions[chatID] ?? []).map(\.name)
+                )
+                .frame(height: fieldHeight)
+            }
+
+            Button {
+                pickingSticker.toggle()
+            } label: {
+                Label("Stickers and GIFs", systemImage: "face.smiling")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 16))
+                    .frame(width: 24, height: 26)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("Stickers and GIFs")
+            .disabled(isEditing)
+            .popover(isPresented: $pickingSticker, arrowEdge: .top) {
+                StickerPicker(chatID: chatID, model: model) {
+                    pickingSticker = false
+                } makeSticker: {
+                    pickingSticker = false
+                    choosePicture()
                 }
             }
+        }
+        .padding(.leading, Metrics.m)
+        .padding(.trailing, Metrics.xs)
+        .padding(.vertical, Metrics.xxs + 1)
+        .modifier(ComposerFieldSurface())
     }
 
     private var text: String {
@@ -223,6 +242,72 @@ struct ComposerBar: View {
     }
 }
 
+/// What the + menu is choosing files for.
+private enum FileChoice {
+    case media, files
+}
+
+/// On macOS 26 the controls float in glass over the chat; before it they
+/// sit on a bar, as in Messages.
+private struct ComposerBarSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+        } else {
+            content
+                .background(.bar)
+                .overlay(alignment: .top) { Divider() }
+        }
+    }
+}
+
+/// What sits above the field (a reply, an edit, staged files) gets its own
+/// glass on macOS 26, where there is no bar under it.
+private struct ComposerPanelSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+                .padding(.horizontal, Metrics.s)
+                .padding(.vertical, Metrics.xs)
+                .glassEffect(.regular, in: .rect(cornerRadius: Metrics.cardRadius))
+        } else {
+            content
+        }
+    }
+}
+
+private struct ComposerFieldSurface: ViewModifier {
+    private let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content
+                .background(.background, in: shape)
+                .overlay(shape.strokeBorder(.separator))
+        }
+    }
+}
+
+private extension View {
+    /// A round system button beside the field; `prominent` for Send.
+    @ViewBuilder
+    func composerButton(prominent: Bool = false) -> some View {
+        if #available(macOS 26, *) {
+            if prominent {
+                buttonStyle(.glassProminent).buttonBorderShape(.circle).controlSize(.large)
+            } else {
+                buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
+            }
+        } else if prominent {
+            buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large)
+        } else {
+            buttonStyle(.bordered).buttonBorderShape(.circle).controlSize(.large)
+        }
+    }
+}
+
 /// While recording: discard, a red dot with the elapsed time, the live
 /// input level, and send.
 private struct RecordingBar: View {
@@ -233,15 +318,15 @@ private struct RecordingBar: View {
     var body: some View {
         HStack(spacing: Metrics.m) {
             Button(action: cancel) {
-                Image(systemName: "trash")
-                    .font(.title3)
-                    .frame(width: 28, height: 28)
+                Label("Discard Recording", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: 22, height: 22)
             }
-            .buttonStyle(.borderless)
+            .composerButton()
             .foregroundStyle(.red)
             .keyboardShortcut(.cancelAction)
             .help("Discard recording")
-            .accessibilityLabel("Discard recording")
 
             Circle().fill(.red).frame(width: 10, height: 10)
                 .symbolEffectPulseIfAvailable()
@@ -258,16 +343,18 @@ private struct RecordingBar: View {
                 .frame(maxWidth: .infinity)
 
             Button(action: send) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 26))
-                    .symbolRenderingMode(.hierarchical)
+                Label("Send Voice Message", systemImage: "arrow.up")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 22, height: 22)
             }
-            .buttonStyle(.borderless)
+            .composerButton(prominent: true)
             .keyboardShortcut(.defaultAction)
             .help("Send voice message")
-            .accessibilityLabel("Send voice message")
         }
+        .padding(.leading, Metrics.xs)
         .frame(minHeight: 34)
+        .modifier(ComposerPanelSurface())
     }
 }
 

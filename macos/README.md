@@ -77,6 +77,11 @@ drain, and a one-second timeout backs it up.
 | ⌘I | Chat info: picture, number, members, mute / pin / archive |
 | ⌃⌘L | Lock ZapFast (when an app lock password is set) |
 
+The composer is laid out as in Messages, with system buttons (Liquid
+Glass on macOS 26): + opens a menu for photos and videos, documents, a
+poll or a new sticker; the stickers button sits in the field; Send
+replaces the microphone once there is something to send.
+
 Files picked with +, dropped on the chat, or pasted (⌘V, including a
 copied picture or screenshot) wait above the field with a Quick Look
 thumbnail; the text typed goes with them as the caption, and the reply

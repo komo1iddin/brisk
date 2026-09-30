@@ -71,6 +71,17 @@ public final class Preferences {
         didSet { defaults.set(try? JSONEncoder().encode(reactionEmoji), forKey: Key.reactionEmoji) }
     }
 
+    /// ZapFast's icon in the menu bar, with its menu (upstream's tray).
+    public var menuBarIcon: Bool {
+        didSet { defaults.set(menuBarIcon, forKey: Key.menuBarIcon) }
+    }
+
+    /// Closing the window leaves ZapFast linked in the background (upstream's
+    /// `keep_running_in_background`); off, it quits.
+    public var keepRunning: Bool {
+        didSet { defaults.set(keepRunning, forKey: Key.keepRunning) }
+    }
+
     /// Where new downloads go (upstream's `download_folder`); nil keeps
     /// them in ZapFast's media cache.
     public internal(set) var downloadFolder: String? {
@@ -147,6 +158,8 @@ public final class Preferences {
             Key.groupSounds: true,
             Key.voiceAvatars: true,
             Key.enterSends: true,
+            Key.menuBarIcon: true,
+            Key.keepRunning: true,
             Key.sendTyping: true,
             Key.unlockWithTouchID: true,
         ])
@@ -165,6 +178,8 @@ public final class Preferences {
         enterSends = defaults.bool(forKey: Key.enterSends)
         lastChat = defaults.string(forKey: Key.lastChat)
         downloadFolder = defaults.string(forKey: Key.downloadFolder)
+        menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
+        keepRunning = defaults.bool(forKey: Key.keepRunning)
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
@@ -192,6 +207,8 @@ public final class Preferences {
         static let enterSends = "enterSends"
         static let lastChat = "lastChat"
         static let downloadFolder = "downloadFolder"
+        static let menuBarIcon = "menuBarIcon"
+        static let keepRunning = "keepRunning"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
         static let sendTyping = "sendTyping"

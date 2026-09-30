@@ -216,6 +216,12 @@ a proxy for WhatsApp, media and GIF search (`http://`, `socks5://` or
 connection and reconnecting when changed; empty follows `ALL_PROXY` or
 `HTTPS_PROXY`.
 
+Settings › Advanced › System opens ZapFast at login (a login item, the
+system's own record, as upstream keeps none of its own), shows its icon
+in the menu bar with upstream's tray menu (open, lock, quit; never a
+chat's name), and keeps it linked in the background when the window
+closes, or quits instead.
+
 The chat open when ZapFast quits opens again at the next start, as
 upstream's `last_chat` does; one removed or locked since is forgotten.
 

@@ -41,4 +41,14 @@ struct FilesAndNetworkTests {
         #expect(model.setProxy("") == nil)
         #expect(backend.sent.last == .setProxy(proxy: ""))
     }
+
+    @Test func zapFastStaysInTheMenuBarAndRunningByDefault() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let preferences = Preferences(defaults: defaults)
+        #expect(preferences.menuBarIcon && preferences.keepRunning)
+        preferences.keepRunning = false
+        preferences.menuBarIcon = false
+        let again = Preferences(defaults: defaults)
+        #expect(!again.keepRunning && !again.menuBarIcon)
+    }
 }

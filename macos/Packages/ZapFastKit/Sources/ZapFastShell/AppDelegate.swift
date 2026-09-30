@@ -50,8 +50,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         model.setActive(false)
     }
 
+    /// Closing the window keeps ZapFast linked unless that is turned off.
     public func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+        !model.preferences.keepRunning
     }
 
     public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {

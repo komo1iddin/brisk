@@ -11,6 +11,10 @@ public struct ZapFastScenes: Scene {
         self.model = model
     }
 
+    private var menuBarIcon: Binding<Bool> {
+        Binding(get: { model.preferences.menuBarIcon }, set: { model.preferences.menuBarIcon = $0 })
+    }
+
     public var body: some Scene {
         // One linked session, so one main window.
         Window("ZapFast", id: "main") {
@@ -26,5 +30,35 @@ public struct ZapFastScenes: Scene {
         Settings {
             SettingsView(model: model)
         }
+
+        MenuBarExtra(isInserted: menuBarIcon) {
+            MenuBarMenu(model: model)
+        } label: {
+            // Never a chat's name or a count, so nothing shows while locked.
+            Image(systemName: model.chats.unreadChatCount > 0 && !model.appLock.isLocked
+                ? "message.badge.filled.fill" : "message")
+                .accessibilityLabel("ZapFast")
+        }
+    }
+}
+
+/// The menu bar icon's menu, as upstream's tray menu: show the window,
+/// lock, quit.
+private struct MenuBarMenu: View {
+    let model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Open ZapFast") {
+            NSApp.activate()
+            openWindow(id: "main")
+        }
+        if model.appLock.isEnabled {
+            Button("Lock ZapFast") { model.appLock.lock() }
+                .disabled(model.appLock.isLocked)
+        }
+        Divider()
+        Button("Quit ZapFast") { NSApp.terminate(nil) }
+            .keyboardShortcut("q")
     }
 }

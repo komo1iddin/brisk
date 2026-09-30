@@ -254,10 +254,42 @@ private struct AdvancedSettings: View {
     @State private var proxy = ""
     @State private var proxyProblem: String?
     @FocusState private var editingProxy: Bool
+    @State private var loginItem = LoginItem.state
+    @State private var loginItemProblem: String?
 
     var body: some View {
         @Bindable var preferences = model.preferences
         Form {
+            Section {
+                Toggle("Open at login", isOn: Binding(
+                    get: { loginItem != .off },
+                    set: { on in
+                        loginItemProblem = LoginItem.set(on)
+                        loginItem = LoginItem.state
+                    }
+                ))
+                Toggle("Show in menu bar", isOn: $preferences.menuBarIcon)
+                Toggle("Keep running when the window closes", isOn: $preferences.keepRunning)
+            } header: {
+                Text("System")
+            } footer: {
+                Group {
+                    if let loginItemProblem {
+                        Text(loginItemProblem).foregroundStyle(.red)
+                    } else if loginItem == .needsApproval {
+                        HStack(spacing: Metrics.xs) {
+                            Text("Allow ZapFast under Login Items to open it at login.")
+                            Button("Open Login Items") { LoginItem.openSystemSettings() }
+                                .buttonStyle(.link)
+                        }
+                    } else {
+                        Text("Running in the background keeps ZapFast linked for notifications. Quit from the menu bar icon or with ⌘Q.")
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .onAppear { loginItem = LoginItem.state }
             Section {
                 TextField("Proxy", text: $proxy, prompt: Text(verbatim: "socks5h://127.0.0.1:9050"))
                     .focused($editingProxy)

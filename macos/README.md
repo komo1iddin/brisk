@@ -343,13 +343,18 @@ make run      # build and open
 make test     # ZapFastKit unit tests
 ```
 
+Before merging, `make check` recompiles ZapFastKit, fails on any warning
+in its sources (some Swift 6 isolation errors are only warnings, and crash
+at run time), and runs the tests.
+
 Or `make bridge project` once, then work in `ZapFast.xcodeproj`. The scheme's
 pre-action rebuilds the bridge before every build (log in
 `Build/bridge-build.log`).
 
 The app keeps its data in `~/Library/Application Support/<bundle id>` and
 `~/Library/Caches/<bundle id>`, separate from upstream ZapFast.
-Set `ZAPFAST_VERBOSE=1` for debug logging.
+Set `ZAPFAST_VERBOSE=1` for debug logging. Each launch logs how long its
+steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`).
 
 ## Timeline benchmark
 
@@ -364,8 +369,13 @@ benchmark, so the numbers compare.
 ```bash
 cd macos
 make release
-ZAPFAST_BENCHMARK_COUNT=10000 Build/DerivedData/Build/Products/Release/ZapFast.app/Contents/MacOS/ZapFast --benchmark
+open -n -a Build/DerivedData/Build/Products/Release/ZapFast.app --env ZAPFAST_BENCHMARK_COUNT=10000 --args --benchmark
 ```
+
+Launched through `open`, the app is active as a person uses it; run old and
+new builds alternately to compare them. [PERFORMANCE.md](PERFORMANCE.md)
+keeps the results, how they were taken, and the rules that came out of
+them.
 
 `ZAPFAST_BENCHMARK_COUNT` sets the fully loaded chat's size (default 2,000).
 `ZAPFAST_SWIFTUI_SIDEBAR=1` shows the chat list as the earlier SwiftUI list

@@ -39,6 +39,12 @@ protocol TimelineCellDelegate: AnyObject {
 /// keeps a selection), set up with the same string and width so nothing
 /// moves when it appears.
 final class TextBubbleCell: NSView {
+    /// Outside Auto Layout, as `TimelineRowView`.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+
     static let identifier = NSUserInterfaceItemIdentifier("TimelineTextBubble")
 
     weak var delegate: TimelineCellDelegate?
@@ -62,11 +68,6 @@ final class TextBubbleCell: NSView {
         addSubview(bubble)
         addSubview(pills)
         bubble.cell = self
-        // One area for the row's life, kept to the visible rect by AppKit,
-        // so scrolling moves no tracking areas.
-        addTrackingArea(NSTrackingArea(
-            rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self
-        ))
     }
 
     @available(*, unavailable)
@@ -135,21 +136,31 @@ final class TextBubbleCell: NSView {
         placeHoverActions()
     }
 
-    // MARK: Reply and React
+    // MARK: Pointer
 
-    override func mouseEntered(with event: NSEvent) {
-        hovering = true
-        hoverTask?.cancel()
-        hoverTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(Self.restDelay))
-            guard let self, !Task.isCancelled, self.hovering else { return }
-            self.showHoverActions()
+    /// The pointer is over this row, at `point` (the table tracks it: cells
+    /// have no tracking areas or cursor rects of their own, which AppKit
+    /// recomputed for every cell on every frame of a scroll).
+    func pointerMoved(to point: NSPoint) {
+        if !hovering {
+            hovering = true
+            hoverTask?.cancel()
+            hoverTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(Self.restDelay))
+                guard let self, !Task.isCancelled, self.hovering else { return }
+                self.showHoverActions()
+            }
         }
+        let inBubble = bubble.convert(point, from: self)
+        bubble.pointerMoved(to: inBubble)
     }
 
-    override func mouseExited(with event: NSEvent) {
+    /// The pointer left the row, or the row went off screen under it.
+    func pointerLeft() {
+        guard hovering else { return }
         hovering = false
         hoverTask?.cancel()
+        bubble.pointerLeft()
         guard let id = messageID, delegate?.isPickingReaction(forMessage: id) != true else { return }
         hideHoverActions(animated: true)
     }
@@ -259,13 +270,19 @@ extension TextBubbleCell: NSPopoverDelegate {
 /// The bubble: its shape as a layer background, text in two layers (the
 /// body alone, so a text view can stand in for it).
 private final class BubbleView: NSView {
+    /// Outside Auto Layout, as `TimelineRowView`.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+
     weak var cell: TextBubbleCell?
     private(set) var bodyText: BodyTextView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
     private var bubbleLayout: TextBubbleLayout?
-    private var bodyTracking: NSTrackingArea?
     private var bodyHover: Task<Void, Never>?
+    private var overBody = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -298,16 +315,8 @@ private final class BubbleView: NSView {
         CATransaction.commit()
         chrome.setNeedsDisplay()
         body.setNeedsDisplay()
-        updateTrackingAreas()
-        window?.invalidateCursorRects(for: self)
-        removeAllToolTips()
-        if let quote = layout.quote {
-            addToolTip(quote.rect, owner: String(localized: "Show the original message") as NSString, userData: nil)
-        }
-        if let name = layout.name {
-            let title = name.string.string
-            addToolTip(name.rect, owner: String(localized: "Show \(title)'s info") as NSString, userData: nil)
-        }
+        overBody = false
+        bodyHover?.cancel()
     }
 
     func refreshColors() {
@@ -367,38 +376,34 @@ private final class BubbleView: NSView {
 
     // MARK: Pointer
 
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let bodyTracking { removeTrackingArea(bodyTracking) }
-        bodyTracking = nil
-        guard let layout = bubbleLayout else { return }
-        let area = NSTrackingArea(rect: layout.body.rect, options: [.mouseEnteredAndExited, .activeInKeyWindow], owner: self)
-        addTrackingArea(area)
-        bodyTracking = area
-    }
-
     /// The text view is made once the pointer rests on the text: made for
     /// every bubble the pointer crossed while scrolling, text views were
-    /// most of the frame in Telefast's traces.
-    override func mouseEntered(with event: NSEvent) {
+    /// most of the frame in Telefast's traces. The quote and the sender's
+    /// name show the pointing hand.
+    func pointerMoved(to point: NSPoint) {
+        guard let layout = bubbleLayout else { return }
+        let clickable = layout.quote?.rect.contains(point) == true || layout.name?.rect.contains(point) == true
+        if bodyText == nil { (clickable ? NSCursor.pointingHand : NSCursor.arrow).set() }
+        let body = layout.body.rect.contains(point)
+        guard body != overBody else { return }
+        overBody = body
         bodyHover?.cancel()
-        bodyHover = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(TextBubbleCell.restDelay))
-            guard let self, !Task.isCancelled, let cell = self.cell else { return }
-            cell.delegate?.bodyHovered(in: cell)
+        if body {
+            bodyHover = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(TextBubbleCell.restDelay))
+                guard let self, !Task.isCancelled, let cell = self.cell else { return }
+                cell.delegate?.bodyHovered(in: cell)
+            }
+        } else if let view = bodyText, view.selectedRange().length == 0 {
+            hideBodyText()
         }
     }
 
-    override func mouseExited(with event: NSEvent) {
+    func pointerLeft() {
+        overBody = false
         bodyHover?.cancel()
-        guard let view = bodyText, view.selectedRange().length == 0 else { return }
-        hideBodyText()
-    }
-
-    override func resetCursorRects() {
-        guard let layout = bubbleLayout else { return }
-        if let quote = layout.quote { addCursorRect(quote.rect, cursor: .pointingHand) }
-        if let name = layout.name { addCursorRect(name.rect, cursor: .pointingHand) }
+        NSCursor.arrow.set()
+        if let view = bodyText, view.selectedRange().length == 0 { hideBodyText() }
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -521,6 +526,12 @@ nonisolated final class TextLayer: CALayer {
 
 /// The reaction pills under a bubble.
 private final class ReactionPillsView: NSView {
+    /// Outside Auto Layout, as `TimelineRowView`.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+
     private let drawing = PillsLayer()
 
     override init(frame: NSRect) {

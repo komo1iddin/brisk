@@ -218,8 +218,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             self.isGroup = isGroup
             self.revision = nil
             items = []
-            textLayouts = [:]
-            hostedHeights = [:]
+            // Layouts and heights stay, keyed by message: going back to a
+            // chat read a moment ago measures nothing again. Only their
+            // number is bounded.
+            if textLayouts.count > 8_000 { textLayouts = [:] }
+            if hostedHeights.count > 3_000 { hostedHeights = [:] }
             generation += 1
             followsBottom = true
             placesUnread = true
@@ -585,6 +588,14 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             cell.show(rowView(row))
             return cell
         }
+    }
+
+    /// Rows and cells stay out of Auto Layout: each one the table added
+    /// while scrolling told the window's constraint host that its subviews
+    /// needed constraints updated, which sent the whole window through
+    /// SwiftUI layout, about a third of the main thread while scrolling.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        tableView.makeView(withIdentifier: TimelineRowView.identifier, owner: nil) as? TimelineRowView ?? TimelineRowView()
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {

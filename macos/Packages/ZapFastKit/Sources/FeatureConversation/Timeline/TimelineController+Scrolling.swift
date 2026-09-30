@@ -142,6 +142,7 @@ extension TimelineController {
     }
 
     @objc func scrolled(_ notification: Notification) {
+        tableView.scrolled()
         followsBottom = isAtBottom
         report()
         guard clip.bounds.minY + clip.contentInsets.top < prefetchDistance, !items.isEmpty, !reachTopScheduled else {

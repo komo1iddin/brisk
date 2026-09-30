@@ -62,6 +62,13 @@ struct MessageTimeline: NSViewRepresentable {
         context.coordinator.makeScrollView()
     }
 
+    /// Whatever it is offered: without an answer SwiftUI asks the scroll
+    /// view's intrinsic size, and every row the table adds while scrolling
+    /// sent the whole window through SwiftUI layout again.
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSScrollView, context: Context) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 400, height: 400))
+    }
+
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.update(
             chatID: chatID,

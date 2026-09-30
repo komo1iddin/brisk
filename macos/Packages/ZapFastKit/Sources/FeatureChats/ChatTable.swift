@@ -53,6 +53,12 @@ struct ChatTable: NSViewRepresentable {
         context.coordinator.makeScrollView()
     }
 
+    /// Whatever it is offered, so rows the table adds while scrolling do
+    /// not send the window through SwiftUI layout again.
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSScrollView, context: Context) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 300, height: 400))
+    }
+
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         let binding = $selection
         context.coordinator.setTopInset(topInset)

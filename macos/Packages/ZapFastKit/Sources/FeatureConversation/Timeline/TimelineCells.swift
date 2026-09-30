@@ -9,6 +9,12 @@ import ZapFastDesign
 /// `DaySeparator` and `UnreadSeparator` drawn by Core Animation: a caption
 /// in a capsule of the theme's chip colour, centred.
 final class ChipCell: NSView {
+    /// Outside Auto Layout, as `TimelineRowView`.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+
     static let identifier = NSUserInterfaceItemIdentifier("TimelineChip")
 
     private let chip = CALayer()
@@ -119,7 +125,13 @@ final class ChipCell: NSView {
 /// A table cell showing one SwiftUI row: photos, voice, polls, cards and
 /// everything else that is not plain text.
 final class HostingCell: NSTableCellView {
-    private let host = NSHostingView(rootView: AnyView(EmptyView()))
+    /// Outside Auto Layout, as `TimelineRowView`.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+
+    private let host = CellHostingView(rootView: AnyView(EmptyView()))
 
     /// One reuse identifier per kind of content.
     static func identifier(for row: TimelineRow) -> NSUserInterfaceItemIdentifier {
@@ -160,6 +172,15 @@ final class HostingCell: NSTableCellView {
     }
 }
 
+/// A SwiftUI row's hosting view, outside Auto Layout: sized by its mask,
+/// so a cell's new frame changes no constraint the window's host hears of.
+final class CellHostingView: NSHostingView<AnyView> {
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+}
+
 /// Measures SwiftUI rows off-screen with one reusable hosting controller.
 @MainActor
 final class RowMeasurer {
@@ -175,7 +196,80 @@ final class RowMeasurer {
 
 /// The message table. Text laid over a bubble must take the first click,
 /// which a table otherwise keeps for row selection.
+/// A row of the timeline, outside Auto Layout (see `TimelineController`).
+final class TimelineRowView: NSTableRowView {
+    static let identifier = NSUserInterfaceItemIdentifier("TimelineRow")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        identifier = Self.identifier
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// The table turns this back on as it adds the row; the answer stays no.
+    override var translatesAutoresizingMaskIntoConstraints: Bool {
+        get { false }
+        set {}
+    }
+}
+
 final class TimelineTableView: NSTableView {
+    /// The drawn row under the pointer. One tracking area for the table
+    /// stands in for one per cell: AppKit moved every cell's areas and
+    /// cursor rects on each frame of a scroll, a fifth of the main thread.
+    private weak var hovered: TextBubbleCell?
+    private var tracking: NSTrackingArea?
+    private var settle: Task<Void, Never>?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        guard tracking == nil else { return }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self
+        )
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        pointer(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        pointer(at: nil)
+    }
+
+    /// Rows move under a still pointer while scrolling; which one it is on
+    /// is asked again once the scroll rests.
+    func scrolled() {
+        hovered?.pointerLeft()
+        hovered = nil
+        settle?.cancel()
+        settle = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(TextBubbleCell.restDelay))
+            guard let self, !Task.isCancelled, let window = self.window, window.isKeyWindow else { return }
+            let point = self.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            self.pointer(at: self.visibleRect.contains(point) ? point : nil)
+        }
+    }
+
+    private func pointer(at point: NSPoint?) {
+        var cell: TextBubbleCell?
+        if let point {
+            let row = row(at: point)
+            if row >= 0 { cell = view(atColumn: 0, row: row, makeIfNecessary: false) as? TextBubbleCell }
+        }
+        if cell !== hovered {
+            hovered?.pointerLeft()
+            hovered = cell
+        }
+        if let cell, let point { cell.pointerMoved(to: cell.convert(point, from: self)) }
+    }
+
     override func validateProposedFirstResponder(_ responder: NSResponder, for event: NSEvent?) -> Bool {
         true
     }

@@ -71,6 +71,19 @@ public final class Preferences {
         didSet { defaults.set(try? JSONEncoder().encode(reactionEmoji), forKey: Key.reactionEmoji) }
     }
 
+    /// Where new downloads go (upstream's `download_folder`); nil keeps
+    /// them in ZapFast's media cache.
+    public internal(set) var downloadFolder: String? {
+        didSet { defaults.set(downloadFolder, forKey: Key.downloadFolder) }
+    }
+
+    /// Proxy for WhatsApp, media and GIF search (upstream's `proxy`), such
+    /// as `socks5h://127.0.0.1:9050`; empty follows `ALL_PROXY` or
+    /// `HTTPS_PROXY`.
+    public internal(set) var proxy: String {
+        didSet { defaults.set(proxy, forKey: Key.proxy) }
+    }
+
     /// The chat open when ZapFast last ran, opened again at start
     /// (upstream's `last_chat`).
     public internal(set) var lastChat: String? {
@@ -151,6 +164,8 @@ public final class Preferences {
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
         lastChat = defaults.string(forKey: Key.lastChat)
+        downloadFolder = defaults.string(forKey: Key.downloadFolder)
+        proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
         sendTyping = defaults.bool(forKey: Key.sendTyping)
@@ -176,6 +191,8 @@ public final class Preferences {
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
         static let lastChat = "lastChat"
+        static let downloadFolder = "downloadFolder"
+        static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
         static let sendTyping = "sendTyping"
         static let appLockVerifier = "appLockVerifier"

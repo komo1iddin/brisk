@@ -29,7 +29,7 @@ public struct SettingsView: View {
                         AccountSettings(model: model)
                     }
                     Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
-                        ChatSettings(preferences: model.preferences)
+                        ChatSettings(preferences: model.preferences, model: model)
                     }
                     Tab("Appearance", systemImage: "paintpalette") {
                         ChatThemeEditor(chat: nil, model: model)
@@ -141,6 +141,8 @@ private struct AccountSettings: View {
 
 private struct ChatSettings: View {
     @Bindable var preferences: Preferences
+    let model: AppModel
+    @State private var choosingFolder = false
 
     var body: some View {
         Form {
@@ -150,6 +152,46 @@ private struct ChatSettings: View {
                 Text("Photos, videos, voice messages and documents download when they scroll into view, up to 64 MB each. Stickers always do.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            Section {
+                LabeledContent("Download to") {
+                    HStack(spacing: Metrics.s) {
+                        let folder = model.downloadFolderInUse
+                        Label {
+                            Text(preferences.downloadFolder == nil
+                                ? String(localized: "ZapFast's cache")
+                                : FileManager.default.displayName(atPath: folder.path(percentEncoded: false)))
+                        } icon: {
+                            Image(nsImage: NSWorkspace.shared.icon(for: .folder))
+                                .resizable()
+                                .frame(width: 16, height: 16)
+                        }
+                        .help(folder.path(percentEncoded: false))
+                        Menu {
+                            Button("Choose Folder…") { choosingFolder = true }
+                            Button("Show in Finder") {
+                                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                                NSWorkspace.shared.activateFileViewerSelecting([folder])
+                            }
+                            if preferences.downloadFolder != nil {
+                                Divider()
+                                Button("Use ZapFast's Cache") { model.setDownloadFolder(nil) }
+                            }
+                        } label: {
+                            Text("Change")
+                        }
+                        .fixedSize()
+                    }
+                }
+            } header: {
+                Text("Files")
+            } footer: {
+                Text("New downloads go here. Files already downloaded stay where they are. Save As… in a message's menu saves a copy anywhere.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
+                if case .success(let folder) = result { model.setDownloadFolder(folder) }
             }
             Section {
                 Toggle("Return sends", isOn: $preferences.enterSends)
@@ -209,9 +251,32 @@ private struct ChatSettings: View {
 private struct AdvancedSettings: View {
     let model: AppModel
 
+    @State private var proxy = ""
+    @State private var proxyProblem: String?
+    @FocusState private var editingProxy: Bool
+
     var body: some View {
         @Bindable var preferences = model.preferences
         Form {
+            Section {
+                TextField("Proxy", text: $proxy, prompt: Text(verbatim: "socks5h://127.0.0.1:9050"))
+                    .focused($editingProxy)
+                    .onSubmit(applyProxy)
+                    .onChange(of: editingProxy) { if !editingProxy { applyProxy() } }
+            } footer: {
+                Group {
+                    if let proxyProblem {
+                        Text(proxyProblem).foregroundStyle(.red)
+                    } else if preferences.proxy.isEmpty, let environment = proxyInUse() {
+                        Text("Using \(environment) from the environment.")
+                    } else {
+                        Text("For WhatsApp, media, and GIF search: http://, socks5:// or socks5h://, with user:password@ if needed. Changing it reconnects.")
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .onAppear { proxy = preferences.proxy }
             Section {
                 TextField("GIPHY API key", text: $preferences.giphyKey, prompt: Text("Built-in key, if any"))
             } footer: {
@@ -234,6 +299,10 @@ private struct AdvancedSettings: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func applyProxy() {
+        proxyProblem = model.setProxy(proxy)
     }
 }
 

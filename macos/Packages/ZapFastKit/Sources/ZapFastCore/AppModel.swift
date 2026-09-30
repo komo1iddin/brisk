@@ -271,11 +271,14 @@ public final class AppModel {
         self.verbose = verbose
         appLock.startIdleTimer()
         Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
+        // The saved proxy is in use from the first connection on.
+        if backend is LiveBackend { proxyConfigure(setting: preferences.proxy) }
         do {
             try backend.start(paths: paths, verbose: verbose) { [weak self] events in
                 self?.apply(events)
             }
             session.link = .starting
+            if let folder = preferences.downloadFolder { backend.send(.setDownloadFolder(path: folder)) }
         } catch BridgeError.AnotherInstance {
             session.link = .failed(message: String(localized: "ZapFast is already running."))
         } catch BridgeError.Storage(let message) {
@@ -1264,6 +1267,34 @@ public final class AppModel {
     /// Completions for a `:shortcode` typed in the composer.
     public func emojiSuggestions(for query: String) -> [EmojiSuggestionInfo] {
         ZapFastBridge.emojiSuggestions(query: query, recent: preferences.recentEmoji)
+    }
+
+    // MARK: Intents: files and network
+
+    /// Where downloads go now: the chosen folder, or the media cache.
+    public var downloadFolderInUse: URL {
+        preferences.downloadFolder.map { URL(filePath: $0) } ?? paths.caches.appending(path: "media")
+    }
+
+    /// New downloads go to `folder`, or back to the media cache with nil.
+    /// Files already downloaded stay where they are.
+    public func setDownloadFolder(_ folder: URL?) {
+        let path = folder?.path(percentEncoded: false)
+        guard path != preferences.downloadFolder else { return }
+        preferences.downloadFolder = path
+        backend.send(.setDownloadFolder(path: path))
+    }
+
+    /// Uses a new proxy and reconnects through it, as upstream's SetProxy;
+    /// returns why the address cannot be used instead, if it cannot.
+    @discardableResult
+    public func setProxy(_ text: String) -> String? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value != preferences.proxy else { return nil }
+        if let problem = proxyProblem(value: value) { return problem }
+        preferences.proxy = value
+        backend.send(.setProxy(proxy: value))
+        return nil
     }
 
     /// Opens the chat that was open when ZapFast last ran, once, when the

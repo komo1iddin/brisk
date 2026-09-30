@@ -34,6 +34,11 @@ pub enum BridgeCommand {
     SetProxy {
         proxy: String,
     },
+    /// Where new downloads go; `None` keeps them in the media cache.
+    /// Files already downloaded stay where they are.
+    SetDownloadFolder {
+        path: Option<String>,
+    },
 
     // Reading
     /// Archived messages before `before`, or the newest page.
@@ -394,6 +399,9 @@ impl BridgeCommand {
             Self::StartOverArchive => Command::StartOverArchive,
             Self::SetOnline { online } => Command::SetOnline(online),
             Self::SetProxy { proxy } => Command::SetProxy(proxy),
+            Self::SetDownloadFolder { path } => {
+                Command::SetDownloadFolder(path.map(std::path::PathBuf::from))
+            }
 
             Self::LoadChat { chat, before } => Command::LoadChat {
                 chat,

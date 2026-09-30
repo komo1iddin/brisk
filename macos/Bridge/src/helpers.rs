@@ -315,6 +315,31 @@ pub fn quick_reactions(preferred: Vec<String>, mine: Option<String>) -> Vec<Stri
     list
 }
 
+/// Why a proxy address cannot be used (upstream's `Proxy::parse`
+/// messages), or `None` when it can, or is empty.
+#[uniffi::export]
+pub fn proxy_problem(value: String) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    zapfast::proxy::Proxy::parse(value).err()
+}
+
+/// Uses the saved proxy setting from the start, before the backend first
+/// connects, as upstream's app does at launch (`proxy::configure`).
+#[uniffi::export]
+pub fn proxy_configure(setting: String) {
+    zapfast::proxy::configure(setting.trim());
+}
+
+/// The proxy the WhatsApp connection uses now, password hidden: the
+/// setting, else `ALL_PROXY` / `HTTPS_PROXY`.
+#[uniffi::export]
+pub fn proxy_in_use() -> Option<String> {
+    zapfast::proxy::for_whatsapp().map(|proxy| proxy.redacted())
+}
+
 #[uniffi::export]
 pub fn app_lock_min_password_chars() -> u32 {
     count(zapfast::app_lock::MIN_PASSWORD_CHARS)
@@ -507,6 +532,15 @@ mod tests {
             Some("🎉".into()),
         );
         assert_eq!(preferred, ["🔥", "👍", "❤️", "😂", "😮", "😢", "🎉"]);
+    }
+
+    #[test]
+    fn proxy_addresses_are_checked_as_upstreams() {
+        assert_eq!(proxy_problem("  ".into()), None);
+        assert_eq!(proxy_problem("socks5h://127.0.0.1:9050".into()), None);
+        assert_eq!(proxy_problem("127.0.0.1:8080".into()), None);
+        assert!(proxy_problem("ftp://127.0.0.1:21".into()).is_some());
+        assert!(proxy_problem("http://127.0.0.1:8080/path".into()).is_some());
     }
 
     #[test]

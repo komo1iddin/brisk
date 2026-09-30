@@ -208,6 +208,14 @@ the first of them, as upstream's does. While older messages are being
 read, a button at the bottom returns to the newest one and counts the
 messages that arrived below.
 
+Settings › Chats › Files sends new downloads to a folder of your
+choosing (upstream's `download_folder`) instead of ZapFast's cache;
+files already downloaded stay where they are. Settings › Advanced takes
+a proxy for WhatsApp, media and GIF search (`http://`, `socks5://` or
+`socks5h://`, checked as upstream checks it), used from the first
+connection and reconnecting when changed; empty follows `ALL_PROXY` or
+`HTTPS_PROXY`.
+
 The chat open when ZapFast quits opens again at the next start, as
 upstream's `last_chat` does; one removed or locked since is forgotten.
 

@@ -31,10 +31,12 @@ public enum WallpaperStyle: Codable, Hashable, Sendable {
 /// How a chat looks here: our bubbles' colour and the wallpaper. Kept on
 /// this Mac only, as WhatsApp keeps chat themes on each device.
 public struct ChatAppearance: Codable, Hashable, Sendable {
-    public var bubble: ThemeColor
+    /// Our bubbles' colour; nil follows the accent colour chosen in System
+    /// Settings, as the Mac's own apps do.
+    public var bubble: ThemeColor?
     public var wallpaper: WallpaperStyle
 
-    public init(bubble: ThemeColor, wallpaper: WallpaperStyle) {
+    public init(bubble: ThemeColor?, wallpaper: WallpaperStyle) {
         self.bubble = bubble
         self.wallpaper = wallpaper
     }
@@ -96,13 +98,18 @@ public enum ThemePresets {
         ThemeColor(light: "#3a3a3c", dark: "#48484a"),
     ]
 
-    /// The look WhatsApp opens with: its doodles on its beige, green bubbles.
-    public static let classic = ChatAppearance(
+    /// The Mac's own look, and the default: the system accent colour on the
+    /// window's background, as in Messages.
+    public static let system = ChatAppearance(bubble: nil, wallpaper: .none)
+
+    /// WhatsApp's look: its doodles on its beige, green bubbles.
+    public static let whatsApp = ChatAppearance(
         bubble: whatsAppGreen, wallpaper: .color(whatsAppWallpaper, doodles: true)
     )
 
     public static let all: [ThemePreset] = [
-        ThemePreset(id: "classic", name: String(localized: "Classic"), appearance: classic),
+        ThemePreset(id: "system", name: String(localized: "System"), appearance: system),
+        ThemePreset(id: "whatsapp", name: String(localized: "WhatsApp"), appearance: whatsApp),
         ThemePreset(id: "doodle-blue", name: String(localized: "Doodles"), appearance: ChatAppearance(
             bubble: bubbles[1], wallpaper: .color(ThemeColor(light: "#ffffff", dark: "#111b21"), doodles: true)
         )),

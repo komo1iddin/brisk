@@ -14,11 +14,12 @@ struct ThemeTests {
 
     @Test func chatsFollowTheDefaultUntilTheyHaveTheirOwn() {
         let (themes, _) = store()
-        #expect(themes.appearance(for: nil) == ThemePresets.classic, "WhatsApp's look to start with")
+        #expect(themes.appearance(for: nil) == ThemePresets.system, "the Mac's own look to start with")
+        #expect(ThemePresets.system.bubble == nil, "the system accent colour")
         let iris = ThemePresets.all.first { $0.id == "iris" }!.appearance
         themes.set(iris, for: "a@s.whatsapp.net")
         #expect(themes.appearance(for: "a@s.whatsapp.net") == iris)
-        #expect(themes.appearance(for: "b@s.whatsapp.net") == ThemePresets.classic)
+        #expect(themes.appearance(for: "b@s.whatsapp.net") == ThemePresets.system)
 
         let plain = ThemePresets.all.first { $0.id == "plain-blue" }!.appearance
         themes.set(plain, for: nil)

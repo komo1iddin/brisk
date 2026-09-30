@@ -93,16 +93,17 @@ message (only visible indices leave the interface; the worker resolves
 them from the archived message), links open, and copy-code buttons
 copy. Calls, forms and payments point to the phone, as upstream's do.
 
-Chats look like WhatsApp's by default: its doodles on its beige (dark
-blue-grey in dark appearance) and green bubbles, with the app tinted in
-WhatsApp's green instead of the system accent. Settings › Appearance
-picks another theme (bubble colour and wallpaper together), a bubble
-colour of any shade, and a wallpaper: none, the doodles or a plain
-colour (WhatsApp's colours for light and dark), a soft gradient, or a
-photo of yours, dimmed in dark appearance. A chat's menu gives it its
-own theme (Chat Theme…), and Use Default Theme returns it to the
-default. Themes stay on this Mac. The doodles are upstream's
-`assets/wallpaper.svg`, drawn from Lucide icons (ISC).
+Chats look like the Mac's own apps by default: bubbles in the accent
+colour chosen in System Settings on the window's background, as in
+Messages. Settings › Appearance, laid out like System Settings, picks
+another theme (bubble colour and wallpaper together, WhatsApp's look
+among them), a bubble colour (the system accent, a preset, or any from
+the colour panel), and a wallpaper: none, the doodles or a plain colour
+(WhatsApp's colours for light and dark), a soft gradient, or a photo of
+yours, dimmed in dark appearance. A chat's menu gives it its own theme
+(Chat Theme…), and Use Default Theme returns it to the default. Themes
+stay on this Mac. The doodles are upstream's `assets/wallpaper.svg`,
+drawn from Lucide icons (ISC).
 
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video

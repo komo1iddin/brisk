@@ -32,11 +32,8 @@ public struct SettingsView: View {
                         ChatSettings(preferences: model.preferences)
                     }
                     Tab("Appearance", systemImage: "paintpalette") {
-                        ScrollView {
-                            ChatThemeEditor(chat: nil, model: model)
-                                .padding(Metrics.m)
-                        }
-                        .frame(height: 620)
+                        ChatThemeEditor(chat: nil, model: model)
+                            .frame(height: 560)
                     }
                     Tab("Privacy", systemImage: "lock") {
                         PrivacySettings(model: model)

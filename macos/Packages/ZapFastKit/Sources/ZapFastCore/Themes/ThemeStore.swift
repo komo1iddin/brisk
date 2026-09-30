@@ -23,7 +23,7 @@ public final class ThemeStore {
         self.wallpapersFolder = wallpapersFolder
         let decoder = JSONDecoder()
         defaultAppearance = defaults.data(forKey: Key.defaultAppearance)
-            .flatMap { try? decoder.decode(ChatAppearance.self, from: $0) } ?? ThemePresets.classic
+            .flatMap { try? decoder.decode(ChatAppearance.self, from: $0) } ?? ThemePresets.system
         chatAppearances = defaults.data(forKey: Key.chatAppearances)
             .flatMap { try? decoder.decode([String: ChatAppearance].self, from: $0) } ?? [:]
     }

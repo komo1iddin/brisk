@@ -8,8 +8,18 @@ extension ChatTheme {
     /// contrast with the bubble, WhatsApp's incoming and chip colours over
     /// a wallpaper, upstream's doodle ink for the wallpaper colour.
     public init(_ appearance: ChatAppearance, photos: ThemeStore) {
-        let bubble = appearance.bubble
         let plain = appearance.wallpaper == .none
+        let key = (try? JSONEncoder().encode(appearance)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        guard let bubble = appearance.bubble else {
+            // The system accent colour: white text and ticks, as in Messages.
+            self.init(
+                key: key, outgoing: .accentColor, outgoingText: .white, readTicks: .white,
+                incoming: plain ? Palette.bubbleIncoming : .dynamic(light: "#ffffff", dark: "#202c33"),
+                accent: .accentColor, chip: plain ? Palette.dayChip : .dynamic(light: "#ffffff", dark: "#182229"),
+                wallpaper: Self.fill(appearance.wallpaper, photos: photos)
+            )
+            return
+        }
         let text = { (fill: String) in HexColor.text(on: fill) }
         // WhatsApp's blue ticks, unless they would vanish into the bubble.
         let ticks = { (fill: String) in HexColor.contrast(fill, "#53bdeb") >= 1.8 ? "#53bdeb" : text(fill) }
@@ -18,7 +28,6 @@ extension ChatTheme {
             HexColor.contrast(fill, "#ffffff") >= 2.5 && HexColor.contrast(fill, "#111b21") >= 2.5 ? fill
                 : HexColor.luminance(fill) > 0.4 ? fallback : fill
         }
-        let key = (try? JSONEncoder().encode(appearance)).map { String(decoding: $0, as: UTF8.self) } ?? ""
         self.init(
             key: key,
             outgoing: .dynamic(light: bubble.light, dark: bubble.dark),

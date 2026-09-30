@@ -72,6 +72,12 @@ public struct ConversationView: View {
                 chatID: chatID, model: model, isPresented: model.isEditingMedia(in: chatID), theme: theme
             )
         }
+        // A photo or video opened from its bubble, in a window over this one.
+        .background {
+            MediaViewerPresenter(
+                chatID: chatID, model: model, isPresented: model.mediaViewer?.chat == chatID, theme: theme
+            )
+        }
         .dropDestination(for: URL.self) { urls, _ in
             let files = urls.filter(\.isFileURL)
             guard !files.isEmpty, chat.map(canSend) ?? true else { return false }

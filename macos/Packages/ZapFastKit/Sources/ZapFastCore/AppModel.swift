@@ -42,6 +42,7 @@ public final class AppModel {
             if videoWanted?.chat != selectedChatID { videoWanted = nil }
             if unreadDivider?.chat != selectedChatID { unreadDivider = nil }
             if selection?.chat != selectedChatID { selection = nil }
+            if mediaViewer?.chat != selectedChatID { mediaViewer = nil }
             reactionTarget = nil
             if let oldValue {
                 // Staged attachments belong to the chat left, as upstream's
@@ -353,6 +354,7 @@ public final class AppModel {
         if recorder.isRecording { recorder.cancel() }
         selection = nil
         reactionTarget = nil
+        mediaViewer = nil
         messageInfo = nil
         forwarding = nil
         // Sheets over the whole window would show over the lock screen.
@@ -1682,6 +1684,23 @@ public final class AppModel {
     public func focusComposer() {
         guard selectedChatID != nil else { return }
         composerFocusRequests += 1
+    }
+
+    // MARK: Intents: the media viewer
+
+    /// A photo or video open in the media viewer over the chat.
+    public var mediaViewer: MediaViewerRequest?
+
+    /// Opens a photo or video in the viewer, which plays a video itself,
+    /// so the one playing in its bubble stops.
+    public func openMediaViewer(_ message: MessageRecord) {
+        guard MediaGallery.kind(of: message) != nil else { return }
+        video.stop()
+        mediaViewer = MediaViewerRequest(chat: message.chat, message: message.id)
+    }
+
+    public func closeMediaViewer() {
+        mediaViewer = nil
     }
 
     public func showReactionPicker(for message: MessageRecord) {

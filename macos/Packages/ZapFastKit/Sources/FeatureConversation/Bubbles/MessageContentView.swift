@@ -413,11 +413,15 @@ private struct VisualMedia: View {
         model.autoDownload(message)
     }
 
-    /// A video plays in place (downloading first); anything else opens in
-    /// Quick Look once here.
+    /// A round video message plays in place (downloading first); photos,
+    /// videos and GIFs open in the media viewer; a sticker in Quick Look.
     private func activate() {
-        if case .video = message.content, !isGif {
+        if isNote {
             model.playVideo(message)
+        } else if MediaGallery.kind(of: message) != nil {
+            // Photos, videos and GIFs open in the media viewer, which
+            // downloads what is not here yet.
+            model.openMediaViewer(message)
         } else if let url = message.mediaURL {
             QuickLook.shared.show([url])
         } else {

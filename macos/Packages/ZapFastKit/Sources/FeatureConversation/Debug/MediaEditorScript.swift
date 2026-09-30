@@ -12,10 +12,16 @@ import ZapFastCore
 public enum MediaEditorScript {
     public static var steps: [String]? {
         ProcessInfo.processInfo.environment["ZAPFAST_EDITOR_SCRIPT"]?.split(separator: ",").map(String.init)
+            ?? MediaViewerScript.steps
     }
 
+    /// Also runs `MediaViewerScript` when that is what was asked for.
     @MainActor
     public static func run(model: AppModel) {
+        if ProcessInfo.processInfo.environment["ZAPFAST_EDITOR_SCRIPT"] == nil, let steps = MediaViewerScript.steps {
+            MediaViewerScript.run(model: model, steps: steps)
+            return
+        }
         guard let steps else { return }
         _ = MediaEditorGallery.view(mode: "browse", model: model)
         let window = NSWindow(

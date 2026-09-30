@@ -825,6 +825,8 @@ struct MediaEditorView: View {
             guard !inTextField || state.mode == .draw else { return false }
             if key == .commandZ { undo() } else { redo() }
             return true
+        default:
+            return false
         }
     }
 

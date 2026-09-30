@@ -127,9 +127,23 @@ Standard sends photos at most 1600 pixels on the longer side and videos at
 960 × 540, HD at 4096 pixels and 1920 × 1080 (an untouched HD video goes as
 it is). Photos are always redrawn as JPEG, which leaves their location and
 camera details behind. Prepared files wait in the caches folder's
-`Outgoing` until upstream has read them and are cleared after a day. A voice message refused
-the same way waits above the field ("Voice message (0:07) not sent")
-until Send tries it again or the cross discards it.
+`Outgoing` until upstream has read them and are cleared after a day.
+
+A voice message refused offline waits above the field ("Voice message
+(0:07) not sent") until Send tries it again or the cross discards it.
+
+A photo, video or GIF clicked in a chat opens the media viewer, as in
+WhatsApp: a window laid over ZapFast's, in the Mac's light or dark look,
+with who sent it and when, and Share, More (Show in Chat, Copy Image, Open
+With Default App, Show in Finder, Info), Delete, Edit and Send (into the media
+editor), Forward and Save. Below are the chat's media in a strip, All Media
+(a grid by month), React, Reply and Done; what is not downloaded yet
+downloads as it opens, and reaching the oldest asks for more. Photos zoom as
+in Preview (pinch, double-click, ⌘+ ⌘− ⌘0) and carry Live Text, so their text
+can be selected and copied; videos have the Mac's floating controls with
+speed and Picture in Picture. ← → or a two-finger swipe step through, ⌘C
+copies the photo, ⌘S saves, Escape zooms out and then closes. Round video
+messages still play in their bubble, and stickers open in Quick Look.
 
 A WhatsApp group invite link (chat.whatsapp.com/…) clicked in a message
 opens here: the group's name, members and description, then Join, or

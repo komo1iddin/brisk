@@ -165,6 +165,9 @@ public final class AppModel {
 
     /// Messages waiting for the person to pick where to forward them.
     public private(set) var forwarding: ForwardRequest?
+    /// Messages typed in the forward sheet, waiting for the forwards to
+    /// their chat to leave first.
+    private(set) var forwardNotes: [ForwardNote] = []
 
     /// The message the composer is editing, per chat.
     public private(set) var editing: [String: MessageRecord] = [:]
@@ -1011,13 +1014,85 @@ public final class AppModel {
         forwarding = ForwardRequest(chat: message.chat, messages: [message.id])
     }
 
-    /// Sends the waiting messages to `chat`, oldest first as upstream does.
-    public func forward(to chat: String) {
-        guard let request = forwarding else { return }
+    /// Sends the waiting messages to each of `targets` in turn, oldest
+    /// first as upstream does. A `note` follows them into every chat once
+    /// they have left, as the phone's "Add a message" does.
+    public func forward(to targets: [String], note: String = "") {
+        guard let request = forwarding, !targets.isEmpty else { return }
         forwarding = nil
-        backend.send(.forward(fromChat: request.chat, messages: request.messages, toChat: chat))
-        let name = chats.chat(chat).map(chats.title(for:)) ?? chats.displayName(chat)
-        post(.info, String(localized: "Forwarded to \(name)"))
+        let note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let since = Int64(Date.now.timeIntervalSince1970) - Self.forwardClockSlack
+        for chat in targets {
+            backend.send(.forward(fromChat: request.chat, messages: request.messages, toChat: chat))
+            if !note.isEmpty {
+                let pending = ForwardNote(chat: chat, text: note, expected: request.messages.count, since: since)
+                forwardNotes.append(pending)
+                expireForwardNote(pending.id, after: Self.forwardNoteWait)
+            }
+        }
+        if targets.count == 1, let chat = targets.first {
+            post(.info, String(localized: "Forwarded to \(forwardTargetName(chat))"))
+        } else {
+            post(.info, String(localized: "Forwarded to \(targets.count) chats"))
+        }
+    }
+
+    public func forward(to chat: String) {
+        forward(to: [chat])
+    }
+
+    /// A forward target's name, "You" for our own chat even before it exists.
+    public func forwardTargetName(_ chat: String) -> String {
+        if session.isOurs(chat) { return chats.selfTitle }
+        return chats.chat(chat).map(chats.title(for:)) ?? chats.displayName(chat)
+    }
+
+    /// The chat of our own number, first in the forward sheet as on the
+    /// phone, when the search allows it.
+    public func forwardSelfTarget(query: String) -> String? {
+        chats.offersSelf(query: query) ? session.account?.id : nil
+    }
+
+    /// The row timestamps come from the worker's clock, the same machine's,
+    /// but a second may turn between the two reads.
+    static let forwardClockSlack: Int64 = 2
+    /// Long enough for a long queue of forwards; a note whose forwards never
+    /// arrived goes back to that chat's composer instead of out alone.
+    static let forwardNoteWait: Duration = .seconds(60)
+
+    /// Watches our forwarded messages leave; a note goes once its chat's are out.
+    private func followForwards(_ messages: [MessageRecord]) {
+        guard !forwardNotes.isEmpty else { return }
+        for message in messages where message.fromMe && message.forwarded {
+            for index in forwardNotes.indices { forwardNotes[index].follow(message) }
+        }
+        let ready = forwardNotes.filter(\.isReady)
+        forwardNotes.removeAll(where: \.isReady)
+        for note in ready { sendForwardNote(note) }
+    }
+
+    private func expireForwardNote(_ id: UUID, after wait: Duration) {
+        Task { [weak self] in
+            try? await Task.sleep(for: wait)
+            self?.forwardNoteExpired(id)
+        }
+    }
+
+    /// Time is up: a note whose forwards were seen goes anyway (some may have
+    /// failed); one whose forwards never came waits in the chat's composer.
+    func forwardNoteExpired(_ id: UUID) {
+        guard let index = forwardNotes.firstIndex(where: { $0.id == id }) else { return }
+        let note = forwardNotes.remove(at: index)
+        if note.sawForwards {
+            sendForwardNote(note)
+        } else {
+            if (composerText[note.chat] ?? "").isEmpty { composerText[note.chat] = note.text }
+            post(.error, String(localized: "Couldn't forward to \(forwardTargetName(note.chat)). Your message is in its composer."))
+        }
+    }
+
+    private func sendForwardNote(_ note: ForwardNote) {
+        backend.send(.sendText(chat: note.chat, text: note.text, quoting: nil, mentions: []))
     }
 
     public func cancelForward() {
@@ -2101,8 +2176,10 @@ public final class AppModel {
             if bare, isOpen(chat) { loadOlder(in: chat) }
             if unreadDivider?.chat == chat { resolveUnreadDivider() }
             if pendingJump?.chat == chat { continueJump() }
+            if !older { followForwards(messages) }
         case .messageUpdated(let message):
             conversations.applyUpdated(message)
+            followForwards([message])
         case let .messageDeleted(chat, id):
             conversations.applyDeleted(chat: chat, id: id)
         case let .incoming(chat, message):
@@ -2298,6 +2375,7 @@ public final class AppModel {
             textBeforeEdit = [:]
             mentionsBeforeEdit = [:]
             forwarding = nil
+            forwardNotes = []
             invite = nil
             stickerPackPreview = nil
             pollVoting = []

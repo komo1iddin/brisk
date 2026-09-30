@@ -289,6 +289,14 @@ the composer forwards them (oldest first) or deletes them from ZapFast on
 this Mac after asking; Esc stops. Deleted, phone-only and unsupported
 messages cannot be selected, as upstream's.
 
+Forward opens "Send to", as on the phone: your own chat first, then the
+chats that can receive, newest first, each with its members or number
+under the name. Click chats to tick as many as you like (Return in the
+search field ticks the first match), optionally add a message, and
+Forward; a double-click forwards at once. The added message waits until
+the forwarded ones have left for each chat, so it arrives after them; if
+they never do, it goes back to that chat's composer instead of out alone.
+
 Pointing at a message brings Reply and React beside it, as discs clear
 of the bubble, as upstream's hover controls. React (or More Reactions…
 in the message's menu) offers six quick reactions, the ones you use most

@@ -368,6 +368,8 @@ ZAPFAST_BENCHMARK_COUNT=10000 Build/DerivedData/Build/Products/Release/ZapFast.a
 ```
 
 `ZAPFAST_BENCHMARK_COUNT` sets the fully loaded chat's size (default 2,000).
+`ZAPFAST_SWIFTUI_SIDEBAR=1` shows the chat list as the earlier SwiftUI list
+instead of the table, to compare the two, in the app or the benchmark.
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
 
 ## Following upstream

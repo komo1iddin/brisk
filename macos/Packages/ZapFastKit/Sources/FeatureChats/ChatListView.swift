@@ -109,6 +109,57 @@ private struct ChatListContent: View {
                 filter: filter, query: query, archived: showingArchived, label: label, kept: model.keptUnread
             )
         let hits = inLocked ? [] : messageHits
+        Group {
+            if hits.isEmpty, !Self.usesSwiftUIList {
+                GeometryReader { proxy in
+                    ChatTable(
+                        rows: tableRows(chats),
+                        selection: opening,
+                        model: model,
+                        topInset: proxy.safeAreaInsets.top
+                    )
+                    .ignoresSafeArea(edges: .top)
+                }
+            } else {
+                list(chats: chats, hits: hits)
+            }
+        }
+        // ⌃Tab and ⌃⇧Tab step through the chats as listed here.
+        .onChange(of: chats.map(\.id), initial: true) { _, ids in model.sidebarOrder = ids }
+        .overlay {
+            if chats.isEmpty, hits.isEmpty {
+                EmptyState(query: query, filter: filter, archived: showingArchived, locked: inLocked, labeled: label != nil)
+            }
+        }
+    }
+
+    /// `ZAPFAST_SWIFTUI_SIDEBAR=1` shows the earlier SwiftUI list, to compare
+    /// the two side by side.
+    private static let usesSwiftUIList = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_SIDEBAR"] != nil
+
+    /// The folders above the chats, then the chats, for the table.
+    private func tableRows(_ chats: [ChatSummary]) -> [SidebarRow] {
+        var rows: [SidebarRow] = []
+        if query.isEmpty, !showingArchived, !inLocked, filter == .all, label == nil {
+            if model.chats.lockedCount > 0 {
+                rows.append(.folder(id: "locked", title: "Locked Chats", systemImage: "lock", count: nil) { [model] in
+                    model.openLockedChats()
+                })
+            }
+            if model.chats.archivedCount > 0 {
+                let archived = $showingArchived
+                rows.append(.folder(id: "archived", title: "Archived", systemImage: "archivebox", count: model.chats.archivedUnread) {
+                    archived.wrappedValue = true
+                })
+            }
+        }
+        rows += chats.map(SidebarRow.chat)
+        return rows
+    }
+
+    /// The SwiftUI list: search results, with their sections, and the
+    /// comparison mode above.
+    private func list(chats: [ChatSummary], hits: [MessageRecord]) -> some View {
         List(selection: opening) {
             if hits.isEmpty {
                 if query.isEmpty, !showingArchived, !inLocked, filter == .all, label == nil {
@@ -144,13 +195,6 @@ private struct ChatListContent: View {
             }
         }
         .listStyle(.sidebar)
-        // ⌃Tab and ⌃⇧Tab step through the chats as listed here.
-        .onChange(of: chats.map(\.id), initial: true) { _, ids in model.sidebarOrder = ids }
-        .overlay {
-            if chats.isEmpty, hits.isEmpty {
-                EmptyState(query: query, filter: filter, archived: showingArchived, locked: inLocked, labeled: label != nil)
-            }
-        }
     }
 
     /// A chat clicked in the list; one clicked in the Unread list stays
@@ -261,7 +305,7 @@ extension ChatFilter {
 // MARK: - Rows
 
 /// Archived and Locked Chats, above the chats.
-private struct FolderRow: View {
+struct FolderRow: View {
     let title: LocalizedStringKey
     let systemImage: String
     let count: Int?

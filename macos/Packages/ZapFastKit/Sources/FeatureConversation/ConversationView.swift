@@ -8,6 +8,8 @@ import ZapFastSharedUI
 public struct ConversationView: View {
     private let chatID: String
     @Bindable private var model: AppModel
+    @State private var scrollState = TimelineController.ScrollState()
+    @State private var bottomRequest: UUID?
 
     public init(chatID: String, model: AppModel) {
         self.chatID = chatID
@@ -21,12 +23,14 @@ public struct ConversationView: View {
 
         MessageTimeline(
             chatID: chatID,
-            rows: TimelineRow.build(conversation.messages),
+            rows: TimelineRow.build(conversation.messages, unread: model.unreadDivider),
             chat: chat,
             model: model,
             jump: model.jump,
             theme: theme,
-            onReachTop: { model.loadOlder(in: chatID) }
+            bottomRequest: bottomRequest,
+            onReachTop: { model.loadOlder(in: chatID) },
+            onScrollState: { scrollState = $0 }
         )
         .background { WallpaperView(theme.wallpaper).ignoresSafeArea() }
         // The table scrolls under the title bar; AppKit insets its content.
@@ -45,6 +49,14 @@ public struct ConversationView: View {
                     .padding(.top, Metrics.s)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if !scrollState.atBottom {
+                NewestMessageButton(newBelow: scrollState.newBelow) { bottomRequest = UUID() }
+                    .padding(Metrics.l)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: scrollState.atBottom)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let chat, !canSend(chat) {
                 ReadOnlyBar(chat: chat)
@@ -210,5 +222,37 @@ private struct ReadOnlyBar: View {
         if chat.left { return "You're no longer a participant." }
         if chat.isChannel { return "Only channel admins can post." }
         return "Only admins can send messages."
+    }
+}
+
+/// Floats over the timeline while older messages are being read and
+/// scrolls back to the newest one, with a count of those that arrived.
+private struct NewestMessageButton: View {
+    let newBelow: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 34, height: 34)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .modifier(FloatingSurface(Circle()))
+        .overlay(alignment: .topTrailing) {
+            if newBelow > 0 {
+                Text(newBelow, format: .number)
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(.tint, in: Capsule())
+                    .offset(x: 5, y: -5)
+            }
+        }
+        .help("Scroll to the newest message")
+        .accessibilityLabel(newBelow > 0 ? Text("Newest message, \(newBelow) new") : Text("Newest message"))
     }
 }

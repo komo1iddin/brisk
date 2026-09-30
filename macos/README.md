@@ -159,6 +159,11 @@ Picking a match, or clicking the quote in a reply, scrolls to the message,
 loading older history from the archive first when needed, and marks it for
 a moment.
 
+A chat opened with unread messages starts at "3 unread messages", above
+the first of them, as upstream's does. While older messages are being
+read, a button at the bottom returns to the newest one and counts the
+messages that arrived below.
+
 ## Build
 
 Requirements: Xcode 26+, Rust via rustup (the toolchain comes from

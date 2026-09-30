@@ -130,3 +130,25 @@ public struct GlassCard: ViewModifier {
         }
     }
 }
+
+/// A small control floating over the timeline (the "newest message" button,
+/// a message's hover actions): Liquid Glass on macOS 26, a lifted material
+/// before it.
+public struct FloatingSurface<S: InsettableShape>: ViewModifier {
+    private let shape: S
+
+    public init(_ shape: S) {
+        self.shape = shape
+    }
+
+    public func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            content
+                .background(.regularMaterial, in: shape)
+                .overlay(shape.strokeBorder(.separator, lineWidth: Metrics.hairline))
+                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+        }
+    }
+}

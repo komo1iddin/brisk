@@ -17,6 +17,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         var theme: ChatTheme = .standard
     }
 
+    /// Whether the reader is at the newest message, and how many incoming
+    /// messages arrived below while they were not.
+    struct ScrollState: Equatable {
+        var atBottom = true
+        var newBelow = 0
+    }
+
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
     private var rows: [TimelineRow] = []
@@ -29,6 +36,14 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var followsBottom = true
     /// The last jump scrolled to, so each is done once.
     private var handledJump: UUID?
+    /// The last "newest message" request, so each is done once.
+    private var handledBottom: UUID?
+    /// The chat just opened; its unread divider goes to the top once its
+    /// messages are here.
+    private var placesUnread = false
+    private var newBelow = 0
+    private var reported = ScrollState()
+    private var onScrollState: (ScrollState) -> Void = { _ in }
 
     /// Within this distance of an edge counts as being at it.
     private let edgeSlack: CGFloat = 48
@@ -78,11 +93,14 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         rows new: [TimelineRow],
         content: Content,
         jump: JumpRequest?,
-        onReachTop: @escaping () -> Void
+        bottomRequest: UUID?,
+        onReachTop: @escaping () -> Void,
+        onScrollState: @escaping (ScrollState) -> Void
     ) {
         let restyled = content.theme != self.content.theme
         self.content = content
         self.onReachTop = onReachTop
+        self.onScrollState = onScrollState
 
         if chatID != self.chatID {
             self.chatID = chatID
@@ -90,6 +108,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             heights.removeAll()
             tableView.reloadData()
             followsBottom = true
+            placesUnread = true
+            newBelow = 0
+            handledBottom = bottomRequest
             scrollToBottom()
         } else if new != rows {
             apply(new)
@@ -98,8 +119,20 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             tableView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<rows.count), columnIndexes: [0])
         }
         if let jump, jump.key.chat == chatID, jump.token != handledJump {
+            // The message jumped to wins over the unread divider.
+            placesUnread = false
             scroll(toMessage: jump.key.message, token: jump.token)
+        } else if placesUnread, !rows.isEmpty {
+            placesUnread = false
+            if let index = rows.firstIndex(where: { if case .unread = $0 { true } else { false } }) {
+                scroll(toTopOf: index)
+            }
         }
+        if let bottomRequest, bottomRequest != handledBottom {
+            handledBottom = bottomRequest
+            scrollToBottom(animated: true)
+        }
+        report()
     }
 
     private func apply(_ new: [TimelineRow]) {
@@ -151,7 +184,16 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             return before != new[index]
         }
         reload(IndexSet(changed))
-        if follow { scrollToBottom() }
+        if follow {
+            scrollToBottom()
+        } else {
+            // Counted for the "newest message" button's badge.
+            let known = Set(oldIDs)
+            newBelow += new.count { row in
+                guard !known.contains(row.id), case .message(let message, _) = row else { return false }
+                return !message.fromMe
+            }
+        }
     }
 
     private func reload(_ indexes: IndexSet) {
@@ -172,10 +214,51 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         clip.bounds.maxY >= tableView.bounds.height - edgeSlack
     }
 
-    private func scrollToBottom() {
+    private func scrollToBottom(animated: Bool = false) {
         guard !rows.isEmpty else { return }
         tableView.layoutSubtreeIfNeeded()
-        tableView.scrollRowToVisible(rows.count - 1)
+        guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            tableView.scrollRowToVisible(rows.count - 1)
+            return
+        }
+        let bottom = max(-clip.contentInsets.top, tableView.bounds.height - clip.bounds.height + clip.contentInsets.bottom)
+        followsBottom = true
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            clip.animator().setBoundsOrigin(NSPoint(x: clip.bounds.minX, y: bottom))
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.scrollView.reflectScrolledClipView(self.clip)
+                // Rows that arrived during the animation are below it now.
+                if self.followsBottom { self.scrollToBottom() }
+            }
+        }
+    }
+
+    /// Puts a row at the top of the view (the unread divider), or as near
+    /// as the content allows.
+    private func scroll(toTopOf index: Int) {
+        tableView.layoutSubtreeIfNeeded()
+        let insets = clip.contentInsets
+        let lowest = -insets.top
+        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
+        let top = min(max(tableView.rect(ofRow: index).minY - insets.top, lowest), highest)
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))
+        scrollView.reflectScrolledClipView(clip)
+        followsBottom = isAtBottom
+    }
+
+    /// Tells the view whether to offer the "newest message" button. Sent
+    /// after the current update, which must not change SwiftUI state.
+    private func report() {
+        if followsBottom { newBelow = 0 }
+        let state = ScrollState(atBottom: followsBottom, newBelow: newBelow)
+        guard state != reported else { return }
+        reported = state
+        let onScrollState = onScrollState
+        DispatchQueue.main.async { onScrollState(state) }
     }
 
     /// Centres a message in view. A message not in the rows yet waits for
@@ -216,6 +299,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         if clip.bounds.minY + clip.contentInsets.top < prefetchDistance, !rows.isEmpty {
             onReachTop()
         }
+        report()
     }
 
     @objc private func resized(_ notification: Notification) {
@@ -269,6 +353,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         switch row {
         case .day(_, let title):
             DaySeparator(title: title)
+        case .unread(let count):
+            UnreadSeparator(count: count)
         case .message(let message, let startsRun):
             if let model = content.model {
                 MessageRow(message: message, startsRun: startsRun, chat: content.chat, model: model)

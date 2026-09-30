@@ -38,6 +38,7 @@ public final class AppModel {
             infoShown = false
             if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
+            if unreadDivider?.chat != selectedChatID { unreadDivider = nil }
             if let oldValue {
                 // Staged attachments belong to the chat left, as upstream's do.
                 attachments[oldValue] = nil
@@ -132,6 +133,8 @@ public final class AppModel {
     public private(set) var jump: JumpRequest?
     /// The message just jumped to, marked for a moment so the eye finds it.
     public private(set) var highlighted: MessageKey?
+    /// Where the open chat's unread messages began when it was opened.
+    public private(set) var unreadDivider: UnreadDivider?
     /// Bumped to put the cursor in the sidebar's search field.
     public private(set) var sidebarSearchRequests = 0
     /// Bumped to put the cursor in the open chat's search field.
@@ -1403,9 +1406,29 @@ public final class AppModel {
         if composerText[chat] == nil, let draft = chats.drafts[chat] {
             composerText[chat] = draft
         }
+        // Counted before the chat is marked read, as upstream does.
+        let unread = chats.chat(chat)?.unread ?? 0
+        unreadDivider = unread > 0 ? UnreadDivider(chat: chat, count: unread) : nil
+        resolveUnreadDivider()
         ensureLoaded(chat)
         if chats.chat(chat)?.looksUnread == true, !appLock.isLocked {
             markRead(chat)
+        }
+    }
+
+    /// Pins the divider to the first unread message once the chat's
+    /// messages are here, so later arrivals do not move it. The first
+    /// unread message is the count-th incoming one from the end; a count
+    /// reaching past the loaded page shows no divider.
+    private func resolveUnreadDivider() {
+        guard let divider = unreadDivider, divider.message == nil else { return }
+        let messages = conversations.conversation(divider.chat).messages
+        guard !messages.isEmpty else { return }
+        let first = messages.reversed().filter { !$0.fromMe }.dropFirst(Int(divider.count) - 1).first
+        if let first {
+            unreadDivider?.message = first.id
+        } else {
+            unreadDivider = nil
         }
     }
 
@@ -1467,6 +1490,7 @@ public final class AppModel {
                 chat: chat, messages: messages, older: older, complete: complete
             )
             if bare, chat == selectedChatID { loadOlder(in: chat) }
+            if unreadDivider?.chat == chat { resolveUnreadDivider() }
             if pendingJump?.chat == chat { continueJump() }
         case .messageUpdated(let message):
             conversations.applyUpdated(message)
@@ -1800,6 +1824,14 @@ public struct StickerPackPreview: Identifiable, Equatable, Sendable {
     /// The chat it was shared in, where its stickers can be sent.
     public let chat: String
     public internal(set) var state: State
+}
+
+/// Upstream's `UnreadDivider`: how many messages were unread when the chat
+/// was opened, and the first of them once its page is loaded.
+public struct UnreadDivider: Equatable, Sendable {
+    public let chat: String
+    public let count: UInt32
+    public internal(set) var message: String?
 }
 
 public struct JumpRequest: Equatable, Sendable {

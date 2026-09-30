@@ -7,16 +7,21 @@ import ZapFastBridge
 public enum TimelineRow: Identifiable, Hashable, Sendable {
     case day(id: String, title: String)
     case message(MessageRecord, startsRun: Bool)
+    /// "3 unread messages", above the first message unread when the chat
+    /// was opened.
+    case unread(count: UInt32)
 
     public var id: String {
         switch self {
         case .day(let id, _): id
         case .message(let message, _): message.id
+        case .unread: "unread"
         }
     }
 
     public static func build(
         _ messages: [MessageRecord],
+        unread: UnreadDivider? = nil,
         calendar: Calendar = .current,
         now: Date = .now
     ) -> [TimelineRow] {
@@ -35,7 +40,11 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
                     title: DateText.day(message.timestamp, now: now, calendar: calendar)
                 ))
             }
-            let startsRun = newDay || previous?.sender != message.sender
+            let dividerHere = unread?.message == message.id
+            if let unread, dividerHere {
+                rows.append(.unread(count: unread.count))
+            }
+            let startsRun = newDay || dividerHere || previous?.sender != message.sender
                 || previous?.fromMe != message.fromMe
                 // A long pause starts a new run even from the same sender.
                 || message.timestamp - (previous?.timestamp ?? 0) > 5 * 60

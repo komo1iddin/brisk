@@ -36,7 +36,7 @@ public final class AppModel {
             if let playing = video.current?.chat, !isOpen(playing) { video.stop() }
             if recorder.isRecording { recorder.cancel() }
             if let searched = search.chat?.chat, !isOpen(searched) { search.chat = nil }
-            if infoChat == oldValue { infoChat = nil }
+            if infoChat == oldValue { closeInfo() }
             if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
             if videoWanted?.chat != selectedChatID { videoWanted = nil }
@@ -98,6 +98,8 @@ public final class AppModel {
     public var infoShown: Bool { infoChat != nil }
     /// The chat whose info shows over it, in the main window or its own.
     public private(set) var infoChat: String?
+    /// The group member whose page the info opened on, if any.
+    public private(set) var infoPerson: String?
     /// Chats shown in windows of their own, and how many of each: they
     /// are open as the main window's chat is, for reading and notifying.
     public private(set) var windowChats: [String: Int] = [:]
@@ -473,15 +475,18 @@ public final class AppModel {
 
     // MARK: Intents: chat info
 
-    /// Shows the chat's info over it, as a click on its header does. The
-    /// chat's search stays open beside it.
-    public func showInfo(in chat: String? = nil) {
+    /// Shows the chat's info over it, as a click on its header does, or a
+    /// group member's page there, as a click on their name does. The chat's
+    /// search stays open beside it.
+    public func showInfo(in chat: String? = nil, person: String? = nil) {
         guard let chat = chat ?? selectedChatID else { return }
         infoChat = chat
+        infoPerson = person.flatMap { session.isOurs($0) ? nil : $0 }
     }
 
     public func closeInfo() {
         infoChat = nil
+        infoPerson = nil
     }
 
     // MARK: Intents: the Share menu
@@ -535,7 +540,7 @@ public final class AppModel {
         windowChats[chat] = left > 0 ? left : nil
         guard !isOpen(chat) else { return }
         flushDraft(for: chat)
-        if infoChat == chat { infoChat = nil }
+        if infoChat == chat { closeInfo() }
         if search.chat?.chat == chat { closeChatSearch() }
         if let playing = voice.current?.chat, playing == chat { voice.stop() }
         if let playing = video.current?.chat, playing == chat { video.stop() }
@@ -2013,7 +2018,7 @@ public final class AppModel {
     /// and puts the cursor in its field. The info over the chat closes.
     public func openChatSearch(in chat: String? = nil) {
         guard let chat = chat ?? selectedChatID else { return }
-        infoChat = nil
+        closeInfo()
         if search.chat?.chat != chat { search.chat = ChatSearch(chat: chat) }
         chatSearchFocusRequests += 1
     }

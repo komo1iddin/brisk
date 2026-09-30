@@ -4,49 +4,114 @@ import ZapFastCore
 import ZapFastDesign
 
 /// The open chat's info, over the chat as WhatsApp shows it: its picture
-/// and name, what can be done with it, a group's members (each opening
-/// their own page here), and the chat's destructive actions.
+/// and name, what can be done with it, and the chat's destructive actions.
+/// A group's members have a tab of their own, searchable, and each opens
+/// that person's page here.
 struct ChatInfoPanel: View {
     let chatID: String
     let model: AppModel
     let request: (InfoRequest) -> Void
     /// Member pages opened from here, the last one showing.
     @State private var path: [String] = []
+    @State private var tab = Tab.overview
+    @State private var memberQuery = ""
+    @State private var memberFieldFocus = 0
     @State private var contentHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let width: CGFloat = 340
-    static let maxHeight: CGFloat = 600
+    static let maxHeight: CGFloat = 560
+
+    enum Tab: Hashable {
+        case overview, members
+    }
 
     var body: some View {
-        let id = path.last ?? chatID
+        let chat = model.chats.chat(chatID)
+        let hasMembers = chat.map { $0.kind == .group && !$0.participants.isEmpty } ?? false
+        let showsMembers = path.isEmpty && hasMembers && tab == .members
         VStack(spacing: 0) {
             if !path.isEmpty {
                 BackBar(title: backTitle) {
                     withAnimation(.zf(reduceMotion)) { _ = path.popLast() }
                 }
                 Divider()
+            } else if let chat, hasMembers {
+                tabs(chat)
             }
             ScrollView {
-                InfoPage(id: id, isRoot: path.isEmpty, model: model, request: request) { member in
-                    withAnimation(.zf(reduceMotion)) { path.append(member) }
+                Group {
+                    if showsMembers, let chat {
+                        MemberList(members: members(of: chat), model: model) { open($0) }
+                            .padding([.horizontal, .bottom], Metrics.l)
+                            .padding(.top, Metrics.s)
+                    } else {
+                        InfoPage(id: path.last ?? chatID, isRoot: path.isEmpty, model: model, request: request)
+                    }
                 }
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: min(max(contentHeight, 1), Self.maxHeight))
-            .id(id)
+            .id(path.last.map { "person-\($0)" } ?? "\(tab)")
             .transition(reduceMotion ? .opacity : .push(from: .trailing))
         }
         .frame(width: Self.width)
-        .onExitCommand {
-            if path.isEmpty { model.closeInfo() } else { _ = path.popLast() }
+        // A click on a group member's name opens on their page.
+        .onChange(of: model.infoPerson, initial: true) { _, person in
+            if let person { path = [person] }
         }
+    }
+
+    /// Overview and Members, and the members' search while that shows.
+    @ViewBuilder
+    private func tabs(_ chat: ChatSummary) -> some View {
+        VStack(spacing: Metrics.s) {
+            Picker("Show", selection: $tab.animation(.zf(reduceMotion))) {
+                Text("Overview").tag(Tab.overview)
+                Text("Members · \(chat.participants.count)").tag(Tab.members)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            if tab == .members {
+                SearchField(
+                    text: $memberQuery,
+                    prompt: String(localized: "Search members"),
+                    focusRequest: memberFieldFocus,
+                    onEscape: { model.closeInfo() }
+                )
+            }
+        }
+        .padding(.horizontal, Metrics.l)
+        .padding(.top, Metrics.m)
+        .padding(.bottom, tab == .members ? 0 : Metrics.xs)
+        .onChange(of: tab) { if tab == .members { memberFieldFocus += 1 } }
+    }
+
+    /// The group's members, those matching the search by name or number.
+    private func members(of chat: ChatSummary) -> [(id: String, name: String)] {
+        let all = model.chats.members(of: chat)
+        let query = memberQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return all }
+        let digits = query.filter(\.isNumber)
+        return all.filter { member in
+            member.name.localizedStandardContains(query)
+                || (!digits.isEmpty && (phoneOf(id: member.id)?.filter(\.isNumber).contains(digits) ?? false))
+        }
+    }
+
+    private func open(_ member: String) {
+        withAnimation(.zf(reduceMotion)) { path.append(member) }
     }
 
     /// The page the back button returns to.
     private var backTitle: String {
-        let parent = path.dropLast().last ?? chatID
+        guard path.count > 1 else {
+            if tab == .members { return String(localized: "Members") }
+            return model.chats.chat(chatID).map(model.chats.title(for:)) ?? model.chats.displayName(chatID)
+        }
+        let parent = path[path.count - 2]
         return model.chats.chat(parent).map(model.chats.title(for:)) ?? model.chats.displayName(parent)
     }
 }
@@ -77,7 +142,6 @@ private struct InfoPage: View {
     let isRoot: Bool
     let model: AppModel
     let request: (InfoRequest) -> Void
-    let open: (String) -> Void
 
     var body: some View {
         let chat = model.chats.chat(id)
@@ -85,9 +149,6 @@ private struct InfoPage: View {
             header(chat)
             actions(chat)
             details(chat)
-            if let chat, chat.kind == .group, !chat.participants.isEmpty {
-                MemberList(members: model.chats.members(of: chat), model: model, open: open)
-            }
             if isRoot, let chat {
                 destructive(chat)
             }
@@ -384,13 +445,13 @@ private struct MemberList: View {
     let open: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Metrics.xs) {
-            Text("\(members.count) Members")
-                .font(.caption.weight(.semibold))
+        if members.isEmpty {
+            Text("No members match")
+                .font(.callout)
                 .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .padding(.leading, Metrics.xs)
-
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Metrics.xl)
+        } else {
             LazyVStack(spacing: 0) {
                 ForEach(members, id: \.id) { member in
                     Button {

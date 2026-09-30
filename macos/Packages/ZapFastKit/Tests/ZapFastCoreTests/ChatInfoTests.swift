@@ -63,6 +63,25 @@ struct ChatInfoTests {
         #expect(!model.infoShown)
     }
 
+    @Test func aSendersNameOpensTheirPageInTheInfo() {
+        let (model, _) = model()
+        model.apply([.me(id: "999@s.whatsapp.net", lid: nil, name: "Me", about: nil)])
+        model.selectedChatID = "g@g.us"
+        model.showInfo(in: "g@g.us", person: "1@s.whatsapp.net")
+        #expect(model.infoChat == "g@g.us")
+        #expect(model.infoPerson == "1@s.whatsapp.net")
+
+        // The header opens the chat's own page; we have none of our own.
+        model.showInfo(in: "g@g.us")
+        #expect(model.infoPerson == nil)
+        model.showInfo(in: "g@g.us", person: "999@s.whatsapp.net")
+        #expect(model.infoPerson == nil)
+
+        model.showInfo(in: "g@g.us", person: "1@s.whatsapp.net")
+        model.closeInfo()
+        #expect(model.infoPerson == nil)
+    }
+
     @Test func messagingSomeoneWithoutAChatCreatesItFirst() {
         let (model, backend) = model()
         model.startChat(with: "5@s.whatsapp.net")

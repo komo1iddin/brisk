@@ -14,11 +14,19 @@ struct MessageBubble: View {
     var body: some View {
         BubbleStack(spacing: Metrics.xs) {
             if let senderName {
-                Text(senderName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Palette.sender(message.sender))
-                    .lineLimit(1)
-                    .insetForMedia(isMedia)
+                // Opens the sender's page in the chat's info, as WhatsApp does.
+                Button {
+                    model.showInfo(in: message.chat, person: message.sender)
+                } label: {
+                    Text(senderName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Palette.sender(message.sender))
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+                .pointerStyle(.link)
+                .help("Show \(senderName)'s info")
+                .insetForMedia(isMedia)
             }
             if message.forwarded {
                 Label("Forwarded", systemImage: "arrowshape.turn.up.right")

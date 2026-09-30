@@ -121,6 +121,8 @@ public struct ConversationView: View {
                     // The header is the chat's name, not a button in glass.
                     ToolbarItem(placement: .navigation) { header(chat) }
                         .sharedBackgroundVisibility(.hidden)
+                    // Where the title stood: the buttons stay at the far end.
+                    ToolbarSpacer(.flexible)
                 } else {
                     ToolbarItem(placement: .navigation) { header(chat) }
                 }

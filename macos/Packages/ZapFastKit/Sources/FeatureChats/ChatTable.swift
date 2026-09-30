@@ -130,28 +130,93 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
             if old.isEmpty || difference.count > 40 {
                 tableView.reloadData()
             } else {
-                var removed = IndexSet()
-                var inserted = IndexSet()
-                for change in difference {
-                    switch change {
-                    case .remove(let offset, _, _): removed.insert(offset)
-                    case .insert(let offset, _, _): inserted.insert(offset)
-                    }
-                }
-                tableView.beginUpdates()
-                tableView.removeRows(at: removed, withAnimation: [])
-                tableView.insertRows(at: inserted, withAnimation: [])
-                tableView.endUpdates()
-                // Rows that stayed but changed.
-                let previous = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-                for index in new.indices where !inserted.contains(index) {
-                    if let before = previous[new[index].id], new[index].differs(from: before) {
-                        (tableView.view(atColumn: 0, row: index, makeIfNecessary: false) as? SidebarCell)?.show(new[index], model: model)
-                    }
-                }
+                reorder(from: old, to: new, difference)
             }
         }
         matchSelection(selection)
+    }
+
+    /// Applies a change of order as the table's own operations.
+    ///
+    /// At the top of the list, a chat that moves up while on screen slides
+    /// there, and one from further down fades in at its place (sliding from
+    /// far off would open a gap at the top). Scrolled down, nothing slides:
+    /// the first chat on screen stays where it was, as the reader left it.
+    private func reorder(from old: [SidebarRow], to new: [SidebarRow], _ difference: CollectionDifference<String>) {
+        let atTop = isAtTop
+        let anchor = atTop ? nil : visibleAnchor()
+        let visible = tableView.rows(in: scrollView.contentView.bounds)
+        let animates = atTop && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+
+        tableView.beginUpdates()
+        let moved = difference.inferringMoves()
+        if animates, moved.removals.count == 1, moved.insertions.count == 1,
+           case .remove(let from, _, let to?) = moved.removals.first, NSLocationInRange(from, visible) {
+            // One chat moved, as a new message brings it up.
+            tableView.moveRow(at: from, to: to)
+        } else {
+            var removed = IndexSet()
+            var inserted = IndexSet()
+            for change in difference {
+                switch change {
+                case .remove(let offset, _, _): removed.insert(offset)
+                case .insert(let offset, _, _): inserted.insert(offset)
+                }
+            }
+            tableView.removeRows(at: removed, withAnimation: [])
+            tableView.insertRows(at: inserted, withAnimation: animates && inserted.count <= 3 ? .effectFade : [])
+        }
+        tableView.endUpdates()
+
+        // Rows that stayed but changed.
+        let previous = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        if let model {
+            for index in new.indices {
+                if let before = previous[new[index].id], new[index].differs(from: before) {
+                    (tableView.view(atColumn: 0, row: index, makeIfNecessary: false) as? SidebarCell)?.show(new[index], model: model)
+                }
+            }
+        }
+        if atTop {
+            scrollToTop()
+        } else if let anchor {
+            restore(anchor)
+        }
+    }
+
+    // MARK: Scroll position
+
+    private var isAtTop: Bool {
+        scrollView.contentView.bounds.minY <= -scrollView.contentInsets.top + 1
+    }
+
+    private func scrollToTop() {
+        guard !isAtTop else { return }
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: -scrollView.contentInsets.top))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    /// The first row on screen that is still listed, and how far below the
+    /// top of the view it sits.
+    private func visibleAnchor() -> (id: String, offset: CGFloat)? {
+        let clip = scrollView.contentView.bounds
+        let visible = tableView.rows(in: clip)
+        // Called before the table hears of the change: its rows are the old ones.
+        guard visible.length > 0, visible.location < tableView.numberOfRows else { return nil }
+        let row = visible.location
+        return (tableRowID(row), tableView.rect(ofRow: row).minY - clip.minY)
+    }
+
+    /// The id the table's row shows, read from its view.
+    private func tableRowID(_ row: Int) -> String {
+        (tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? SidebarCell)?.rowID ?? ""
+    }
+
+    private func restore(_ anchor: (id: String, offset: CGFloat)) {
+        guard let index = rows.firstIndex(where: { $0.id == anchor.id }) else { return }
+        let top = tableView.rect(ofRow: index).minY - anchor.offset
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: top))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func matchSelection(_ selection: String?) {
@@ -183,6 +248,18 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         return cell
     }
 
+    /// The open chat's row stays in the accent colour while the window is
+    /// active, as in Messages: opening a chat moves focus to the composer,
+    /// and the table would grey its selection until clicked again.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        if let reused = tableView.makeView(withIdentifier: SidebarRowView.identifier, owner: nil) as? SidebarRowView {
+            return reused
+        }
+        let view = SidebarRowView()
+        view.identifier = SidebarRowView.identifier
+        return view
+    }
+
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
         if case .chat = rows[row] { return true }
         return false
@@ -199,6 +276,18 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
     func menu(forRow row: Int) -> NSMenu? {
         guard let model, rows.indices.contains(row), case .chat(let chat) = rows[row] else { return nil }
         return NSHostingMenu(rootView: ChatActions(chat: chat, model: model))
+    }
+}
+
+/// Emphasized, in the accent colour, while its window is key.
+final class SidebarRowView: NSTableRowView {
+    static let identifier = NSUserInterfaceItemIdentifier("SidebarRow")
+
+    override var isEmphasized: Bool {
+        get { window?.isKeyWindow ?? false }
+        // The table sets this when focus or the key window changes; redraw
+        // with the getter's answer.
+        set { super.isEmphasized = newValue }
     }
 }
 
@@ -225,18 +314,17 @@ final class SidebarCell: NSTableCellView {
     private var row: SidebarRow?
     private weak var model: AppModel?
 
+    var rowID: String? { row?.id }
+
     init() {
         super.init(frame: .zero)
         identifier = Self.identifier
         host.sizingOptions = []
-        host.translatesAutoresizingMaskIntoConstraints = false
+        // Sized by its mask, not constraints, so reusing a cell does not send
+        // the window's layout pass through it.
+        host.autoresizingMask = [.width, .height]
+        host.frame = bounds
         addSubview(host)
-        NSLayoutConstraint.activate([
-            host.leadingAnchor.constraint(equalTo: leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: trailingAnchor),
-            host.topAnchor.constraint(equalTo: topAnchor),
-            host.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
     }
 
     @available(*, unavailable)

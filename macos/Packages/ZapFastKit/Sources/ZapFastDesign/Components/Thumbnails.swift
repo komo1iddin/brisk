@@ -1,5 +1,6 @@
 import AppKit
 import ImageIO
+import QuickLookThumbnailing
 
 /// Decodes images at the size they are drawn, off the main actor, and keeps
 /// them for the life of the process. `NSCache` is thread-safe; it predates
@@ -30,6 +31,23 @@ public enum Thumbnails {
         if let cached = cache.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return decode(source, points: points, scale: scale, key: key)
+    }
+
+    /// A document's first page as Quick Look draws it (a PDF's cover), fit
+    /// within `size`.
+    @concurrent
+    public static func document(_ url: URL, size: CGSize, scale: CGFloat = 2) async -> NSImage? {
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+            .contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
+        let key = "page:\(url.path(percentEncoded: false))#\(modified)@\(Int(size.width * scale))x\(Int(size.height * scale))" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        let request = QLThumbnailGenerator.Request(fileAt: url, size: size, scale: scale, representationTypes: .thumbnail)
+        guard let representation = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request) else {
+            return nil
+        }
+        let image = representation.nsImage
+        cache.setObject(image, forKey: key)
+        return image
     }
 
     nonisolated private static func decode(

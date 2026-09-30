@@ -168,6 +168,10 @@ Pointing at a message brings React and Reply beside it, as upstream's
 hover controls; React offers the quick reactions, and choosing yours
 again takes it back. Everything else stays in the message's context menu.
 
+A document shows the icon the Finder gives its kind (Excel's or Word's
+when they are installed) and, above it, its first page: the sender's
+preview, or a PDF's cover drawn by Quick Look once the file is here.
+
 ## Build
 
 Requirements: Xcode 26+, Rust via rustup (the toolchain comes from

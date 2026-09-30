@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
@@ -346,6 +347,9 @@ private struct DownloadBadge: View {
     }
 }
 
+/// A document: its first page when there is one to show (the sender's
+/// preview, or a PDF's cover once here), then the file's own icon as the
+/// Finder draws it, its name, and its pages, size and kind.
 private struct DocumentContent: View {
     let message: MessageRecord
     let media: MediaInfo
@@ -353,31 +357,51 @@ private struct DocumentContent: View {
     let pages: UInt32?
     let model: AppModel
 
+    @State private var preview: NSImage?
+
+    private static let width: CGFloat = 260
+    private static let previewHeight: CGFloat = 130
+
     var body: some View {
         let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
         Button(action: activate) {
-            HStack(spacing: Metrics.s) {
-                Image(systemName: "doc.fill").font(.title2)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(fileName).font(.body.weight(.medium)).lineLimit(2).multilineTextAlignment(.leading)
-                    Text(detail).font(.caption).opacity(0.75)
+            VStack(spacing: 0) {
+                if let preview {
+                    Image(nsImage: preview)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: Self.width, height: Self.previewHeight, alignment: .top)
+                        .clipped()
+                        .overlay(alignment: .bottom) { Divider() }
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: Metrics.s)
-                if media.path == nil {
-                    if state == .downloading {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: "arrow.down.circle").font(.title3)
+                HStack(spacing: Metrics.s) {
+                    Image(nsImage: FileIcons.icon(fileName: fileName, mime: media.mime))
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(fileName).font(.body.weight(.medium)).lineLimit(2).multilineTextAlignment(.leading)
+                        Text(detail).font(.caption).opacity(0.75)
+                    }
+                    Spacer(minLength: Metrics.s)
+                    if media.path == nil {
+                        if state == .downloading {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.down.circle").font(.title3)
+                        }
                     }
                 }
+                .padding(Metrics.s)
             }
-            .padding(Metrics.s)
-            .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
-            .contentShape(.rect)
+            .frame(width: Self.width)
+            .background(Palette.quoteBar.opacity(0.5))
+            .clipShape(.rect(cornerRadius: Metrics.controlRadius))
+            .contentShape(.rect(cornerRadius: Metrics.controlRadius))
         }
         .buttonStyle(.plain)
-        .frame(minWidth: 220)
-        .task(id: message.id) { model.autoDownload(message) }
+        .task(id: "\(message.id)-\(media.path ?? "")") { await load() }
     }
 
     private var detail: String {
@@ -388,6 +412,17 @@ private struct DocumentContent: View {
         if media.size > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(media.size), countStyle: .file)) }
         if let ext = fileName.split(separator: ".").last, ext.count <= 5 { parts.append(ext.uppercased()) }
         return parts.joined(separator: " · ")
+    }
+
+    private func load() async {
+        model.autoDownload(message)
+        let size = CGSize(width: Self.width, height: Self.previewHeight)
+        if let thumbnail = message.thumbnail {
+            preview = await Thumbnails.load(thumbnail, key: "document-\(message.id)", points: Self.width)
+        } else if let url = message.mediaURL, DocumentType.of(fileName: fileName, mime: media.mime).conforms(to: .pdf) {
+            // Only the top of the page shows, so ask for it at full width.
+            preview = await Thumbnails.document(url, size: CGSize(width: size.width, height: size.width * 1.5))
+        }
     }
 
     private func activate() {

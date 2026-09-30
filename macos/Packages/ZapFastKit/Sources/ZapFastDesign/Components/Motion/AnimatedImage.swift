@@ -63,8 +63,10 @@ nonisolated final class AnimatedFrames: Sendable {
 
     nonisolated(unsafe) private static let cache: NSCache<NSString, AnimatedFrames> = {
         let cache = NSCache<NSString, AnimatedFrames>()
-        // Only a few play at once (under the pointer); keep a handful.
+        // Only a few play at once (under the pointer); keep a handful, and
+        // no more than 48 MB of frames.
         cache.countLimit = 12
+        cache.totalCostLimit = 48 * 1024 * 1024
         return cache
     }()
 
@@ -89,7 +91,7 @@ nonisolated final class AnimatedFrames: Sendable {
         }
         guard frames.count > 1 else { return nil }
         let animation = AnimatedFrames(frames: frames, delays: delays)
-        cache.setObject(animation, forKey: key)
+        cache.setObject(animation, forKey: key, cost: frames.reduce(0) { $0 + $1.bytesPerRow * $1.height })
         return animation
     }
 

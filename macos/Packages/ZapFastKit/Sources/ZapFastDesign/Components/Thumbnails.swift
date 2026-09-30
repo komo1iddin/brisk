@@ -3,12 +3,14 @@ import ImageIO
 import QuickLookThumbnailing
 
 /// Decodes images at the size they are drawn, off the main actor, and keeps
-/// them for the life of the process. `NSCache` is thread-safe; it predates
-/// `Sendable`, hence the unsafe marker.
+/// the recent ones, up to 64 MB of decoded pixels (a count alone let 600
+/// photo-sized images hold hundreds of megabytes). `NSCache` is
+/// thread-safe; it predates `Sendable`, hence the unsafe marker.
 public enum Thumbnails {
     nonisolated(unsafe) private static let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 600
+        cache.totalCostLimit = 64 * 1024 * 1024
         return cache
     }()
 
@@ -68,7 +70,7 @@ public enum Thumbnails {
             cgImage: image,
             size: NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale)
         )
-        cache.setObject(result, forKey: key)
+        cache.setObject(result, forKey: key, cost: image.bytesPerRow * image.height)
         return result
     }
 }

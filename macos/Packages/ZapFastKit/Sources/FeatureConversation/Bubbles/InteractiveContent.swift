@@ -199,7 +199,7 @@ private struct CardImage: View {
     private var state: DownloadState? {
         let key = MessageKey(chat: message.chat, message: message.id)
         if let card { return model.conversations.cardDownloads[CardKey(message: key, card: card)] }
-        return model.conversations.downloads[key]
+        return model.conversations.download(key)
     }
 
     private func download() {

@@ -5,7 +5,24 @@ import ZapFastBridge
 /// Chats, contacts, and drafts, and the rules for naming them.
 @Observable
 public final class ChatStore {
-    public private(set) var chats: [String: ChatSummary] = [:]
+    public private(set) var chats: [String: ChatSummary] = [:] {
+        didSet {
+            untracked = chats
+            let count = chats.values.count(where: \.pinned)
+            if count != pinnedCount { pinnedCount = count }
+            for (id, slot) in slots where slot.value != chats[id] {
+                slot.value = chats[id]
+            }
+        }
+    }
+    /// `chats` again, readable without being observed.
+    @ObservationIgnored private var untracked: [String: ChatSummary] = [:]
+    /// One observable slot per chat asked for by id, so a view showing one
+    /// chat is not redrawn by every other chat that changes.
+    @ObservationIgnored private var slots: [String: Slot<ChatSummary?>] = [:]
+    /// Pinned chats, kept apart so menus that check the pin limit are not
+    /// redrawn by every chat that changes.
+    public private(set) var pinnedCount = 0
     public private(set) var contacts: [String: ContactRecord] = [:]
     /// Unsent composer text per chat, as the backend stored it.
     public private(set) var drafts: [String: String] = [:]
@@ -19,7 +36,10 @@ public final class ChatStore {
     }
 
     public func chat(_ id: String) -> ChatSummary? {
-        chats[id]
+        if let slot = slots[id] { return slot.value }
+        let slot = Slot(untracked[id])
+        slots[id] = slot
+        return slot.value
     }
 
     // MARK: Listing

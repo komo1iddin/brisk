@@ -312,7 +312,7 @@ private struct VisualMedia: View {
     }
 
     @ViewBuilder private var overlay: some View {
-        let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
+        let state = model.conversations.download(MessageKey(chat: message.chat, message: message.id))
         if media.path == nil, !sticker {
             DownloadBadge(state: state, size: media.size)
         } else if isGif {
@@ -356,7 +356,7 @@ private struct VisualMedia: View {
 
     private var accessibilityState: Text {
         guard media.path == nil, !sticker else { return Text(verbatim: "") }
-        switch model.conversations.downloads[key] {
+        switch model.conversations.download(key) {
         case .downloading: return Text("Downloading")
         case .failed: return Text("Download failed")
         case nil: return Text("Not downloaded")
@@ -471,7 +471,7 @@ private struct DocumentContent: View {
     private static let previewHeight: CGFloat = 150
 
     var body: some View {
-        let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
+        let state = model.conversations.download(MessageKey(chat: message.chat, message: message.id))
         Button(action: activate) {
             VStack(spacing: 0) {
                 // The page's room is kept from the start: the timeline
@@ -578,7 +578,7 @@ private struct AudioContent: View {
         let key = MessageKey(chat: message.chat, message: message.id)
         let player = model.voice
         let current = player.isCurrent(key)
-        let downloading = model.conversations.downloads[key] == .downloading
+        let downloading = model.conversations.download(key) == .downloading
         let showsAvatar = voiceNote && model.preferences.voiceAvatars
         let showsSpeed = current && voiceNote
         HStack(spacing: Metrics.s) {

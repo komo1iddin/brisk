@@ -503,7 +503,7 @@ private struct PendingMedia: View {
     @State private var preview: NSImage?
 
     var body: some View {
-        let state = model.conversations.downloads[MessageKey(chat: message.chat, message: message.id)]
+        let state = model.conversations.download(MessageKey(chat: message.chat, message: message.id))
         ZStack {
             if let preview {
                 Image(nsImage: preview)

@@ -1587,7 +1587,7 @@ public final class AppModel {
 
     public func download(_ message: MessageRecord) {
         let key = MessageKey(chat: message.chat, message: message.id)
-        guard conversations.downloads[key] != .downloading else { return }
+        guard conversations.download(key) != .downloading else { return }
         conversations.startDownload(key)
         backend.send(.download(chat: message.chat, message: message.id, card: nil))
     }
@@ -1733,7 +1733,7 @@ public final class AppModel {
         guard let media = message.content.media, media.path == nil, media.size <= Self.downloadLimit else { return }
         let isSticker = if case .sticker = message.content { true } else { false }
         guard isSticker || preferences.autoDownload else { return }
-        guard conversations.downloads[MessageKey(chat: message.chat, message: message.id)] == nil else { return }
+        guard conversations.download(MessageKey(chat: message.chat, message: message.id)) == nil else { return }
         download(message)
     }
 

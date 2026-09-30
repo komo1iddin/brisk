@@ -33,7 +33,7 @@ public struct ChatActions: View {
         Button(chat.pinned ? "Unpin" : "Pin", systemImage: chat.pinned ? "pin.slash" : "pin") {
             model.setPinned(!chat.pinned, chat: chat.id)
         }
-        .disabled(!chat.pinned && pinnedCount >= Int(model.session.pinLimit))
+        .disabled(!chat.pinned && model.chats.pinnedCount >= Int(model.session.pinLimit))
 
         if !chat.isChannel {
             Button(
@@ -95,10 +95,6 @@ public struct ChatActions: View {
             .disabled(!model.canClearOrDeleteChats)
         Button("Delete Chat…", systemImage: "trash", role: .destructive) { model.confirmDelete(chat.id) }
             .disabled(!model.canClearOrDeleteChats)
-    }
-
-    private var pinnedCount: Int {
-        model.chats.chats.values.count(where: \.pinned)
     }
 
     private func mute(hours: Int) {

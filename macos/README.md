@@ -112,7 +112,8 @@ drawn from Lucide icons (ISC).
 
 Videos play inside their message, one at a time, with the system's
 controls (full screen and Picture in Picture included); round video
-messages play in their circle. GIFs and animated stickers move while the
+messages play in their circle. A video played before it is here starts
+once its download lands, if its chat is still open. GIFs and animated stickers move while the
 pointer is over them, as upstream's do.
 
 Notifications sound as upstream's do: its receive sound for new
@@ -165,7 +166,8 @@ field, ranked as upstream ranks them (its `emojis` data, exact shortcodes
 first); ↑ ↓ choose, Return or Tab picks, Escape closes. A bare `:`
 offers the ones picked most recently.
 
-Picking a match, or clicking the quote in a reply, scrolls to the message,
+Picking a match, clicking the quote in a reply, or clicking a
+notification scrolls to the message,
 loading older history from the archive first when needed, and marks it for
 a moment.
 

@@ -31,6 +31,44 @@ struct VideoTests {
         )
     }
 
+    @Test func aVideoAskedForPlaysOnceItsDownloadLands() {
+        let (model, _) = model()
+        model.selectedChatID = chat
+        model.apply([.messages(chat: chat, messages: [video("v", path: nil), video("w", path: nil)], older: false, complete: true)])
+        model.playVideo(video("v", path: nil))
+        let file = FileManager.default.temporaryDirectory.appending(path: "v.mp4").path(percentEncoded: false)
+
+        // Another download landing does not start it.
+        model.apply([.media(chat: chat, message: "w", card: nil, path: file, error: nil)])
+        #expect(model.video.current == nil)
+
+        model.apply([.media(chat: chat, message: "v", card: nil, path: file, error: nil)])
+        #expect(model.video.current == MessageKey(chat: chat, message: "v"))
+    }
+
+    @Test func aFailedOrAbandonedDownloadStartsNothing() {
+        let (model, _) = model()
+        model.selectedChatID = chat
+        model.apply([.messages(chat: chat, messages: [video("v", path: nil)], older: false, complete: true)])
+        model.playVideo(video("v", path: nil))
+        model.apply([.media(chat: chat, message: "v", card: nil, path: nil, error: "gone")])
+        #expect(model.video.current == nil)
+
+        model.playVideo(video("v", path: nil))
+        model.selectedChatID = "other@s.whatsapp.net"
+        model.selectedChatID = chat
+        model.apply([.media(chat: chat, message: "v", card: nil, path: "/tmp/v.mp4", error: nil)])
+        #expect(model.video.current == nil)
+    }
+
+    @Test func aClickedNotificationLandsOnItsMessage() {
+        let (model, _) = model()
+        model.open(notified: MessageKey(chat: chat, message: "v"))
+        #expect(model.selectedChatID == chat)
+        model.apply([.messages(chat: chat, messages: [video("v", path: nil)], older: false, complete: true)])
+        #expect(model.jump?.key == MessageKey(chat: chat, message: "v"))
+    }
+
     @Test func aVideoNotHereYetDownloadsInsteadOfPlaying() {
         let (model, backend) = model()
         model.playVideo(video("v", path: nil))

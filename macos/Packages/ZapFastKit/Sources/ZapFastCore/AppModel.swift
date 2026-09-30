@@ -38,6 +38,7 @@ public final class AppModel {
             infoShown = false
             if messageInfo?.chat != selectedChatID { messageInfo = nil }
             if pendingJump?.chat != selectedChatID { pendingJump = nil }
+            if videoWanted?.chat != selectedChatID { videoWanted = nil }
             if unreadDivider?.chat != selectedChatID { unreadDivider = nil }
             if let oldValue {
                 // Staged attachments belong to the chat left, as upstream's do.
@@ -155,7 +156,10 @@ public final class AppModel {
     /// The app is in front (the lock may still hide it).
     @ObservationIgnored private var isActive = true
     /// A clicked notification's chat, opened once the app lock lifts.
-    @ObservationIgnored private var openAfterUnlock: String?
+    @ObservationIgnored private var openAfterUnlock: MessageKey?
+    /// A video asked to play before it was here (upstream's `video_wanted`);
+    /// it starts once its download lands, if its chat is still open.
+    @ObservationIgnored private var videoWanted: MessageKey?
     /// A jump waiting for its message to load, and whether the archive was
     /// already asked for the pages up to it.
     @ObservationIgnored private var pendingJump: MessageKey?
@@ -284,6 +288,7 @@ public final class AppModel {
         lockedChatsPrompt = false
         voice.stop()
         video.stop()
+        videoWanted = nil
         if recorder.isRecording { recorder.cancel() }
         messageInfo = nil
         forwarding = nil
@@ -296,9 +301,9 @@ public final class AppModel {
     }
 
     private func unlocked() {
-        if let chat = openAfterUnlock {
+        if let key = openAfterUnlock {
             openAfterUnlock = nil
-            selectedChatID = chat
+            open(notified: key)
         }
         guard started else { return }
         backend.send(.setOnline(online: isActive))
@@ -1080,9 +1085,11 @@ public final class AppModel {
     public func playVideo(_ message: MessageRecord) {
         guard case .video = message.content else { return }
         guard let url = message.mediaURL else {
+            videoWanted = MessageKey(chat: message.chat, message: message.id)
             download(message)
             return
         }
+        videoWanted = nil
         voice.stop()
         video.toggle(MessageKey(chat: message.chat, message: message.id), url: url)
     }
@@ -1577,6 +1584,14 @@ public final class AppModel {
             avatars.apply(id: id, full: full, path: path)
         case let .media(chat, message, card, path, error):
             conversations.applyMedia(chat: chat, message: message, card: card.map(Int.init), path: path, error: error)
+            let key = MessageKey(chat: chat, message: message)
+            if videoWanted == key {
+                videoWanted = nil
+                if path != nil, error == nil, selectedChatID == chat, !appLock.isLocked,
+                   let record = conversations.conversation(chat).message(message) {
+                    playVideo(record)
+                }
+            }
         case .syncing(let active):
             session.isSyncing = active
             if !active { session.syncProgress = nil }
@@ -1778,11 +1793,13 @@ public final class AppModel {
 
     private func handle(_ response: Notifier.Response) {
         switch response {
-        case let .open(chat, _):
+        case let .open(chat, message):
+            let key = MessageKey(chat: chat, message: message)
             if appLock.isLocked {
-                openAfterUnlock = chat
+                // The announced message waits for the unlock, as upstream's does.
+                openAfterUnlock = key
             } else {
-                selectedChatID = chat
+                open(notified: key)
             }
             bringToFront()
         case let .reply(chat, message, text):
@@ -1794,6 +1811,16 @@ public final class AppModel {
         case .markRead(let chat):
             guard !appLock.isLocked else { return }
             markRead(chat)
+        }
+    }
+
+    /// A clicked notification lands on the message it announced, loading
+    /// the history up to it when needed.
+    func open(notified key: MessageKey) {
+        if key.message.isEmpty {
+            selectedChatID = key.chat
+        } else {
+            reveal(key)
         }
     }
 

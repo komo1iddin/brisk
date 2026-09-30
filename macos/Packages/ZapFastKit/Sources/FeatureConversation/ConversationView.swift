@@ -74,6 +74,10 @@ public struct ConversationView: View {
         // sheets below stay, since rebuilding toolbar items took about half
         // of opening a chat.
         .id(chatID)
+        // The chat opened fades in; the one left goes at once, so two
+        // timelines never draw together.
+        .transition(.asymmetric(insertion: .opacity, removal: .identity))
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: chatID)
         // What belonged to the chat left behind.
         .onChange(of: chatID) {
             scrollState = TimelineController.ScrollState()

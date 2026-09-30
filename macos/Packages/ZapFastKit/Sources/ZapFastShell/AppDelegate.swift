@@ -8,6 +8,7 @@ import ZapFastDesign
 /// keeps the Dock badge current, and shuts down cleanly on quit.
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public let model: AppModel
+    private var menuBarIcon: MenuBarIcon?
 
     override public init() {
         model = TimelineBenchmark.isRequested ? TimelineBenchmark.makeModel() : AppModel()
@@ -53,6 +54,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeBadge()
         watchInput()
+        menuBarIcon = MenuBarIcon(model: model)
+        if let rounds = LiveStress.rounds { LiveStress.start(model: model, rounds: rounds) }
         #if DEBUG
         DebugSnapshot.scheduleIfRequested(model: model)
         #endif

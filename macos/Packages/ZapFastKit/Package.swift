@@ -131,5 +131,10 @@ let package = Package(
             dependencies: ["ZapFastCore"],
             swiftSettings: uiSettings
         ),
+        .testTarget(
+            name: "FeatureConversationTests",
+            dependencies: ["FeatureConversation", "ZapFastCore"],
+            swiftSettings: uiSettings
+        ),
     ]
 )

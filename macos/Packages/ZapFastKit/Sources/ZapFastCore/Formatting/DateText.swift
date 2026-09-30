@@ -2,7 +2,7 @@ import Foundation
 
 /// Dates as the chat list, bubbles and day separators show them, following
 /// the system's locale and 12/24-hour setting.
-public enum DateText {
+public nonisolated enum DateText {
     public static func date(_ unixSeconds: Int64) -> Date {
         Date(timeIntervalSince1970: TimeInterval(unixSeconds))
     }

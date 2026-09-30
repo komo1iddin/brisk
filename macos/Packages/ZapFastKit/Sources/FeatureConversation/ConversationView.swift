@@ -19,37 +19,22 @@ public struct ConversationView: View {
 
     public var body: some View {
         let chat = model.chats.chat(chatID)
-        let conversation = model.conversations.conversation(chatID)
         let theme = model.chatTheme(for: chatID)
 
-        MessageTimeline(
+        TimelineContainer(
             chatID: chatID,
-            rows: TimelineRow.build(conversation.messages, unread: model.unreadDivider),
-            chat: chat,
-            model: model,
-            jump: model.jump,
+            isGroup: chat?.kind == .group,
             theme: theme,
-            scrollRequest: model.timelineScroll,
-            onReachTop: { model.loadOlder(in: chatID) },
+            model: model,
             onScrollState: { scrollState = $0 }
         )
         .background { WallpaperView(theme.wallpaper).ignoresSafeArea() }
         // The table scrolls under the title bar; AppKit insets its content.
         .ignoresSafeArea(edges: .top)
-        .overlay {
-            if conversation.requested, conversation.messages.isEmpty, !conversation.fetchingPhone {
-                ContentUnavailableView("No messages here yet", systemImage: "bubble.left.and.bubble.right")
-            }
-        }
-        .overlay(alignment: .top) {
-            if conversation.loadingOlder || conversation.fetchingPhone {
-                ProgressView()
-                    .controlSize(.small)
-                    .padding(Metrics.s)
-                    .modifier(GlassCard())
-                    .padding(.top, Metrics.s)
-            }
-        }
+        // Apart, so paging flags redraw these alone, not the title and
+        // toolbar with them.
+        .overlay { EmptyConversation(chatID: chatID, model: model) }
+        .overlay(alignment: .top) { LoadingOlder(chatID: chatID, model: model) }
         .overlay(alignment: .bottomTrailing) {
             if !scrollState.atBottom {
                 NewestMessageButton(newBelow: scrollState.newBelow) { model.scrollTimeline(.bottom) }
@@ -85,6 +70,15 @@ public struct ConversationView: View {
             model.stage(files: files, in: chatID)
             return true
         }
+        // A new chat gets a new timeline and composer; the toolbar, title and
+        // sheets below stay, since rebuilding toolbar items took about half
+        // of opening a chat.
+        .id(chatID)
+        // What belonged to the chat left behind.
+        .onChange(of: chatID) {
+            scrollState = TimelineController.ScrollState()
+            infoRequest = nil
+        }
         .environment(\.chatTheme, theme)
         .tint(theme.accent)
         // The header shows the chat's name, so the toolbar's title is empty.
@@ -115,6 +109,7 @@ public struct ConversationView: View {
                     ChatSearchPanel(search: search, model: model)
                 }
             }
+            .id(chatID)
             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
         }
         .toolbar {
@@ -236,6 +231,50 @@ private struct WindowMenuTitle: NSViewRepresentable {
                 guard window.isVisible || window.isMiniaturized, !window.isExcludedFromWindowsMenu else { return }
                 NSApp.changeWindowsItem(window, title: title, filename: false)
             }
+        }
+    }
+}
+
+/// Shown when the chat has nothing, once the archive and phone have said so.
+private struct EmptyConversation: View {
+    let chatID: String
+    let model: AppModel
+
+    var body: some View {
+        let conversation = model.conversations.conversation(chatID)
+        if conversation.requested, conversation.messages.isEmpty, !conversation.fetchingPhone {
+            ContentUnavailableView("No messages here yet", systemImage: "bubble.left.and.bubble.right")
+        }
+    }
+}
+
+/// A spinner while older messages are on their way, if they take a while:
+/// the archive usually answers within a frame, and a glass card shown and
+/// removed for every page cost more than the page.
+private struct LoadingOlder: View {
+    let chatID: String
+    let model: AppModel
+    @State private var shown = false
+
+    var body: some View {
+        let conversation = model.conversations.conversation(chatID)
+        let loading = conversation.loadingOlder || conversation.fetchingPhone
+        Group {
+            if shown {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(Metrics.s)
+                    .modifier(GlassCard())
+                    .padding(.top, Metrics.s)
+            }
+        }
+        .task(id: loading) {
+            guard loading else {
+                shown = false
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(250))
+            if !Task.isCancelled { shown = true }
         }
     }
 }

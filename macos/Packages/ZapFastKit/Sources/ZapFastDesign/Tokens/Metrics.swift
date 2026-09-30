@@ -2,7 +2,7 @@ import CoreGraphics
 import SwiftUI
 
 /// One scale for spacing, radii and sizes, so screens cannot drift apart.
-public enum Metrics {
+public nonisolated enum Metrics {
     // Spacing
     public static let hairline: CGFloat = 1
     public static let xxs: CGFloat = 2

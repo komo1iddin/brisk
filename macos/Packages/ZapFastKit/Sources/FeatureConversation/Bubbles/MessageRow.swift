@@ -8,7 +8,7 @@ import ZapFastDesign
 struct MessageRow: View {
     let message: MessageRecord
     let startsRun: Bool
-    let chat: ChatSummary?
+    let isGroup: Bool
     let model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
@@ -134,7 +134,7 @@ struct MessageRow: View {
 
     /// Shown on the first message of a run in a group.
     private var senderName: String? {
-        guard startsRun, !message.fromMe, chat?.kind == .group else { return nil }
+        guard startsRun, !message.fromMe, isGroup else { return nil }
         return model.chats.personName(message.sender, hint: message.senderName)
     }
 }
@@ -172,7 +172,7 @@ private struct ReactionPills: View {
 /// hover controls and WhatsApp's: separate discs, opaque so the wallpaper
 /// does not show through, lifted like a bubble. Everything else stays in
 /// the context menu.
-private struct HoverActions: View {
+struct HoverActions: View {
     let message: MessageRecord
     let model: AppModel
 

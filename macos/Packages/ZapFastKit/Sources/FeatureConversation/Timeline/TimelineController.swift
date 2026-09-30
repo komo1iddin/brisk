@@ -1,23 +1,28 @@
 import AppKit
+import Observation
+import OSLog
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
-/// Owns the timeline's table: applies row changes as inserts and reloads,
-/// keeps the reader's place when older messages arrive above, follows new
-/// messages while the reader is at the bottom, and asks for older pages
-/// near the top.
+/// Owns the timeline's table.
+///
+/// What Telefast's spike measured, applied here:
+/// - Row heights are known before the table asks. Plain text messages, most
+///   of any chat, are measured off the main actor in parallel
+///   (`TimelineLayoutEngine`) and drawn by Core Animation (`TextBubbleCell`);
+///   only richer messages are SwiftUI rows, measured once per bubble width.
+/// - A row depends on the width only through the widest a bubble may be, so
+///   resizing a wide window costs nothing, and a narrow one is re-measured
+///   once the drag ends, not on every frame of it.
+/// - Nothing reads the stores per row: the view hands over the chat's
+///   messages and their revision, and an unchanged revision is a no-op.
+///
+/// Changes keep the reader's place by message id, whatever moved above it,
+/// and follow new messages while the reader is at the bottom.
 final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
-    /// What every row needs besides its own data.
-    struct Content {
-        var chat: ChatSummary?
-        var model: AppModel?
-        var theme: ChatTheme = .standard
-        var textScale: Double = 1
-    }
-
     /// Whether the reader is at the newest message, and how many incoming
     /// messages arrived below while they were not.
     struct ScrollState: Equatable {
@@ -25,32 +30,108 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         var newBelow = 0
     }
 
-    private let scrollView = NSScrollView()
-    private let tableView = NSTableView()
-    private var rows: [TimelineRow] = []
-    private var chatID: String?
-    private var content = Content()
-    private var onReachTop: () -> Void = {}
-    private let heights = RowHeights()
-    private var lastWidth: CGFloat = 0
+    enum Plan {
+        /// A chip centred in the timeline: a day, or the unread divider.
+        case chip(id: String, title: String, isDay: Bool)
+        case text(TimelineRow, TextBubbleSource)
+        case hosted(TimelineRow)
+    }
+
+    enum Item {
+        case chip(id: String, title: String, isDay: Bool, height: CGFloat)
+        case text(TimelineRow, TextBubbleLayout)
+        case hosted(TimelineRow, height: CGFloat)
+
+        var id: String {
+            switch self {
+            case .chip(let id, _, _, _): id
+            case .text(let row, _), .hosted(let row, _): row.id
+            }
+        }
+
+        var height: CGFloat {
+            switch self {
+            case .chip(_, _, _, let height), .hosted(_, let height): height
+            case .text(_, let layout): layout.rowHeight
+            }
+        }
+
+        var message: MessageRecord? {
+            switch self {
+            case .chip: nil
+            case .text(let row, _), .hosted(let row, _):
+                if case .message(let message, _) = row { message } else { nil }
+            }
+        }
+
+        func differs(from other: Item) -> Bool {
+            switch (self, other) {
+            case let (.chip(_, a, _, _), .chip(_, b, _, _)): a != b
+            case let (.text(_, a), .text(_, b)): a !== b
+            case let (.hosted(a, ha), .hosted(b, hb)): a != b || ha != hb
+            default: true
+            }
+        }
+    }
+
+    let scrollView = NSScrollView()
+    let tableView = TimelineTableView()
+    var chatID: String?
+    private var revision: Int?
+    private var messages: [MessageRecord] = []
+    private var isGroup = false
+    private(set) var style = TimelineStyle.standard
+    private var colors = BubbleColors(TimelineStyle.standard)
+    private var unread: UnreadDivider?
+    private var selecting = false
+    weak var model: AppModel?
+    var onReachTop: () -> Void = {}
+    var onScrollState: (ScrollState) -> Void = { _ in }
+
+    var items: [Item] = []
+    private var plans: [Plan] = []
+    /// The bubble width the items are laid out for.
+    private var widthLimit: CGFloat = 0
+
+    private var textLayouts: [String: (source: TextBubbleSource, layout: TextBubbleLayout)] = [:]
+    private var hostedHeights: [String: (row: TimelineRow, limit: CGFloat, scale: Double, height: CGFloat)] = [:]
+    private var chipHeights: [String: CGFloat] = [:]
+    /// Bumped by every preparation; a background layout that finishes after
+    /// a newer one started is not installed.
+    private var generation = 0
+
     /// The reader is at the newest message, so new ones scroll into view.
-    private var followsBottom = true
+    var followsBottom = true
+    /// Incoming messages that arrived below while the reader was elsewhere.
+    var newBelow = 0
+    var reported = ScrollState()
     /// The last jump scrolled to, so each is done once.
-    private var handledJump: UUID?
+    var handledJump: UUID?
+    var pendingJump: JumpRequest?
     /// The last scroll asked for (keys, the newest-message button), so
     /// each is done once.
-    private var handledScroll: UUID?
+    var handledScroll: UUID?
     /// The chat just opened; its unread divider goes to the top once its
     /// messages are here.
-    private var placesUnread = false
-    private var newBelow = 0
-    private var reported = ScrollState()
-    private var onScrollState: (ScrollState) -> Void = { _ in }
+    var placesUnread = false
+    private var highlighted: MessageKey?
+    private var reactionTarget: MessageKey?
+    private var namesChanged = false
+    private var widthCheckScheduled = false
+    var reachTopScheduled = false
+    private var relayoutAfterLiveResize = false
+    private var observers: [NSObjectProtocol] = []
 
     /// Within this distance of an edge counts as being at it.
-    private let edgeSlack: CGFloat = 48
+    let edgeSlack: CGFloat = 48
     /// Older pages are requested this far before the top is reached.
-    private let prefetchDistance: CGFloat = 600
+    let prefetchDistance: CGFloat = 600
+    /// More new text rows than this are measured in the background: a live
+    /// message or two is laid out at once, a page of history off the main
+    /// actor (60 messages took about 12 ms there, mostly link detection).
+    private let backgroundThreshold = 8
+
+    nonisolated private static let signposter = OSSignposter(subsystem: "ZapFast", category: "Timeline")
 
     func makeScrollView() -> NSScrollView {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("message"))
@@ -79,66 +160,93 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
 
         let clip = scrollView.contentView
         clip.postsBoundsChangedNotifications = true
-        tableView.postsFrameChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(scrolled), name: NSView.boundsDidChangeNotification, object: clip
-        )
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(resized), name: NSView.frameDidChangeNotification, object: tableView
-        )
+        clip.postsFrameChangedNotifications = true
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(scrolled), name: NSView.boundsDidChangeNotification, object: clip)
+        center.addObserver(self, selector: #selector(clipResized), name: NSView.frameDidChangeNotification, object: clip)
+        observers.append(center.addObserver(
+            forName: NSWindow.didEndLiveResizeNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            let sender = (notification.object as AnyObject?).map(ObjectIdentifier.init)
+            MainActor.assumeIsolated {
+                guard let self, let window = self.scrollView.window, sender == ObjectIdentifier(window) else { return }
+                self.liveResizeEnded()
+            }
+        })
+        observers.append(center.addObserver(
+            forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshVisibleColors() }
+        })
         return scrollView
+    }
+
+    isolated deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: Updates
 
     func update(
         chatID: String,
-        rows new: [TimelineRow],
-        content: Content,
+        messages: [MessageRecord],
+        revision: Int,
+        isGroup: Bool,
+        model: AppModel,
+        style: TimelineStyle,
+        unread: UnreadDivider?,
+        selecting: Bool,
         jump: JumpRequest?,
         scrollRequest: TimelineScrollRequest?,
         onReachTop: @escaping () -> Void,
         onScrollState: @escaping (ScrollState) -> Void
     ) {
-        let restyled = content.theme != self.content.theme
-        let resized = content.textScale != self.content.textScale
-        self.content = content
         self.onReachTop = onReachTop
         self.onScrollState = onScrollState
-
-        if chatID != self.chatID {
+        if self.model !== model {
+            self.model = model
+            observeHighlight()
+            observeReactionTarget()
+        }
+        if chatID != self.chatID || isGroup != self.isGroup {
             self.chatID = chatID
-            rows = new
-            heights.removeAll()
-            tableView.reloadData()
+            self.isGroup = isGroup
+            self.revision = nil
+            items = []
+            textLayouts = [:]
+            hostedHeights = [:]
+            generation += 1
             followsBottom = true
             placesUnread = true
             newBelow = 0
             handledScroll = scrollRequest?.token
-            scrollToBottom()
-        } else if resized {
-            // Every row changes height; keep the reader where they were.
-            rows = new
-            heights.removeAll()
-            let follow = followsBottom
-            let anchor = topAnchor()
             tableView.reloadData()
-            if follow { scrollToBottom() } else { restore(anchor, shiftedBy: 0) }
-        } else if new != rows {
-            apply(new)
-        } else if restyled, !rows.isEmpty {
-            // Colours only: the same rows, heights unchanged.
-            tableView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<rows.count), columnIndexes: [0])
         }
         if let jump, jump.key.chat == chatID, jump.token != handledJump {
-            // The message jumped to wins over the unread divider.
-            placesUnread = false
-            scroll(toMessage: jump.key.message, token: jump.token)
-        } else if placesUnread, !rows.isEmpty {
-            placesUnread = false
-            if let index = rows.firstIndex(where: { if case .unread = $0 { true } else { false } }) {
-                scroll(toTopOf: index)
-            }
+            pendingJump = jump
+        }
+        let restyled = style != self.style
+        var changed = revision != self.revision || restyled || unread != self.unread || selecting != self.selecting
+        if restyled {
+            self.style = style
+            colors = BubbleColors(style)
+        }
+        if selecting != self.selecting {
+            // Rows swap between the drawn cell and the SwiftUI row, which
+            // draws the checkboxes.
+            self.selecting = selecting
+        }
+        self.unread = unread
+        if revision != self.revision {
+            self.revision = revision
+            self.messages = messages
+            changed = true
+        }
+        if changed {
+            rebuild(restyled: restyled)
+        } else {
+            performPendingJump()
         }
         if let scrollRequest, scrollRequest.token != handledScroll {
             handledScroll = scrollRequest.token
@@ -147,238 +255,331 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         report()
     }
 
-    private func apply(_ new: [TimelineRow]) {
-        let old = rows
-        let oldIDs = old.map(\.id)
-        let newIDs = new.map(\.id)
+    /// Rows for the current messages: resolved on the main actor, measured
+    /// wherever suits, installed on the main actor.
+    private func rebuild(restyled: Bool = false) {
+        let rows = TimelineRow.build(messages, unread: unread)
+        plans = resolve(rows)
+        prepare(limit: widthLimit > 0 ? widthLimit : currentWidthLimit(), restyled: restyled)
+    }
+
+    /// Names shown in rows come from the stores. Reading them under
+    /// observation means a contact's new name updates the rows that show
+    /// it, without the rows reading the stores themselves.
+    private func resolve(_ rows: [TimelineRow]) -> [Plan] {
+        guard let model else { return [] }
+        let isGroup = isGroup
+        let colors = colors
+        let selecting = selecting
+        return withObservationTracking {
+            rows.map { row -> Plan in
+                switch row {
+                case let .day(id, title):
+                    return .chip(id: id, title: title, isDay: true)
+                case .unread(let count):
+                    let title = String(AttributedString(localized: "^[\(count) unread message](inflect: true)").characters)
+                    return .chip(id: row.id, title: title, isDay: false)
+                case let .message(message, startsRun):
+                    guard !selecting, case .text(let text, nil) = message.content else { return .hosted(row) }
+                    let chats = model.chats
+                    return .text(row, TextBubbleSource(
+                        id: message.id,
+                        fromMe: message.fromMe,
+                        startsRun: startsRun,
+                        text: text,
+                        emojiOnly: BodyText.isOnlyEmoji(text),
+                        mentions: message.mentions,
+                        mentionNames: Dictionary(
+                            message.mentions.map { ($0.id, chats.displayName($0.id)) },
+                            uniquingKeysWith: { first, _ in first }
+                        ),
+                        senderName: startsRun && !message.fromMe && isGroup
+                            ? chats.personName(message.sender, hint: message.senderName) : nil,
+                        senderID: message.sender,
+                        forwarded: message.forwarded,
+                        quote: message.quoted.map {
+                            .init(name: chats.displayName($0.sender, hint: $0.senderName), summary: $0.summary, senderID: $0.sender)
+                        },
+                        edited: message.edited,
+                        timestamp: message.timestamp,
+                        status: message.status,
+                        reactions: message.reactions,
+                        colors: colors
+                    ))
+                }
+            }
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.namesDidChange() }
+            }
+        }
+    }
+
+    /// A burst of contact updates is folded into one pass.
+    private func namesDidChange() {
+        guard !namesChanged, chatID != nil else { return }
+        namesChanged = true
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                guard self.namesChanged else { return }
+                self.namesChanged = false
+                self.rebuild()
+            }
+        }
+    }
+
+    /// Measures the text rows that have no layout for `limit` yet, in the
+    /// background when there are many, then installs the rows.
+    private func prepare(limit: CGFloat, restyled: Bool = false) {
+        generation += 1
+        let generation = generation
+        var missing: [TextBubbleSource] = []
+        for plan in plans {
+            guard case .text(_, let source) = plan else { continue }
+            if let cached = textLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit { continue }
+            missing.append(source)
+        }
+
+        if missing.count <= backgroundThreshold {
+            store(TimelineLayoutEngine.layouts(for: missing, widthLimit: limit), for: missing)
+            install(limit: limit, restyled: restyled)
+            return
+        }
+        // The table keeps showing what it has until the layouts land.
+        Task {
+            let layouts = await Self.measure(missing, limit: limit)
+            store(layouts, for: missing)
+            guard generation == self.generation else { return }
+            install(limit: limit, restyled: restyled)
+        }
+    }
+
+    @concurrent
+    private static func measure(_ sources: [TextBubbleSource], limit: CGFloat) async -> [TextBubbleLayout] {
+        let state = signposter.beginInterval("Layout", "\(sources.count) messages")
+        defer { signposter.endInterval("Layout", state) }
+        return TimelineLayoutEngine.layouts(for: sources, widthLimit: limit)
+    }
+
+    private func store(_ layouts: [TextBubbleLayout], for sources: [TextBubbleSource]) {
+        for (source, layout) in zip(sources, layouts) {
+            textLayouts[source.id] = (source, layout)
+        }
+    }
+
+    /// Turns the plans into rows and applies them to the table.
+    private func install(limit: CGFloat, restyled: Bool) {
+        widthLimit = limit
+        let width = rowWidth
+        let scale = style.textScale
+        let new: [Item] = plans.map { plan in
+            switch plan {
+            case let .chip(id, title, isDay):
+                let height = chipHeights[title] ?? ChipCell.measure(title).rowHeight
+                chipHeights[title] = height
+                return .chip(id: id, title: title, isDay: isDay, height: height)
+            case let .text(row, source):
+                if let cached = textLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
+                    return .text(row, cached.layout)
+                }
+                let layout = TimelineLayoutEngine.layout(for: source, widthLimit: limit)
+                textLayouts[source.id] = (source, layout)
+                return .text(row, layout)
+            case let .hosted(row):
+                if let cached = hostedHeights[row.id], cached.row == row, cached.limit == limit, cached.scale == scale {
+                    return .hosted(row, height: cached.height)
+                }
+                let height = RowMeasurer.shared.height(of: rowView(row), width: width)
+                hostedHeights[row.id] = (row, limit, scale, height)
+                return .hosted(row, height: height)
+            }
+        }
+        apply(new, restyled: restyled)
+        placeUnreadDivider()
+        performPendingJump()
+    }
+
+    private func apply(_ new: [Item], restyled: Bool) {
+        let old = items
         let follow = followsBottom
+        let anchor = follow ? nil : readingAnchor()
+        let diff = TimelineDiff.between(old.map(\.id), new.map(\.id)) { new[$1].differs(from: old[$0]) }
+        items = new
 
-        // Same rows, some changed in place (a tick, a reaction, a download).
-        if oldIDs == newIDs {
-            rows = new
-            let changed = IndexSet(new.indices.filter { new[$0] != old[$0] })
-            reload(changed)
-            if follow { scrollToBottom() }
-            return
-        }
-
-        // An older page arrived above: keep the reader's place.
-        if !oldIDs.isEmpty, newIDs.count > oldIDs.count, Array(newIDs.suffix(oldIDs.count)) == oldIDs {
-            let anchor = topAnchor()
-            let added = newIDs.count - oldIDs.count
-            rows = new
-            tableView.insertRows(at: IndexSet(integersIn: 0..<added), withAnimation: [])
-            let shifted = IndexSet(new.indices.dropFirst(added).filter { new[$0] != old[$0 - added] })
-            reload(shifted)
-            restore(anchor, shiftedBy: added)
-            return
-        }
-
-        // Anything else: removals and insertions, then in-place changes.
-        let difference = newIDs.difference(from: oldIDs)
-        rows = new
-        tableView.beginUpdates()
-        for removal in difference.removals.reversed() {
-            if case .remove(let offset, _, _) = removal {
-                tableView.removeRows(at: [offset], withAnimation: .effectFade)
+        switch diff {
+        case .none:
+            // A new theme keeps every row; the SwiftUI ones draw its colours.
+            if restyled, !new.isEmpty {
+                tableView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<new.count), columnIndexes: [0])
+                refreshVisibleColors()
             }
-        }
-        for insertion in difference.insertions {
-            if case .insert(let offset, _, _) = insertion {
-                tableView.insertRows(at: [offset], withAnimation: follow ? [] : .effectFade)
+            return
+        case .reload:
+            tableView.reloadData()
+        case .update(let changed):
+            reload(restyled ? IndexSet(integersIn: 0..<new.count) : changed, resized: IndexSet(changed.filter { old[$0].height != new[$0].height }))
+        case let .patch(removed, inserted, changed):
+            tableView.beginUpdates()
+            if !removed.isEmpty {
+                tableView.removeRows(at: removed, withAnimation: removed.count <= 3 ? .effectFade : [])
             }
+            if !inserted.isEmpty {
+                tableView.insertRows(at: inserted, withAnimation: [])
+            }
+            tableView.endUpdates()
+            reload(changed, resized: changed)
         }
-        tableView.endUpdates()
 
-        let previous = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let changed = new.indices.filter { index in
-            guard let before = previous[new[index].id] else { return false }
-            return before != new[index]
-        }
-        reload(IndexSet(changed))
         if follow {
             scrollToBottom()
         } else {
+            if let anchor { restore(anchor) }
             // Counted for the "newest message" button's badge.
-            let known = Set(oldIDs)
-            newBelow += new.count { row in
-                guard !known.contains(row.id), case .message(let message, _) = row else { return false }
+            let known = Set(old.map(\.id))
+            newBelow += new.count { item in
+                guard !known.contains(item.id), let message = item.message else { return false }
                 return !message.fromMe
             }
         }
     }
 
-    private func reload(_ indexes: IndexSet) {
+    /// Redraws rows that changed in place and tells the table of those
+    /// whose height changed.
+    private func reload(_ indexes: IndexSet, resized: IndexSet) {
         guard !indexes.isEmpty else { return }
-        for index in indexes { heights.invalidate(rows[index].id) }
         tableView.reloadData(forRowIndexes: indexes, columnIndexes: [0])
+        guard !resized.isEmpty else { return }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0
-            tableView.noteHeightOfRows(withIndexesChanged: indexes)
+            tableView.noteHeightOfRows(withIndexesChanged: resized)
         }
     }
 
-    // MARK: Scrolling
+    // MARK: Width
 
-    private var clip: NSClipView { scrollView.contentView }
-
-    private var isAtBottom: Bool {
-        clip.bounds.maxY >= tableView.bounds.height - edgeSlack
+    var rowWidth: CGFloat {
+        let width = scrollView.contentView.bounds.width
+        return width > 0 ? width : 700
     }
 
-    private func scrollToBottom(animated: Bool = false) {
-        guard !rows.isEmpty else { return }
-        tableView.layoutSubtreeIfNeeded()
-        guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
-            tableView.scrollRowToVisible(rows.count - 1)
-            return
-        }
-        let bottom = max(-clip.contentInsets.top, tableView.bounds.height - clip.bounds.height + clip.contentInsets.bottom)
-        followsBottom = true
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            context.allowsImplicitAnimation = true
-            clip.animator().setBoundsOrigin(NSPoint(x: clip.bounds.minX, y: bottom))
-        } completionHandler: { [weak self] in
+    private func currentWidthLimit() -> CGFloat {
+        TimelineGeometry.bubbleWidthLimit(rowWidth: rowWidth)
+    }
+
+    /// Checked after the frame change, never inside the table's own layout.
+    @objc private func clipResized(_ notification: Notification) {
+        guard !widthCheckScheduled else { return }
+        widthCheckScheduled = true
+        DispatchQueue.main.async {
             MainActor.assumeIsolated {
-                guard let self else { return }
-                self.scrollView.reflectScrolledClipView(self.clip)
-                // Rows that arrived during the animation are below it now.
-                if self.followsBottom { self.scrollToBottom() }
+                self.widthCheckScheduled = false
+                self.checkWidth()
             }
         }
     }
 
-    private func perform(_ kind: TimelineScroll) {
-        switch kind {
-        case .bottom:
-            scrollToBottom(animated: true)
-        case .top:
-            scroll(toY: -clip.contentInsets.top)
-        case .pageUp, .pageDown:
-            let insets = clip.contentInsets
-            let page = max(40, clip.bounds.height - insets.top - insets.bottom - 40)
-            scroll(toY: clip.bounds.minY + (kind == .pageUp ? -page : page))
+    private func checkWidth() {
+        let limit = currentWidthLimit()
+        guard !items.isEmpty, limit != widthLimit else { return }
+        if scrollView.inLiveResize {
+            // Rows keep their layout during the drag; bubbles stay against
+            // their edge.
+            relayoutAfterLiveResize = true
+        } else {
+            prepare(limit: limit)
         }
     }
 
-    /// Scrolls to `y`, kept within the content, animated unless Reduce
-    /// Motion is on.
-    private func scroll(toY y: CGFloat) {
-        tableView.layoutSubtreeIfNeeded()
-        let insets = clip.contentInsets
-        let lowest = -insets.top
-        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
-        let target = NSPoint(x: clip.bounds.minX, y: min(max(y, lowest), highest))
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            clip.scroll(to: target)
-            scrollView.reflectScrolledClipView(clip)
-            return
+    private func liveResizeEnded() {
+        guard relayoutAfterLiveResize else { return }
+        relayoutAfterLiveResize = false
+        let limit = currentWidthLimit()
+        if limit != widthLimit { prepare(limit: limit) }
+    }
+
+    // MARK: Highlight and colours
+
+    /// A search hit or quote just jumped to is marked for a moment.
+    private func observeHighlight() {
+        guard let model else { return }
+        let key = withObservationTracking { model.highlighted } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.observeHighlight() }
+            }
         }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            clip.animator().setBoundsOrigin(target)
-        } completionHandler: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                self.scrollView.reflectScrolledClipView(self.clip)
+        highlighted = key
+        forEachTextCell { cell in
+            cell.setHighlighted(isHighlighted(cell.messageID), animated: true)
+        }
+    }
+
+    /// The reaction picker opens from a drawn bubble's hover control or its
+    /// menu through the model, as the SwiftUI rows' popover does.
+    private func observeReactionTarget() {
+        guard let model else { return }
+        let target = withObservationTracking { model.reactionTarget } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.observeReactionTarget() }
+            }
+        }
+        reactionTarget = target
+        forEachTextCell { cell in
+            if let target, target.chat == chatID, target.message == cell.messageID {
+                cell.showReactionPicker()
+            } else {
+                cell.closeReactionPicker()
             }
         }
     }
 
-    /// Puts a row at the top of the view (the unread divider), or as near
-    /// as the content allows.
-    private func scroll(toTopOf index: Int) {
-        tableView.layoutSubtreeIfNeeded()
-        let insets = clip.contentInsets
-        let lowest = -insets.top
-        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
-        let top = min(max(tableView.rect(ofRow: index).minY - insets.top, lowest), highest)
-        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))
-        scrollView.reflectScrolledClipView(clip)
-        followsBottom = isAtBottom
+    func isHighlighted(_ id: String?) -> Bool {
+        guard let highlighted, let id else { return false }
+        return highlighted.chat == chatID && highlighted.message == id
     }
 
-    /// Tells the view whether to offer the "newest message" button. Sent
-    /// after the current update, which must not change SwiftUI state.
-    private func report() {
-        if followsBottom { newBelow = 0 }
-        let state = ScrollState(atBottom: followsBottom, newBelow: newBelow)
-        guard state != reported else { return }
-        reported = state
-        let onScrollState = onScrollState
-        DispatchQueue.main.async { onScrollState(state) }
-    }
-
-    /// Centres a message in view. A message not in the rows yet waits for
-    /// the next update, when its page has arrived.
-    private func scroll(toMessage id: String, token: UUID) {
-        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
-        handledJump = token
-        tableView.layoutSubtreeIfNeeded()
-        let insets = clip.contentInsets
-        let visibleHeight = clip.bounds.height - insets.top - insets.bottom
-        let row = tableView.rect(ofRow: index)
-        let lowest = -insets.top
-        let highest = max(lowest, tableView.bounds.height - clip.bounds.height + insets.bottom)
-        let top = min(max(row.midY - visibleHeight / 2 - insets.top, lowest), highest)
-        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))
-        scrollView.reflectScrolledClipView(clip)
-        followsBottom = isAtBottom
-    }
-
-    /// The first visible row and how far its top sits below the clip's top.
-    private func topAnchor() -> (row: Int, offset: CGFloat)? {
-        let visible = tableView.rows(in: clip.bounds)
-        guard visible.length > 0 else { return nil }
-        let row = visible.location
-        return (row, tableView.rect(ofRow: row).minY - clip.bounds.minY)
-    }
-
-    private func restore(_ anchor: (row: Int, offset: CGFloat)?, shiftedBy added: Int) {
-        guard let anchor else { return }
-        tableView.layoutSubtreeIfNeeded()
-        let top = tableView.rect(ofRow: anchor.row + added).minY - anchor.offset
-        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))
-        scrollView.reflectScrolledClipView(clip)
-    }
-
-    @objc private func scrolled(_ notification: Notification) {
-        followsBottom = isAtBottom
-        if clip.bounds.minY + clip.contentInsets.top < prefetchDistance, !rows.isEmpty {
-            onReachTop()
+    private func refreshVisibleColors() {
+        forEachTextCell { $0.refreshColors() }
+        tableView.enumerateAvailableRowViews { rowView, _ in
+            for case let cell as ChipCell in rowView.subviews { cell.refreshColors() }
         }
-        report()
     }
 
-    @objc private func resized(_ notification: Notification) {
-        let width = tableView.bounds.width
-        guard abs(width - lastWidth) > 0.5 else { return }
-        lastWidth = width
-        heights.removeAll()
-        let follow = followsBottom
-        let anchor = topAnchor()
-        tableView.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<rows.count))
-        if follow { scrollToBottom() } else { restore(anchor, shiftedBy: 0) }
+    func forEachTextCell(_ body: (TextBubbleCell) -> Void) {
+        tableView.enumerateAvailableRowViews { rowView, _ in
+            for case let cell as TextBubbleCell in rowView.subviews { body(cell) }
+        }
     }
 
     // MARK: Data source and delegate
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        rows.count
-    }
-
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let cell = tableView.makeView(withIdentifier: HostingCell.identifier, owner: nil) as? HostingCell
-            ?? HostingCell()
-        cell.show(rowView(rows[row]))
-        return cell
+        items.count
     }
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
-        let item = rows[row]
-        return heights.height(for: item, width: tableView.bounds.width) { width in
-            RowMeasurer.shared.height(of: rowView(item), width: width)
+        items[row].height
+    }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        switch items[row] {
+        case let .chip(_, title, isDay, _):
+            let cell = tableView.makeView(withIdentifier: ChipCell.identifier, owner: nil) as? ChipCell ?? ChipCell()
+            cell.configure(title: title, isHeader: isDay, colors: colors)
+            return cell
+        case let .text(row, layout):
+            let cell = tableView.makeView(withIdentifier: TextBubbleCell.identifier, owner: nil) as? TextBubbleCell
+                ?? TextBubbleCell()
+            cell.delegate = self
+            cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id))
+            return cell
+        case .hosted(let row, _):
+            // Reused only for the same kind of message, so SwiftUI updates a
+            // row of the same shape instead of building another.
+            let identifier = HostingCell.identifier(for: row)
+            let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? HostingCell
+                ?? HostingCell(identifier: identifier)
+            cell.show(rowView(row))
+            return cell
         }
     }
 
@@ -386,130 +587,20 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         false
     }
 
-    /// Each row is its own SwiftUI root, so what the window's environment
-    /// would give it (opening invite links here) is given again.
+    /// Each SwiftUI row is its own root, so what the window's environment
+    /// would give it (the chat's theme, the text size, opening invite links
+    /// here) is given again.
     @ViewBuilder
-    private func rowView(_ row: TimelineRow) -> some View {
-        if let model = content.model {
-            rowContent(row).opensInviteLinks(model: model)
-                .environment(\.chatTheme, content.theme)
-                .environment(\.messageTextScale, content.textScale)
-        } else {
-            rowContent(row)
-                .environment(\.chatTheme, content.theme)
-                .environment(\.messageTextScale, content.textScale)
+    func rowView(_ row: TimelineRow) -> some View {
+        if let model, case let .message(message, startsRun) = row {
+            MessageRow(message: message, startsRun: startsRun, isGroup: isGroup, model: model)
+                .opensInviteLinks(model: model)
+                .environment(\.chatTheme, style.theme)
+                .environment(\.messageTextScale, style.textScale)
         }
     }
 
-    @ViewBuilder
-    private func rowContent(_ row: TimelineRow) -> some View {
-        switch row {
-        case .day(_, let title):
-            DaySeparator(title: title)
-        case .unread(let count):
-            UnreadSeparator(count: count)
-        case .message(let message, let startsRun):
-            if let model = content.model {
-                MessageRow(message: message, startsRun: startsRun, chat: content.chat, model: model)
-            }
-        }
-    }
-}
-
-public extension NSUserInterfaceItemIdentifier {
-    /// The message table, for the shell's benchmark to find.
-    static let messageTimeline = NSUserInterfaceItemIdentifier("ZapFastMessageTimeline")
-}
-
-// MARK: - Cells and measuring
-
-/// A table cell showing one SwiftUI row.
-private final class HostingCell: NSTableCellView {
-    static let identifier = NSUserInterfaceItemIdentifier("TimelineHostingCell")
-
-    private let host = RowHostingView(rootView: AnyView(EmptyView()))
-
-    init() {
-        super.init(frame: .zero)
-        identifier = Self.identifier
-        host.sizingOptions = []
-        host.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(host)
-        NSLayoutConstraint.activate([
-            host.leadingAnchor.constraint(equalTo: leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: trailingAnchor),
-            host.topAnchor.constraint(equalTo: topAnchor),
-            host.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not used") }
-
-    func show(_ view: some View) {
-        host.rootView = AnyView(view)
-    }
-}
-
-/// A row's hosting view, which keeps a right-click (or Control-click) for
-/// the row's own context menu. Selectable text answers it with an AppKit
-/// text menu (Cut, Paste, Font, Spelling…) that suits no message; taken
-/// here, the menu is always the one SwiftUI attached to the bubble. Plain
-/// clicks and drags still reach the text, so it can be selected.
-private final class RowHostingView: NSHostingView<AnyView> {
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        let hit = super.hitTest(point)
-        if hit != nil, hit !== self, let event = NSApp.currentEvent, opensContextMenu(event) {
-            return self
-        }
-        return hit
-    }
-
-    private func opensContextMenu(_ event: NSEvent) -> Bool {
-        switch event.type {
-        case .rightMouseDown: true
-        case .leftMouseDown: event.modifierFlags.contains(.control)
-        default: false
-        }
-    }
-}
-
-/// Measures rows off-screen with one reusable hosting controller.
-private final class RowMeasurer {
-    static let shared = RowMeasurer()
-    private let controller = NSHostingController(rootView: AnyView(EmptyView()))
-
-    func height(of view: some View, width: CGFloat) -> CGFloat {
-        controller.rootView = AnyView(view)
-        let size = controller.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
-        return max(1, ceil(size.height))
-    }
-}
-
-/// Row heights by row id, valid for one width and one version of the row.
-private final class RowHeights {
-    private struct Entry {
-        var width: CGFloat
-        var row: TimelineRow
-        var height: CGFloat
-    }
-
-    private var entries: [String: Entry] = [:]
-
-    func height(for row: TimelineRow, width: CGFloat, measure: (CGFloat) -> CGFloat) -> CGFloat {
-        if let entry = entries[row.id], entry.width == width, entry.row == row {
-            return entry.height
-        }
-        let height = measure(width)
-        entries[row.id] = Entry(width: width, row: row, height: height)
-        return height
-    }
-
-    func invalidate(_ id: String) {
-        entries[id] = nil
-    }
-
-    func removeAll() {
-        entries.removeAll(keepingCapacity: true)
+    func message(_ id: String) -> MessageRecord? {
+        items.first { $0.id == id }?.message
     }
 }

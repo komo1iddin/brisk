@@ -14,14 +14,13 @@ public struct BubbleGallery: View {
     }
 
     public var body: some View {
-        let group = ChatSummary.sample(kind: .group)
         VStack(spacing: 0) {
             DaySeparator(title: "Today")
             ForEach(Array(Self.messages.enumerated()), id: \.offset) { index, message in
                 MessageRow(
                     message: message,
                     startsRun: index == 0 || Self.messages[index - 1].sender != message.sender,
-                    chat: group,
+                    isGroup: true,
                     model: model
                 )
             }
@@ -123,18 +122,6 @@ public struct BubbleGallery: View {
             ended: false, updated: 1_790_001_300
         ), thumbnail: mapPicture),
     ]
-}
-
-private extension ChatSummary {
-    static func sample(kind: ChatKind) -> ChatSummary {
-        ChatSummary(
-            id: "gallery@g.us", name: "Gallery", groupSubjectKnown: true, kind: kind, lastActivity: 0,
-            unread: 0, markedUnread: false, archived: false, pinned: false, pinnedAt: 0, mutedUntil: nil,
-            last: nil, favorite: false, favoritePosition: 0, participants: [], readOnly: false, left: false,
-            infoLocked: nil, admin: false, locked: false, ephemeralExpiration: nil, labels: [],
-            hasCustomSound: false, isChannel: false, looksUnread: false, phone: nil
-        )
-    }
 }
 
 private extension MessageRecord {

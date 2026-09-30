@@ -61,8 +61,9 @@ private struct MainSplitView: View {
                 .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 460)
         } detail: {
             if let chatID = model.selectedChatID {
+                // Not `.id(chatID)`: the view resets its per-chat parts
+                // itself and keeps its toolbar across chats.
                 ConversationView(chatID: chatID, model: model)
-                    .id(chatID)
             } else {
                 ContentUnavailableView(
                     "No chat selected",

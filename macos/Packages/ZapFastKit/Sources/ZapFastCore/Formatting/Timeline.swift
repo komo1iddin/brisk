@@ -28,15 +28,18 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
         var rows: [TimelineRow] = []
         rows.reserveCapacity(messages.count + 8)
         var previous: MessageRecord?
+        // The current day's bounds, so the calendar is asked once per day
+        // rather than once per message.
+        var day: DateInterval?
         for message in messages {
             let date = DateText.date(message.timestamp)
-            let newDay = previous.map {
-                !calendar.isDate(DateText.date($0.timestamp), inSameDayAs: date)
-            } ?? true
+            let newDay = day.map { !($0.start <= date && date < $0.end) } ?? true
             if newDay {
-                let day = calendar.startOfDay(for: date)
+                let interval = calendar.dateInterval(of: .day, for: date)
+                    ?? DateInterval(start: calendar.startOfDay(for: date), duration: 86_400)
+                day = interval
                 rows.append(.day(
-                    id: "day-\(Int(day.timeIntervalSince1970))",
+                    id: "day-\(Int(interval.start.timeIntervalSince1970))",
                     title: DateText.day(message.timestamp, now: now, calendar: calendar)
                 ))
             }

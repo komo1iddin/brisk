@@ -4,8 +4,9 @@ import ZapFastBridge
 /// WhatsApp's text markup as an `AttributedString`: `*bold*`, `_italic_`,
 /// `~strikethrough~`, ```` ```monospace``` ````, `` `inline code` ``, links,
 /// and `@number` mentions resolved to names. Styles do not nest, which is
-/// how the phone renders them too in practice.
-public enum WhatsAppMarkup {
+/// how the phone renders them too in practice. Pure, so the timeline can
+/// lay messages out off the main actor.
+public nonisolated enum WhatsAppMarkup {
     public struct Style: Sendable {
         public var mentionColor: AttributeContainer
 

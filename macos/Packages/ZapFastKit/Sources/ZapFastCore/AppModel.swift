@@ -41,6 +41,7 @@ public final class AppModel {
             if videoWanted?.chat != selectedChatID { videoWanted = nil }
             if unreadDivider?.chat != selectedChatID { unreadDivider = nil }
             if selection?.chat != selectedChatID { selection = nil }
+            reactionTarget = nil
             if let oldValue {
                 // Staged attachments belong to the chat left, as upstream's do.
                 attachments[oldValue] = nil
@@ -135,6 +136,8 @@ public final class AppModel {
     public private(set) var jump: JumpRequest?
     /// The message just jumped to, marked for a moment so the eye finds it.
     public private(set) var highlighted: MessageKey?
+    /// The message whose reaction picker is open.
+    public var reactionTarget: MessageKey?
     /// Messages picked in the open chat (upstream's `selection`), for
     /// forwarding or deleting together.
     public private(set) var selection: MessageSelection?
@@ -299,6 +302,7 @@ public final class AppModel {
         videoWanted = nil
         if recorder.isRecording { recorder.cancel() }
         selection = nil
+        reactionTarget = nil
         messageInfo = nil
         forwarding = nil
         // Sheets over the whole window would show over the lock screen.
@@ -1239,8 +1243,32 @@ public final class AppModel {
         download(message)
     }
 
+    /// Sends a reaction; an empty one takes ours back. Each one sent counts
+    /// towards the quick reactions, as upstream's `Action::React` does.
     public func react(_ emoji: String, to message: MessageRecord) {
+        reactionTarget = nil
         backend.send(.react(chat: message.chat, message: message.id, emoji: emoji))
+        guard !emoji.isEmpty else { return }
+        var uses = preferences.reactionEmoji
+        let count = (uses.first { $0.emoji == emoji }?.count ?? 0) &+ 1
+        uses.removeAll { $0.emoji == emoji }
+        uses.insert(ReactionUse(emoji: emoji, count: count), at: 0)
+        // Stable: among equals the latest stays first.
+        uses = uses.enumerated().sorted { ($0.element.count, -$0.offset) > ($1.element.count, -$1.offset) }.map(\.element)
+        preferences.reactionEmoji = Array(uses.prefix(36))
+        rememberEmoji(emoji)
+    }
+
+    /// Six to offer at once, most used first, and ours if it is not among them.
+    public func quickReactions(for message: MessageRecord) -> [String] {
+        ZapFastBridge.quickReactions(
+            preferred: preferences.reactionEmoji.map(\.emoji),
+            mine: message.reactions.first(where: \.fromMe)?.emoji
+        )
+    }
+
+    public func showReactionPicker(for message: MessageRecord) {
+        reactionTarget = MessageKey(chat: message.chat, message: message.id)
     }
 
     public func deleteForEveryone(_ message: MessageRecord) {

@@ -236,6 +236,85 @@ fn emoji_suggestion(emoji: &'static emojis::Emoji) -> EmojiSuggestionInfo {
     }
 }
 
+/// One category of the emoji picker: its tab symbol, name, and emoji.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct EmojiGroupInfo {
+    pub symbol: String,
+    pub name: String,
+    pub emoji: Vec<String>,
+}
+
+/// Upstream's picker categories (`CATEGORIES` and `group_name` in
+/// `src/ui/picker.rs`), over the same `emojis` data.
+#[uniffi::export]
+pub fn emoji_groups() -> Vec<EmojiGroupInfo> {
+    emojis::Group::iter()
+        .map(|group| {
+            let (symbol, name) = match group {
+                emojis::Group::SmileysAndEmotion => ("😀", "Smileys & Emotion"),
+                emojis::Group::PeopleAndBody => ("👋", "People & Body"),
+                emojis::Group::AnimalsAndNature => ("🐻", "Animals & Nature"),
+                emojis::Group::FoodAndDrink => ("🍔", "Food & Drink"),
+                emojis::Group::TravelAndPlaces => ("🚗", "Travel & Places"),
+                emojis::Group::Activities => ("⚽", "Activities"),
+                emojis::Group::Objects => ("💡", "Objects"),
+                emojis::Group::Symbols => ("🔣", "Symbols"),
+                emojis::Group::Flags => ("🏁", "Flags"),
+            };
+            EmojiGroupInfo {
+                symbol: symbol.into(),
+                name: name.into(),
+                emoji: group
+                    .emojis()
+                    .map(|emoji| emoji.as_str().to_owned())
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+/// Upstream's picker search (`rows_for`): every emoji whose name or a
+/// shortcode contains the query, in the data's order.
+#[uniffi::export]
+pub fn emoji_search(query: String) -> Vec<String> {
+    let query = query.trim().to_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+    emojis::iter()
+        .filter(|emoji| {
+            emoji.name().to_lowercase().contains(&query)
+                || emoji
+                    .shortcodes()
+                    .any(|code| code.to_lowercase().contains(&query))
+        })
+        .map(|emoji| emoji.as_str().to_owned())
+        .collect()
+}
+
+/// Upstream's `quick_reactions` (`src/ui/conversation.rs`): the most used
+/// reactions, filled up to six from its defaults, and our current one
+/// when it is not among them.
+#[uniffi::export]
+pub fn quick_reactions(preferred: Vec<String>, mine: Option<String>) -> Vec<String> {
+    const DEFAULTS: [&str; 6] = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+    let mut list: Vec<String> = Vec::new();
+    for emoji in preferred.iter().map(String::as_str).chain(DEFAULTS) {
+        if emojis::get(emoji).is_some() && !list.iter().any(|known| known == emoji) {
+            list.push(emoji.to_owned());
+        }
+        if list.len() == DEFAULTS.len() {
+            break;
+        }
+    }
+    if let Some(mine) = mine
+        && !list.contains(&mine)
+    {
+        list.push(mine);
+    }
+    list
+}
+
 #[uniffi::export]
 pub fn app_lock_min_password_chars() -> u32 {
     count(zapfast::app_lock::MIN_PASSWORD_CHARS)
@@ -408,6 +487,26 @@ mod tests {
         assert_eq!(recent.len(), 6);
         assert_eq!(recent[0].emoji, "🚀");
         assert!(emoji_suggestions("zzzzqqq".into(), vec![]).is_empty());
+    }
+
+    #[test]
+    fn the_picker_and_quick_reactions_follow_upstream() {
+        let groups = emoji_groups();
+        assert_eq!(groups.len(), 9);
+        assert_eq!(groups[0].name, "Smileys & Emotion");
+        assert!(groups[0].emoji.contains(&"😀".to_owned()));
+        assert!(emoji_search("rocket".into()).contains(&"🚀".to_owned()));
+        assert!(emoji_search("  ".into()).is_empty());
+
+        assert_eq!(
+            quick_reactions(vec![], None),
+            ["👍", "❤️", "😂", "😮", "😢", "🙏"]
+        );
+        let preferred = quick_reactions(
+            vec!["🔥".into(), "nope".into(), "👍".into()],
+            Some("🎉".into()),
+        );
+        assert_eq!(preferred, ["🔥", "👍", "❤️", "😂", "😮", "😢", "🎉"]);
     }
 
     #[test]

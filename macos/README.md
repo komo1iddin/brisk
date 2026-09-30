@@ -185,8 +185,11 @@ this Mac after asking; Esc stops. Deleted, phone-only and unsupported
 messages cannot be selected, as upstream's.
 
 Pointing at a message brings Reply and React beside it, as discs clear
-of the bubble, as upstream's hover controls; React offers the quick reactions, and choosing yours
-again takes it back. Everything else stays in the message's context menu.
+of the bubble, as upstream's hover controls. React (or More Reactions…
+in the message's menu) offers six quick reactions, the ones you use most
+first, and + opens every emoji by category with a search field;
+choosing yours again takes it back. Everything else stays in the
+message's context menu.
 
 A document shows the icon the Finder gives its kind (Excel's or Word's
 when they are installed) and, above it, the top of its first page: a

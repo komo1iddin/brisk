@@ -12,7 +12,6 @@ struct MessageRow: View {
     let model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
-    @State private var reacting = false
 
     var body: some View {
         let selecting = model.selection?.chat == message.chat
@@ -25,11 +24,18 @@ struct MessageRow: View {
                     model: model
                 )
                 .contextMenu { MessageActions(message: message, model: model) }
+                .popover(isPresented: pickingReaction, arrowEdge: .top) {
+                    ReactionPicker(
+                        quick: model.quickReactions(for: message),
+                        mine: message.reactions.first(where: \.fromMe)?.emoji,
+                        frequent: model.preferences.reactionEmoji.map(\.emoji)
+                    ) { model.react($0, to: message) }
+                }
                 .overlay(alignment: message.fromMe ? .leading : .trailing) {
-                    if isLive, !selecting, hovering || reacting {
+                    if isLive, !selecting, hovering || pickingReaction.wrappedValue {
                         // Beside the bubble, clear of it, on the side away
                         // from the window's edge.
-                        HoverActions(message: message, model: model, reacting: $reacting)
+                        HoverActions(message: message, model: model)
                             .fixedSize()
                             .offset(x: message.fromMe ? -HoverActions.reach : HoverActions.reach)
                             .transition(.opacity)
@@ -80,7 +86,6 @@ struct MessageRow: View {
         // A reused cell shows another message.
         .onChange(of: message.id) {
             hovering = false
-            reacting = false
         }
         .accessibilityAction(named: Text("Reply")) { if isLive { model.reply(to: message) } }
         .background {
@@ -95,6 +100,15 @@ struct MessageRow: View {
     }
 
     private static let checkboxRoom: CGFloat = 28
+
+    /// The reaction picker hangs from the bubble, from the hover control
+    /// or the context menu alike.
+    private var pickingReaction: Binding<Bool> {
+        Binding(
+            get: { model.reactionTarget == MessageKey(chat: message.chat, message: message.id) },
+            set: { if !$0, model.reactionTarget == MessageKey(chat: message.chat, message: message.id) { model.reactionTarget = nil } }
+        )
+    }
 
     private var isLive: Bool {
         if case .revoked = message.content { false } else { true }
@@ -147,7 +161,6 @@ private struct ReactionPills: View {
 private struct HoverActions: View {
     let message: MessageRecord
     let model: AppModel
-    @Binding var reacting: Bool
 
     static let size: CGFloat = 34
     static let spacing: CGFloat = 6
@@ -175,13 +188,7 @@ private struct HoverActions: View {
     }
 
     private var react: some View {
-        HoverDisc(title: "React", systemImage: "face.smiling") { reacting = true }
-            .popover(isPresented: $reacting, arrowEdge: .top) {
-                QuickReactions(mine: message.reactions.first(where: \.fromMe)?.emoji) { emoji in
-                    reacting = false
-                    model.react(emoji, to: message)
-                }
-            }
+        HoverDisc(title: "React", systemImage: "face.smiling") { model.showReactionPicker(for: message) }
     }
 }
 
@@ -223,34 +230,6 @@ private struct HoverDiscSurface: ViewModifier {
                     .shadow(color: .black.opacity(0.14), radius: 1.5, y: 1)
             }
         }
-    }
-}
-
-/// The quick reactions in a row; the one already chosen is marked, and
-/// choosing it again takes it back.
-struct QuickReactions: View {
-    static let emoji = ["👍", "❤️", "😂", "😮", "😢", "🙏"]
-
-    let mine: String?
-    let choose: (String) -> Void
-
-    var body: some View {
-        HStack(spacing: Metrics.xxs) {
-            ForEach(Self.emoji, id: \.self) { emoji in
-                Button { choose(emoji == mine ? "" : emoji) } label: {
-                    Text(emoji)
-                        .font(.system(size: 24))
-                        .frame(width: 36, height: 36)
-                        .background {
-                            if emoji == mine { Circle().fill(.tint.opacity(0.25)) }
-                        }
-                        .contentShape(.circle)
-                }
-                .buttonStyle(.plain)
-                .help(emoji == mine ? Text("Remove \(emoji)") : Text(verbatim: emoji))
-            }
-        }
-        .padding(Metrics.s)
     }
 }
 

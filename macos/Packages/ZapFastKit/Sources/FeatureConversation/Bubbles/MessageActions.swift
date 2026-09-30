@@ -13,9 +13,10 @@ struct MessageActions: View {
             Button("Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
 
             Menu("React", systemImage: "face.smiling") {
-                ForEach(QuickReactions.emoji, id: \.self) { emoji in
+                ForEach(model.quickReactions(for: message), id: \.self) { emoji in
                     Button(emoji) { model.react(emoji, to: message) }
                 }
+                Button("More Reactions…") { model.showReactionPicker(for: message) }
                 if let mine = message.reactions.first(where: \.fromMe) {
                     Divider()
                     Button("Remove \(mine.emoji)") { model.react("", to: message) }

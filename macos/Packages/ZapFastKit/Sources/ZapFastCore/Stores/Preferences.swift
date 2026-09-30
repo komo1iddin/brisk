@@ -65,6 +65,12 @@ public final class Preferences {
         didSet { defaults.set(recentEmoji, forKey: Key.recentEmoji) }
     }
 
+    /// Reactions sent and how often (upstream's `reaction_emoji`), most
+    /// used first; the quick reactions and the picker's first row.
+    public internal(set) var reactionEmoji: [ReactionUse] {
+        didSet { defaults.set(try? JSONEncoder().encode(reactionEmoji), forKey: Key.reactionEmoji) }
+    }
+
     /// Return sends; off, Return starts a new line and ⌘Return sends.
     public var enterSends: Bool {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
@@ -132,6 +138,8 @@ public final class Preferences {
         voiceAvatars = defaults.bool(forKey: Key.voiceAvatars)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
+        reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
+            .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
         sendTyping = defaults.bool(forKey: Key.sendTyping)
         appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
@@ -153,6 +161,7 @@ public final class Preferences {
         static let voiceAvatars = "voiceAvatars"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
+        static let reactionEmoji = "reactionEmoji"
         static let sendTyping = "sendTyping"
         static let appLockVerifier = "appLockVerifier"
         static let appLockAfter = "appLockAfter"
@@ -171,4 +180,9 @@ public enum AutoLock: Int, CaseIterable, Identifiable, Sendable {
     public var id: Int { rawValue }
 
     public var duration: Duration { .seconds(rawValue) }
+}
+
+public struct ReactionUse: Codable, Equatable, Sendable {
+    public var emoji: String
+    public var count: UInt32
 }

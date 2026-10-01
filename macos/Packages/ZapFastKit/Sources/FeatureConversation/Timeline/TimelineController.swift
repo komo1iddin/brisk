@@ -259,9 +259,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             self.messages = messages
             // A download, a receipt, a reaction or an edit changes a message
             // or two in place: those rows alone are made again, not all of
-            // them, which cost a frame or more in a long chat each time.
+            // them, which cost a frame or more in a long chat each time. A
+            // message that arrives adds its own rows after the others.
             if !rebuilds, let edited = editedInPlace(from: old, to: messages) {
                 refresh(edited)
+            } else if !rebuilds, let change = appended(from: old, to: messages) {
+                refresh(change.edited)
+                append(change.arrived, after: change.last)
             } else {
                 rebuilds = true
             }
@@ -284,14 +288,51 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// time). At most a few dozen; more is a new list.
     private func editedInPlace(from old: [MessageRecord], to new: [MessageRecord]) -> [MessageRecord]? {
         guard !items.isEmpty, !preparing, old.count == new.count, !new.isEmpty else { return nil }
+        return changed(from: old, to: new[...])
+    }
+
+    /// The messages that arrived after the last one, the last one before
+    /// them, and the earlier messages that changed in place (a receipt for
+    /// the reader's own message often comes with the answer); nil when the
+    /// list changed otherwise, or so much that it is a new list.
+    private func appended(
+        from old: [MessageRecord], to new: [MessageRecord]
+    ) -> (edited: [MessageRecord], arrived: ArraySlice<MessageRecord>, last: MessageRecord)? {
+        guard !items.isEmpty, !preparing, let last = old.last, new.count > old.count,
+              new.count - old.count <= backgroundThreshold,
+              let edited = changed(from: old, to: new[..<old.count]) else { return nil }
+        let arrived = new[old.count...]
+        // Rows group by what came before, so later messages only add rows.
+        guard arrived.allSatisfy({ $0.timestamp >= last.timestamp }) else { return nil }
+        return (edited, arrived, last)
+    }
+
+    /// The messages of `new` that differ from those of `old` at the same
+    /// place, when nothing that groups the rows (an id, a sender, a time)
+    /// changed and at most a few dozen did.
+    private func changed(from old: [MessageRecord], to new: ArraySlice<MessageRecord>) -> [MessageRecord]? {
         var edited: [MessageRecord] = []
-        for index in new.indices where old[index] != new[index] {
-            let (before, after) = (old[index], new[index])
+        for (before, after) in zip(old, new) where before != after {
             guard before.id == after.id, before.timestamp == after.timestamp, before.sender == after.sender,
                   before.fromMe == after.fromMe, edited.count < 48 else { return nil }
             edited.append(after)
         }
         return edited
+    }
+
+    /// Adds the rows of messages that arrived after `last`: their day and
+    /// the unread divider if they start one, then the messages themselves,
+    /// measured here (they are a few). The rows above are left alone.
+    private func append(_ arrived: ArraySlice<MessageRecord>, after last: MessageRecord) {
+        let rows = TimelineRow.build([last] + arrived, unread: unread)
+        guard let lastRow = rows.firstIndex(where: { $0.id == last.id }) else {
+            rebuild()
+            return
+        }
+        let resolved = resolve(Array(rows[(lastRow + 1)...]))
+        let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
+        plans += resolved
+        apply(items + resolved.map { item(for: $0, limit: limit) }, restyled: false)
     }
 
     /// Makes the rows of `edited` again, where they are, and tells the table

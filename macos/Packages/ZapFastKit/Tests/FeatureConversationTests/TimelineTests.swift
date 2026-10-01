@@ -491,9 +491,30 @@ struct TimelineRefreshTests {
         model.cancelSelection()
         #expect(controller.selectionState(forMessage: "m5") == SelectionState())
 
-        // A message arriving is a new list.
+        // A message arriving adds its rows; those above stay as they were.
+        let kept = controller.items
         messages.append(message(40))
         update(controller, messages, revision: 3, model: model)
+        #expect(controller.generation == generation)
+        #expect(controller.items.map(\.id) == TimelineRow.build(messages).map(\.id))
+        #expect(!zip(kept, controller.items).contains { $1.differs(from: $0) })
+
+        // The next day's first message brings its day, and a receipt for
+        // the reader's own message before it comes along.
+        var tomorrow = message(41)
+        tomorrow.timestamp += 86_400
+        messages[39].status = .read
+        messages.append(tomorrow)
+        update(controller, messages, revision: 4, model: model)
+        #expect(controller.generation == generation)
+        #expect(controller.items.map(\.id) == TimelineRow.build(messages).map(\.id))
+        #expect(controller.message("m39")?.status == .read)
+
+        // A message filed among the others is a new list.
+        var late = message(42)
+        late.timestamp = messages[20].timestamp + 1
+        messages.insert(late, at: 21)
+        update(controller, messages, revision: 5, model: model)
         #expect(controller.generation > generation)
     }
 }

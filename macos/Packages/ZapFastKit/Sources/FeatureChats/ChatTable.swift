@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
+import ZapFastDesign
 import ZapFastSharedUI
 
 /// One row of the sidebar's table.
@@ -37,7 +38,7 @@ enum SidebarRow {
 /// `FolderCell`) as `ChatRow` and `FolderRow` look; `ZAPFAST_SWIFTUI_ROWS=1`
 /// shows those SwiftUI views instead, to compare.
 final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
-    private let scrollView = NSScrollView()
+    private let scrollView = HoverScrollView()
     let tableView = SidebarTableView()
     private var rows: [SidebarRow] = []
     private weak var model: AppModel?
@@ -74,8 +75,6 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         tableView.menu = NSMenu()
 
         scrollView.documentView = tableView
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         scrollView.automaticallyAdjustsContentInsets = false
         return scrollView

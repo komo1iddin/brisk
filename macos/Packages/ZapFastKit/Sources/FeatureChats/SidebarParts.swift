@@ -10,39 +10,48 @@ struct SidebarSearchList: View {
     let chats: [ChatSummary]
     let hits: [MessageRecord]
     let query: String
+    /// The chat the arrow keys reached in the search field: marked here,
+    /// not opened.
+    let cursor: String?
     let model: AppModel
 
     var body: some View {
-        List(selection: opening) {
-            if !chats.isEmpty {
-                Section("Chats") {
-                    ForEach(chats) { chat in
-                        ChatRow(chat: chat, model: model)
-                            .tag(chat.id)
+        ScrollViewReader { proxy in
+            List(selection: opening) {
+                if !chats.isEmpty {
+                    Section("Chats") {
+                        ForEach(chats) { chat in
+                            ChatRow(chat: chat, model: model)
+                                .tag(chat.id)
+                        }
+                    }
+                }
+                Section("Messages") {
+                    ForEach(hits, id: \.id) { hit in
+                        MessageHitRow(message: hit, query: query, model: model)
+                            .selectionDisabled()
                     }
                 }
             }
-            Section("Messages") {
-                ForEach(hits, id: \.id) { hit in
-                    MessageHitRow(message: hit, query: query, model: model)
-                        .selectionDisabled()
+            // One menu for the list, made when asked for, rather than a menu
+            // modifier on each row.
+            .contextMenu(forSelectionType: String.self) { ids in
+                if ids.count == 1, let id = ids.first, let chat = model.chats.chat(id) {
+                    ChatActions(chat: chat, model: model)
                 }
             }
-        }
-        // One menu for the list, made when asked for, rather than a menu
-        // modifier on each row.
-        .contextMenu(forSelectionType: String.self) { ids in
-            if ids.count == 1, let id = ids.first, let chat = model.chats.chat(id) {
-                ChatActions(chat: chat, model: model)
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .onChange(of: cursor) { _, reached in
+                if let reached { proxy.scrollTo(reached) }
             }
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
     }
 
+    /// The chat the keys reached, else the open one; a click opens.
     private var opening: Binding<String?> {
         Binding(
-            get: { model.selectedChatID },
+            get: { cursor ?? model.selectedChatID },
             set: { id in
                 if let id { model.keepUnread(id) }
                 model.selectedChatID = id

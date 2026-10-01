@@ -119,6 +119,24 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         }
     }
 
+    /// Scrolls the row of `id` into view, clear of the toolbar and search
+    /// field the list runs under (`scrollRowToVisible` ignores that inset).
+    func reveal(_ id: String) {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        let row = tableView.rect(ofRow: index)
+        let clip = scrollView.contentView
+        let inset = scrollView.contentInsets.top
+        var y = clip.bounds.minY
+        if row.minY < clip.bounds.minY + inset {
+            y = row.minY - inset
+        } else if row.maxY > clip.bounds.maxY {
+            y = row.maxY - clip.bounds.height
+        }
+        guard y != clip.bounds.minY else { return }
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
+        scrollView.reflectScrolledClipView(clip)
+    }
+
     func update(rows new: [SidebarRow], selection: String?, model: AppModel, select: @escaping (String?) -> Void) {
         self.model = model
         self.select = select

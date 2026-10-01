@@ -14,6 +14,9 @@ final class SidebarState {
     /// A label chosen in place of a built-in filter.
     var label: String?
     var showingArchived = false
+    /// The chat the arrow keys reached in the search results: marked, not
+    /// opened, until Return.
+    var cursor: String?
 }
 
 /// The sidebar, in AppKit: a search field, the chats in their table (the
@@ -42,6 +45,13 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private var observed = 0
     private var searchRequests = 0
     private var wasLocked = false
+    /// The chats the list shows, in order, for the arrow keys to walk.
+    private var shownIDs: [String] = []
+    /// The cursor the table was last scrolled to.
+    private var revealedCursor: String?
+    /// The open chat as last seen: opening another, from the results or
+    /// anywhere, puts the cursor away.
+    private var lastSelection: String?
     /// The search bar and the sync status sit in the split view item's
     /// accessories on macOS 26, which inset the list themselves.
     private var usesAccessories = false
@@ -127,6 +137,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 hits: hits,
                 rows: Self.rows(chats, model: model, state: state, inLocked: inLocked),
                 selection: model.selectedChatID,
+                cursor: state.cursor,
                 inLocked: inLocked,
                 labels: model.chats.labels.map(\.id),
                 searchRequests: model.sidebarSearchRequests,
@@ -148,18 +159,31 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         // A deleted label stops filtering.
         if let label = state.label, !shown.labels.contains(label) { state.label = nil }
         let ids = shown.chats.map(\.id)
+        shownIDs = ids
+        if shown.selection != lastSelection {
+            lastSelection = shown.selection
+            state.cursor = nil
+        }
+        // Results that changed under the cursor leave it nowhere.
+        if let cursor = state.cursor, !ids.contains(cursor) { state.cursor = nil }
+        let cursor = state.cursor
         if model.sidebarOrder != ids { model.sidebarOrder = ids }
         model.sidebarKeepsUnread = state.filter == .unread && state.label == nil && state.query.isEmpty
             && !state.showingArchived && !shown.inLocked
-        table.update(rows: shown.rows, selection: shown.selection, model: model) { [model] id in
+        table.update(rows: shown.rows, selection: cursor ?? shown.selection, model: model) { [model, state] id in
             if let id { model.keepUnread(id) }
+            state.cursor = nil
             model.selectedChatID = id
+        }
+        if cursor != revealedCursor {
+            revealedCursor = cursor
+            if let cursor { table.reveal(cursor) }
         }
         let searching = !shown.hits.isEmpty
         tableScroll.isHidden = searching
         results.isHidden = !searching
         results.rootView = searching
-            ? AnyView(SidebarSearchList(chats: shown.chats, hits: shown.hits, query: state.query, model: model))
+            ? AnyView(SidebarSearchList(chats: shown.chats, hits: shown.hits, query: state.query, cursor: cursor, model: model))
             : AnyView(EmptyView())
         let nothing = shown.chats.isEmpty && shown.hits.isEmpty
         empty.isHidden = !nothing
@@ -238,17 +262,53 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         let query = searchField.stringValue
         guard query != state.query else { return }
         state.query = query
+        state.cursor = nil
         model.searchMessages(query)
     }
 
-    /// Escape clears the search, then leaves the field.
+    /// Escape clears the search, then leaves the field. While searching, ↓
+    /// and ↑ walk the chats found, and Return opens the one reached (the
+    /// first, when none) and leaves the search, as upstream's do.
     public func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-        guard selector == #selector(NSResponder.cancelOperation(_:)) else { return false }
-        if searchField.stringValue.isEmpty {
-            view.window?.makeFirstResponder(nil)
-        } else {
-            setQuery("")
+        switch selector {
+        case #selector(NSResponder.cancelOperation(_:)):
+            if searchField.stringValue.isEmpty {
+                view.window?.makeFirstResponder(nil)
+            } else {
+                setQuery("")
+            }
+            return true
+        case #selector(NSResponder.moveDown(_:)):
+            return moveCursor(down: true)
+        case #selector(NSResponder.moveUp(_:)):
+            return moveCursor(down: false)
+        case #selector(NSResponder.insertNewline(_:)):
+            return openCursor()
+        default:
+            return false
         }
+    }
+
+    /// Whether the arrow keys and Return walk the results: while searching
+    /// chats, not in Locked Chats.
+    private var walksResults: Bool {
+        !state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !model.lockedChats.isOpen
+    }
+
+    private func moveCursor(down: Bool) -> Bool {
+        guard walksResults else { return false }
+        state.cursor = SearchCursor.moved(from: state.cursor, in: shownIDs, down: down)
+        return true
+    }
+
+    private func openCursor() -> Bool {
+        guard walksResults else { return false }
+        guard let id = SearchCursor.opened(from: state.cursor, in: shownIDs) else { return true }
+        setQuery("")
+        // The field lets go so the chat can take the keyboard.
+        view.window?.makeFirstResponder(nil)
+        model.keepUnread(id)
+        model.selectedChatID = id
         return true
     }
 
@@ -256,6 +316,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         searchField.stringValue = query
         guard state.query != query else { return }
         state.query = query
+        state.cursor = nil
         model.searchMessages(query)
     }
 

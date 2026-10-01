@@ -643,6 +643,39 @@ struct GroupRunTests {
         #expect(abs(ours.maxY - size.height) < 0.01)
     }
 
+    /// A document's page preview arrives: its row, and the rows quoting it,
+    /// show it without remaking the chat.
+    @Test func aPreviewThatArrivesReachesTheQuotesOfItsDocument() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "zapfast-preview-test-\(UUID().uuidString)")
+        let model = AppModel(backend: PreviewBackend(), paths: AppPaths(data: folder, caches: folder))
+        let controller = TimelineController()
+        controller.makeScrollView().frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        var document = message(0, from: "b")
+        document.content = .document(
+            media: MediaInfo(mime: "application/pdf", size: 1_000, width: nil, height: nil, path: nil),
+            fileName: "Hisobot.pdf", caption: nil, pages: 1
+        )
+        var reply = message(1)
+        reply.quoted = QuotedMessage(id: "m0", sender: "b@s.whatsapp.net", senderName: "B", summary: "Document: Hisobot.pdf", mentions: [])
+        func update(_ messages: [MessageRecord], revision: Int) {
+            controller.update(
+                chatID: "g@g.us", messages: messages, revision: revision, isGroup: true, model: model,
+                style: .standard, unread: nil, jump: nil, scrollRequest: nil, onReachTop: {}, onScrollState: { _ in }
+            )
+        }
+        func quotePicture() -> CGRect? {
+            guard case let .bubble(_, layout)? = controller.items.first(where: { $0.id == "m1" }) else { return nil }
+            return layout.quote?.thumbnail
+        }
+        update([document, reply], revision: 1)
+        #expect(quotePicture() == nil)
+        let generation = controller.generation
+        document.thumbnail = Data([0xFF, 0xD8, 0xFF])
+        update([document, reply], revision: 2)
+        #expect(controller.generation == generation)
+        #expect(quotePicture() != nil)
+    }
+
     /// The next message from the same sender continues the run: the row
     /// before it loses the photo, and only that row changes.
     @Test func aMessageContinuingTheRunTakesThePhotoFromTheOneBefore() async throws {

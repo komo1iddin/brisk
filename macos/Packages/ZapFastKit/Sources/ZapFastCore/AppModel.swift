@@ -1780,6 +1780,22 @@ public final class AppModel {
         download(message)
     }
 
+    /// Asks once a session for a document's page preview, which WhatsApp
+    /// keeps apart from the small inline one (if any): it shows before the
+    /// file is here, and arrives as the message updated. Asked only while
+    /// connected, so a chat opened before the link is up asks again later.
+    public func fetchPreview(_ message: MessageRecord) {
+        guard case .document = message.content, (message.thumbnail?.count ?? 0) < Self.sharpPreviewBytes,
+              case .connected = session.link,
+              previewsAsked.insert(MessageKey(chat: message.chat, message: message.id)).inserted else { return }
+        backend.send(.fetchPreview(chat: message.chat, message: message.id))
+    }
+
+    /// A kept preview at least this large is already the sharp one, as the
+    /// worker judges it.
+    static let sharpPreviewBytes = 10_000
+    @ObservationIgnored private var previewsAsked: Set<MessageKey> = []
+
     /// Sends a reaction; an empty one takes ours back. Each one sent counts
     /// towards the quick reactions, as upstream's `Action::React` does.
     public func react(_ emoji: String, to message: MessageRecord) {

@@ -134,6 +134,7 @@ extension TimelineController: TimelineCellDelegate {
     func attachmentShown(inMessage id: String) {
         guard let model, let message = message(id) else { return }
         model.autoDownload(message)
+        model.fetchPreview(message)
     }
 
     /// A video playing in place pauses once it is out of view, found by

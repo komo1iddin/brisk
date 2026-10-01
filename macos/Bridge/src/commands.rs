@@ -72,6 +72,12 @@ pub enum BridgeCommand {
         message: String,
         card: Option<u32>,
     },
+    /// A document's sharper page preview, which arrives as an updated
+    /// message when it has one.
+    FetchPreview {
+        chat: String,
+        message: String,
+    },
     /// A voice message was played: the blue microphone for its sender.
     MarkPlayed {
         chat: String,
@@ -435,6 +441,7 @@ impl BridgeCommand {
                 chat,
                 message,
             },
+            Self::FetchPreview { chat, message } => Command::FetchPreview { chat, message },
             Self::MarkPlayed {
                 chat,
                 message,

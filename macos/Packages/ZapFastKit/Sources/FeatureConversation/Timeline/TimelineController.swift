@@ -371,9 +371,21 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// of those that changed; the reader stays where they were.
     private func refresh(_ edited: [MessageRecord]) {
         var rows: [(index: Int, row: TimelineRow)] = []
+        // Messages whose picture changed (a document's page preview came):
+        // the quotes of them show it too.
+        var pictured = Set<String>()
         for message in edited {
-            guard let index = itemIndex[message.id], case let .message(_, startsRun, endsRun)? = items[index].row else { continue }
+            guard let index = itemIndex[message.id], case let .message(old, startsRun, endsRun)? = items[index].row else { continue }
+            if old.thumbnail != message.thumbnail { pictured.insert(message.id) }
             rows.append((index, .message(message, startsRun: startsRun, endsRun: endsRun)))
+        }
+        if !pictured.isEmpty {
+            let edited = Set(edited.map(\.id))
+            for index in items.indices {
+                guard case let .message(message, startsRun, endsRun)? = items[index].row,
+                      let quoted = message.quoted?.id, pictured.contains(quoted), !edited.contains(message.id) else { continue }
+                rows.append((index, .message(message, startsRun: startsRun, endsRun: endsRun)))
+            }
         }
         refresh(rows: rows)
     }

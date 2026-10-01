@@ -62,11 +62,24 @@ public nonisolated enum DateText {
         }
     }
 
-    /// "last seen today at 14:02" style presence line.
-    public static func lastSeen(_ date: Date, calendar: Calendar = .current) -> String {
+    /// The presence line as the phone words it (upstream's `last_seen`):
+    /// "last seen today at 14:02", "last seen yesterday at 14:02", a weekday
+    /// within the week, and only the date before that.
+    public static func lastSeen(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
         let time = date.formatted(date: .omitted, time: .shortened)
-        if calendar.isDateInToday(date) { return String(localized: "last seen today at \(time)") }
-        if calendar.isDateInYesterday(date) { return String(localized: "last seen yesterday at \(time)") }
-        return String(localized: "last seen \(date.formatted(date: .abbreviated, time: .omitted))")
+        let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)
+        ).day ?? .max
+        switch days {
+        // A clock slightly ahead of ours still means today.
+        case ...0:
+            return String(localized: "last seen today at \(time)")
+        case 1:
+            return String(localized: "last seen yesterday at \(time)")
+        case 2...6:
+            return String(localized: "last seen \(date.formatted(.dateTime.weekday(.wide))) at \(time)")
+        default:
+            return String(localized: "last seen \(date.formatted(date: .abbreviated, time: .omitted))")
+        }
     }
 }

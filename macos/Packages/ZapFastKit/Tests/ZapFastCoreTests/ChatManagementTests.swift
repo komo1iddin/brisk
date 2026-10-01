@@ -158,4 +158,26 @@ struct ChatManagementTests {
         #expect(!DateText.moment(today, now: now, calendar: calendar).contains(" at "))
         #expect(DateText.moment(yesterday, now: now, calendar: calendar).hasPrefix("Yesterday at "))
     }
+
+    @Test func lastSeenNamesTheDayAndTheTimeAsThePhoneDoes() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        func seen(daysAgo days: Double, minutes: Double = 0) -> String {
+            DateText.lastSeen(now.addingTimeInterval(-days * 86_400 - minutes * 60), now: now, calendar: calendar)
+        }
+        #expect(seen(daysAgo: 0, minutes: 5).hasPrefix("last seen today at "))
+        // A clock a little ahead of ours still means today.
+        #expect(seen(daysAgo: 0, minutes: -5).hasPrefix("last seen today at "))
+        #expect(seen(daysAgo: 1).hasPrefix("last seen yesterday at "))
+        // Within the week: a weekday and the time, in neither of the words above.
+        for days in [2.0, 6.0] {
+            let line = seen(daysAgo: days)
+            #expect(line.hasPrefix("last seen ") && line.contains(" at "), "\(line)")
+            #expect(!line.contains("today") && !line.contains("yesterday"), "\(line)")
+        }
+        // Before that, only the date.
+        let old = seen(daysAgo: 7)
+        #expect(old.hasPrefix("last seen ") && !old.contains(" at "), "\(old)")
+    }
 }

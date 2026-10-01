@@ -136,14 +136,18 @@ public struct GlassCard: ViewModifier {
 /// material before it.
 public struct FloatingSurface<S: InsettableShape>: ViewModifier {
     private let shape: S
+    private let interactive: Bool
 
-    public init(_ shape: S) {
+    /// `interactive` glass swells under the pointer; a control beside the
+    /// window's edge is better still.
+    public init(_ shape: S, interactive: Bool = true) {
         self.shape = shape
+        self.interactive = interactive
     }
 
     public func body(content: Content) -> some View {
         if #available(macOS 26, *) {
-            content.glassEffect(.regular.interactive(), in: shape)
+            content.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
         } else {
             content
                 .background(.regularMaterial, in: shape)

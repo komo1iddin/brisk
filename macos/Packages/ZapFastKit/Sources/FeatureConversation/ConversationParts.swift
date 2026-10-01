@@ -94,7 +94,7 @@ struct NewestMessageButton: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-        .modifier(FloatingSurface(Circle()))
+        .modifier(FloatingSurface(Circle(), interactive: false))
         .overlay(alignment: .topTrailing) {
             if newBelow > 0 {
                 Text(newBelow, format: .number)

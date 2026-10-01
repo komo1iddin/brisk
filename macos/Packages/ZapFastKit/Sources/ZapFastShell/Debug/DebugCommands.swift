@@ -101,6 +101,8 @@ enum DebugCommands {
             let clip = scrollView.contentView
             clip.scroll(to: NSPoint(x: clip.bounds.minX, y: clip.bounds.minY + delta))
             scrollView.reflectScrolledClipView(clip)
+            // As a hand on the trackpad would, for what shows only then.
+            NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: scrollView)
             write(name, "at \(Int(clip.bounds.minY))")
         case "react", "sender":
             // react:<n> / sender:<n>: the picker, or the sender's page, of the
@@ -168,13 +170,15 @@ enum DebugCommands {
             write(name, "key \(mainWindow()?.isKeyWindow ?? false) active \(NSApp.isActive)")
         case "scrollbar":
             // scrollbar:on|off: the chat list's bar, as if the pointer were over it.
+            // The chat list's, narrower than the chat's.
             func find(_ view: NSView) -> HoverScrollView? {
-                if let found = view as? HoverScrollView { return found }
+                if let found = view as? HoverScrollView, found.frame.width < 500 { return found }
                 return view.subviews.lazy.compactMap(find).first
             }
             guard let content = mainWindow()?.contentView, let bar = find(content) else { return }
             bar.setBarVisible(parts.count > 1 && parts[1] == "on")
-            write(name, "set")
+            let scroller = bar.verticalScroller
+            write(name, "bar frame \(bar.frame) clip \(bar.contentView.frame) bounds \(bar.contentView.bounds) insets \(bar.contentInsets) doc \(bar.documentView?.frame.size ?? .zero) scroller \(scroller?.frame ?? .zero) knob \(scroller?.knobProportion ?? -1) value \(scroller?.doubleValue ?? -1) style \(bar.scrollerStyle.rawValue)")
         case "shot":
             // shot:popover captures the popover over the window instead.
             write(name, shot(popover: parts.count > 1 && parts[1] == "popover", other: parts.count > 1 && parts[1] == "other"))

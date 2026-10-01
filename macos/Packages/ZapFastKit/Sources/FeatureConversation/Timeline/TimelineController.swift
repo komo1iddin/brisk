@@ -84,7 +84,12 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     private var messages: [MessageRecord] = []
     private var isGroup = false
     private(set) var style = TimelineStyle.standard
-    private var colors = BubbleColors(TimelineStyle.standard)
+    private(set) var colors = BubbleColors(TimelineStyle.standard)
+    /// The day of the messages at the top of the view, over the timeline
+    /// while it is scrolled by hand, and for a moment after.
+    let floatingDay = ChipCell()
+    var floatingTitle: String?
+    var floatingHide: Task<Void, Never>?
     private var unread: UnreadDivider?
     /// `ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI
     /// row, to compare the two, in the app or the benchmark.
@@ -174,6 +179,13 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         // it by both, and keeps the scroll bar clear of them.
         scrollView.automaticallyAdjustsContentInsets = false
 
+        floatingDay.passesPointer = true
+        floatingDay.alphaValue = 0
+        scrollView.addSubview(floatingDay)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(liveScrolled), name: NSScrollView.didLiveScrollNotification, object: scrollView
+        )
+
         let clip = scrollView.contentView
         clip.postsBoundsChangedNotifications = true
         clip.postsFrameChangedNotifications = true
@@ -233,6 +245,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             self.isGroup = isGroup
             self.revision = nil
             senderPopover?.close()
+            hideFloatingDay(immediately: true)
             setItems([])
             // Layouts and heights stay, keyed by message: going back to a
             // chat read a moment ago measures nothing again. Only their
@@ -256,6 +269,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         if restyled {
             self.style = style
             colors = BubbleColors(style)
+            floatingTitle = nil
         }
         self.unread = unread
         if revision != self.revision {

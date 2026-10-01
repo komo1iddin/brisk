@@ -134,7 +134,9 @@ final class ConversationViewController: NSViewController {
         bottomBand.isHidden = bar == 0
         overlay.frame = frame
         let size = NewestMessageIsland.size
-        newest.frame = CGRect(x: bounds.width - Metrics.l - size + 8, y: frame.maxY - Metrics.l - size + 8, width: size, height: size)
+        // In the microphone's column, just above the composer: the island is
+        // 8 points wider than its button on each side.
+        newest.frame = CGRect(x: bounds.width - Metrics.m - size + 8, y: frame.maxY - Metrics.s - size + 8, width: size, height: size)
         timeline.place(frame: CGRect(origin: .zero, size: bounds.size), topInset: top, bottomInset: bar)
     }
 

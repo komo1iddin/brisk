@@ -46,6 +46,13 @@ final class ChipCell: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
+    /// Floating over the timeline, the pointer goes through to it.
+    var passesPointer = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        passesPointer ? nil : super.hitTest(point)
+    }
+
     func configure(title: String, isHeader: Bool, colors: BubbleColors) {
         let measured = Self.measure(title)
         self.title = measured.text

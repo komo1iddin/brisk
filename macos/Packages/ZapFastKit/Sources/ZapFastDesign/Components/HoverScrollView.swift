@@ -68,6 +68,20 @@ public final class HoverScrollView: NSScrollView {
         }
     }
 
+    /// The knob shows what is on screen of what there is: AppKit measures a
+    /// scroll view that is inset (a chat list under its toolbar) with the
+    /// insets counted as content on one side only, which stretches it.
+    override public func reflectScrolledClipView(_ clipView: NSClipView) {
+        super.reflectScrolledClipView(clipView)
+        guard clipView === contentView, let scroller = verticalScroller, let document = documentView else { return }
+        let insets = clipView.contentInsets
+        let visible = clipView.bounds.height - insets.top - insets.bottom
+        let total = document.frame.height
+        guard visible > 0, total > visible else { return }
+        scroller.knobProportion = visible / total
+        scroller.doubleValue = min(1, max(0, (clipView.bounds.minY + insets.top) / (total - visible)))
+    }
+
     override public func mouseEntered(with event: NSEvent) {
         setBarVisible(true)
     }

@@ -185,3 +185,68 @@ extension TimelineController {
         }
     }
 }
+
+// MARK: - The day over the top
+
+extension TimelineController {
+    /// Scrolled by hand: the day at the top shows, and goes a moment after
+    /// the scrolling stops, as WhatsApp's does.
+    @objc func liveScrolled(_ notification: Notification) {
+        guard let day = dayAtTop() else {
+            hideFloatingDay()
+            return
+        }
+        if floatingTitle != day.title {
+            floatingTitle = day.title
+            floatingDay.configure(title: day.title, isHeader: false, colors: colors)
+        }
+        let height = ChipCell.measure(day.title).rowHeight
+        let top = clip.contentInsets.top
+        floatingDay.frame = CGRect(
+            x: 0, y: scrollView.isFlipped ? top : scrollView.bounds.height - top - height,
+            width: scrollView.bounds.width, height: height
+        )
+        showFloatingDay()
+    }
+
+    /// The day the first message in view is of, unless that day's own
+    /// separator is still in view: it needs no second.
+    private func dayAtTop() -> (title: String, row: Int)? {
+        let top = clip.bounds.minY + clip.contentInsets.top
+        let row = tableView.row(at: NSPoint(x: 1, y: top + 1))
+        guard row >= 0, row < items.count else { return nil }
+        for index in stride(from: row, through: 0, by: -1) {
+            guard case let .chip(_, title, true, _) = items[index] else { continue }
+            return tableView.rect(ofRow: index).maxY > top ? nil : (title, index)
+        }
+        return nil
+    }
+
+    private func showFloatingDay() {
+        floatingHide?.cancel()
+        if floatingDay.alphaValue < 1 {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.15
+                floatingDay.animator().alphaValue = 1
+            }
+        }
+        floatingHide = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(900))
+            guard !Task.isCancelled else { return }
+            self?.hideFloatingDay()
+        }
+    }
+
+    func hideFloatingDay(immediately: Bool = false) {
+        floatingHide?.cancel()
+        guard floatingDay.alphaValue > 0 else { return }
+        if immediately || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            floatingDay.alphaValue = 0
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            floatingDay.animator().alphaValue = 0
+        }
+    }
+}

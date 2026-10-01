@@ -235,10 +235,10 @@ The picker's + makes a sticker from a picture (a square dragged into
 place and sized; sent, or kept in Favorites), creates a pack of your
 own to file stickers into from their menu, or imports a signal.art
 pack or a `.wastickers` file (the archive WhatsApp's sticker apps share,
-chosen in the open panel upstream shows for it). Besides that import, which downloads from Signal's servers, GIF
-search is the only feature that talks to a third party: it asks
-GIPHY, with your own key from Settings or one built in at compile time
-through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
+chosen in the open panel upstream shows for it). Besides that import, which downloads from Signal's servers, and
+the maps of shared places (below), GIF search is the only feature that
+talks to a third party: it asks GIPHY, with your own key from Settings or
+one built in at compile time through `ZAPFAST_GIPHY_KEY`, as upstream does. Emoji come from the
 system's Character Viewer (⌃⌘Space).
 
 Typing `:` and part of a name (`:grin`) offers matching emoji above the
@@ -299,10 +299,14 @@ by upstream's rules (the `waid` WhatsApp adds, else an international
 number): Message opens their chat, Add saves them when they are not a
 contact yet, and the message's menu has Save to Contacts… (the card goes
 to the Contacts app, which asks first) and Copy Number. A place shows
-the sender's map picture with a pin, its name and address; a live
-location says when it last moved, how fast and how precisely. A click
-opens Apple Maps (upstream opens OpenStreetMap); Copy Coordinates is in
-the menu. No map tiles are fetched.
+an Apple Maps picture of the streets around it with a pin, as WhatsApp
+does, then its name and address; a live location says when it last
+moved, how fast and how precisely. Unlike upstream, which shows only the
+sender's small preview, this sends Apple the place's coordinates when the
+bubble first appears (MapKit draws the map); the pictures are kept in
+memory only, and the sender's preview shows until the map is drawn or
+when it cannot be. A click opens Apple Maps (upstream opens
+OpenStreetMap); Copy Coordinates is in the menu.
 
 Select in a message's menu, or ⌘-click, starts selecting messages: a
 click adds or removes one, ⇧-click a run of them, and the bar in place of

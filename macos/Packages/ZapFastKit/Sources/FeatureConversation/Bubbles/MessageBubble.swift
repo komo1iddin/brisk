@@ -69,10 +69,10 @@ struct MessageBubble: View {
         .tint(message.fromMe ? theme.outgoingText : theme.accent)
     }
 
-    /// Photos and videos run almost to the bubble's edge.
+    /// Photos, videos and maps run almost to the bubble's edge.
     private var isMedia: Bool {
         switch message.content {
-        case .image, .video: true
+        case .image, .video, .location, .liveLocation: true
         default: false
         }
     }

@@ -43,14 +43,15 @@ struct MessageContentView: View {
         case let .location(latitude, longitude, name, address):
             LocationContent(
                 message: message, latitude: latitude, longitude: longitude,
-                title: name ?? String(localized: "Location"), detail: address, live: false, model: model
+                title: name ?? String(localized: "Location"), detail: address, live: false, model: model,
+                inset: captionInset
             )
         case let .liveLocation(latitude, longitude, accuracy, speed, _, ended, updated):
             LocationContent(
                 message: message, latitude: latitude, longitude: longitude,
                 title: String(localized: ended ? "Live location ended" : "Live location"),
                 detail: LocationContent.liveDetail(updated: updated, speed: speed, accuracy: accuracy),
-                live: !ended, model: model, version: updated
+                live: !ended, model: model, version: updated, inset: captionInset
             )
         case let .contact(displayName, vcard):
             ContactCard(message: message, displayName: displayName, vcard: vcard, model: model)
@@ -733,9 +734,11 @@ private struct WaveformView: View {
     }
 }
 
-/// A place: the sender's map picture when there is one, a pin and the
-/// place's name, and for a live location when it last moved, how fast and
-/// how precisely (upstream's `location_card`). A click opens it in Maps.
+/// A place as WhatsApp shows it: an Apple Maps picture of the street around
+/// it with a pin on the spot (the sender's own preview until it is drawn,
+/// or when it cannot be), then the place's name and address, or for a live
+/// location when it last moved, how fast and how precisely. The map runs
+/// almost to the bubble's edge, as a photo does. A click opens it in Maps.
 private struct LocationContent: View {
     let message: MessageRecord
     let latitude: Double
@@ -746,61 +749,62 @@ private struct LocationContent: View {
     let model: AppModel
     /// A live location's latest update, so its picture is reloaded.
     var version: Int64 = 0
+    /// The text keeps the usual inset beside the map.
+    var inset = true
 
     @State private var picture: NSImage?
+    @Environment(\.colorScheme) private var colorScheme
 
-    private static let width: CGFloat = 260
-    private static let previewHeight: CGFloat = 146
+    /// As a landscape photo; the room is kept from the start, as the row
+    /// is measured once.
+    static let mapSize = CGSize(width: 300, height: 170)
 
     var body: some View {
         Button(action: open) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Room kept from the start, as the row is measured once.
-                if message.thumbnail != nil {
-                    Rectangle()
-                        .fill(.quaternary)
-                        .frame(width: Self.width, height: Self.previewHeight)
-                        .overlay {
-                            if let picture {
-                                Image(nsImage: picture)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: Self.width, height: Self.previewHeight)
-                            }
-                        }
-                        .overlay {
-                            Image(systemName: live ? "location.circle.fill" : "mappin.circle.fill")
-                                .font(.system(size: 30))
-                                .foregroundStyle(.white, live ? Color.blue : Color.red)
-                                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                        }
-                        .clipped()
-                        .accessibilityHidden(true)
-                }
-                HStack(alignment: .top, spacing: Metrics.s) {
-                    Image(systemName: live ? "location.fill" : "mappin.and.ellipse")
-                        .foregroundStyle(live ? AnyShapeStyle(.blue) : AnyShapeStyle(.tint))
-                        .frame(width: 18)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title).font(.body.weight(.medium)).lineLimit(2)
-                        if let detail {
-                            Text(detail).font(.caption).opacity(0.75).lineLimit(2)
+            VStack(alignment: .leading, spacing: Metrics.xs) {
+                Rectangle()
+                    .fill(.quaternary)
+                    .frame(width: Self.mapSize.width, height: Self.mapSize.height)
+                    .overlay {
+                        if let picture {
+                            Image(nsImage: picture)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: Self.mapSize.width, height: Self.mapSize.height)
                         }
                     }
-                    Spacer(minLength: 0)
+                    .overlay { MapPin(color: live ? .blue : .red) }
+                    .clipShape(.rect(cornerRadius: Metrics.bubbleRadius - Metrics.xs, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.body).lineLimit(2)
+                    if let detail {
+                        Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    }
                 }
-                .padding(Metrics.s)
+                .frame(width: Self.mapSize.width - (inset ? Metrics.s * 2 : 0), alignment: .leading)
+                .insetForMedia(inset)
             }
-            .frame(width: Self.width)
-            .background(Palette.quoteBar.opacity(0.5))
-            .clipShape(.rect(cornerRadius: Metrics.controlRadius))
-            .contentShape(.rect(cornerRadius: Metrics.controlRadius))
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .help("Open in Maps")
-        .task(id: "\(message.id)-\(version)") {
-            guard let thumbnail = message.thumbnail else { return }
-            picture = await Thumbnails.load(thumbnail, key: "map-\(message.id)-\(version)", points: Self.width)
+        .task(id: "\(message.id)-\(version)-\(latitude),\(longitude)-\(colorScheme == .dark)") { await load() }
+    }
+
+    /// The map, or the sender's preview while it is drawn and when it
+    /// cannot be (offline).
+    private func load() async {
+        let dark = colorScheme == .dark
+        if let cached = MapSnapshots.cached(latitude: latitude, longitude: longitude, size: Self.mapSize, dark: dark) {
+            picture = cached
+            return
+        }
+        if let thumbnail = message.thumbnail {
+            picture = await Thumbnails.load(thumbnail, key: "map-\(message.id)-\(version)", points: Self.mapSize.width)
+        }
+        if let map = await MapSnapshots.snapshot(latitude: latitude, longitude: longitude, size: Self.mapSize, dark: dark) {
+            withAnimation(.easeOut(duration: 0.15)) { picture = map }
         }
     }
 
@@ -827,5 +831,28 @@ private struct LocationContent: View {
             components.queryItems?.append(URLQueryItem(name: "q", value: title))
         }
         if let url = components.url { NSWorkspace.shared.open(url) }
+    }
+}
+
+/// The pin WhatsApp puts on a place: a round head on a short needle whose
+/// point is the spot, the map's centre.
+private struct MapPin: View {
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Circle()
+                .fill(color.gradient)
+                .frame(width: 16, height: 16)
+                .overlay(alignment: .topLeading) {
+                    Circle().fill(.white.opacity(0.55)).frame(width: 5, height: 5).offset(x: 3.5, y: 3.5)
+                }
+            Rectangle()
+                .fill(Color(white: 0.4))
+                .frame(width: 1.5, height: 15)
+        }
+        .shadow(color: .black.opacity(0.3), radius: 1.5, x: 1, y: 1)
+        // The needle's point on the centre.
+        .offset(y: -15.5)
     }
 }

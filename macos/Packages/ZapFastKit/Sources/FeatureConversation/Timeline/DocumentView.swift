@@ -5,8 +5,8 @@ import ZapFastSharedUI
 
 /// A file in a drawn bubble, as `DocumentContent` shows it: the first page
 /// on white when there is one (the sender's preview, or a PDF's cover once
-/// it is here), then the file's own icon as the Finder draws it, its name,
-/// and its pages, size and kind; a download arrow or a spinner until it is
+/// it is here), then the kind's badge as WhatsApp draws it, its name, and
+/// its pages, size and extension; a download arrow or a spinner until it is
 /// here. A click opens it in Quick Look or downloads it.
 final class DocumentView: AttachmentView {
     private(set) var documentLayout: BubbleLayout.DocumentLayout?
@@ -194,15 +194,14 @@ final class DocumentView: AttachmentView {
     /// The file's icon leaves from where it is drawn.
     override var dragFrame: CGRect { documentLayout?.icon ?? bounds }
 
-    /// The Finder's icon for the kind of file, at the display's scale,
-    /// kept per kind.
+    /// The kind's badge, as WhatsApp draws it, at the display's scale, kept
+    /// per extension and type.
     private static var icons: [String: Any] = [:]
 
     private static func icon(for document: BubbleSource.Document, scale: CGFloat) -> Any? {
-        let type = DocumentType.of(fileName: document.fileName, mime: document.mime)
-        let key = "\(type.identifier)@\(scale)"
+        let key = "\((document.fileName as NSString).pathExtension.lowercased())|\(document.mime)@\(scale)"
         if let icon = icons[key] { return icon }
-        let image = FileIcons.icon(fileName: document.fileName, mime: document.mime)
+        let image = FileIcons.badge(fileName: document.fileName, mime: document.mime)
         image.size = NSSize(width: TimelineGeometry.documentIcon, height: TimelineGeometry.documentIcon)
         let contents = image.layerContents(forContentsScale: scale)
         icons[key] = contents

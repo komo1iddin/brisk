@@ -47,17 +47,23 @@ nonisolated struct BubbleSource: Equatable, Sendable {
             thumbnail != nil || (path != nil && isPDF)
         }
 
-        /// "3 pages · 1.2 MB · PDF".
+        /// "3 pages • 1.2 MB • pdf".
         var detail: String {
+            Self.detail(fileName: fileName, bytes: bytes, pages: pages)
+        }
+
+        /// The line under a file's name, as WhatsApp writes it: its pages,
+        /// its size and its extension.
+        static func detail(fileName: String, bytes: UInt64, pages: UInt32?) -> String {
             var parts: [String] = []
             if let pages {
                 parts.append(String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters))
             }
             if bytes > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) }
             if let ext = fileName.split(separator: ".").last, fileName.contains("."), ext.count <= 5 {
-                parts.append(ext.uppercased())
+                parts.append(ext.lowercased())
             }
-            return parts.joined(separator: " · ")
+            return parts.joined(separator: " • ")
         }
     }
 
@@ -360,9 +366,13 @@ nonisolated enum TimelineGeometry {
     /// them keeps the usual inset (`insetForMedia`).
     static let mediaPadding = Metrics.xs
     static let mediaTextInset = Metrics.s
-    /// `DocumentContent`'s card.
+    /// A file's card: as wide as its name and detail need between these,
+    /// or a page's width when it shows one, as WhatsApp sizes it. A caption
+    /// wraps to the card.
     static let documentWidth: CGFloat = 280
-    static let documentPreviewHeight: CGFloat = 150
+    static let documentMinWidth: CGFloat = 180
+    static let documentPreviewWidth: CGFloat = 240
+    static let documentPreviewHeight: CGFloat = 120
     static let documentIcon: CGFloat = 32
     static let documentIndicator: CGFloat = 17
     /// `LinkPreviewCard`'s picture.

@@ -176,6 +176,19 @@ public enum TimelineGallery {
                 text: "https://github.com/crmne/zapfast",
                 preview: LinkPreviewInfo(url: "https://github.com/crmne/zapfast", title: "crmne/zapfast", description: nil)
             )),
+            // Files without a page: the card as wide as its texts, a
+            // caption wrapped to it.
+            extra("56", from: "b", content: .document(media: MediaInfo(
+                mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 37_000,
+                width: nil, height: nil, path: nil
+            ), fileName: "AT526.docx", caption: nil, pages: 2), forwarded: true),
+            extra("57", from: "b", content: .document(media: MediaInfo(
+                mime: "application/pdf", size: 611_000, width: nil, height: nil, path: nil
+            ), fileName: "Hisobot-771.pdf", caption: "Savdo palatasidan keladigan asl shakl, shu ko'rinishda saqlab qo'ying", pages: 1)),
+            extra("58", from: "b", content: .document(media: MediaInfo(
+                mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 92_000,
+                width: nil, height: nil, path: nil
+            ), fileName: "Narxlar.xlsx", caption: nil, pages: nil)),
         ]
     }
 

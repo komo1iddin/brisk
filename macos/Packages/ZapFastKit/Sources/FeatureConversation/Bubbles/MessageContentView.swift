@@ -490,7 +490,7 @@ private struct DocumentContent: View {
                         .accessibilityHidden(true)
                 }
                 HStack(spacing: Metrics.s) {
-                    Image(nsImage: FileIcons.icon(fileName: fileName, mime: media.mime))
+                    Image(nsImage: FileIcons.badge(fileName: fileName, mime: media.mime))
                         .resizable()
                         .frame(width: 32, height: 32)
                         .accessibilityHidden(true)
@@ -521,13 +521,7 @@ private struct DocumentContent: View {
     }
 
     private var detail: String {
-        var parts: [String] = []
-        if let pages {
-            parts.append(String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters))
-        }
-        if media.size > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(media.size), countStyle: .file)) }
-        if let ext = fileName.split(separator: ".").last, ext.count <= 5 { parts.append(ext.uppercased()) }
-        return parts.joined(separator: " · ")
+        BubbleSource.Document.detail(fileName: fileName, bytes: media.size, pages: pages)
     }
 
     /// A page to show: the sender's preview, or a PDF that is here.

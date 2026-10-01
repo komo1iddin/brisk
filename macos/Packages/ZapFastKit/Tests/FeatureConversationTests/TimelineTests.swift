@@ -321,10 +321,10 @@ struct DocumentAndLinkBubbleTests {
     @Test func aDocumentIsACardOfItsIconNameAndDetail() throws {
         let layout = try layout(.document(media: pdf(), fileName: "Hisobot.pdf", caption: "Ko'ring", pages: 3), thumbnail: Data([1]))
         let card = try #require(layout.document)
-        #expect(card.frame.width == TimelineGeometry.documentWidth)
+        #expect(card.frame.width == TimelineGeometry.documentPreviewWidth)
         #expect(card.preview?.height == TimelineGeometry.documentPreviewHeight)
         #expect(card.document.detail.contains("3 pages"))
-        #expect(card.document.detail.hasSuffix("PDF"))
+        #expect(card.document.detail.hasSuffix(" • pdf"))
         // Not here yet: room for the arrow, and the name stays clear of it.
         let indicator = try #require(card.indicator)
         #expect(card.name.rect.maxX <= indicator.minX)
@@ -334,6 +334,26 @@ struct DocumentAndLinkBubbleTests {
         #expect(body.rect.minY > card.frame.maxY)
         #expect(layout.footer.rect.minY >= body.rect.maxY)
         #expect(layout.accessibilityLabel.contains("Hisobot.pdf"))
+    }
+
+    @Test func aFileWithoutAPageIsAsWideAsItsTextsAndItsCaptionWrapsToIt() throws {
+        let short = try layout(.document(media: pdf(), fileName: "AT526.docx", caption: nil, pages: 2))
+        let shortCard = try #require(short.document)
+        #expect(shortCard.frame.width >= TimelineGeometry.documentMinWidth)
+        #expect(shortCard.frame.width < TimelineGeometry.documentWidth)
+        #expect(short.bubbleSize.width == shortCard.frame.width + TimelineGeometry.bubblePadding.width * 2)
+        let long = try layout(.document(
+            media: pdf(), fileName: "Loyiha rejasi va arxitektura bo'yicha batafsil hujjat.pdf", caption: nil, pages: 12
+        ))
+        #expect(long.document?.frame.width == TimelineGeometry.documentWidth)
+        // A caption longer than the card wraps instead of widening the bubble.
+        let caption = String(repeating: "Savdo palatasidan keladigan asl shakl ", count: 4)
+        let captioned = try layout(.document(media: pdf(), fileName: "a.pdf", caption: caption, pages: 1))
+        let card = try #require(captioned.document)
+        let body = try #require(captioned.body)
+        #expect(card.frame.width == TimelineGeometry.documentPreviewWidth)
+        #expect(body.rect.width <= card.frame.width)
+        #expect(body.rect.height > TimelineText.height(ofLines: 1, TimelineText.body) * 2)
     }
 
     @Test func aDocumentHereHasNoArrowAndAPDFShowsItsPage() throws {

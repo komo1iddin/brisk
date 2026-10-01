@@ -111,6 +111,10 @@ nonisolated enum TimelineLayoutEngine {
             // The photo sets the width; everything else fits it, as on
             // the phone.
             width = pictureSize.width
+        } else if let document {
+            // So does a file's card: the caption wraps to it, at a page's
+            // width at least, and the name and the quote are cut short.
+            width = min(max(documentCardWidth(document), hasText ? G.documentPreviewWidth : 0), contentLimit)
         } else {
             var ideal = body.map { T.size($0).width } ?? 0
             if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
@@ -121,7 +125,6 @@ nonisolated enum TimelineLayoutEngine {
             }
             if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
             ideal = max(ideal, pictureSize.width)
-            if document != nil { ideal = max(ideal, G.documentWidth) }
             if let voiceBlock { ideal = max(ideal, voiceBlock.width) }
             if let card = linkCard { ideal = max(ideal, card.ideal) }
             width = min(ceil(ideal), contentLimit)
@@ -193,7 +196,7 @@ nonisolated enum TimelineLayoutEngine {
         }
 
         let documentLayout = document.map { document in
-            var card = documentCard(document, width: min(G.documentWidth, width), color: textColor)
+            var card = documentCard(document, width: width, color: textColor)
             card.frame.origin = CGPoint(x: left, y: advance(card.frame.height))
             return card
         }
@@ -292,9 +295,28 @@ nonisolated enum TimelineLayoutEngine {
         ))
     }
 
-    /// `DocumentContent`'s card at `width`: the first page, 150 points of
-    /// it, above the row of icon, name and detail, and the download arrow
-    /// while the file is not here. Its origin is set by the caller.
+    /// How wide a file's card would like to be: a page's width when it
+    /// shows one, else what its name on one line and its detail need beside
+    /// the icon and the download arrow (counted even once the file is here,
+    /// so the bubble keeps its size).
+    private static func documentCardWidth(_ document: BubbleSource.Document) -> CGFloat {
+        typealias G = TimelineGeometry
+        typealias T = TimelineText
+        if document.hasPreview { return G.documentPreviewWidth }
+        let s = Metrics.s
+        let texts = max(
+            T.size(T.line(document.fileName, T.bodyMedium, .labelColor)).width,
+            T.size(T.line(document.detail, T.caption, .labelColor)).width
+        )
+        // As `documentCard` lays the row out: s, icon, s, texts, three s,
+        // then the arrow and s.
+        let ideal = s + G.documentIcon + s + texts + s * 3 + s + G.documentIndicator
+        return min(max(ceil(ideal), G.documentMinWidth), G.documentWidth)
+    }
+
+    /// The file's card at `width`: the first page, the top of it, above
+    /// the row of icon, name and detail, and the download arrow while the
+    /// file is not here. Its origin is set by the caller.
     private static func documentCard(_ document: BubbleSource.Document, width: CGFloat, color: NSColor) -> BubbleLayout.DocumentLayout {
         typealias G = TimelineGeometry
         typealias T = TimelineText

@@ -187,8 +187,14 @@ public final class AppModel {
     /// button).
     public private(set) var timelineScroll: TimelineScrollRequest?
     /// The sidebar's chats in the order shown, for stepping through them
-    /// from the keyboard; the sidebar keeps it current.
-    public var sidebarOrder: [String] = []
+    /// from the keyboard; the sidebar keeps it current. Not observed: it
+    /// changes with most messages, and the menu bar reads only
+    /// `sidebarShortcutTitles`.
+    @ObservationIgnored public var sidebarOrder: [String] = []
+    /// The names of the sidebar's first nine chats, for Go to Chat (⌘1 to
+    /// ⌘9). The sidebar sets them when they change, so a message does not
+    /// make the menu bar again.
+    public var sidebarShortcutTitles: [String] = []
     /// The message whose reaction picker is open.
     public var reactionTarget: MessageKey?
     /// Messages picked in the open chat (upstream's `selection`), for
@@ -1826,11 +1832,6 @@ public final class AppModel {
         let chat = sidebarOrder[place]
         keepUnread(chat)
         selectedChatID = chat
-    }
-
-    /// The sidebar's first nine chats, for the Go to Chat menu.
-    public var sidebarShortcuts: [String] {
-        Array(sidebarOrder.prefix(9))
     }
 
     /// A chat opened from the sidebar: kept while it shows the Unread list.

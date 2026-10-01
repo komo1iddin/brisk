@@ -34,15 +34,15 @@ struct ZapFastCommands: Commands {
                 .disabled(locked)
 
             Menu("Go to Chat") {
-                ForEach(Array(model.sidebarShortcuts.enumerated()), id: \.offset) { place, id in
+                ForEach(Array(model.sidebarShortcutTitles.enumerated()), id: \.offset) { place, title in
                     // A chat's name never shows while the app lock is closed.
-                    Button(locked ? String(localized: "Chat \(place + 1)") : title(of: id)) {
+                    Button(locked ? String(localized: "Chat \(place + 1)") : title) {
                         model.selectChat(atSidebarPlace: place)
                     }
                     .keyboardShortcut(KeyEquivalent(Character("\(place + 1)")))
                 }
             }
-            .disabled(locked || model.sidebarShortcuts.isEmpty)
+            .disabled(locked || model.sidebarShortcutTitles.isEmpty)
 
             Button("Write a Message") { model.focusComposer() }
                 .keyboardShortcut("l")
@@ -122,10 +122,6 @@ struct ZapFastCommands: Commands {
     /// Nothing in the chats is reachable while the app lock is closed.
     private var locked: Bool {
         model.appLock.isLocked
-    }
-
-    private func title(of id: String) -> String {
-        model.chats.chat(id).map(model.chats.title(for:)) ?? model.chats.displayName(id)
     }
 
     private var hasChatHits: Bool {

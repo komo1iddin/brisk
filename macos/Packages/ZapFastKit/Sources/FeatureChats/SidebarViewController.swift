@@ -134,6 +134,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
             let hits = inLocked || trimmed.isEmpty || model.search.messageQuery != trimmed ? [] : model.search.messageHits
             return (
                 chats: chats,
+                shortcutTitles: chats.prefix(9).map { model.chats.title(for: $0) },
                 hits: hits,
                 rows: Self.rows(chats, model: model, state: state, inLocked: inLocked),
                 selection: model.selectedChatID,
@@ -168,6 +169,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         if let cursor = state.cursor, !ids.contains(cursor) { state.cursor = nil }
         let cursor = state.cursor
         if model.sidebarOrder != ids { model.sidebarOrder = ids }
+        if model.sidebarShortcutTitles != shown.shortcutTitles { model.sidebarShortcutTitles = shown.shortcutTitles }
         model.sidebarKeepsUnread = state.filter == .unread && state.label == nil && state.query.isEmpty
             && !state.showingArchived && !shown.inLocked
         table.update(rows: shown.rows, selection: cursor ?? shown.selection, model: model) { [model, state] id in

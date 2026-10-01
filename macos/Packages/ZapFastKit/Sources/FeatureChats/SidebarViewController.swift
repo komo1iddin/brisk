@@ -210,12 +210,12 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         var rows: [SidebarRow] = []
         if state.query.isEmpty, !state.showingArchived, !inLocked, state.filter == .all, state.label == nil {
             if model.chats.lockedCount > 0 {
-                rows.append(.folder(id: "locked", title: "Locked Chats", systemImage: "lock", count: nil) { [model] in
+                rows.append(.folder(id: "locked", title: String(localized: "Locked Chats"), systemImage: "lock", count: nil) { [model] in
                     model.openLockedChats()
                 })
             }
             if model.chats.archivedCount > 0 {
-                rows.append(.folder(id: "archived", title: "Archived", systemImage: "archivebox", count: model.chats.archivedUnread) { [state, model] in
+                rows.append(.folder(id: "archived", title: String(localized: "Archived"), systemImage: "archivebox", count: model.chats.archivedUnread) { [state, model] in
                     state.showingArchived = true
                     model.forgetKeptUnread()
                 })

@@ -42,6 +42,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { DebugSnapshot.renderTimelineAndQuit() }
             return
         }
+        if DebugSnapshot.sidebarPath != nil {
+            DispatchQueue.main.async { DebugSnapshot.renderSidebarAndQuit() }
+            return
+        }
         if MediaEditorScript.steps != nil {
             for window in NSApp.windows { window.orderOut(nil) }
             MediaEditorScript.run(model: model)
@@ -101,7 +105,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private static var drawsSnapshotOnly: Bool {
         #if DEBUG
         DebugSnapshot.settingsPath != nil || DebugSnapshot.galleryPath != nil || DebugSnapshot.timelinePath != nil
-            || MediaEditorScript.steps != nil || DebugSnapshot.dumpsMenus
+            || DebugSnapshot.sidebarPath != nil || MediaEditorScript.steps != nil || DebugSnapshot.dumpsMenus
         #else
         false
         #endif

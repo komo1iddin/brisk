@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import FeatureChats
 import FeatureSettings
 import FeatureConversation
 import SwiftUI
@@ -17,6 +18,10 @@ import ZapFastSharedUI
 ///
 /// `ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` renders the same messages through
 /// the real timeline, drawn bubbles beside SwiftUI rows, and quits.
+///
+/// `ZAPFAST_SNAPSHOT_SIDEBAR=/path/to.png` renders made-up chats in every
+/// state through the real sidebar table, drawn rows beside SwiftUI rows,
+/// and quits.
 ///
 /// `ZAPFAST_DUMP_MENUS=1` prints the menu bar (titles, key equivalents,
 /// actions) to standard output, without starting the backend, and quits:
@@ -84,6 +89,18 @@ enum DebugSnapshot {
     /// the app quits.
     static var timelinePath: String? {
         ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_TIMELINE"]
+    }
+
+    /// `ZAPFAST_SNAPSHOT_SIDEBAR=/path/to.png`: made-up chats through the
+    /// real sidebar table, drawn rows beside SwiftUI rows, light and dark;
+    /// then the app quits.
+    static var sidebarPath: String? {
+        ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_SIDEBAR"]
+    }
+
+    static func renderSidebarAndQuit() {
+        guard let path = sidebarPath else { return }
+        SidebarGallery.render(to: path) { NSApp.terminate(nil) }
     }
 
     static func renderTimelineAndQuit() {

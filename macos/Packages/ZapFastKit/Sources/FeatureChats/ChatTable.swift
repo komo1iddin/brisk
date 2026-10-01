@@ -7,7 +7,7 @@ import ZapFastSharedUI
 /// One row of the sidebar's table.
 enum SidebarRow {
     /// Locked Chats or Archived: opens its folder, never selected.
-    case folder(id: String, title: LocalizedStringKey, systemImage: String, count: Int?, open: () -> Void)
+    case folder(id: String, title: String, systemImage: String, count: Int?, open: () -> Void)
     case chat(ChatSummary)
 
     var id: String {
@@ -32,49 +32,21 @@ enum SidebarRow {
 /// SwiftUI's sidebar `List` is itself a source-list outline view; this one
 /// is set up with the geometry that one used (read from it at run time:
 /// cells 16 points in, chat rows 56 points with the 48-point `ChatRow`
-/// centred, folder rows 32), and shows the same `ChatRow` and `FolderRow`.
-/// What changes is who diffs the rows: the list rebuilt and compared every
-/// row's view for each message anywhere, a few milliseconds per message
-/// with 200 chats; here the rows are compared as values and only visible
-/// rows that changed are handed a new view.
-struct ChatTable: NSViewRepresentable {
-    let rows: [SidebarRow]
-    @Binding var selection: String?
-    let model: AppModel
-    /// The toolbar and search field above: the list runs under them, as
-    /// SwiftUI's did, with its content inset by this much.
-    var topInset: CGFloat = 0
-
-    func makeCoordinator() -> ChatTableController {
-        ChatTableController()
-    }
-
-    func makeNSView(context: Context) -> NSScrollView {
-        context.coordinator.makeScrollView()
-    }
-
-    /// Whatever it is offered, so rows the table adds while scrolling do
-    /// not send the window through SwiftUI layout again.
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSScrollView, context: Context) -> CGSize? {
-        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 300, height: 400))
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        let binding = $selection
-        context.coordinator.setTopInset(topInset)
-        context.coordinator.update(rows: rows, selection: selection, model: model) { binding.wrappedValue = $0 }
-    }
-}
-
+/// centred, folder rows 32). Rows are compared as values and only visible
+/// rows that changed are shown again. The rows are drawn (`ChatCell`,
+/// `FolderCell`) as `ChatRow` and `FolderRow` look; `ZAPFAST_SWIFTUI_ROWS=1`
+/// shows those SwiftUI views instead, to compare.
 final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDelegate {
     private let scrollView = NSScrollView()
-    private let tableView = SidebarTableView()
+    let tableView = SidebarTableView()
     private var rows: [SidebarRow] = []
     private weak var model: AppModel?
     private var select: (String?) -> Void = { _ in }
     /// Set while the table's selection is being matched to the model's, so
     /// that change is not reported back.
     private var syncingSelection = false
+    /// Rows drawn by Core Animation rather than SwiftUI views.
+    var drawsRows = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
 
     /// `ListTableRowView` heights under SwiftUI's sidebar list.
     static let chatRowHeight: CGFloat = 56
@@ -147,7 +119,7 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         let newIDs = new.map(\.id)
         if oldIDs == newIDs {
             for index in new.indices where new[index].differs(from: old[index]) {
-                (tableView.view(atColumn: 0, row: index, makeIfNecessary: false) as? SidebarCell)?.show(new[index], model: model)
+                showAgain(index)
             }
         } else {
             let difference = newIDs.difference(from: oldIDs)
@@ -194,11 +166,9 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
 
         // Rows that stayed but changed.
         let previous = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        if let model {
-            for index in new.indices {
-                if let before = previous[new[index].id], new[index].differs(from: before) {
-                    (tableView.view(atColumn: 0, row: index, makeIfNecessary: false) as? SidebarCell)?.show(new[index], model: model)
-                }
+        for index in new.indices {
+            if let before = previous[new[index].id], new[index].differs(from: before) {
+                showAgain(index)
             }
         }
         if atTop {
@@ -233,7 +203,12 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
 
     /// The id the table's row shows, read from its view.
     private func tableRowID(_ row: Int) -> String {
-        (tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? SidebarCell)?.rowID ?? ""
+        switch tableView.view(atColumn: 0, row: row, makeIfNecessary: false) {
+        case let cell as ChatCell: cell.chat?.id ?? ""
+        case let cell as FolderCell: cell.folderID.map { "folder-\($0)" } ?? ""
+        case let cell as SidebarCell: cell.rowID ?? ""
+        default: ""
+        }
     }
 
     private func restore(_ anchor: (id: String, offset: CGFloat)) {
@@ -267,9 +242,41 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let cell = tableView.makeView(withIdentifier: SidebarCell.identifier, owner: nil) as? SidebarCell ?? SidebarCell()
-        if let model { cell.show(rows[row], model: model) }
-        return cell
+        guard drawsRows else {
+            let cell = tableView.makeView(withIdentifier: SidebarCell.identifier, owner: nil) as? SidebarCell ?? SidebarCell()
+            if let model { cell.show(rows[row], model: model) }
+            return cell
+        }
+        switch rows[row] {
+        case let .folder(id, title, systemImage, count, open):
+            let cell = tableView.makeView(withIdentifier: FolderCell.identifier, owner: nil) as? FolderCell ?? FolderCell()
+            cell.show(id: id, title: title, systemImage: systemImage, count: count, open: open)
+            return cell
+        case .chat(let chat):
+            let cell = tableView.makeView(withIdentifier: ChatCell.identifier, owner: nil) as? ChatCell ?? ChatCell()
+            if let model { cell.show(chat, model: model) }
+            return cell
+        }
+    }
+
+    /// A row on screen whose value changed shows the new one.
+    private func showAgain(_ index: Int) {
+        guard let model else { return }
+        switch (tableView.view(atColumn: 0, row: index, makeIfNecessary: false), rows[index]) {
+        case let (cell as ChatCell, .chat(chat)):
+            cell.show(chat, model: model)
+        case let (cell as FolderCell, .folder(id, title, systemImage, count, open)):
+            cell.show(id: id, title: title, systemImage: systemImage, count: count, open: open)
+        case let (cell as SidebarCell, row):
+            cell.show(row, model: model)
+        default:
+            break
+        }
+    }
+
+    /// A row that scrolled away stops following the model until reused.
+    func tableView(_ tableView: NSTableView, didRemove rowView: NSTableRowView, forRow row: Int) {
+        for case let cell as ChatCell in rowView.subviews { cell.stopObserving() }
     }
 
     /// The open chat's row stays in the accent colour while the window is
@@ -301,29 +308,96 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         guard let model, rows.indices.contains(row), case .chat(let chat) = rows[row] else { return nil }
         return NSHostingMenu(rootView: ChatActions(chat: chat, model: model))
     }
+
+    /// A click on a drawn folder row opens the folder. Returns whether it
+    /// was one.
+    func openFolder(atRow row: Int) -> Bool {
+        guard drawsRows, rows.indices.contains(row), case .folder(_, _, _, _, let open) = rows[row] else { return false }
+        open()
+        return true
+    }
+
+    /// The last message in full, for the row's tooltip.
+    func toolTip(forRow row: Int) -> String? {
+        guard drawsRows, rows.indices.contains(row), case .chat(let chat) = rows[row] else { return nil }
+        return chat.last?.full.nonEmpty
+    }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }
 
 /// Emphasized, in the accent colour, while its window is key.
 final class SidebarRowView: NSTableRowView {
     static let identifier = NSUserInterfaceItemIdentifier("SidebarRow")
+    #if DEBUG
+    /// The gallery's windows are never key.
+    static var emphasizesInGallery = false
+    #endif
 
     override var isEmphasized: Bool {
-        get { window?.isKeyWindow ?? false }
+        get {
+            #if DEBUG
+            if Self.emphasizesInGallery { return true }
+            #endif
+            return window?.isKeyWindow ?? false
+        }
         // The table sets this when focus or the key window changes; redraw
         // with the getter's answer.
         set { super.isEmphasized = newValue }
     }
 }
 
-/// The sidebar table: its context menu is the clicked chat's.
-final class SidebarTableView: NSTableView {
+/// The sidebar table: its context menu is the clicked chat's, a click on a
+/// folder opens it, and the row under the pointer has the tooltip, from one
+/// tracking area for the table rather than one per row.
+final class SidebarTableView: NSTableView, NSViewToolTipOwner {
     weak var controller: ChatTableController?
+    private var tracking: NSTrackingArea?
+    private var toolTipRow = -1
 
     override func menu(for event: NSEvent) -> NSMenu? {
         // Lets the table note the clicked row and outline it.
         _ = super.menu(for: event)
         let row = row(at: convert(event.locationInWindow, from: nil))
         return row >= 0 ? controller?.menu(forRow: row) : nil
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        if row >= 0, event.clickCount == 1, controller?.openFolder(atRow: row) == true { return }
+        super.mouseDown(with: event)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        guard tracking == nil else { return }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self
+        )
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        guard row != toolTipRow else { return }
+        toolTipRow = row
+        removeAllToolTips()
+        if row >= 0 { addToolTip(rect(ofRow: row), owner: self, userData: nil) }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        toolTipRow = -1
+        removeAllToolTips()
+    }
+
+    func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
+        let row = row(at: point)
+        return row >= 0 ? controller?.toolTip(forRow: row) ?? "" : ""
     }
 }
 
@@ -372,7 +446,7 @@ final class SidebarCell: NSTableCellView {
     private func content(_ row: SidebarRow, model: AppModel) -> some View {
         switch row {
         case let .folder(_, title, systemImage, count, open):
-            FolderRow(title: title, systemImage: systemImage, count: count, open: open)
+            FolderRow(title: LocalizedStringKey(title), systemImage: systemImage, count: count, open: open)
         case .chat(let chat):
             ChatRow(chat: chat, model: model)
         }

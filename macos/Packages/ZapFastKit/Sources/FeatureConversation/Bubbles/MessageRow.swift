@@ -9,7 +9,7 @@ struct MessageRow: View {
     let message: MessageRecord
     let startsRun: Bool
     /// The last message of its sender's run: in a group, their photo
-    /// beside it.
+    /// beside it, and the bubble's tail.
     var endsRun = true
     let isGroup: Bool
     let model: AppModel
@@ -24,6 +24,7 @@ struct MessageRow: View {
                 MessageBubble(
                     message: message,
                     senderName: senderName,
+                    endsRun: endsRun,
                     model: model
                 )
                 .contextMenu { MessageActions(message: message, model: model) }

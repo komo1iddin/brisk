@@ -116,6 +116,9 @@ final class BubbleCell: NSView {
     private(set) var messageID: String?
     private(set) var bubbleLayout: BubbleLayout?
     private let bubble = BubbleView()
+    /// On a run's last message, the bubble's colour past its corner, under
+    /// the bubble: the bubble's layer clips to its rounded corners.
+    private let tail = CAShapeLayer()
     private let pills = ReactionPillsView()
     /// In a group, the sender's photo beside the last message of their run.
     private let avatar = AvatarLayers()
@@ -147,6 +150,9 @@ final class BubbleCell: NSView {
         layerContentsRedrawPolicy = .never
         addSubview(bubble)
         addSubview(pills)
+        tail.actions = ["bounds": NSNull(), "position": NSNull(), "path": NSNull(), "hidden": NSNull(), "fillColor": NSNull()]
+        tail.isHidden = true
+        layer?.insertSublayer(tail, below: bubble.layer)
         bubble.cell = self
         checkbox.isHidden = true
         checkbox.actions = ["position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
@@ -174,6 +180,12 @@ final class BubbleCell: NSView {
             removeBodyText()
             bubble.configure(layout, messageID: id)
             pills.configure(layout)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            tail.isHidden = !layout.tail
+            tail.path = layout.tail ? BubbleTail.path(size: layout.bubbleSize, fromMe: layout.fromMe) : nil
+            CATransaction.commit()
+            paintTail()
             if let person = layout.avatar {
                 avatar.configure(
                     personID: person.personID, name: person.name,
@@ -282,6 +294,17 @@ final class BubbleCell: NSView {
         checkbox.appearance = effectiveAppearance
         checkbox.setNeedsDisplay()
         paintBackground(animated: false)
+        paintTail()
+    }
+
+    private func paintTail() {
+        guard let layout = bubbleLayout, layout.tail else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            tail.fillColor = layout.bubbleColor?.cgColor
+        }
+        CATransaction.commit()
     }
 
     override func viewDidChangeBackingProperties() {
@@ -294,6 +317,7 @@ final class BubbleCell: NSView {
     /// The system accent colour changed.
     func refreshColors() {
         checkbox.setNeedsDisplay()
+        paintTail()
         bubble.refreshColors()
         bubble.pictureView?.refreshColors()
         bubble.documentView?.refreshColors()
@@ -346,6 +370,12 @@ final class BubbleCell: NSView {
         let pillsFrame = layout.pillsFrame(rowWidth: bounds.width).insetBy(dx: -2, dy: -2).offsetBy(dx: shift, dy: 0)
         pills.isHidden = layout.pills.isEmpty
         if animated {
+            // The tail moves with the bubble.
+            let move = CABasicAnimation(keyPath: "position")
+            move.fromValue = tail.position
+            move.duration = 0.2
+            move.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            tail.add(move, forKey: "position")
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -359,6 +389,7 @@ final class BubbleCell: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         checkbox.frame = CGRect(x: Metrics.m, y: ((bounds.height - 24) / 2).rounded(), width: 24, height: 24)
+        tail.frame = bubbleFrame
         let avatarFrame = layout.avatarFrame(rowWidth: bounds.width)
         avatar.layer.isHidden = avatarFrame == nil
         if let avatarFrame { avatar.layer.frame = avatarFrame.offsetBy(dx: shift, dy: 0) }

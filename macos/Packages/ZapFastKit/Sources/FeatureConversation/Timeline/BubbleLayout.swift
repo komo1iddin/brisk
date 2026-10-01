@@ -312,6 +312,8 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var widthLimit: CGFloat
         var fromMe: Bool
         var startsRun: Bool
+        /// The last message of a run has a tail (`BubbleTail`).
+        var tail: Bool
         /// In a group, incoming bubbles start after the photos' column.
         var avatarRoom: Bool
         var avatar: Avatar?
@@ -407,7 +409,7 @@ nonisolated enum TimelineGeometry {
     /// from the timeline's edge, and the gap to the bubbles.
     static let avatarSize: CGFloat = 28
     static let avatarInset = Metrics.m
-    static let avatarGap: CGFloat = 6
+    static let avatarGap: CGFloat = 8
     /// How much further in than elsewhere incoming bubbles start in a group.
     static let avatarRoom = avatarInset + avatarSize + avatarGap - Metrics.l
     static let bubblePadding = CGSize(width: Metrics.m, height: Metrics.s)

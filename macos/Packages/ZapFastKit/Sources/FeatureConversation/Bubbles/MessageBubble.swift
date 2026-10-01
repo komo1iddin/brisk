@@ -8,6 +8,8 @@ import ZapFastSharedUI
 struct MessageBubble: View {
     let message: MessageRecord
     let senderName: String?
+    /// The last message of its run has a tail (`BubbleTail`).
+    var endsRun = true
     let model: AppModel
     @Environment(\.chatTheme) private var theme
 
@@ -70,10 +72,13 @@ struct MessageBubble: View {
         .padding(.bottom, isBare ? 0 : Metrics.s)
         .background {
             if !isBare {
-                RoundedRectangle(cornerRadius: Metrics.bubbleRadius, style: .continuous)
-                    .fill(message.fromMe ? theme.outgoing : theme.incoming)
-                    // Over a wallpaper bubbles lift a little, as on the phone.
-                    .shadow(color: .black.opacity(theme.hasWallpaper ? 0.1 : 0), radius: 0.5, y: 0.5)
+                ZStack {
+                    RoundedRectangle(cornerRadius: Metrics.bubbleRadius, style: .continuous)
+                    if endsRun { BubbleTailShape(fromMe: message.fromMe) }
+                }
+                .foregroundStyle(message.fromMe ? theme.outgoing : theme.incoming)
+                // Over a wallpaper bubbles lift a little, as on the phone.
+                .shadow(color: .black.opacity(theme.hasWallpaper ? 0.1 : 0), radius: 0.5, y: 0.5)
             }
         }
         .foregroundStyle(primaryText)

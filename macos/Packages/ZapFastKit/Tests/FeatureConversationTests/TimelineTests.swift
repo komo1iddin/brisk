@@ -621,6 +621,28 @@ struct GroupRunTests {
         #expect(alone.bubbleFrame(rowWidth: 800).minX == bubble.minX - TimelineGeometry.avatarRoom)
     }
 
+    @Test func onlyARunsLastBubbleHasATailReachingOutOnItsSendersSide() throws {
+        let chats = ChatStore(session: SessionStore())
+        let colors = BubbleColors(.standard)
+        func layout(_ message: MessageRecord, endsRun: Bool) throws -> BubbleLayout {
+            let source = try #require(BubbleSource.make(message, startsRun: true, endsRun: endsRun, isGroup: false, colors: colors, chats: chats))
+            return TimelineLayoutEngine.layout(for: source, widthLimit: 560)
+        }
+        #expect(try layout(message(1), endsRun: true).tail)
+        #expect(try !layout(message(1), endsRun: false).tail)
+        var emoji = message(2)
+        emoji.content = .text(text: "😂", preview: nil)
+        #expect(try !layout(emoji, endsRun: true).tail, "large emoji have no bubble")
+
+        let size = CGSize(width: 200, height: 60)
+        let theirs = BubbleTail.path(size: size, fromMe: false).boundingBox
+        #expect(abs(theirs.minX + BubbleTail.reach) < 0.01)
+        #expect(abs(theirs.maxY - size.height) < 0.01)
+        let ours = BubbleTail.path(size: size, fromMe: true).boundingBox
+        #expect(abs(ours.maxX - (size.width + BubbleTail.reach)) < 0.01)
+        #expect(abs(ours.maxY - size.height) < 0.01)
+    }
+
     /// The next message from the same sender continues the run: the row
     /// before it loses the photo, and only that row changes.
     @Test func aMessageContinuingTheRunTakesThePhotoFromTheOneBefore() async throws {

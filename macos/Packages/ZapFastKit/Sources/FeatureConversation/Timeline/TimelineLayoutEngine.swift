@@ -290,6 +290,7 @@ nonisolated enum TimelineLayoutEngine {
             widthLimit: widthLimit,
             fromMe: fromMe,
             startsRun: source.startsRun,
+            tail: source.endsRun && !bare,
             avatarRoom: source.avatarRoom,
             avatar: source.avatarName.map { .init(personID: source.senderID, name: $0) },
             bare: bare,

@@ -10,18 +10,23 @@ extension TimelineController {
         clip.bounds.maxY >= tableView.bounds.height - edgeSlack
     }
 
-    /// Where the timeline goes in its pane, and the room left at its top
-    /// for the title bar. A reader at the newest message stays there as the
-    /// composer grows or shrinks.
-    func place(frame: CGRect, topInset: CGFloat) {
-        let insets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
+    /// Where the timeline goes in its pane, the room left at its top for
+    /// the title bar, and at its bottom for the composer it scrolls under.
+    /// A reader at the newest message stays there as the composer grows or
+    /// shrinks.
+    func place(frame: CGRect, topInset: CGFloat, bottomInset: CGFloat = 0) {
+        let insets = NSEdgeInsets(top: topInset, left: 0, bottom: bottomInset, right: 0)
         let moved = scrollView.frame != frame
-        // A scroll view that AppKit insets keeps AppKit's.
-        let reinset = !scrollView.automaticallyAdjustsContentInsets && clip.contentInsets.top != topInset
-        guard moved || reinset else { return }
+        // A scroll view that AppKit insets keeps AppKit's top; the bottom is
+        // asked of it as extra safe area.
+        let reinset = !scrollView.automaticallyAdjustsContentInsets
+            && (clip.contentInsets.top != topInset || clip.contentInsets.bottom != bottomInset)
+        let covered = scrollView.additionalSafeAreaInsets.bottom != bottomInset
+        guard moved || reinset || covered else { return }
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()
         scrollView.frame = frame
+        scrollView.additionalSafeAreaInsets = NSEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
         if reinset {
             scrollView.contentInsets = insets
             scrollView.scrollerInsets = insets
@@ -166,6 +171,8 @@ extension TimelineController {
 
     @objc func scrolled(_ notification: Notification) {
         tableView.scrolled()
+        // A page hung from a name or photo goes with what scrolls away.
+        if senderPopover?.isShown == true { senderPopover?.close() }
         followsBottom = isAtBottom
         report()
         guard clip.bounds.minY + clip.contentInsets.top < prefetchDistance, !items.isEmpty, !reachTopScheduled else {

@@ -1,5 +1,7 @@
 #if DEBUG
 import AppKit
+import FeatureConversation
+import ZapFastDesign
 import ZapFastCore
 
 /// Development aid: commands posted from a shell, for checking the AppKit
@@ -20,6 +22,9 @@ import ZapFastCore
 /// - `action:<selector>`: sends an action up the responder chain.
 /// - `shot`: the main window as the screen shows it, to `shot.png` (a
 ///   window of the app's own needs no screen recording permission).
+/// - `react:<n>`, `sender:<n>`: the reaction picker, or the sender's page,
+///   of the nth message from the bottom of the screen; answers with the
+///   frames of the bubble and of the popover.
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
 ///   scroll view with whole numbers, to try AppKit's settings live.
@@ -95,8 +100,59 @@ enum DebugCommands {
             clip.scroll(to: NSPoint(x: clip.bounds.minX, y: clip.bounds.minY + delta))
             scrollView.reflectScrolledClipView(clip)
             write(name, "at \(Int(clip.bounds.minY))")
+        case "react", "sender":
+            // react:<n> / sender:<n>: the picker, or the sender's page, of the
+            // nth message from the bottom; answers with where it sits, then
+            // where the popover window came up.
+            guard let content = mainWindow()?.contentView, let table = timeline(in: content) else { return }
+            let n = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            let target = name == "react"
+                ? TimelineDebug.react(in: table, model: model, fromBottom: n)
+                : TimelineDebug.sender(in: table, fromBottom: n)
+            Task {
+                try? await Task.sleep(for: .milliseconds(600))
+                let others = NSApp.windows.filter { $0 !== mainWindow() && $0.isVisible }
+                write(name, "\(target)\nwindow \(mainWindow()?.frame ?? .zero)\n"
+                    + others.map { "\(NSStringFromClass(type(of: $0))) \($0.frame.integral) alpha \($0.alphaValue) level \($0.level.rawValue)" }
+                        .joined(separator: "\n"))
+            }
+        case "layers":
+            // layers:<class fragment>: the layers under the first view whose class name has it.
+            func find(_ view: NSView, _ part: String) -> NSView? {
+                if NSStringFromClass(type(of: view)).contains(part), view.frame.height < 80, view.frame.minY > 500 { return view }
+                return view.subviews.lazy.compactMap { find($0, part) }.first
+            }
+            func dump(_ layer: CALayer, _ depth: Int, _ out: inout String) {
+                guard depth < 14 else { return }
+                let color = layer.backgroundColor.flatMap { NSColor(cgColor: $0) }.map { " bg=\($0.alphaComponent)" } ?? ""
+                let filters = layer.filters.map { " filters=\($0.count)" } ?? ""
+                let bg = layer.backgroundFilters.map { " bgfilters=\($0.count)" } ?? ""
+                out += String(repeating: "  ", count: depth) + "\(type(of: layer)) \(layer.frame.integral)\(color)\(filters)\(bg)\(layer.isHidden ? " hidden" : "")\n"
+                for sub in layer.sublayers ?? [] { dump(sub, depth + 1, &out) }
+            }
+            guard let content = mainWindow()?.contentView, let view = find(content, parts.count > 1 ? parts[1] : "NSHostingView"),
+                  let layer = view.layer else { write(name, "none"); return }
+            var out = "\(type(of: view)) \(view.frame)\n"
+            dump(layer, 0, &out)
+            write(name, out)
+        case "front":
+            // front: the main window becomes key, as glass and pockets draw
+            // differently in a window that is not.
+            NSApp.activate(ignoringOtherApps: true)
+            mainWindow()?.makeKeyAndOrderFront(nil)
+            write(name, "key \(mainWindow()?.isKeyWindow ?? false) active \(NSApp.isActive)")
+        case "scrollbar":
+            // scrollbar:on|off: the chat list's bar, as if the pointer were over it.
+            func find(_ view: NSView) -> HoverScrollView? {
+                if let found = view as? HoverScrollView { return found }
+                return view.subviews.lazy.compactMap(find).first
+            }
+            guard let content = mainWindow()?.contentView, let bar = find(content) else { return }
+            bar.setBarVisible(parts.count > 1 && parts[1] == "on")
+            write(name, "set")
         case "shot":
-            write(name, shot())
+            // shot:popover captures the popover over the window instead.
+            write(name, shot(popover: parts.count > 1 && parts[1] == "popover"))
         case "action":
             // action:<selector>, colons and all (`action:terminate:` quits).
             let selector = String(command.dropFirst("action:".count))
@@ -257,8 +313,9 @@ enum DebugCommands {
 
     /// `CGWindowListCreateImage`, which Swift no longer offers but the
     /// system still answers for the app's own windows.
-    private static func shot() -> String {
-        guard let window = mainWindow() else { return "no window" }
+    private static func shot(popover: Bool = false) -> String {
+        let popoverWindow = NSApp.windows.last { NSStringFromClass(type(of: $0)).contains("Popover") && $0.isVisible }
+        guard let window = popover ? popoverWindow : mainWindow() else { return "no window" }
         typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
         guard let handle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
               let symbol = dlsym(handle, "CGWindowListCreateImage") else { return "no capture" }
@@ -271,7 +328,7 @@ enum DebugCommands {
         guard let data = rep.representation(using: .png, properties: [:]) else { return "no png" }
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
-        try? data.write(to: folder.appending(path: "shot.png"))
+        try? data.write(to: folder.appending(path: popover ? "popover.png" : "shot.png"))
         return "\(image.width)x\(image.height)"
     }
 

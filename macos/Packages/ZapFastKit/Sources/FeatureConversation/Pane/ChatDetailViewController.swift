@@ -50,6 +50,8 @@ public final class ChatDetailViewController: NSViewController {
     private let wallpaper = PassiveHostingView(rootView: AnyView(EmptyView()))
     private let placeholder = PassiveHostingView(rootView: AnyView(EmptyView()))
     private let presenters = PassiveHostingView(rootView: AnyView(EmptyView()))
+    /// The fine line between the chat list and the chat.
+    private let divider = HairlineView()
     private var header: NSHostingView<AnyView>?
     private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
     private var observed = 0
@@ -77,7 +79,7 @@ public final class ChatDetailViewController: NSViewController {
             guard let self, let chatID = self.chatID else { return }
             self.model.stage(files: files, in: chatID)
         }
-        for island in [wallpaper, placeholder, presenters] as [NSView] {
+        for island in [wallpaper, placeholder, presenters, divider] as [NSView] {
             view.addSubview(island)
         }
         wallpaper.sizingOptions = []
@@ -157,7 +159,8 @@ public final class ChatDetailViewController: NSViewController {
             if let conversation {
                 conversation.show(chatID: id)
             } else {
-                let conversation = ConversationViewController(chatID: id, model: model)
+                let chrome = chrome
+                let conversation = ConversationViewController(chatID: id, model: model) { chrome.infoRequest = $0 }
                 addChild(conversation)
                 view.addSubview(conversation.view, positioned: .above, relativeTo: wallpaper)
                 self.conversation = conversation
@@ -190,6 +193,7 @@ public final class ChatDetailViewController: NSViewController {
         conversation?.view.frame = content
         placeholder.frame = content
         presenters.frame = CGRect(x: content.minX, y: 0, width: 1, height: 1)
+        divider.frame = CGRect(x: content.minX, y: 0, width: HairlineView.thickness(in: view.window), height: bounds.height)
     }
 
     // MARK: Toolbar
@@ -287,6 +291,37 @@ private struct ChatWallpaper: View {
 /// answer. Should AppKit stop asking, the header only gains a capsule.
 private final class TitleToolbarItem: NSToolbarItem {
     @objc var glassBehavior: Int { 0 }
+}
+
+/// A vertical line one device pixel wide in the separator colour, over the
+/// edge where the chat list ends. A picture only.
+private final class HairlineView: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    static func thickness(in window: NSWindow?) -> CGFloat {
+        1 / (window?.backingScaleFactor ?? 2)
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = NSColor.separatorColor.cgColor
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// Lays itself out through its controller, and takes files dropped on the

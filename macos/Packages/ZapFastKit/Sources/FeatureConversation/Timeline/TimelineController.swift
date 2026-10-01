@@ -91,6 +91,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var drawsBubbles = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
     weak var model: AppModel?
     var onReachTop: () -> Void = {}
+    /// What a sender's page asks of the window (a dialog, a sheet).
+    var onInfoRequest: (InfoRequest) -> Void = { _ in }
+    /// The page of the person whose name or photo was clicked.
+    var senderPopover: NSPopover?
     var onScrollState: (ScrollState) -> Void = { _ in }
 
     private(set) var items: [Item] = []
@@ -166,7 +170,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
-        // Content scrolls under the title bar; AppKit insets it so nothing hides.
+        // Content scrolls under the title bar and the composer; AppKit insets
+        // it, by the title bar and by the safe area `place` gives it.
         scrollView.automaticallyAdjustsContentInsets = true
 
         let clip = scrollView.contentView
@@ -227,6 +232,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             self.chatID = chatID
             self.isGroup = isGroup
             self.revision = nil
+            senderPopover?.close()
             setItems([])
             // Layouts and heights stay, keyed by message: going back to a
             // chat read a moment ago measures nothing again. Only their

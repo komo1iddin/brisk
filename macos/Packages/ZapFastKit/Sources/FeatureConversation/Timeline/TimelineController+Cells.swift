@@ -13,9 +13,29 @@ extension TimelineController: TimelineCellDelegate {
         model.showQuoted(in: message)
     }
 
-    func showSender(ofMessage id: String) {
-        guard let model, let message = message(id) else { return }
-        model.showInfo(in: message.chat, person: message.sender)
+    /// The sender's page hangs from their name or photo, not from the
+    /// header: the popover is where the click was.
+    func showSender(ofMessage id: String, relativeTo rect: NSRect, of view: NSView, preferredEdge: NSRectEdge) {
+        guard let model, let message = message(id), !model.session.isOurs(message.sender) else { return }
+        senderPopover?.close()
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let request = onInfoRequest
+        let panel = PersonInfoPanel(
+            personID: message.sender, model: model,
+            request: { [weak popover] asked in
+                // The popover goes first; the window answers.
+                popover?.close()
+                DispatchQueue.main.async { request(asked) }
+            }
+        )
+        .environment(\.dismissInfo) { [weak popover] in popover?.close() }
+        .environment(\.chatTheme, style.theme)
+        .tint(style.theme.accent)
+        popover.contentViewController = NSHostingController(rootView: panel)
+        senderPopover = popover
+        popover.show(relativeTo: rect, of: view, preferredEdge: preferredEdge)
     }
 
     func menu(forMessage id: String, selection: String?) -> NSMenu? {

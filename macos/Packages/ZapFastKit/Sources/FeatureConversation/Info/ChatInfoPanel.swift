@@ -116,6 +116,30 @@ struct ChatInfoPanel: View {
     }
 }
 
+/// A group member's page alone, in the popover that hangs from their name
+/// or photo in the timeline.
+struct PersonInfoPanel: View {
+    let personID: String
+    let model: AppModel
+    let request: (InfoRequest) -> Void
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            InfoPage(id: personID, isRoot: false, model: model, request: request)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(width: ChatInfoPanel.width, height: min(max(contentHeight, 1), ChatInfoPanel.maxHeight))
+    }
+}
+
+extension EnvironmentValues {
+    /// Closes the popover a page is shown in, for what leaves it (opening
+    /// a chat with the person).
+    @Entry var dismissInfo: @MainActor () -> Void = {}
+}
+
 private struct BackBar: View {
     let title: String
     let action: () -> Void
@@ -142,6 +166,7 @@ private struct InfoPage: View {
     let isRoot: Bool
     let model: AppModel
     let request: (InfoRequest) -> Void
+    @Environment(\.dismissInfo) private var dismiss
 
     var body: some View {
         let chat = model.chats.chat(id)
@@ -265,6 +290,7 @@ private struct InfoPage: View {
             if !isRoot, !isGroup, !ours {
                 ActionTile("Message", systemImage: "message") {
                     model.closeInfo()
+                    dismiss()
                     model.startChat(with: id)
                 }
             }

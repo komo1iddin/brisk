@@ -9,8 +9,9 @@ import ZapFastSharedUI
 @MainActor
 protocol TimelineCellDelegate: AnyObject {
     func showQuote(ofMessage id: String)
-    /// The sender's name was clicked: their page in the chat's info.
-    func showSender(ofMessage id: String)
+    /// The sender's name or photo was clicked: their page, in a popover at
+    /// `rect` of `view`.
+    func showSender(ofMessage id: String, relativeTo rect: NSRect, of view: NSView, preferredEdge: NSRectEdge)
     /// The message's context menu, with a Copy for `selection` when some of
     /// its text is selected.
     func menu(forMessage id: String, selection: String?) -> NSMenu?
@@ -540,6 +541,8 @@ final class BubbleCell: NSView {
         showHoverActions()
         let popover = NSPopover()
         popover.contentViewController = controller
+        let fitting = controller.view.fittingSize
+        if fitting.width > 0, fitting.height > 0 { popover.contentSize = fitting }
         popover.behavior = .transient
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.delegate = self
@@ -551,6 +554,18 @@ final class BubbleCell: NSView {
     func closeReactionPicker() {
         popover?.close()
     }
+
+    #if DEBUG
+    /// As a click on the sender's photo, or the name when there is no photo.
+    func debugClickSender() {
+        guard let id = messageID else { return }
+        if let avatar = avatarFrame() {
+            delegate?.showSender(ofMessage: id, relativeTo: avatar, of: self, preferredEdge: .maxX)
+        } else if let name = bubbleLayout?.name {
+            delegate?.showSender(ofMessage: id, relativeTo: name.rect, of: bubble, preferredEdge: .minY)
+        }
+    }
+    #endif
 
     override func mouseDown(with event: NSEvent) {
         if selection.selecting, let id = messageID {
@@ -564,8 +579,8 @@ final class BubbleCell: NSView {
             delegate?.startSelecting(fromMessage: id)
             return
         }
-        if let id = messageID, avatarFrame()?.contains(convert(event.locationInWindow, from: nil)) == true {
-            delegate?.showSender(ofMessage: id)
+        if let id = messageID, let avatar = avatarFrame(), avatar.contains(convert(event.locationInWindow, from: nil)) {
+            delegate?.showSender(ofMessage: id, relativeTo: avatar, of: self, preferredEdge: .maxX)
             return
         }
         // A drag down the space beside the bubble starts picking messages
@@ -880,7 +895,7 @@ private final class BubbleView: NSView {
             return
         }
         if let name = bubbleLayout?.name, name.rect.contains(point), let cell, let id = cell.messageID {
-            cell.delegate?.showSender(ofMessage: id)
+            cell.delegate?.showSender(ofMessage: id, relativeTo: name.rect, of: self, preferredEdge: .minY)
             return
         }
         if let bodyRect = bubbleLayout?.body?.rect, bodyRect.contains(point), let cell, let view = cell.installBodyText() {
@@ -1030,14 +1045,17 @@ nonisolated final class SymbolLayer: CALayer {
 
     override func action(forKey event: String) -> (any CAAction)? { nil }
 
+    /// Whether this changed what the layer draws.
     @MainActor
-    func configure(symbol: String, pointSize: CGFloat, weight: NSFont.Weight, palette: [NSColor]) {
-        guard symbol != self.symbol || pointSize != self.pointSize || weight != self.weight || palette != self.palette else { return }
+    @discardableResult
+    func configure(symbol: String, pointSize: CGFloat, weight: NSFont.Weight, palette: [NSColor]) -> Bool {
+        guard symbol != self.symbol || pointSize != self.pointSize || weight != self.weight || palette != self.palette else { return false }
         self.symbol = symbol
         self.pointSize = pointSize
         self.weight = weight
         self.palette = palette
         setNeedsDisplay()
+        return true
     }
 
     override func draw(in context: CGContext) {

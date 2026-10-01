@@ -11,12 +11,14 @@ use tokio::sync::mpsc;
 use crate::model::{Chat, ChatId, Contact, Gif, GifError, Message, PollDraft, StickerPack};
 use crate::paths::AppDirs;
 
+mod client_hook;
 // Re-exported so the picker can detect pasted Signal pack links.
 mod read_sync;
 pub(crate) mod sticker_import;
 mod sticker_maker;
 pub(crate) mod sticker_store;
 mod worker;
+pub use client_hook::{ClientHook, set_client_hook};
 pub use worker::{PINNED_CHATS, PLUS_PINNED_CHATS};
 
 /// Phone-link state.

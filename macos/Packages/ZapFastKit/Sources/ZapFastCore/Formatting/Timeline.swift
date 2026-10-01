@@ -28,14 +28,20 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
     ) -> [TimelineRow] {
         var rows: [TimelineRow] = []
         rows.reserveCapacity(messages.count + 8)
-        var previous: MessageRecord?
-        // The previous message's row, which ends its run when this one
-        // starts another.
-        var previousRow: Int?
+        // Whether the message at `index` starts a run: the first of a day,
+        // under the divider, from someone else than the one before, or
+        // after a long pause even from the same sender.
+        func startsRun(at index: Int, newDay: Bool) -> Bool {
+            guard index > 0, !newDay else { return true }
+            return unread?.message == messages[index].id
+                || messages[index - 1].sender != messages[index].sender
+                || messages[index - 1].fromMe != messages[index].fromMe
+                || messages[index].timestamp - messages[index - 1].timestamp > 5 * 60
+        }
         // The current day's bounds, so the calendar is asked once per day
         // rather than once per message.
         var day: DateInterval?
-        for message in messages {
+        for (index, message) in messages.enumerated() {
             let date = DateText.date(message.timestamp)
             let newDay = day.map { !($0.start <= date && date < $0.end) } ?? true
             if newDay {
@@ -51,16 +57,13 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
             if let unread, dividerHere {
                 rows.append(.unread(count: unread.count))
             }
-            let startsRun = newDay || dividerHere || previous?.sender != message.sender
-                || previous?.fromMe != message.fromMe
-                // A long pause starts a new run even from the same sender.
-                || message.timestamp - (previous?.timestamp ?? 0) > 5 * 60
-            if let previousRow, case let .message(before, starts, _) = rows[previousRow] {
-                rows[previousRow] = .message(before, startsRun: starts, endsRun: startsRun)
+            // A run ends where the next message starts one.
+            var endsRun = true
+            if index + 1 < messages.count, let day {
+                let next = DateText.date(messages[index + 1].timestamp)
+                endsRun = startsRun(at: index + 1, newDay: !(day.start <= next && next < day.end))
             }
-            previousRow = rows.count
-            rows.append(.message(message, startsRun: startsRun, endsRun: true))
-            previous = message
+            rows.append(.message(message, startsRun: startsRun(at: index, newDay: newDay), endsRun: endsRun))
         }
         return rows
     }

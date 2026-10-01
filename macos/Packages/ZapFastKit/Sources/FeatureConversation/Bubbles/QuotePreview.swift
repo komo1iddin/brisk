@@ -27,27 +27,24 @@ nonisolated struct QuotePreview: Equatable, Sendable {
         func caption(_ text: String?, or label: String) -> String {
             text.flatMap { $0.isEmpty ? nil : $0.split(separator: "\n", maxSplits: 1).first.map(String.init) } ?? label
         }
+        typealias L = Labels
         switch original.content {
         case let .document(_, fileName, _, pages):
-            let summary = pages.map {
-                "\(fileName) • \(String(AttributedString(localized: "^[\($0) page](inflect: true)").characters))"
-            } ?? fileName
+            let summary = pages.map { "\(fileName) • \(BubbleSource.pagesText($0))" } ?? fileName
             self.init(summary: summary, symbol: "doc.fill", thumbnail: thumbnail)
         case let .image(text, _):
-            self.init(summary: caption(text, or: String(localized: "Photo")), symbol: "camera.fill", thumbnail: thumbnail)
+            self.init(summary: caption(text, or: L.photo), symbol: "camera.fill", thumbnail: thumbnail)
         case let .video(text, _, _, gif, note):
-            let label = gif ? String(localized: "GIF") : note ? String(localized: "Video message") : String(localized: "Video")
-            self.init(summary: caption(text, or: label), symbol: "video.fill", thumbnail: thumbnail)
+            self.init(summary: caption(text, or: gif ? L.gif : note ? L.videoMessage : L.video), symbol: "video.fill", thumbnail: thumbnail)
         case let .audio(_, seconds, voiceNote, _):
-            let label = voiceNote ? String(localized: "Voice message") : String(localized: "Audio")
             let length = seconds.map { " (\(Duration.seconds(Int($0)).formatted(.time(pattern: .minuteSecond))))" } ?? ""
-            self.init(summary: label + length, symbol: voiceNote ? "mic.fill" : "headphones")
+            self.init(summary: (voiceNote ? L.voiceMessage : L.audio) + length, symbol: voiceNote ? "mic.fill" : "headphones")
         case .sticker:
-            self.init(summary: String(localized: "Sticker"), symbol: "face.smiling")
+            self.init(summary: L.sticker, symbol: "face.smiling")
         case let .location(_, _, name, _):
-            self.init(summary: name ?? String(localized: "Location"), symbol: "mappin.and.ellipse", thumbnail: thumbnail)
+            self.init(summary: name ?? L.location, symbol: "mappin.and.ellipse", thumbnail: thumbnail)
         case .liveLocation:
-            self.init(summary: String(localized: "Live location"), symbol: "location.fill", thumbnail: thumbnail)
+            self.init(summary: L.liveLocation, symbol: "location.fill", thumbnail: thumbnail)
         case let .contact(displayName, _):
             self.init(summary: displayName, symbol: "person.crop.circle")
         case let .poll(question, _, _):
@@ -58,5 +55,18 @@ nonisolated struct QuotePreview: Equatable, Sendable {
         default:
             self.init(summary: quoted.summary)
         }
+    }
+
+    /// Looked up once: every quote of a chat is made each time its rows are.
+    private enum Labels {
+        static let photo = String(localized: "Photo")
+        static let gif = String(localized: "GIF")
+        static let video = String(localized: "Video")
+        static let videoMessage = String(localized: "Video message")
+        static let voiceMessage = String(localized: "Voice message")
+        static let audio = String(localized: "Audio")
+        static let sticker = String(localized: "Sticker")
+        static let location = String(localized: "Location")
+        static let liveLocation = String(localized: "Live location")
     }
 }

@@ -61,7 +61,7 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         static func detail(fileName: String, bytes: UInt64, pages: UInt32?) -> String {
             var parts: [String] = []
             if let pages {
-                parts.append(String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters))
+                parts.append(pagesText(pages))
             }
             if bytes > 0 { parts.append(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) }
             if let ext = fileName.split(separator: ".").last, fileName.contains("."), ext.count <= 5 {
@@ -70,6 +70,21 @@ nonisolated struct BubbleSource: Equatable, Sendable {
             return parts.joined(separator: " • ")
         }
     }
+
+    /// "1 page", "12 pages", kept per count: inflecting takes a while, and
+    /// every file and every quote of one asks each time rows are made, on
+    /// any thread.
+    static func pagesText(_ pages: UInt32) -> String {
+        pagesLock.lock()
+        defer { pagesLock.unlock() }
+        if let text = pagesTexts[pages] { return text }
+        let text = String(AttributedString(localized: "^[\(pages) page](inflect: true)").characters)
+        pagesTexts[pages] = text
+        return text
+    }
+
+    private static let pagesLock = NSLock()
+    nonisolated(unsafe) private static var pagesTexts: [UInt32: String] = [:]
 
     /// A voice message or audio file, as `AudioContent` shows it.
     struct Voice: Equatable, Sendable {

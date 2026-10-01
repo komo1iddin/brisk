@@ -424,15 +424,17 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let colors = colors
         let swiftUIRows = !drawsBubbles
         let chat = chatID
-        // Quoted messages among those loaded, indexed the first time a
-        // quote asks.
+        // Quoted messages among those loaded: where each is, indexed the
+        // first time a quote asks.
         let messages = messages
-        var byID: [String: MessageRecord]?
+        var positions: [String: Int]?
         func original(_ id: String) -> MessageRecord? {
-            if byID == nil {
-                byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            if positions == nil {
+                var index = [String: Int](minimumCapacity: messages.count)
+                for position in messages.indices { index[messages[position].id] = position }
+                positions = index
             }
-            return byID?[id]
+            return positions?[id].map { messages[$0] }
         }
         return withObservationTracking {
             rows.map { row -> Plan in

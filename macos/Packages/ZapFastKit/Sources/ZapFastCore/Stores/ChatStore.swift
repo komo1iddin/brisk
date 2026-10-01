@@ -230,8 +230,15 @@ public final class ChatStore {
     /// for a contact, for us, and for a privacy id whose number is unknown.
     public func unsavedPhone(_ id: String) -> String? {
         guard contacts[id]?.fullName.nonEmpty == nil, !session.isOurs(id) else { return nil }
-        return phoneOf(id: id)
+        // Asked of every run in a group each time its rows are made; the
+        // answer for an id never changes, and asking Rust costs a call.
+        if let known = phones[id] { return known }
+        let phone = phoneOf(id: id)
+        phones[id] = phone
+        return phone
     }
+
+    @ObservationIgnored private var phones: [String: String?] = [:]
 
     /// "Name (You)" as on the phone.
     public var selfTitle: String {

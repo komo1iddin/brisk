@@ -354,7 +354,9 @@ pre-action rebuilds the bridge before every build (log in
 The app keeps its data in `~/Library/Application Support/<bundle id>` and
 `~/Library/Caches/<bundle id>`, separate from upstream ZapFast.
 Set `ZAPFAST_VERBOSE=1` for debug logging. Each launch logs how long its
-steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`).
+steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`),
+and a main thread that stops answering for 250 ms or more logs how long
+(`Hang: …`, category `Hangs`), so a freeze can be found afterwards.
 
 ## Timeline benchmark
 

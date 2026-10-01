@@ -13,6 +13,11 @@ import ZapFastCore
 /// It opens only chats with nothing unread, so no message is marked read and
 /// no read receipt leaves; it sends nothing and logs no chat names or text.
 /// The app quits when it is done.
+///
+/// `ZAPFAST_STRESS_HOLD=<seconds>` keeps each chat at its top that long
+/// after the flick, as someone waiting for older messages would, so the
+/// phone is asked for history and its answer lands while the chat is open;
+/// `ZAPFAST_STRESS_CHATS=<n>` takes that many chats (12 by default).
 @MainActor
 enum LiveStress {
     static var rounds: Int? {
@@ -28,7 +33,7 @@ enum LiveStress {
             let chats = model.sidebarOrder.filter { id in
                 guard let chat = model.chats.chat(id) else { return false }
                 return !chat.looksUnread && !chat.locked
-            }.prefix(12)
+            }.prefix(chatCount)
             log.notice("Stress: \(chats.count, privacy: .public) chats, \(rounds, privacy: .public) rounds")
             guard !chats.isEmpty, let window = mainWindow() else { return }
             let start = CACurrentMediaTime()
@@ -36,6 +41,7 @@ enum LiveStress {
                 let chat = chats[chats.startIndex + round % chats.count]
                 let open = await openChat(chat, model: model)
                 let scroll = await flickUp()
+                let held = hold > 0 ? await holdAtTop(seconds: hold) : (cpu: 0, gap: 0, rows: 0)
                 let resize = round % 4 == 3 ? await resize(window) : 0
                 log.notice("""
                     Stress: round \(round, privacy: .public) at \(Int(CACurrentMediaTime() - start), privacy: .public) s: \
@@ -43,6 +49,8 @@ enum LiveStress {
                     rows \(open.rows, privacy: .public)→\(scroll.rows, privacy: .public), \
                     scroll \(scroll.cpu, privacy: .public) ms main over \(scroll.wall, privacy: .public) ms, \
                     longest frame gap \(scroll.gap, privacy: .public) ms, resize \(resize, privacy: .public) ms main, \
+                    held \(hold, privacy: .public) s: \(held.cpu, privacy: .public) ms main, longest gap \(held.gap, privacy: .public) ms, \
+                    rows \(held.rows, privacy: .public), \
                     memory \(footprintMB(), privacy: .public) MB
                     """)
             }
@@ -51,7 +59,35 @@ enum LiveStress {
         }
     }
 
+    private static var hold: Int {
+        ProcessInfo.processInfo.environment["ZAPFAST_STRESS_HOLD"].flatMap(Int.init) ?? 0
+    }
+
+    private static var chatCount: Int {
+        ProcessInfo.processInfo.environment["ZAPFAST_STRESS_CHATS"].flatMap(Int.init) ?? 12
+    }
+
     // MARK: Steps
+
+    /// At the top of the chat for `seconds`, nudged up again every tenth of
+    /// a second as older pages push it down.
+    private static func holdAtTop(seconds: Int) async -> (cpu: Int, gap: Int, rows: Int) {
+        guard let table = timeline(), let scrollView = table.enclosingScrollView else { return (0, 0, 0) }
+        let clip = scrollView.contentView
+        let start = CACurrentMediaTime()
+        let cpu = mainThreadCPU()
+        var last = start
+        var gap = 0.0
+        while CACurrentMediaTime() - start < Double(seconds) {
+            let now = CACurrentMediaTime()
+            gap = max(gap, now - last)
+            last = now
+            clip.scroll(to: NSPoint(x: clip.bounds.minX, y: -clip.contentInsets.top))
+            scrollView.reflectScrolledClipView(clip)
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return (Int(mainThreadCPU() - cpu), Int(gap * 1000), table.numberOfRows)
+    }
 
     private static func openChat(_ chat: String, model: AppModel) async -> (wall: Int, cpu: Int, rows: Int) {
         let wall = CACurrentMediaTime()

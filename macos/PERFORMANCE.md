@@ -32,8 +32,12 @@ that decide whether two numbers can be compared:
   opens twelve chats that have nothing unread (so nothing is marked read),
   scrolls each, resizes the window, logs each round's cost (subsystem
   `ZapFast`, category `Stress`) and quits. Quit your own ZapFast first: only
-  one copy runs. Category `Events` logs the backend events per kind and what
-  applying them cost, every ten seconds.
+  one copy runs. `ZAPFAST_STRESS_HOLD=8` then keeps each chat at its top
+  for eight seconds, so the phone is asked for older messages and answers
+  while the chat is open; `ZAPFAST_STRESS_CHATS=<n>` takes more chats.
+  Category `Events` logs the backend events per kind and what applying them
+  cost, every ten seconds, and category `Hangs` every time the main thread
+  did not answer for 250 ms or more, in every build and run.
 - **Launch time:** the app logs `Launch: <step> after N ms` from the
   moment the process started (Console.app, subsystem `ZapFast`, category
   `Launch`, or the Xcode console). A slow start under Xcode that is fast
@@ -75,6 +79,25 @@ slowdowns come from what a person does, not from what arrives.
 Paging frame work p50 went from 0.3 to 3–4.5 ms: the old timeline stopped
 paging after two or three pages and then sat idle at the top, while the new
 one keeps loading and drawing all sixteen. Its p99 is lower.
+
+On 10-01 the freeze the author reported ("after the history spinner, the
+app cannot be used") was measured in their own window: one chat, its
+history loaded to 121 rows, the window narrowed and widened by 240 pt in 80
+steps from inside the app (lldb, `setFrame` then 8 ms of run loop per
+step), Debug builds.
+
+| Build | Typical step | Steps over 100 ms | 80 steps |
+|---|---|---|---|
+| `main` (`92981d3`) | 215–490 ms | 80 | 27.4 s |
+| This branch (`81dd178`) | 20–30 ms | 1 (the first, 370 ms in both builds) | 2.4 s |
+
+On `main` each step asked every row's height again (`TimelineController.resized`
+→ `noteHeightOfRows`), and each SwiftUI row was measured on the main thread
+(`RowMeasurer`), 6.7 s of 8.9 s sampled: the more history loaded, the longer
+each step. With 400 pt of narrowing, where bubbles change width, this branch
+takes 17–76 ms a step. The same twelve-chat stress with eight seconds at the
+top of each chat logged ten hangs of 0.3–1.3 s on `main` and none on this
+branch after launch.
 
 ## Open
 

@@ -50,12 +50,10 @@ extension BubbleSource {
             attachment = .placeholder(symbol: "nosign", text: String(localized: "This message was deleted"))
         case .unsupported(let what):
             attachment = .placeholder(symbol: "exclamationmark.triangle", text: what)
-        case let .phoneOnly(viewOnce, liveLocation, _):
-            attachment = .placeholder(symbol: "iphone", text: viewOnce
-                ? String(localized: "View once message. Open it on your phone.")
-                : liveLocation
-                    ? String(localized: "Live location. See it on your phone.")
-                    : String(localized: "This message is only on your phone."))
+        case let .phoneOnly(viewOnce, liveLocation, once):
+            attachment = .placeholder(
+                symbol: "iphone", text: PhoneOnlyText.text(viewOnce: viewOnce, liveLocation: liveLocation, once: once)
+            )
         case let .audio(media, seconds, voiceNote, waveform):
             let recorderID = message.fromMe ? own?.id ?? message.sender : message.sender
             let recorderName = message.fromMe ? own?.name ?? "" : chats.personName(message.sender, hint: message.senderName)

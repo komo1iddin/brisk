@@ -78,14 +78,10 @@ struct MessageContentView: View {
             Placeholder(symbol: "nosign", text: String(localized: "This message was deleted"))
         case .unsupported(let what):
             Placeholder(symbol: "exclamationmark.triangle", text: what)
-        case let .phoneOnly(viewOnce, liveLocation, _):
+        case let .phoneOnly(viewOnce, liveLocation, once):
             Placeholder(
                 symbol: "iphone",
-                text: viewOnce
-                    ? String(localized: "View once message. Open it on your phone.")
-                    : liveLocation
-                        ? String(localized: "Live location. See it on your phone.")
-                        : String(localized: "This message is only on your phone.")
+                text: PhoneOnlyText.text(viewOnce: viewOnce, liveLocation: liveLocation, once: once)
             )
         }
     }

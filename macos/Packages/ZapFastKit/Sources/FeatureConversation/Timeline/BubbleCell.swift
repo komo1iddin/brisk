@@ -57,6 +57,10 @@ protocol TimelineCellDelegate: AnyObject {
     /// A click while picking: in or out, or with Shift everything from the
     /// last click.
     func toggleSelection(ofMessage id: String, range: Bool)
+    /// A press on the row that may turn into a drag across messages, which
+    /// picks each one the pointer passes. Runs the drag; false, with nothing
+    /// spent, when the press was a click.
+    func sweep(fromMessage id: String, event: NSEvent) -> Bool
 }
 
 /// Whether messages are being picked, and this one's part in it.
@@ -489,14 +493,28 @@ final class BubbleCell: NSView {
 
     override func mouseDown(with event: NSEvent) {
         if selection.selecting, let id = messageID {
-            delegate?.toggleSelection(ofMessage: id, range: event.modifierFlags.contains(.shift))
+            let range = event.modifierFlags.contains(.shift)
+            delegate?.toggleSelection(ofMessage: id, range: range)
+            // A drag from a row picks each one it passes, as a click on each would.
+            if !range { _ = delegate?.sweep(fromMessage: id, event: event) }
             return
         }
         if event.modifierFlags.contains(.command), let id = messageID {
             delegate?.startSelecting(fromMessage: id)
             return
         }
+        // A drag down the space beside the bubble starts picking messages
+        // (over the text it selects text instead); a click there is the table's.
+        if let id = messageID, isBesideBubble(event), delegate?.sweep(fromMessage: id, event: event) == true {
+            return
+        }
         super.mouseDown(with: event)
+    }
+
+    /// Whether the press is on the row but not on its bubble.
+    private func isBesideBubble(_ event: NSEvent) -> Bool {
+        guard let layout = bubbleLayout else { return false }
+        return !layout.bubbleFrame(rowWidth: bounds.width).contains(convert(event.locationInWindow, from: nil))
     }
 
     // MARK: Selectable text

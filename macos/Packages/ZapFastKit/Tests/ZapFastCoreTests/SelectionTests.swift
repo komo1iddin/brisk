@@ -56,6 +56,64 @@ struct SelectionTests {
         #expect(model.selection?.ids.contains("gone") == false)
     }
 
+    @Test func aDragPicksWhatItPassesOverAndLetsGoWhenItReturns() {
+        let (model, _) = model()
+        model.select(record(model, "a"))
+        let sweep = model.beginSweep(from: record(model, "a"))!
+        model.sweep(sweep, to: record(model, "e"))
+        #expect(model.selection?.ids == ["a", "b", "card", "e"])
+        // Back over the way it came: what it reached beyond is let go.
+        model.sweep(sweep, to: record(model, "b"))
+        #expect(model.selection?.ids == ["a", "b"])
+        model.sweep(sweep, to: record(model, "a"))
+        #expect(model.selection?.ids == ["a"])
+    }
+
+    @Test func aDragUpwardPicksToo() {
+        let (model, _) = model()
+        model.select(record(model, "e"))
+        model.sweep(model.beginSweep(from: record(model, "e"))!, to: record(model, "b"))
+        #expect(model.selection?.ids == ["b", "card", "e"])
+    }
+
+    @Test func aDragKeepsWhatWasPickedBefore() {
+        let (model, _) = model()
+        model.select(record(model, "e"))
+        model.toggleSelected(record(model, "a"))
+        let sweep = model.beginSweep(from: record(model, "a"))!
+        model.sweep(sweep, to: record(model, "b"))
+        #expect(model.selection?.ids == ["a", "b", "e"])
+    }
+
+    @Test func aDragFromAMessagePutBackTakesOutWhatItPasses() {
+        let (model, _) = model()
+        model.select(record(model, "a"))
+        model.selectRange(to: record(model, "e"))
+        // The press took "b" out; the drag takes out what it passes.
+        model.toggleSelected(record(model, "b"))
+        let sweep = model.beginSweep(from: record(model, "b"))!
+        model.sweep(sweep, to: record(model, "card"))
+        #expect(model.selection?.ids == ["a", "e"])
+        model.sweep(sweep, to: record(model, "a"))
+        #expect(model.selection?.ids == ["card", "e"])
+        model.sweep(sweep, to: record(model, "b"))
+        #expect(model.selection?.ids == ["a", "card", "e"])
+    }
+
+    @Test func aDragThatTakesOutTheLastOneEndsSelecting() {
+        let (model, _) = model()
+        model.select(record(model, "a"))
+        model.toggleSelected(record(model, "b"))
+        model.toggleSelected(record(model, "b"))
+        let sweep = model.beginSweep(from: record(model, "b"))!
+        model.sweep(sweep, to: record(model, "a"))
+        #expect(model.selection == nil)
+        // A press that left nothing picked has nothing to sweep.
+        model.select(record(model, "a"))
+        model.toggleSelected(record(model, "a"))
+        #expect(model.beginSweep(from: record(model, "a")) == nil)
+    }
+
     @Test func forwardingTakesWhatCanBeForwarded() {
         let (model, _) = model()
         model.select(record(model, "a"))

@@ -1166,6 +1166,31 @@ public final class AppModel {
         selection = current
     }
 
+    /// A drag across messages begins on `message`, which the press has just
+    /// picked or put back. The drag does what the press did: it picks what it
+    /// passes over, or, when the press took the message out, takes those out
+    /// too. Nil when nothing is picked.
+    public func beginSweep(from message: MessageRecord) -> MessageSweep? {
+        guard let current = selection, current.chat == message.chat else { return nil }
+        return MessageSweep(
+            chat: message.chat, anchor: message.id, base: Set(current.ids), adds: current.ids.contains(message.id)
+        )
+    }
+
+    /// The drag is over `message`: everything from where it began to here
+    /// is picked (or put back), and what an earlier reach picked beyond is
+    /// as it was.
+    public func sweep(_ sweep: MessageSweep, to message: MessageRecord) {
+        guard sweep.chat == message.chat else { return }
+        let messages = conversations.conversation(sweep.chat).messages
+        guard let from = messages.firstIndex(where: { $0.id == sweep.anchor }),
+              let to = messages.firstIndex(where: { $0.id == message.id }) else { return }
+        let covered = Set(messages[min(from, to)...max(from, to)].filter(canSelect).map(\.id))
+        let ids = inChatOrder(Array(sweep.adds ? sweep.base.union(covered) : sweep.base.subtracting(covered)), chat: sweep.chat)
+        guard selection?.ids != ids else { return }
+        selection = ids.isEmpty ? nil : MessageSelection(chat: sweep.chat, ids: ids, anchor: sweep.anchor)
+    }
+
     public func cancelSelection() {
         selection = nil
     }
@@ -2625,6 +2650,16 @@ public struct MessageSelection: Equatable, Sendable {
     public internal(set) var ids: [String]
     /// The last message clicked, where a Shift-click range starts.
     var anchor: String
+}
+
+/// A drag across messages: where it began, what was picked then, and whether
+/// it picks what it passes over or puts it back. The timeline keeps it for
+/// the length of the drag.
+public struct MessageSweep: Sendable {
+    let chat: String
+    let anchor: String
+    let base: Set<String>
+    let adds: Bool
 }
 
 /// The selected messages for the share menu.

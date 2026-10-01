@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copies upstream's [patch.crates-io] table into the bridge manifest, and
-# keeps the bridge's fastframe-log on upstream's tag.
+# keeps the bridge's fastframe-log tag and whatsapp-rust revision on upstream's.
 #
 # Cargo honours [patch] only in the workspace root, and the bridge is its own
 # root, so upstream's egui/winit forks must be repeated there verbatim or the
@@ -35,6 +35,15 @@ tag="$(sed -n 's/^fastframe-log = .*tag = "\([^"]*\)".*/\1/p' "$upstream" | head
 if [[ -n "$tag" ]]; then
   perl -pi -e 's|^(fastframe-log = \{ git = "[^"]*", tag = ")[^"]*(")|${1}'"$tag"'${2}|' "$bridge"
   echo "Aligned the bridge's fastframe-log with upstream's $tag."
+fi
+
+# The bridge names whatsapp-rust only to turn on its VoIP features. Another
+# revision would be a second copy of the library, with calls on a client the
+# backend never made.
+rev="$(sed -n 's/^whatsapp-rust = .*rev = "\([^"]*\)".*/\1/p' "$upstream" | head -n 1)"
+if [[ -n "$rev" ]]; then
+  perl -pi -e 's|^(whatsapp-rust = \{ git = "[^"]*", rev = ")[^"]*(")|${1}'"$rev"'${2}|' "$bridge"
+  echo "Aligned the bridge's whatsapp-rust with upstream's $rev."
 fi
 
 # Start from upstream's lockfile so the bridge resolves the exact versions

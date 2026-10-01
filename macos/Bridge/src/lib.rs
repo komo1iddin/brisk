@@ -16,6 +16,7 @@
 
 uniffi::setup_scaffolding!();
 
+mod calls;
 mod client;
 mod commands;
 mod events;
@@ -25,6 +26,7 @@ mod pump;
 pub mod types;
 mod vcard;
 
+pub use calls::{CallCenter, CallEndReason, CallInfo, CallListener, CallPhase};
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;
 pub use events::BridgeEvent;

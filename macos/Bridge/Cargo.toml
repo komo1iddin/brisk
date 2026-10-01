@@ -25,6 +25,12 @@ egui = "0.36"
 fastframe-log = { git = "https://github.com/crmne/fastframe", tag = "v0.2.2" }
 # Upstream's emoji data, for its `:shortcode` completion.
 emojis = "0.9"
+# Calls. Upstream links whatsapp-rust without its VoIP stack; naming the same
+# git revision here unifies the two, so the bridge adds the `voip` features
+# (MLOW, libopus for peers that speak standard Opus, the UDP relay) without
+# touching upstream's manifest. Keep the revision equal to upstream's.
+whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "f7468ae2920a2b0aedbd0848cf121de56a07f93c", default-features = false, features = ["voip"] }
+tokio = { version = "1", features = ["rt", "time"] }
 
 [workspace]
 members = [".", "uniffi-bindgen"]

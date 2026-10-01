@@ -81,6 +81,8 @@ impl BridgeClient {
         let instance = lock_instance(&dirs)?;
         crate::logging::init(&dirs, config.verbose);
 
+        // Before the backend makes its client, so calls see the first one.
+        crate::calls::install();
         let (waker, signal) = crate::pump::waker();
         let mut backend = Backend::spawn(dirs, waker);
         // Upstream waits for its first window frame before touching storage;

@@ -8,7 +8,9 @@ struct ComposerBar: View {
     let chatID: String
     @Bindable var model: AppModel
 
-    @State private var fieldHeight: CGFloat = 22
+    /// One line as the text view will measure it, so the empty field's
+    /// placeholder does not settle a point higher once the first line is measured.
+    @State private var fieldHeight: CGFloat = NSLayoutManager().defaultLineHeight(for: .systemFont(ofSize: NSFont.systemFontSize)) + 8
     @State private var choosing: FileChoice?
     @State private var attaching = false
     @State private var pickingSticker = false

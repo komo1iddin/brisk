@@ -249,9 +249,9 @@ final class TitleBandView: NSVisualEffectView {
 /// there the chat simply runs under the composer.
 final class BottomBandView: NSView {
     /// How far above the composer the blur begins.
-    static let fade: CGFloat = 48
+    static let fade: CGFloat = 14
     /// The strongest blur, in points, at the bottom edge.
-    private static let radius = 8.0
+    private static let radius = 3.5
     private let backdrop: CALayer?
     private let filter: NSObject?
     private var maskSize = CGSize.zero

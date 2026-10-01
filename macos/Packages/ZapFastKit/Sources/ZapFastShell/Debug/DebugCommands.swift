@@ -98,9 +98,11 @@ enum DebugCommands {
         case "shot":
             write(name, shot())
         case "action":
-            guard parts.count > 1 else { return }
-            let sent = NSApp.sendAction(Selector(parts[1]), to: nil, from: nil)
-            write(name, "\(parts[1]) sent: \(sent)")
+            // action:<selector>, colons and all (`action:terminate:` quits).
+            let selector = String(command.dropFirst("action:".count))
+            guard !selector.isEmpty else { return }
+            let sent = NSApp.sendAction(Selector(selector), to: nil, from: nil)
+            write(name, "\(selector) sent: \(sent)")
         default:
             write("unknown", command)
         }

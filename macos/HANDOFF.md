@@ -15,7 +15,7 @@ nima qilingan, nima tekshirilishi kerak, nima qolgan va qanday o'lchanadi.
 | Worktree | `~/Developer/Self-projects/zapfast-mac-native-timeline` (branch shu yerda ochiq) |
 | Asos | `main` @ `92981d3`. Tarix chiziqli, merge commit yo'q |
 | Zaxira | `backup/timeline-performance-pre-rebase` (`89ed0db`) |
-| `main`ga qo'shilganmi | **Yo'q.** Foydalanuvchi o'z akkauntida sinab ko'rmaguncha qo'shilmaydi. Faqat fast-forward |
+| `main`ga qo'shilganmi | **Ha**, 2026-10-01 foydalanuvchi roziligi bilan fast-forward (`b69d4d2`). Push qilinmagan |
 | Testlar | 216 (ZapFastCoreTests) + 31 (FeatureConversationTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi |
 
 ```bash
@@ -73,7 +73,12 @@ overlay faqat lenta ustida, "eng yangi xabar" oroli faqat tugmada bosiladi.
 | Integrity (bo'sh qatorlar) | 2/5 ishga tushirishda xato | 0 |
 | Chat ro'yxatini scroll qilish | o'lchanmagan | hitch yo'q |
 
-**Haqiqiy akkaunt:** hali o'lchanmagan. Foydalanuvchi sinab ko'rishi va `ZAPFAST_STRESS=40` ishga tushirishi kerak (8-bo'lim).
+**Haqiqiy akkaunt (2026-10-01).** Foydalanuvchi `main`dagi eski build'da "tarix spinneri chiqqandan keyin ilova qotadi" dedi.
+Uning oynasida, o'sha chatda (121 qator) lldb orqali 80 qadamli resize o'lchandi: `main` har qadamda 215–490 ms
+(80/80 qadam 100 ms dan oshgan, jami 27,4 s), bu branch 20–30 ms (jami 2,4 s). Sabab: `main`da har resize qadamida
+`TimelineController.resized` → `noteHeightOfRows` har bir SwiftUI qatorni main thread'da qayta o'lchagan (`RowMeasurer`).
+Tarix qancha ko'p yuklansa, qadam shuncha sekin. Batafsil: PERFORMANCE.md, "On the linked account".
+Qotishlar endi log'ga yoziladi (`HangMonitor`, category `Hangs`).
 
 ---
 

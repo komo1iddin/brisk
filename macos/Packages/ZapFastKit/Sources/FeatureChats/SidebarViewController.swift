@@ -358,8 +358,15 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         return item
     }
 
+    /// Sets only what changed: any change to an item lays the toolbar out
+    /// again, and this runs for every message.
     private func updateItems(inLocked: Bool) {
         let away = inLocked || state.showingArchived
+        let filtering = state.filter != .all || state.label != nil
+        let shown = ItemsState(away: away, inLocked: inLocked, filtering: filtering)
+        guard shown != itemsState || items.count != itemsStateCount else { return }
+        itemsState = shown
+        itemsStateCount = items.count
         items[Self.filterItem]?.isHidden = away
         items[Self.newChatItem]?.isHidden = away
         if let back = items[Self.backItem] {
@@ -367,12 +374,21 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
             back.label = inLocked ? String(localized: "Lock and Go Back") : String(localized: "Back to Chats")
             back.toolTip = inLocked ? String(localized: "Lock these chats again and go back") : back.label
         }
-        let filtering = state.filter != .all || state.label != nil
         items[Self.filterItem]?.image = NSImage(
             systemSymbolName: filtering ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle",
             accessibilityDescription: nil
         )
     }
+
+    private struct ItemsState: Equatable {
+        var away: Bool
+        var inLocked: Bool
+        var filtering: Bool
+    }
+
+    private var itemsState: ItemsState?
+    /// Items made since the state was last applied are set up too.
+    private var itemsStateCount = 0
 
     @objc private func newChat() {
         model.newChatShown = true

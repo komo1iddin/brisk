@@ -874,6 +874,7 @@ nonisolated private final class BubbleChromeLayer: CALayer {
     @MainActor
     private static func draw(_ layout: BubbleLayout) {
         layout.name?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+        layout.phone?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         if let placeholder = layout.placeholder {
             Symbols.draw(placeholder.symbol, in: placeholder.icon, pointSize: TimelineText.body.pointSize, weight: .regular, color: placeholder.color)
             placeholder.text.draw()

@@ -150,6 +150,8 @@ nonisolated struct BubbleSource: Equatable, Sendable {
     var mentionNames: [String: String]
     /// Shown on the first message of a run in a group.
     var senderName: String?
+    /// Beside the name, when the sender is not a saved contact.
+    var senderPhone: String?
     var senderID: String
     var forwarded: Bool
     var quote: Quote?
@@ -300,6 +302,8 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var bare: Bool
         var bubbleSize: CGSize
         var name: TextPiece?
+        /// The sender's number, at the name line's trailing end.
+        var phone: TextPiece?
         var forwarded: TextPiece?
         var forwardedIcon: CGRect?
         var quote: QuoteLayout?
@@ -400,6 +404,8 @@ nonisolated enum TimelineGeometry {
     /// The footer hangs this far below the text's last line.
     static let footerDrop: CGFloat = 2
     static let ticksWidth: CGFloat = 14
+    /// Between a sender's name and their number.
+    static let phoneGap = Metrics.m
     static let quotePadding = Metrics.s
     static let quoteBarWidth: CGFloat = 3
     /// The quoted message's picture: this wide, the quote's height, and the

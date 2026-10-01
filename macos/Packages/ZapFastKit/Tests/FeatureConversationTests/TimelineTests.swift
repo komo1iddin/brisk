@@ -387,6 +387,25 @@ struct DocumentAndLinkBubbleTests {
         #expect(unknown.quote?.symbol == nil && unknown.quote?.thumbnail == nil)
     }
 
+    @Test func someoneNotSavedHasTheirNumberBesideTheirName() throws {
+        let message = MessageRecord(
+            id: "n", chat: "g@g.us", sender: "998901112233@s.whatsapp.net", senderName: "Dilfuza Abdullayeva", fromMe: false,
+            timestamp: 1_780_000_000, content: .text(text: "Salom", preview: nil), status: .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: nil, summary: ""
+        )
+        let source = try #require(BubbleSource.make(message, startsRun: true, isGroup: true, colors: colors, chats: chats))
+        #expect(source.senderName == "~Dilfuza Abdullayeva")
+        #expect(source.senderPhone == phoneOf(id: message.sender))
+        let layout = TimelineLayoutEngine.layout(for: source, widthLimit: 560)
+        let name = try #require(layout.name)
+        let phone = try #require(layout.phone)
+        #expect(name.rect.maxX + TimelineGeometry.phoneGap <= phone.rect.minX + 0.5)
+        #expect(abs(phone.rect.maxX - (layout.bubbleSize.width - TimelineGeometry.bubblePadding.width)) < 0.5)
+        // Only on a run's first message, which shows the name.
+        let later = try #require(BubbleSource.make(message, startsRun: false, isGroup: true, colors: colors, chats: chats))
+        #expect(later.senderPhone == nil)
+    }
+
     @Test func aDocumentHereHasNoArrowAndAPDFShowsItsPage() throws {
         let here = try layout(.document(media: pdf(path: "/tmp/a.pdf"), fileName: "a.pdf", caption: nil, pages: nil))
         #expect(here.document?.indicator == nil)

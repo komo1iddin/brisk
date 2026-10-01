@@ -18,10 +18,21 @@ struct MessageBubble: View {
                 Button {
                     model.showInfo(in: message.chat, person: message.sender)
                 } label: {
-                    Text(senderName)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Palette.sender(message.sender))
-                        .lineLimit(1)
+                    HStack(spacing: TimelineGeometry.phoneGap) {
+                        Text(senderName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Palette.sender(message.sender))
+                            .lineLimit(1)
+                        // Beside the name of someone not saved, as WhatsApp does.
+                        if let phone = model.chats.unsavedPhone(message.sender), phone != senderName {
+                            Spacer(minLength: 0)
+                            Text(phone)
+                                .font(.caption)
+                                .foregroundStyle(secondaryText)
+                                .lineLimit(1)
+                                .layoutPriority(1)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 .pointerStyle(.link)

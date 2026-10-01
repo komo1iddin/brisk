@@ -69,6 +69,8 @@ extension BubbleSource {
         case .interactive, .location, .liveLocation, .contact, .poll, .stickerPack:
             return nil
         }
+        let senderName = startsRun && !message.fromMe && isGroup
+            ? chats.personName(message.sender, hint: message.senderName) : nil
         return BubbleSource(
             id: message.id,
             fromMe: message.fromMe,
@@ -80,8 +82,8 @@ extension BubbleSource {
                 message.mentions.map { ($0.id, chats.displayName($0.id)) },
                 uniquingKeysWith: { first, _ in first }
             ),
-            senderName: startsRun && !message.fromMe && isGroup
-                ? chats.personName(message.sender, hint: message.senderName) : nil,
+            senderName: senderName,
+            senderPhone: senderName == nil ? nil : chats.unsavedPhone(message.sender).flatMap { $0 == senderName ? nil : $0 },
             senderID: message.sender,
             forwarded: message.forwarded,
             quote: message.quoted.map { quoted in

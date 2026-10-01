@@ -69,6 +69,8 @@ nonisolated enum TimelineLayoutEngine {
 
         // Parts and how wide each would like to be.
         let name = source.senderName.map { T.line($0, T.captionSemibold, AppKitPalette.sender(source.senderID)) }
+        let phone = source.senderName == nil ? nil : source.senderPhone.map { T.line($0, T.caption, secondary) }
+        let phoneRoom = phone.map { T.size($0).width + G.phoneGap } ?? 0
         let forwarded = source.forwarded ? T.line(String(localized: "Forwarded"), T.captionItalic, secondary) : nil
         let quoteName = source.quote.map {
             T.line($0.name, T.captionSemibold, onAccent ? colors.outgoingText : AppKitPalette.sender($0.senderID))
@@ -118,7 +120,7 @@ nonisolated enum TimelineLayoutEngine {
         } else {
             var ideal = body.map { T.size($0).width } ?? 0
             if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
-            if let name { ideal = max(ideal, T.size(name).width) }
+            if let name { ideal = max(ideal, T.size(name).width + phoneRoom) }
             if let forwarded { ideal = max(ideal, G.forwardedIconWidth + G.footerSpacing + T.size(forwarded).width) }
             if let quote = source.quote, let quoteName, let quoteSummary {
                 let symbol = quote.symbol == nil ? 0 : G.quoteSymbolWidth + G.quoteSymbolGap
@@ -143,9 +145,20 @@ nonisolated enum TimelineLayoutEngine {
             return y
         }
 
+        var phonePiece: TextPiece?
         let namePiece = name.map { string in
             let height = T.size(string).height
-            return TextPiece(string: string, rect: CGRect(x: textLeft, y: advance(height), width: textWidth, height: height))
+            let top = advance(height)
+            // The number keeps its room; a long name is cut short.
+            if let phone {
+                let size = T.size(phone)
+                let width = min(size.width, max(0, textWidth / 2))
+                phonePiece = TextPiece(string: phone, rect: CGRect(
+                    x: textLeft + textWidth - width, y: top + ((height - size.height) / 2).rounded(), width: width, height: size.height
+                ))
+            }
+            let nameWidth = phonePiece.map { $0.rect.minX - G.phoneGap - textLeft } ?? textWidth
+            return TextPiece(string: string, rect: CGRect(x: textLeft, y: top, width: max(1, nameWidth), height: height))
         }
 
         var forwardedIcon: CGRect?
@@ -278,6 +291,7 @@ nonisolated enum TimelineLayoutEngine {
             bare: bare,
             bubbleSize: CGSize(width: width + side * 2, height: ceil(bubbleHeight)),
             name: namePiece,
+            phone: phonePiece,
             forwarded: forwardedPiece,
             forwardedIcon: forwardedIcon,
             quote: quote,

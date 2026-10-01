@@ -198,6 +198,13 @@ public enum TimelineGallery {
             extra("60", fromMe: true, content: .text(text: "Qayerda bu?", preview: nil), quoted: QuotedMessage(
                 id: "40", sender: "a@s.whatsapp.net", senderName: "Aziza", summary: "Photo: Tog'dagi manzara", mentions: []
             )),
+            // Someone not saved, with a made-up number: it shows beside
+            // the name, which a file's card cuts short.
+            extra("61", from: "998901112233", content: .text(text: "Ikkalasini ham tasdiqladim", preview: nil), senderName: "Dilfuza Abdullayeva"),
+            extra("62", from: "a", content: .text(text: "Rahmat", preview: nil)),
+            extra("63", from: "998901112233", content: .document(media: MediaInfo(
+                mime: "application/pdf", size: 575_000, width: nil, height: nil, path: nil
+            ), fileName: "Hisobot-772.pdf", caption: nil, pages: 1), senderName: "Dilfuza Abdullayeva"),
         ]
     }
 
@@ -208,11 +215,12 @@ public enum TimelineGallery {
         content: MessageContent,
         thumbnail: Data? = nil,
         quoted: QuotedMessage? = nil,
-        forwarded: Bool = false
+        forwarded: Bool = false,
+        senderName: String? = nil
     ) -> MessageRecord {
         MessageRecord(
             id: id, chat: "gallery@g.us", sender: "\(sender)@s.whatsapp.net",
-            senderName: ["a": "Aziza", "b": "Bobur"][sender], fromMe: fromMe,
+            senderName: senderName ?? ["a": "Aziza", "b": "Bobur"][sender], fromMe: fromMe,
             timestamp: 1_790_000_000 + (Int64(id) ?? 0) * 60, content: content, status: fromMe ? .read : .none,
             deliveredAt: nil, readAt: nil, quoted: quoted, reactions: [], edited: false,
             mentions: [], forwarded: forwarded, thumbnail: thumbnail, summary: "Attachment"

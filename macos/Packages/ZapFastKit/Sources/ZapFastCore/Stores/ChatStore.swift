@@ -225,6 +225,14 @@ public final class ChatStore {
         return phoneOf(id: id) ?? String(localized: "Unknown")
     }
 
+    /// The number shown beside a group member's name when they are not a
+    /// saved contact, as WhatsApp does ("~Aziza  +998 90 123 45 67"); nil
+    /// for a contact, for us, and for a privacy id whose number is unknown.
+    public func unsavedPhone(_ id: String) -> String? {
+        guard contacts[id]?.fullName.nonEmpty == nil, !session.isOurs(id) else { return nil }
+        return phoneOf(id: id)
+    }
+
     /// "Name (You)" as on the phone.
     public var selfTitle: String {
         if let name = session.account?.name.nonEmpty {

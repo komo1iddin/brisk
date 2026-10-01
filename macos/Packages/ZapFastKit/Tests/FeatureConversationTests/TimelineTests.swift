@@ -124,7 +124,6 @@ struct BubbleLayoutTests {
         )
         #expect(reacted.pills.count == 1)
         #expect(reacted.pills[0].count != nil)
-        #expect(reacted.pills[0].mine)
         #expect(reacted.rowHeight == plain.rowHeight + reacted.pillsSize.height - TimelineGeometry.reactionOverlap)
     }
 

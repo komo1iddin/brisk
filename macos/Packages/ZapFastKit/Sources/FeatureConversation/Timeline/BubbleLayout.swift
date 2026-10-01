@@ -194,7 +194,6 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var rect: CGRect
         var emoji: TextPiece
         var count: TextPiece?
-        var mine: Bool
     }
 
     /// A photo, video, GIF or sticker, and what lies over it.

@@ -139,14 +139,15 @@ struct MessageRow: View {
     }
 }
 
-/// Reactions grouped by emoji, with a count when more than one person chose it.
+/// Reactions grouped by emoji, with a count when more than one person chose
+/// it. Ours is not marked, as on the phone: the reaction picker shows it.
 private struct ReactionPills: View {
     let reactions: [ReactionInfo]
     let fromMe: Bool
 
     var body: some View {
         let groups = Dictionary(grouping: reactions, by: \.emoji)
-            .map { (emoji: $0.key, count: $0.value.count, mine: $0.value.contains(where: \.fromMe)) }
+            .map { (emoji: $0.key, count: $0.value.count) }
             .sorted { $0.count != $1.count ? $0.count > $1.count : $0.emoji < $1.emoji }
         HStack(spacing: Metrics.xxs) {
             ForEach(groups, id: \.emoji) { group in
@@ -160,7 +161,7 @@ private struct ReactionPills: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(.background, in: Capsule())
-                .overlay(Capsule().strokeBorder(group.mine ? Color.accentColor : Color(nsColor: .separatorColor)))
+                .overlay(Capsule().strokeBorder(Color(nsColor: .separatorColor)))
                 .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
             }
         }

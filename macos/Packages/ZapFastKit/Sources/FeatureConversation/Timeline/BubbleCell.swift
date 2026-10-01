@@ -1031,7 +1031,7 @@ nonisolated private final class PillsLayer: CALayer {
                     NSColor.textBackgroundColor.setFill()
                     path.fill()
                     NSGraphicsContext.restoreGraphicsState()
-                    (pill.mine ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
+                    NSColor.separatorColor.setStroke()
                     path.lineWidth = 1
                     path.stroke()
                     pill.emoji.draw()

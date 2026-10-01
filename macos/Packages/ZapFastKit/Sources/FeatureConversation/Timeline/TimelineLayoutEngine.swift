@@ -469,11 +469,12 @@ nonisolated enum TimelineLayoutEngine {
 
     private static let twoCalloutLines = TimelineText.height(ofLines: 2, TimelineText.callout)
 
-    /// Reactions grouped by emoji, most chosen first, as `ReactionPills`.
+    /// Reactions grouped by emoji, most chosen first, as `ReactionPills`;
+    /// ours unmarked, as on the phone.
     private static func reactionPills(_ reactions: [ReactionInfo]) -> ([BubbleLayout.Pill], CGSize) {
         guard !reactions.isEmpty else { return ([], .zero) }
         let groups = Dictionary(grouping: reactions, by: \.emoji)
-            .map { (emoji: $0.key, count: $0.value.count, mine: $0.value.contains(where: \.fromMe)) }
+            .map { (emoji: $0.key, count: $0.value.count) }
             .sorted { $0.count != $1.count ? $0.count > $1.count : $0.emoji < $1.emoji }
         let padding = CGSize(width: 6, height: 2)
         var pills: [BubbleLayout.Pill] = []
@@ -500,8 +501,7 @@ nonisolated enum TimelineLayoutEngine {
                 count: count.map { TextPiece(string: $0, rect: CGRect(
                     x: rect.minX + padding.width + emojiSize.width + 2, y: (rect.height - countSize.height) / 2,
                     width: countSize.width, height: countSize.height
-                )) },
-                mine: group.mine
+                )) }
             ))
             x = rect.maxX + Metrics.xxs
             height = max(height, rect.height)

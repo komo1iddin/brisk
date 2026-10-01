@@ -243,8 +243,11 @@ public final class ChatStore {
 
     /// A person's name colour in a chat (`NameColors`): in a group, one of
     /// their own among its members; elsewhere the one their id leads to.
+    /// Read without observing the chats: a timeline asking for every row
+    /// would otherwise be made again by any message in any chat. New members
+    /// take their colours the next time the rows are made.
     public func nameColor(_ person: String, in chat: String) -> Int {
-        guard let members = chats[chat]?.participants, !members.isEmpty else { return NameColors.hashed(person) }
+        guard let members = untracked[chat]?.participants, !members.isEmpty else { return NameColors.hashed(person) }
         if let known = nameColors[chat], known.members == members {
             return known.colors[person] ?? NameColors.hashed(person)
         }

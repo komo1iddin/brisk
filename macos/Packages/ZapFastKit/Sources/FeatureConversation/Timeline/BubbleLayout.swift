@@ -140,6 +140,14 @@ nonisolated struct BubbleSource: Equatable, Sendable {
     var id: String
     var fromMe: Bool
     var startsRun: Bool
+    /// The last message of its sender's run: in a group, their photo
+    /// beside it.
+    var endsRun = true
+    /// An incoming message in a group: the bubble moves over for the
+    /// senders' photos, as WhatsApp's do.
+    var avatarRoom = false
+    /// The name for the photo's initials, on a run's last message in a group.
+    var avatarName: String?
     /// The message's text, or an attachment's caption; empty when none.
     var text: String
     /// Up to three emoji and nothing else: drawn large, and without a
@@ -292,12 +300,21 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var color: NSColor
     }
 
+    /// The sender's photo beside a run's last message in a group.
+    struct Avatar {
+        var personID: String
+        var name: String
+    }
+
     /// Everything the engine measured, in the bubble's coordinates (top
     /// left origin) unless said otherwise.
     struct Parts {
         var widthLimit: CGFloat
         var fromMe: Bool
         var startsRun: Bool
+        /// In a group, incoming bubbles start after the photos' column.
+        var avatarRoom: Bool
+        var avatar: Avatar?
         /// No bubble behind it: large emoji alone.
         var bare: Bool
         var bubbleSize: CGSize
@@ -359,8 +376,18 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
 
     /// The bubble's frame in a row of the given width.
     func bubbleFrame(rowWidth: CGFloat) -> CGRect {
-        let x = parts.fromMe ? rowWidth - Metrics.l - parts.bubbleSize.width : Metrics.l
+        let x = parts.fromMe
+            ? rowWidth - Metrics.l - parts.bubbleSize.width
+            : Metrics.l + (parts.avatarRoom ? TimelineGeometry.avatarRoom : 0)
         return CGRect(origin: CGPoint(x: x, y: TimelineGeometry.topInset(startsRun: parts.startsRun)), size: parts.bubbleSize)
+    }
+
+    /// The sender's photo, its bottom level with the bubble's, when the row
+    /// shows one.
+    func avatarFrame(rowWidth: CGFloat) -> CGRect? {
+        guard parts.avatar != nil else { return nil }
+        let size = TimelineGeometry.avatarSize
+        return CGRect(x: TimelineGeometry.avatarInset, y: bubbleFrame(rowWidth: rowWidth).maxY - size, width: size, height: size)
     }
 
     /// The reaction strip's frame, overlapping the bubble's bottom edge.
@@ -376,6 +403,13 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
 nonisolated enum TimelineGeometry {
     /// Room kept beside a bubble (the row's `Spacer(minLength: 72)`).
     static let besideBubble: CGFloat = 72
+    /// In a group, the sender's photo beside the last message of their run,
+    /// from the timeline's edge, and the gap to the bubbles.
+    static let avatarSize: CGFloat = 28
+    static let avatarInset = Metrics.m
+    static let avatarGap: CGFloat = 6
+    /// How much further in than elsewhere incoming bubbles start in a group.
+    static let avatarRoom = avatarInset + avatarSize + avatarGap - Metrics.l
     static let bubblePadding = CGSize(width: Metrics.m, height: Metrics.s)
     /// Photos and videos run almost to the bubble's edge; the text beside
     /// them keeps the usual inset (`insetForMedia`).

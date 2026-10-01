@@ -169,6 +169,11 @@ extension TimelineController: TimelineCellDelegate {
         return state
     }
 
+    func senderAvatar(forMessage id: String) -> AvatarSource {
+        guard let model, let message = message(id) else { return AvatarSource(url: nil, version: 0) }
+        return AvatarSource(url: model.avatars.url(for: message.sender), version: model.avatars.version(for: message.sender))
+    }
+
     func recorderAvatar(forMessage id: String) -> AvatarSource {
         guard let model, let message = message(id) else { return AvatarSource(url: nil, version: 0) }
         let recorder = message.fromMe ? model.session.account?.id ?? message.sender : message.sender

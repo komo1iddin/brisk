@@ -124,7 +124,7 @@ final class HostingCell: NSTableCellView {
 
     /// One reuse identifier per kind of content.
     static func identifier(for row: TimelineRow) -> NSUserInterfaceItemIdentifier {
-        guard case .message(let message, _) = row else { return NSUserInterfaceItemIdentifier("TimelineHosting") }
+        guard case .message(let message, _, _) = row else { return NSUserInterfaceItemIdentifier("TimelineHosting") }
         let kind: String = switch message.content {
         case .text: "text"
         case .interactive: "interactive"

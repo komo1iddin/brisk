@@ -31,14 +31,10 @@ final class VoiceView: NSView {
     private let spinner = NSProgressIndicator()
     private let wave = WaveformLayer()
     private let time = TextLayer()
-    private let avatar = CAGradientLayer()
-    private let avatarImage = CALayer()
-    private let initials = TextLayer()
+    private let avatar = AvatarLayers()
     private let mic = SymbolLayer()
     private let speed = CALayer()
     private let speedText = TextLayer()
-    private var avatarSource: (url: URL?, version: Int)?
-    private var loads = 0
     private var pressed: Part?
 
     private enum Part { case button, wave, speed }
@@ -47,17 +43,13 @@ final class VoiceView: NSView {
         super.init(frame: frame)
         wantsLayer = true
         layerContentsRedrawPolicy = .never
-        avatar.masksToBounds = true
-        avatarImage.contentsGravity = .resizeAspectFill
-        avatar.addSublayer(avatarImage)
-        avatar.addSublayer(initials)
         mic.shadowColor = NSColor.black.cgColor
         mic.shadowOpacity = 0.35
         mic.shadowRadius = 1
         mic.shadowOffset = .zero
         speed.addSublayer(speedText)
-        for sublayer in [button, wave, time, avatar, mic, speed] as [CALayer] { layer?.addSublayer(sublayer) }
-        for sublayer in [button, wave, time, avatar, avatarImage, initials, mic, speed, speedText] as [CALayer] {
+        for sublayer in [button, wave, time, avatar.layer, mic, speed] as [CALayer] { layer?.addSublayer(sublayer) }
+        for sublayer in [button, wave, time, mic, speed, speedText] as [CALayer] {
             sublayer.actions = ["bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull(), "backgroundColor": NSNull(), "colors": NSNull()]
         }
         spinner.style = .spinning
@@ -83,21 +75,10 @@ final class VoiceView: NSView {
         wave.samples = [UInt8](layout.voice.waveform)
         time.frame = layout.time
         if let side = layout.side {
-            avatar.frame = side
-            avatar.cornerRadius = side.width / 2
-            avatarImage.frame = CGRect(origin: .zero, size: side.size)
+            avatar.configure(personID: layout.voice.recorderID, name: layout.voice.recorderName, frame: side)
             speed.frame = CGRect(x: side.minX, y: side.midY - 13, width: side.width, height: 26)
             speed.cornerRadius = 13
             mic.frame = CGRect(x: side.minX - 2, y: side.maxY - 14, width: 16, height: 16)
-            let colors = [AppKitPalette.sender(layout.voice.recorderID).blended(withFraction: 0.12, of: .white), AppKitPalette.sender(layout.voice.recorderID)]
-            avatar.colors = colors.compactMap { $0?.cgColor }
-            let letters = AvatarView.initials(layout.voice.recorderName)
-            let font = NSFont.systemFont(ofSize: side.width * 0.38, weight: .semibold).rounded
-            let string = TimelineText.line(letters, font, .white)
-            let size = TimelineText.size(string)
-            initials.frame = CGRect(x: ((side.width - size.width) / 2).rounded(), y: ((side.height - size.height) / 2).rounded(), width: size.width, height: size.height)
-            initials.piece = TextPiece(string: string, rect: CGRect(origin: .zero, size: size))
-            initials.setNeedsDisplay()
         }
         CATransaction.commit()
         spinner.frame = CGRect(x: layout.button.midX - 8, y: layout.button.midY - 8, width: 16, height: 16)
@@ -126,8 +107,8 @@ final class VoiceView: NSView {
         time.piece = TextPiece(string: string, rect: CGRect(origin: .zero, size: layout.time.size))
         let showsSpeed = state.current && voice.voiceNote && layout.side != nil
         speed.isHidden = !showsSpeed
-        avatar.isHidden = showsSpeed || layout.side == nil
-        mic.isHidden = avatar.isHidden
+        avatar.layer.isHidden = showsSpeed || layout.side == nil
+        mic.isHidden = avatar.layer.isHidden
         if showsSpeed {
             let label = state.speed == 1 ? "1×" : state.speed == 2 ? "2×" : "1.5×"
             let font = NSFont.monospacedDigitSystemFont(ofSize: TimelineText.callout.pointSize, weight: .semibold)
@@ -146,44 +127,19 @@ final class VoiceView: NSView {
 
     /// The recorder's photo, once there is one.
     func showAvatar(url: URL?, version: Int) {
-        guard avatarSource.map({ $0.url != url || $0.version != version }) ?? true else { return }
-        avatarSource = (url, version)
-        loads += 1
-        let load = loads
-        guard let url else {
-            showAvatarImage(nil)
-            return
-        }
-        let points = TimelineGeometry.voiceSide
-        if let cached = Thumbnails.cached(url, points: points) {
-            showAvatarImage(cached)
-            return
-        }
-        Task { [weak self] in
-            let image = await Thumbnails.load(url, points: points)
-            guard let self, self.loads == load else { return }
-            self.showAvatarImage(image)
-        }
-    }
-
-    private func showAvatarImage(_ image: NSImage?) {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        avatarImage.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        initials.isHidden = image != nil
-        CATransaction.commit()
+        avatar.show(url: url, version: version)
     }
 
     func refreshColors() {
         applyAppearance()
-        for layer in [button, wave, time, initials, mic, speedText] as [CALayer] { layer.setNeedsDisplay() }
+        for layer in [button, wave, time, mic, speedText] as [CALayer] { layer.setNeedsDisplay() }
     }
 
     private func applyAppearance() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for layer in [button, mic] { layer.appearance = effectiveAppearance }
-        for layer in [time, initials, speedText] { layer.appearance = effectiveAppearance }
+        for layer in [time, speedText] { layer.appearance = effectiveAppearance }
         wave.appearance = effectiveAppearance
         effectiveAppearance.performAsCurrentDrawingAppearance {
             // `.quaternary` of the bubble's text, as the SwiftUI capsule.
@@ -200,10 +156,11 @@ final class VoiceView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for layer in [button, wave, time, initials, mic, speedText] as [CALayer] {
+        for layer in [button, wave, time, mic, speedText] as [CALayer] {
             layer.contentsScale = scale
             layer.setNeedsDisplay()
         }
+        avatar.setScale(scale)
     }
 
     // MARK: Clicks
@@ -286,12 +243,5 @@ nonisolated final class WaveformLayer: CALayer {
                 }
             }
         }
-    }
-}
-
-private extension NSFont {
-    /// The same font in the rounded design, as `.rounded` in SwiftUI.
-    var rounded: NSFont {
-        fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: pointSize) } ?? self
     }
 }

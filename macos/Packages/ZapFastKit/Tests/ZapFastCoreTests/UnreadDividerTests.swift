@@ -51,9 +51,35 @@ struct UnreadDividerTests {
         let rows = TimelineRow.build(model.conversations.conversation(busy).messages, unread: model.unreadDivider)
         let ids = rows.map(\.id)
         #expect(ids.firstIndex(of: "unread") == ids.firstIndex(of: "b").map { $0 - 1 })
-        if case .message(_, let startsRun) = rows[ids.firstIndex(of: "b")!] {
+        if case .message(_, let startsRun, _) = rows[ids.firstIndex(of: "b")!] {
             #expect(startsRun, "the message under the divider starts a run")
         }
+        if case .message(_, _, let endsRun) = rows[ids.firstIndex(of: "a")!] {
+            #expect(endsRun, "the message above the divider ends one")
+        }
+    }
+
+    @Test func aRunEndsBeforeAnotherSenderAPauseOrANewDay() {
+        let other = "b@s.whatsapp.net"
+        func from(_ sender: String, _ id: String, at time: Int64) -> MessageRecord {
+            var record = message(id, at: time)
+            record.sender = sender
+            return record
+        }
+        let rows = TimelineRow.build([
+            from(busy, "a1", at: 1_780_000_000), from(busy, "a2", at: 1_780_000_060),
+            from(other, "b1", at: 1_780_000_120),
+            // A pause of more than five minutes.
+            from(other, "b2", at: 1_780_000_600),
+            // The next day.
+            from(other, "b3", at: 1_780_086_400),
+        ])
+        let runs = rows.compactMap { row -> (String, Bool, Bool)? in
+            if case let .message(message, starts, ends) = row { (message.id, starts, ends) } else { nil }
+        }
+        #expect(runs.map(\.0) == ["a1", "a2", "b1", "b2", "b3"])
+        #expect(runs.map(\.1) == [true, false, true, true, true])
+        #expect(runs.map(\.2) == [false, true, true, true, true])
     }
 
     @Test func laterMessagesDoNotMoveIt() {

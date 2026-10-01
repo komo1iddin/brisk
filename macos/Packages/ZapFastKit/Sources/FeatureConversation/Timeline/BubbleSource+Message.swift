@@ -17,6 +17,7 @@ extension BubbleSource {
     static func make(
         _ message: MessageRecord,
         startsRun: Bool,
+        endsRun: Bool = true,
         isGroup: Bool,
         colors: BubbleColors,
         chats: ChatStore,
@@ -71,10 +72,15 @@ extension BubbleSource {
         }
         let senderName = startsRun && !message.fromMe && isGroup
             ? chats.personName(message.sender, hint: message.senderName) : nil
+        let avatarRoom = isGroup && !message.fromMe
         return BubbleSource(
             id: message.id,
             fromMe: message.fromMe,
             startsRun: startsRun,
+            endsRun: endsRun,
+            avatarRoom: avatarRoom,
+            avatarName: avatarRoom && endsRun
+                ? senderName ?? chats.personName(message.sender, hint: message.senderName) : nil,
             text: text,
             emojiOnly: emojiOnly,
             mentions: message.mentions,

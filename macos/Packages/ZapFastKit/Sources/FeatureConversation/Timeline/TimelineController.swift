@@ -57,7 +57,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
 
         var message: MessageRecord? {
-            if case .message(let message, _)? = row { message } else { nil }
+            if case .message(let message, _, _)? = row { message } else { nil }
         }
 
         var row: TimelineRow? {
@@ -333,6 +333,12 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             rebuild()
             return
         }
+        // The last message ends its run no more when the first to arrive
+        // continues it: its row loses the sender's photo and the tail.
+        if case let .message(_, _, endsRun) = rows[lastRow], let index = itemIndex[last.id],
+           case let .message(message, startsRun, ended)? = items[index].row, ended != endsRun {
+            refresh(rows: [(index, .message(message, startsRun: startsRun, endsRun: endsRun))])
+        }
         let resolved = resolve(Array(rows[(lastRow + 1)...]))
         let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
         let added = resolved.map { item(for: $0, limit: limit) }
@@ -364,13 +370,18 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// Makes the rows of `edited` again, where they are, and tells the table
     /// of those that changed; the reader stays where they were.
     private func refresh(_ edited: [MessageRecord]) {
-        guard !edited.isEmpty else { return }
-        let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
         var rows: [(index: Int, row: TimelineRow)] = []
         for message in edited {
-            guard let index = itemIndex[message.id], case let .message(_, startsRun)? = items[index].row else { continue }
-            rows.append((index, .message(message, startsRun: startsRun)))
+            guard let index = itemIndex[message.id], case let .message(_, startsRun, endsRun)? = items[index].row else { continue }
+            rows.append((index, .message(message, startsRun: startsRun, endsRun: endsRun)))
         }
+        refresh(rows: rows)
+    }
+
+    /// Makes these rows again, in place.
+    private func refresh(rows: [(index: Int, row: TimelineRow)]) {
+        guard !rows.isEmpty else { return }
+        let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
         let resolved = resolve(rows.map(\.row))
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()
@@ -431,9 +442,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 case .unread(let count):
                     let title = String(AttributedString(localized: "^[\(count) unread message](inflect: true)").characters)
                     return .chip(id: row.id, title: title, isDay: false)
-                case let .message(message, startsRun):
+                case let .message(message, startsRun, endsRun):
                     guard !swiftUIRows, let source = BubbleSource.make(
-                        message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats,
+                        message, startsRun: startsRun, endsRun: endsRun, isGroup: isGroup, colors: colors, chats: model.chats,
                         voiceAvatars: model.preferences.voiceAvatars,
                         playingVoice: { model.voice.current.flatMap { $0.chat == chat ? $0.message : nil } },
                         own: model.session.account.map { ($0.id, $0.name ?? "") },
@@ -738,8 +749,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// here) is given again.
     @ViewBuilder
     func rowView(_ row: TimelineRow) -> some View {
-        if let model, case let .message(message, startsRun) = row {
-            MessageRow(message: message, startsRun: startsRun, isGroup: isGroup, model: model)
+        if let model, case let .message(message, startsRun, endsRun) = row {
+            MessageRow(message: message, startsRun: startsRun, endsRun: endsRun, isGroup: isGroup, model: model)
                 .opensInviteLinks(model: model)
                 .environment(\.chatTheme, style.theme)
                 .environment(\.messageTextScale, style.textScale)

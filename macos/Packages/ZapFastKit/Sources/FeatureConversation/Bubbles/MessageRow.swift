@@ -8,6 +8,9 @@ import ZapFastDesign
 struct MessageRow: View {
     let message: MessageRecord
     let startsRun: Bool
+    /// The last message of its sender's run: in a group, their photo
+    /// beside it.
+    var endsRun = true
     let isGroup: Bool
     let model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -24,6 +27,21 @@ struct MessageRow: View {
                     model: model
                 )
                 .contextMenu { MessageActions(message: message, model: model) }
+                .overlay(alignment: .bottomLeading) {
+                    if avatarRoom, endsRun {
+                        // In the photos' column, level with the bubble's bottom.
+                        Button { model.showInfo(in: message.chat, person: message.sender) } label: {
+                            AvatarView(
+                                url: model.avatars.url(for: message.sender), seed: message.sender,
+                                placeholder: .initials(model.chats.personName(message.sender, hint: message.senderName)),
+                                size: TimelineGeometry.avatarSize, version: model.avatars.version(for: message.sender)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .pointerStyle(.link)
+                        .offset(x: -(TimelineGeometry.avatarSize + TimelineGeometry.avatarGap))
+                    }
+                }
                 .popover(isPresented: pickingReaction, arrowEdge: .top) {
                     ReactionPicker(
                         quick: model.quickReactions(for: message),
@@ -48,6 +66,7 @@ struct MessageRow: View {
                 }
             }
             .frame(maxWidth: Metrics.bubbleMaxWidth, alignment: message.fromMe ? .trailing : .leading)
+            .padding(.leading, avatarRoom ? TimelineGeometry.avatarRoom : 0)
             // Room for the checkbox, without changing the row's height.
             .offset(x: selecting && !message.fromMe ? Self.checkboxRoom : 0)
             if !message.fromMe { Spacer(minLength: 72) }
@@ -114,6 +133,11 @@ struct MessageRow: View {
     }
 
     private static let checkboxRoom: CGFloat = 28
+
+    /// An incoming message in a group starts after the senders' photos.
+    private var avatarRoom: Bool {
+        isGroup && !message.fromMe
+    }
 
     /// The reaction picker hangs from the bubble, from the hover control
     /// or the context menu alike.

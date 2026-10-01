@@ -43,6 +43,10 @@ protocol TimelineCellDelegate: AnyObject {
     /// The downloaded file and the name to give it when dragged out.
     func attachmentFile(ofMessage id: String) -> (url: URL, name: String)?
 
+    /// The sender's photo and its version, beside a run's last message in
+    /// a group.
+    func senderAvatar(forMessage id: String) -> AvatarSource
+
     // Voice messages.
     func voiceState(forMessage id: String) -> VoiceState
     /// The recorder's photo and its version, for the player's side.
@@ -113,6 +117,8 @@ final class BubbleCell: NSView {
     private(set) var bubbleLayout: BubbleLayout?
     private let bubble = BubbleView()
     private let pills = ReactionPillsView()
+    /// In a group, the sender's photo beside the last message of their run.
+    private let avatar = AvatarLayers()
     private var highlighted = false
     /// Reply and React beside the bubble, made once the pointer rests on
     /// the row: a row swept past while scrolling makes none.
@@ -145,6 +151,8 @@ final class BubbleCell: NSView {
         checkbox.isHidden = true
         checkbox.actions = ["position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
         layer?.addSublayer(checkbox)
+        avatar.layer.isHidden = true
+        layer?.addSublayer(avatar.layer)
     }
 
     @available(*, unavailable)
@@ -166,6 +174,12 @@ final class BubbleCell: NSView {
             removeBodyText()
             bubble.configure(layout, messageID: id)
             pills.configure(layout)
+            if let person = layout.avatar {
+                avatar.configure(
+                    personID: person.personID, name: person.name,
+                    frame: layout.avatarFrame(rowWidth: bounds.width) ?? .zero
+                )
+            }
             placeSubviews()
             setAccessibilityLabel(layout.accessibilityLabel)
             watchMessage()
@@ -210,6 +224,11 @@ final class BubbleCell: NSView {
             // A cell set up takes the state as it is; a change after moves.
             self?.applySelection(state, animated: !initial && self?.window != nil)
             initial = false
+        }
+        if layout.avatar != nil {
+            watches.watch({ [weak self] in self?.delegate?.senderAvatar(forMessage: id) ?? AvatarSource(url: nil, version: 0) }) { [weak self] source in
+                self?.avatar.show(url: source.url, version: source.version)
+            }
         }
         guard layout.hasAttachment else { return }
         delegate?.attachmentShown(inMessage: id)
@@ -269,6 +288,7 @@ final class BubbleCell: NSView {
         super.viewDidChangeBackingProperties()
         checkbox.contentsScale = window?.backingScaleFactor ?? 2
         checkbox.setNeedsDisplay()
+        avatar.setScale(window?.backingScaleFactor ?? 2)
     }
 
     /// The system accent colour changed.
@@ -339,8 +359,16 @@ final class BubbleCell: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         checkbox.frame = CGRect(x: Metrics.m, y: ((bounds.height - 24) / 2).rounded(), width: 24, height: 24)
+        let avatarFrame = layout.avatarFrame(rowWidth: bounds.width)
+        avatar.layer.isHidden = avatarFrame == nil
+        if let avatarFrame { avatar.layer.frame = avatarFrame.offsetBy(dx: shift, dy: 0) }
         CATransaction.commit()
         placeHoverActions()
+    }
+
+    /// Where the sender's photo is, when the row shows one.
+    private func avatarFrame() -> CGRect? {
+        avatar.layer.isHidden ? nil : avatar.layer.frame
     }
 
     // MARK: Picking
@@ -418,6 +446,8 @@ final class BubbleCell: NSView {
         }
         let inBubble = bubble.convert(point, from: self)
         bubble.pointerMoved(to: inBubble)
+        // The photo opens the sender's page, as their name does.
+        if avatarFrame()?.contains(point) == true { NSCursor.pointingHand.set() }
     }
 
     /// The pointer left the row, or the row went off screen under it.
@@ -501,6 +531,10 @@ final class BubbleCell: NSView {
         }
         if event.modifierFlags.contains(.command), let id = messageID {
             delegate?.startSelecting(fromMessage: id)
+            return
+        }
+        if let id = messageID, avatarFrame()?.contains(convert(event.locationInWindow, from: nil)) == true {
+            delegate?.showSender(ofMessage: id)
             return
         }
         // A drag down the space beside the bubble starts picking messages

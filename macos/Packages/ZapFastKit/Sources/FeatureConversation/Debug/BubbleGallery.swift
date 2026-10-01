@@ -20,6 +20,7 @@ public struct BubbleGallery: View {
                 MessageRow(
                     message: message,
                     startsRun: index == 0 || Self.messages[index - 1].sender != message.sender,
+                    endsRun: index == Self.messages.count - 1 || Self.messages[index + 1].sender != message.sender,
                     isGroup: true,
                     model: model
                 )

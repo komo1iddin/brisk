@@ -51,7 +51,9 @@ nonisolated enum TimelineLayoutEngine {
         let bottom: CGFloat = bare ? 0 : G.bubblePadding.height
         // Text beside a photo keeps the usual inset.
         let inset: CGFloat = media ? G.mediaTextInset : 0
-        let contentLimit = widthLimit - side * 2
+        // In a group the photos' column narrows incoming bubbles.
+        let bubbleLimit = source.avatarRoom ? max(120, widthLimit - G.avatarRoom) : widthLimit
+        let contentLimit = bubbleLimit - side * 2
         // The time tucks into the last line of plain text; after large
         // emoji or an attachment it is a line of its own on the trailing
         // edge, as `MessageBubble` places it.
@@ -288,6 +290,8 @@ nonisolated enum TimelineLayoutEngine {
             widthLimit: widthLimit,
             fromMe: fromMe,
             startsRun: source.startsRun,
+            avatarRoom: source.avatarRoom,
+            avatar: source.avatarName.map { .init(personID: source.senderID, name: $0) },
             bare: bare,
             bubbleSize: CGSize(width: width + side * 2, height: ceil(bubbleHeight)),
             name: namePiece,

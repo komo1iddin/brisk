@@ -294,7 +294,8 @@ struct PictureBubbleTests {
     @Test func aPictureWiderThanTheTimelineShrinksInShape() throws {
         let layout = TimelineLayoutEngine.layout(for: try source(.image(caption: nil, media: media())), widthLimit: 200)
         let frame = try #require(layout.picture?.frame)
-        #expect(frame.width == 200 - TimelineGeometry.mediaPadding * 2)
+        // In a group the senders' photos take their column first.
+        #expect(frame.width == 200 - TimelineGeometry.avatarRoom - TimelineGeometry.mediaPadding * 2)
         #expect(abs(frame.width / frame.height - 300 / 225) < 0.02)
     }
 }
@@ -585,6 +586,74 @@ struct TimelineRefreshTests {
         messages.insert(late, at: 21)
         update(controller, messages, revision: 5, model: model)
         #expect(controller.generation > generation)
+    }
+}
+
+@MainActor
+struct GroupRunTests {
+    private func message(_ index: Int, from sender: String = "a") -> MessageRecord {
+        MessageRecord(
+            id: "m\(index)", chat: "g@g.us", sender: "\(sender)@s.whatsapp.net", senderName: sender.uppercased(), fromMe: false,
+            timestamp: 1_780_000_000 + Int64(index) * 60, content: .text(text: "Salom \(index)", preview: nil),
+            status: .none, deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false,
+            mentions: [], forwarded: false, thumbnail: nil, summary: "Salom"
+        )
+    }
+
+    @Test func theRunsLastMessageHasThePhotoAndEveryIncomingBubbleItsRoom() throws {
+        let chats = ChatStore(session: SessionStore())
+        let colors = BubbleColors(.standard)
+        let last = try #require(BubbleSource.make(message(1), startsRun: false, endsRun: true, isGroup: true, colors: colors, chats: chats))
+        let middle = try #require(BubbleSource.make(message(2), startsRun: false, endsRun: false, isGroup: true, colors: colors, chats: chats))
+        let direct = try #require(BubbleSource.make(message(3), startsRun: true, endsRun: true, isGroup: false, colors: colors, chats: chats))
+        let ends = TimelineLayoutEngine.layout(for: last, widthLimit: 560)
+        let avatar = try #require(ends.avatarFrame(rowWidth: 800))
+        let bubble = ends.bubbleFrame(rowWidth: 800)
+        #expect(ends.avatar?.name == "~A")
+        #expect(avatar.maxY == bubble.maxY)
+        #expect(avatar.maxX + TimelineGeometry.avatarGap == bubble.minX)
+        let inner = TimelineLayoutEngine.layout(for: middle, widthLimit: 560)
+        #expect(inner.avatarFrame(rowWidth: 800) == nil)
+        #expect(inner.bubbleFrame(rowWidth: 800).minX == bubble.minX)
+        // Outside a group nothing moves over.
+        let alone = TimelineLayoutEngine.layout(for: direct, widthLimit: 560)
+        #expect(alone.avatarFrame(rowWidth: 800) == nil)
+        #expect(alone.bubbleFrame(rowWidth: 800).minX == bubble.minX - TimelineGeometry.avatarRoom)
+    }
+
+    /// The next message from the same sender continues the run: the row
+    /// before it loses the photo, and only that row changes.
+    @Test func aMessageContinuingTheRunTakesThePhotoFromTheOneBefore() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "zapfast-run-test-\(UUID().uuidString)")
+        let model = AppModel(backend: PreviewBackend(), paths: AppPaths(data: folder, caches: folder))
+        let controller = TimelineController()
+        controller.makeScrollView().frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        func update(_ messages: [MessageRecord], revision: Int) {
+            controller.update(
+                chatID: "g@g.us", messages: messages, revision: revision, isGroup: true, model: model,
+                style: .standard, unread: nil, jump: nil, scrollRequest: nil, onReachTop: {}, onScrollState: { _ in }
+            )
+        }
+        func endsRun(_ id: String) -> Bool? {
+            guard let item = controller.items.first(where: { $0.id == id }), case let .message(_, _, ends)? = item.row else { return nil }
+            return ends
+        }
+        var messages = [message(0, from: "b"), message(1)]
+        update(messages, revision: 1)
+        #expect(endsRun("m1") == true)
+        let generation = controller.generation
+        let before = controller.items
+
+        messages.append(message(2))
+        update(messages, revision: 2)
+        #expect(controller.generation == generation)
+        #expect(endsRun("m1") == false)
+        #expect(endsRun("m2") == true)
+        let changed = before.indices.filter { controller.items[$0].differs(from: before[$0]) }
+        #expect(changed.map { controller.items[$0].id } == ["m1"])
+        if case let .bubble(_, layout)? = controller.items.first(where: { $0.id == "m1" }) {
+            #expect(layout.avatar == nil)
+        }
     }
 }
 

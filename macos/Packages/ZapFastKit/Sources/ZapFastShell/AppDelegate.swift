@@ -9,6 +9,8 @@ import ZapFastDesign
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public let model: AppModel
     private var menuBarIcon: MenuBarIcon?
+    private var mainWindow: MainWindowController?
+    private var chatWindows: [ChatWindowController] = []
 
     override public init() {
         model = TimelineBenchmark.isRequested ? TimelineBenchmark.makeModel() : AppModel()
@@ -18,6 +20,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationDidFinishLaunching(_ notification: Notification) {
         // Avatars decode before any timeline is open to say which display.
         if let space = NSScreen.main?.colorSpace?.cgColorSpace { DisplayImage.colorSpace = space }
+        if !Self.drawsSnapshotOnly {
+            let window = MainWindowController(model: model)
+            mainWindow = window
+            window.show()
+        }
         if TimelineBenchmark.isRequested {
             TimelineBenchmark.start(model: model)
             return
@@ -47,10 +54,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         let verbose = ProcessInfo.processInfo.environment["ZAPFAST_VERBOSE"] != nil
-        model.bringToFront = {
+        model.bringToFront = { [weak self] in
             NSApp.activate()
-            NSApp.windows.first(where: \.canBecomeMain)?.makeKeyAndOrderFront(nil)
+            self?.mainWindow?.show()
         }
+        model.openChatWindow = { [weak self] chat in self?.openChatWindow(chat) }
         model.start(verbose: verbose)
         HangMonitor.start()
         // Copies handed to drags and to Contacts last time are done with.
@@ -59,10 +67,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeBadge()
         watchInput()
-        menuBarIcon = MenuBarIcon(model: model)
+        let icon = MenuBarIcon(model: model)
+        icon.openMainWindow = { [weak self] in self?.mainWindow?.show() }
+        menuBarIcon = icon
         if let rounds = LiveStress.rounds { LiveStress.start(model: model, rounds: rounds) }
         #if DEBUG
         DebugSnapshot.scheduleIfRequested(model: model)
+        DebugCommands.start(model: model)
         #endif
     }
 
@@ -79,8 +90,40 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         !model.preferences.keepRunning
     }
 
+    /// The Dock icon brings the main window back once it was closed.
     public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-        true
+        if !hasVisibleWindows { mainWindow?.show() }
+        return true
+    }
+
+    /// The debug snapshots draw their own windows and quit; they need no
+    /// main window.
+    private static var drawsSnapshotOnly: Bool {
+        #if DEBUG
+        DebugSnapshot.settingsPath != nil || DebugSnapshot.galleryPath != nil || DebugSnapshot.timelinePath != nil
+            || MediaEditorScript.steps != nil || DebugSnapshot.dumpsMenus
+        #else
+        false
+        #endif
+    }
+
+    /// Links from the Share extension (`zapfast-mac://share`).
+    public func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { model.receiveShare(url) }
+    }
+
+    /// A chat in a window of its own; one already open comes forward.
+    private func openChatWindow(_ chat: String) {
+        if let open = chatWindows.first(where: { $0.chatID == chat }) {
+            open.show()
+            return
+        }
+        let window = ChatWindowController(chatID: chat, model: model)
+        window.onClose = { [weak self, weak window] in
+            self?.chatWindows.removeAll { $0 === window }
+        }
+        chatWindows.append(window)
+        window.show()
     }
 
     public func applicationWillTerminate(_ notification: Notification) {

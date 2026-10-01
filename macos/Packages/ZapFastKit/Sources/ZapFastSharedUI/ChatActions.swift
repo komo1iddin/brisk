@@ -7,7 +7,6 @@ import ZapFastDesign
 public struct ChatActions: View {
     let chat: ChatSummary
     let model: AppModel
-    @Environment(\.openWindow) private var openWindow
 
     public init(chat: ChatSummary, model: AppModel) {
         self.chat = chat
@@ -20,7 +19,7 @@ public struct ChatActions: View {
             model.showInfo(in: chat.id)
         }
         Button("Open in New Window", systemImage: "macwindow.badge.plus") {
-            openWindow(id: ChatWindowScene.id, value: chat.id)
+            model.openChatWindow(chat.id)
         }
         Divider()
 
@@ -101,9 +100,4 @@ public struct ChatActions: View {
         let until = Int64(Date.now.addingTimeInterval(TimeInterval(hours * 3600)).timeIntervalSince1970)
         model.setMuted(until: until, chat: chat.id)
     }
-}
-
-/// The id of the scene that shows one chat in a window of its own.
-public enum ChatWindowScene {
-    public static let id = "chat"
 }

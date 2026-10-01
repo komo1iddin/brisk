@@ -38,11 +38,11 @@ macos/
 │       ├── ZapFastDesign/     tokens, asset colours, generic components
 │       ├── ZapFastSharedUI/   components that need both the model and the kit
 │       ├── FeatureOnboarding/ linking: QR, phone pairing, connection states
-│       ├── FeatureChats/      the sidebar chat list
-│       ├── FeatureConversation/ chat pane (AppKit), timeline (NSTableView, drawn cells), composer
+│       ├── FeatureChats/      the sidebar (AppKit): search, chat table, filter
+│       ├── FeatureConversation/ the open chat (AppKit): pane, timeline (NSTableView, drawn cells), composer
 │       ├── FeatureSettings/   the Settings window
 │       ├── FeatureLock/       the app lock's lock screen
-│       └── ZapFastShell/      scenes, split view, menus, app delegate
+│       └── ZapFastShell/      AppKit windows (split view, toolbar), Settings scene, menus, app delegate
 ├── App/                       thin app target: @main, Info.plist, assets
 ├── Scripts/                   build-bridge, sync-patches, sync-upstream, print-link-libs
 ├── project.yml                XcodeGen spec (ZapFast.xcodeproj is generated)
@@ -51,6 +51,18 @@ macos/
 
 Dependencies point one way: `Shell → Feature* → SharedUI → Design + Core →
 Bridge → FFI`. Features never import each other; the shell composes them.
+
+### The windows
+
+The main window and a chat's own window are AppKit: `MainWindowController`
+holds an `NSSplitViewController` (the sidebar, `SidebarViewController`; the
+chat, `ChatDetailViewController`; the chat's search as the inspector) and
+one `NSToolbar` whose items those controllers make. The lock screen and
+linking take the split view's place. SwiftUI draws islands inside them that
+lay out only on their own changes (rows, the header, the composer, menus,
+notices) and presents the sheets from small presenter islands; Settings and
+the menu bar's commands stay SwiftUI scenes. Resizing the window never runs
+SwiftUI's layout of the whole window.
 
 ### How events reach the interface
 
@@ -395,14 +407,19 @@ were. The window ignores the pointer unless `ZAPFAST_BENCHMARK_POINTER=1`;
 scrolling with a trackpad. `ZAPFAST_BENCHMARK_DELAY=<seconds>` waits before
 starting, to attach Instruments; each scroll step is a `Frame` interval in
 Points of Interest.
-`ZAPFAST_SWIFTUI_SIDEBAR=1` shows the chat list as the earlier SwiftUI list
-instead of the table, and `ZAPFAST_SWIFTUI_ROWS=1` every message as the
-earlier SwiftUI row instead of the drawn bubble, to compare them, in the
-app or the benchmark. In a Debug build,
+`ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI row
+instead of the drawn bubble, to compare them, in the app or the benchmark. In a Debug build,
 `ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` draws a gallery of messages
 through the real timeline twice, drawn bubbles on the left and SwiftUI rows
 on the right, in light and dark, and quits.
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
+A Debug build also takes commands from a shell
+(`DistributedNotificationCenter`, name `com.komoliddin.ZapFastMac.debug`,
+the command as the object): `tree` writes the main window's views and
+safe areas, `resize:<steps>:<points>` times each step of a resize,
+`select:<n>` opens a chat, `top:<n>` loads older pages, `open:search` and
+the like open parts of the window. Answers go to
+`~/Library/Caches/<bundle id>/debug/` and name views and numbers only.
 
 ## Following upstream
 

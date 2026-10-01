@@ -60,6 +60,8 @@ public final class AppModel {
 
     /// Brings the app's window forward; the shell provides it.
     @ObservationIgnored public var bringToFront: () -> Void = {}
+    /// Opens `chat` in a window of its own; set by the app's shell.
+    @ObservationIgnored public var openChatWindow: (String) -> Void = { _ in }
 
     /// Transient messages for the notice banner, oldest first.
     public private(set) var notices: [Notice] = []

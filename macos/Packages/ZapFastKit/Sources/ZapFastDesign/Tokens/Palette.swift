@@ -42,6 +42,10 @@ extension Color {
 /// colour (they draw symbols as monochrome templates).
 public enum ColorSwatch {
     public static func image(hex: String, diameter: CGFloat = 12) -> Image {
+        Image(nsImage: nsImage(hex: hex, diameter: diameter))
+    }
+
+    public static func nsImage(hex: String, diameter: CGFloat = 12) -> NSImage {
         let color = NSColor(Color(hex: hex))
         let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
             color.setFill()
@@ -49,7 +53,7 @@ public enum ColorSwatch {
             return true
         }
         image.isTemplate = false
-        return Image(nsImage: image)
+        return image
     }
 
     /// Upstream's names for its preset label colours.

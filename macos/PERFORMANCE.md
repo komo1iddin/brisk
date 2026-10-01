@@ -60,6 +60,7 @@ chat, 200 chats, three alternating runs of each build.
 | 10-01 | Documents, link previews and voice messages drawn too: no SwiftUI rows left in the benchmark | open 2,000 messages 550 → 160–185 ms; open again 92 → 58–72 ms; jump p50 8 → 3.5 ms; scroll hitches 60–100 → 38–62 ms/s, flicks 8–12; with the pointer over the timeline 200–350 → 44–66 ms/s; memory 240 → 120–134 MB |
 | 10-01 | A message changed in place (a download, a receipt, a reaction) remakes its row only, not the chat's | scroll hitches 38–62 → 15–22 ms/s, flicks 4–6; with the pointer over the timeline 22–24 ms/s. The gaps between frames had been whole rebuilds of 2,000 rows as downloads finished |
 | 10-01 | The chat's content in AppKit (`ConversationViewController`): the timeline a plain subview, the composer and what floats over it SwiftUI islands; the toolbar, sheets and search stay SwiftUI | scroll hitches 15–22 → 1–4 ms/s, flicks 0–3; open again 58 → 52 ms; resize step unchanged at 24 ms (the window's SwiftUI split view) |
+| 10-01 | The main window in AppKit (`MainWindowController`: split view, toolbar, sidebar and chat controllers; SwiftUI only in islands) | on the linked account, a chat of 121 rows, 40 resize steps of 12 pt each with 8 ms of run loop: step median 20–30 → 16 ms, first step 370 → 9–10 ms, worst 33 ms |
 
 ### On the linked account
 
@@ -171,9 +172,10 @@ Each of these came from a trace or a benchmark.
    and calling main-actor code from a `DispatchQueue` closure or an
    animation's completion handler is only a warning, which stops the app at
    run time. `make check` fails on any warning in ZapFastKit's sources.
-13. **The timeline has no SwiftUI view above it that lays out on its
-    changes.** Its pane is an AppKit view controller; the composer and what
-    floats over the timeline are small SwiftUI islands beside it, not
-    around it. Rows the table adds while scrolling invalidate layout up
-    the view tree, and a SwiftUI ancestor answers by laying out and
-    rendering all it holds again.
+13. **No SwiftUI view holds the timeline or the window's content.** The
+    windows, the split view, the sidebar and the chat are AppKit view
+    controllers; the composer, the header, the rows and what floats over
+    the timeline are small SwiftUI islands beside them, not around them.
+    Rows the table adds while scrolling invalidate layout up the view
+    tree, and a window resize lays out everything in it: a SwiftUI
+    ancestor answers either by laying out and rendering all it holds.

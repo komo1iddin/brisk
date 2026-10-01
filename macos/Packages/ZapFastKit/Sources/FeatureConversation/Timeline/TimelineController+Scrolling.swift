@@ -16,7 +16,8 @@ extension TimelineController {
     func place(frame: CGRect, topInset: CGFloat) {
         let insets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
         let moved = scrollView.frame != frame
-        let reinset = clip.contentInsets.top != topInset
+        // A scroll view that AppKit insets keeps AppKit's.
+        let reinset = !scrollView.automaticallyAdjustsContentInsets && clip.contentInsets.top != topInset
         guard moved || reinset else { return }
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()

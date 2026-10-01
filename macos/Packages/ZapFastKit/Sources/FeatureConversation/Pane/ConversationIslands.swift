@@ -52,7 +52,7 @@ struct ConversationBottomBar: View {
         let chat = model.chats.chat(chatID)
         if let selection = model.selection, selection.chat == chatID {
             SelectionBar(selection: selection, model: model)
-        } else if let chat, !ConversationView.canSend(chat) {
+        } else if let chat, !chat.canSend {
             ReadOnlyBar(chat: chat)
         } else {
             ComposerBar(chatID: chatID, model: model)

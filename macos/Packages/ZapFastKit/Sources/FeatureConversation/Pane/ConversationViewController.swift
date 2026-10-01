@@ -15,8 +15,8 @@ final class ConversationPaneState {
 /// An open chat, in AppKit: the timeline is a plain subview, and around it
 /// sit small SwiftUI islands: what floats over the timeline (the spinner
 /// while older messages come, the "newest message" button, the empty
-/// chat's note) and the composer. The wallpaper stays behind, in SwiftUI,
-/// where it reaches under the sidebar.
+/// chat's note) and the composer. `ChatDetailViewController` holds it,
+/// with the wallpaper behind it.
 ///
 /// When the timeline was a SwiftUI view among the composer and overlays,
 /// every row the table added or moved while scrolling sent all of them
@@ -31,6 +31,7 @@ final class ConversationViewController: NSViewController {
     private let overlay = IslandHostingView(rootView: AnyView(EmptyView()))
     private let newest = IslandHostingView(rootView: AnyView(EmptyView()))
     private let bottomBar = NSHostingView(rootView: AnyView(EmptyView()))
+    private let titleBand = TitleBandView()
     private var observed = 0
 
     init(chatID: String, model: AppModel) {
@@ -46,9 +47,8 @@ final class ConversationViewController: NSViewController {
         let view = PaneView()
         view.wantsLayer = true
         let scrollView = timeline.makeScrollView()
-        // The top inset is the title bar's, set here.
-        scrollView.automaticallyAdjustsContentInsets = false
-        for island in [scrollView, overlay, newest, bottomBar] as [NSView] {
+        // The title bar's inset comes from AppKit.
+        for island in [scrollView, titleBand, overlay, newest, bottomBar] as [NSView] {
             island.frame = view.bounds
             view.addSubview(island)
         }
@@ -113,6 +113,8 @@ final class ConversationViewController: NSViewController {
         let bar = bottomBar.frame.height
         let frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - bar))
         let top = view.safeAreaInsets.top
+        titleBand.frame = CGRect(x: 0, y: 0, width: bounds.width, height: top)
+        titleBand.isHidden = top == 0
         overlay.frame = frame
         let size = NewestMessageIsland.size
         newest.frame = CGRect(x: bounds.width - Metrics.l - size + 8, y: frame.maxY - Metrics.l - size + 8, width: size, height: size)
@@ -165,6 +167,52 @@ final class ConversationViewController: NSViewController {
     }
 }
 
+/// The title bar's frosted band over the top of the timeline, with a
+/// hairline under it, as SwiftUI's window drew it: what scrolls under the
+/// toolbar shows through blurred, never sharp over the header.
+///
+/// AppKit's own edge effect needs a background the scroll view draws
+/// itself; the timeline's is the wallpaper behind it, so AppKit left the
+/// edge clear and the chat ran sharply under the toolbar.
+final class TitleBandView: NSVisualEffectView {
+    private let hairline = CALayer()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        material = .titlebar
+        blendingMode = .withinWindow
+        state = .followsWindowActiveState
+        wantsLayer = true
+        hairline.actions = ["frame": NSNull(), "position": NSNull(), "bounds": NSNull(), "backgroundColor": NSNull()]
+        layer?.addSublayer(hairline)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var isFlipped: Bool { true }
+
+    override func layout() {
+        super.layout()
+        hairline.frame = CGRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
+        updateHairline()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateHairline()
+    }
+
+    private func updateHairline() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            hairline.backgroundColor = NSColor.separatorColor.cgColor
+        }
+    }
+
+    /// A picture only: the toolbar above it takes the clicks.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
 /// A SwiftUI island over or under the timeline that lets the pointer
 /// through where `passesThrough` says, in its own flipped coordinates.
 final class IslandHostingView: NSHostingView<AnyView> {
@@ -189,27 +237,6 @@ private final class PaneView: NSView {
     }
 
     override var isFlipped: Bool { true }
-}
-
-/// The chat's AppKit pane in SwiftUI, in place of the timeline, overlays
-/// and composer the conversation view drew itself.
-struct ConversationPane: NSViewControllerRepresentable {
-    let chatID: String
-    let model: AppModel
-
-    func makeNSViewController(context: Context) -> ConversationViewController {
-        ConversationViewController(chatID: chatID, model: model)
-    }
-
-    /// Whatever it is offered, so SwiftUI never asks the pane's views for
-    /// their size.
-    func sizeThatFits(_ proposal: ProposedViewSize, nsViewController: ConversationViewController, context: Context) -> CGSize? {
-        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 400, height: 400))
-    }
-
-    func updateNSViewController(_ controller: ConversationViewController, context: Context) {
-        controller.show(chatID: chatID)
-    }
 }
 
 private extension View {

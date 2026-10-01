@@ -8,10 +8,9 @@ import ZapFastDesign
 import ZapFastSharedUI
 
 /// Development aid: with `ZAPFAST_SNAPSHOT=/path/to.png` in the environment,
-/// renders the main window's SwiftUI content to a PNG a few seconds after
-/// launch, then keeps running. AppKit islands (the message table, the
-/// composer field) draw as empty space, since `ImageRenderer` only draws
-/// SwiftUI. Absent from release builds.
+/// renders the lock screen or linking to a PNG a few seconds after launch,
+/// then keeps running (`ImageRenderer` draws only SwiftUI, and the chats
+/// are AppKit). Absent from release builds.
 ///
 /// `ZAPFAST_SNAPSHOT_GALLERY=/path/to.png` instead renders every kind of
 /// bubble with made-up content, without starting the backend, and quits.
@@ -154,7 +153,8 @@ enum DebugSnapshot {
         let delay = Double(ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_DELAY"] ?? "") ?? 4
         let scheme: ColorScheme = ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_DARK"] != nil ? .dark : .light
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            let content = RootView(model: model)
+            // The lock screen or linking: ImageRenderer draws SwiftUI only.
+            let content = RootScreen(model: model, locked: model.appLock.isLocked)
                 .frame(width: 1100, height: 740)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .environment(\.colorScheme, scheme)

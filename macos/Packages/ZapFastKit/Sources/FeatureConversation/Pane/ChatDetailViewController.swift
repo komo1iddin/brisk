@@ -1,0 +1,309 @@
+import AppKit
+import Observation
+import SwiftUI
+import ZapFastCore
+import ZapFastDesign
+import ZapFastSharedUI
+
+/// An open chat in an AppKit window: its wallpaper, the chat's pane
+/// (timeline and composer), and the parts of the window that belong to the
+/// chat: the header, search and actions in the toolbar, the search in the
+/// inspector, and the sheets and dialogs SwiftUI presents. The main window
+/// follows the chat picked in the sidebar; a chat's own window shows one.
+///
+/// SwiftUI is used only in islands that lay out on their own changes: the
+/// header, the menus, the sheets' presenter and what floats over the
+/// timeline. The window's size never goes through SwiftUI layout.
+public final class ChatDetailViewController: NSViewController {
+    public enum Source {
+        /// The chat open in the main window.
+        case selected
+        /// One chat, in a window of its own.
+        case chat(String)
+    }
+
+    public static let headerItem = NSToolbarItem.Identifier("ZapFastChatHeader")
+    public static let searchItem = NSToolbarItem.Identifier("ZapFastChatSearch")
+    public static let actionsItem = NSToolbarItem.Identifier("ZapFastChatActions")
+
+    public let model: AppModel
+    private let source: Source
+    public private(set) var chatID: String?
+    /// The chat's name, for the window's title in the Window menu and the
+    /// Dock; nil while no chat is open.
+    public private(set) var chatTitle: String?
+    /// Whether the chat's search is open, which shows the inspector.
+    public private(set) var searchShown = false
+    /// The title or the search changed.
+    public var onChange: () -> Void = {}
+
+    /// The inspector's content: the open chat's search.
+    public private(set) lazy var inspectorController: NSViewController = {
+        let controller = NSHostingController(rootView: AnyView(EmptyView()))
+        controller.sizingOptions = []
+        return controller
+    }()
+
+    private var conversation: ConversationViewController?
+    private let chrome = ConversationChrome()
+    private let wallpaper = PassiveHostingView(rootView: AnyView(EmptyView()))
+    private let placeholder = PassiveHostingView(rootView: AnyView(EmptyView()))
+    private let presenters = PassiveHostingView(rootView: AnyView(EmptyView()))
+    private var header: NSHostingView<AnyView>?
+    private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
+    private var observed = 0
+
+    public init(model: AppModel, source: Source) {
+        self.model = model
+        self.source = source
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override public func loadView() {
+        let view = DetailView()
+        view.wantsLayer = true
+        view.canAccept = { [weak self] in
+            guard let self, let chatID = self.chatID else { return false }
+            return self.model.chats.chat(chatID)?.canSend ?? true
+        }
+        view.onDrop = { [weak self] files in
+            guard let self, let chatID = self.chatID else { return }
+            self.model.stage(files: files, in: chatID)
+        }
+        for island in [wallpaper, placeholder, presenters] as [NSView] {
+            view.addSubview(island)
+        }
+        wallpaper.sizingOptions = []
+        placeholder.sizingOptions = []
+        presenters.sizingOptions = []
+        placeholder.rootView = AnyView(
+            ContentUnavailableView(
+                "No chat selected",
+                systemImage: "bubble.left.and.bubble.right",
+                description: Text("Choose a chat from the list.")
+            )
+        )
+        view.onLayout = { [weak self] in self?.place() }
+        self.view = view
+        observe()
+    }
+
+    // MARK: Following the chat
+
+    private func observe() {
+        observed += 1
+        let round = observed
+        let model = model
+        let source = source
+        let state = withObservationTracking {
+            let id: String? = switch source {
+            case .selected: model.selectedChatID
+            case .chat(let id): id
+            }
+            let chat = id.flatMap { model.chats.chat($0) }
+            return (
+                id: id,
+                title: chat.map { model.chats.title(for: $0) },
+                search: id.map { model.search.chat?.chat == $0 } ?? false
+            )
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self, self.observed == round else { return }
+                    self.observe()
+                }
+            }
+        }
+        if state.id != chatID { show(state.id) }
+        if state.title != chatTitle || state.search != searchShown {
+            chatTitle = state.title
+            searchShown = state.search
+            onChange()
+        }
+    }
+
+    private func show(_ id: String?) {
+        chatID = id
+        chrome.infoRequest = nil
+        let model = model
+        if let id {
+            if let conversation {
+                conversation.show(chatID: id)
+            } else {
+                let conversation = ConversationViewController(chatID: id, model: model)
+                addChild(conversation)
+                view.addSubview(conversation.view, positioned: .above, relativeTo: wallpaper)
+                self.conversation = conversation
+            }
+            wallpaper.rootView = AnyView(ChatWallpaper(chatID: id, model: model))
+            presenters.rootView = AnyView(ConversationPresenters(chatID: id, model: model, chrome: chrome))
+        } else {
+            conversation?.view.removeFromSuperview()
+            conversation?.removeFromParent()
+            conversation = nil
+            wallpaper.rootView = AnyView(EmptyView())
+            presenters.rootView = AnyView(EmptyView())
+        }
+        placeholder.isHidden = id != nil
+        (inspectorController as? NSHostingController<AnyView>)?.rootView = AnyView(ConversationInspector(chatID: id, model: model))
+        updateItems()
+        view.needsLayout = true
+    }
+
+    /// The wallpaper fills the view, under a floating sidebar too; the
+    /// chat keeps clear of what floats beside it, and runs under the title
+    /// bar, where its pane insets the first row.
+    private func place() {
+        let bounds = view.bounds
+        let insets = view.safeAreaInsets
+        let content = CGRect(
+            x: insets.left, y: 0,
+            width: max(0, bounds.width - insets.left - insets.right), height: bounds.height
+        )
+        wallpaper.frame = bounds
+        conversation?.view.frame = content
+        placeholder.frame = content
+        presenters.frame = CGRect(x: content.minX, y: 0, width: 1, height: 1)
+    }
+
+    // MARK: Toolbar
+
+    /// The chat's items for its window's toolbar: the header, search and
+    /// the chat's menu.
+    public func toolbarItem(_ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
+        if let item = items[identifier] { return item }
+        let item: NSToolbarItem
+        switch identifier {
+        case Self.headerItem:
+            let host = NSHostingView(rootView: AnyView(EmptyView()))
+            host.sizingOptions = [.intrinsicContentSize]
+            header = host
+            item = TitleToolbarItem(itemIdentifier: identifier)
+            item.view = host
+            item.label = String(localized: "Chat")
+            item.visibilityPriority = .high
+        case Self.searchItem:
+            item = NSToolbarItem(itemIdentifier: identifier)
+            item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+            item.label = String(localized: "Search in Chat")
+            item.toolTip = String(localized: "Search in this chat (⌘F)")
+            item.isBordered = true
+            item.target = self
+            item.action = #selector(toggleSearch)
+        case Self.actionsItem:
+            let menuItem = NSMenuToolbarItem(itemIdentifier: identifier)
+            menuItem.showsIndicator = true
+            menuItem.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: nil)
+            menuItem.label = String(localized: "Chat")
+            menuItem.toolTip = String(localized: "Chat actions")
+            item = menuItem
+        default:
+            return nil
+        }
+        items[identifier] = item
+        updateItems()
+        return item
+    }
+
+    private func updateItems() {
+        let model = model
+        let chrome = chrome
+        // A menu of its own for each chat: changing a hosting menu's root
+        // view once it was made stops SwiftUI.
+        let actions = items[Self.actionsItem] as? NSMenuToolbarItem
+        if let chatID {
+            header?.rootView = AnyView(ConversationHeader(chatID: chatID, model: model, chrome: chrome))
+            actions?.menu = NSHostingMenu(rootView: ChatActionsMenu(chatID: chatID, model: model))
+        } else {
+            header?.rootView = AnyView(EmptyView())
+            actions?.menu = NSMenu()
+        }
+        for item in items.values {
+            item.isHidden = chatID == nil
+        }
+    }
+
+    @objc private func toggleSearch() {
+        guard let chatID else { return }
+        if model.search.chat?.chat == chatID {
+            model.closeChatSearch()
+        } else {
+            model.openChatSearch(in: chatID)
+        }
+    }
+}
+
+/// The chat's menu, rebuilt as the chat changes (pinned, muted, read).
+private struct ChatActionsMenu: View {
+    let chatID: String
+    let model: AppModel
+
+    var body: some View {
+        if let chat = model.chats.chat(chatID) {
+            ChatActions(chat: chat, model: model)
+        }
+    }
+}
+
+/// The chat's wallpaper, following its theme.
+private struct ChatWallpaper: View {
+    let chatID: String
+    let model: AppModel
+
+    var body: some View {
+        WallpaperView(model.chatTheme(for: chatID).wallpaper)
+    }
+}
+
+/// The header's item, without the glass capsule AppKit puts behind a
+/// toolbar item on macOS 26: the chat's name is a title, as SwiftUI's
+/// header was with `sharedBackgroundVisibility(.hidden)`.
+///
+/// AppKit has no public switch for this yet. The toolbar asks each item
+/// for `glassBehavior`, and 0 is what spaces and the window's own title
+/// answer. Should AppKit stop asking, the header only gains a capsule.
+private final class TitleToolbarItem: NSToolbarItem {
+    @objc var glassBehavior: Int { 0 }
+}
+
+/// Lays itself out through its controller, and takes files dropped on the
+/// chat into the composer.
+private final class DetailView: NSView {
+    var onLayout: () -> Void = {}
+    var canAccept: () -> Bool = { false }
+    var onDrop: ([URL]) -> Void = { _ in }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var isFlipped: Bool { true }
+
+    override func layout() {
+        super.layout()
+        onLayout()
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        files(sender).isEmpty || !canAccept() ? [] : .copy
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        let files = files(sender)
+        guard !files.isEmpty, canAccept() else { return false }
+        onDrop(files)
+        return true
+    }
+
+    private func files(_ sender: any NSDraggingInfo) -> [URL] {
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+        return (urls as? [URL]) ?? []
+    }
+}

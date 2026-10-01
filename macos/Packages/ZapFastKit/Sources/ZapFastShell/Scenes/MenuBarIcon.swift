@@ -15,8 +15,8 @@ final class MenuBarIcon: NSObject, NSMenuDelegate {
     private let model: AppModel
     private var item: NSStatusItem?
     private var shown: (visible: Bool, unread: Bool)?
-    /// Opens the main window when it was closed; set by the window's views.
-    static var openMainWindow: (() -> Void)?
+    /// Brings the main window forward, made again if it was closed.
+    var openMainWindow: () -> Void = {}
 
     init(model: AppModel) {
         self.model = model
@@ -70,31 +70,12 @@ final class MenuBarIcon: NSObject, NSMenuDelegate {
         menu.addItem(withTitle: String(localized: "Quit ZapFast"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
-    /// The scene's own action brings the main window forward, or makes it
-    /// again after it was closed.
     @objc private func open() {
         NSApp.activate()
-        if let openMainWindow = Self.openMainWindow {
-            openMainWindow()
-        } else {
-            NSApp.windows.first(where: \.canBecomeMain)?.makeKeyAndOrderFront(nil)
-        }
+        openMainWindow()
     }
 
     @objc private func lock() {
         model.appLock.lock()
-    }
-}
-
-/// Hands the scene's `openWindow` to the menu bar icon, so it can open the
-/// main window after it was closed.
-struct MainWindowOpener: ViewModifier {
-    @Environment(\.openWindow) private var openWindow
-
-    func body(content: Content) -> some View {
-        content.onAppear {
-            let openWindow = openWindow
-            MenuBarIcon.openMainWindow = { openWindow(id: "main") }
-        }
     }
 }

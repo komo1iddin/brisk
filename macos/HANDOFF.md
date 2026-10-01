@@ -15,7 +15,7 @@ nima qilingan, nima tekshirilishi kerak, nima qolgan va qanday o'lchanadi.
 | Worktree | `~/Developer/Self-projects/zapfast-mac-native-timeline` (branch shu yerda ochiq) |
 | Asos | `main` @ `92981d3`. Tarix chiziqli, merge commit yo'q |
 | Zaxira | `backup/timeline-performance-pre-rebase` (`89ed0db`) |
-| `main`ga qo'shilganmi | **Ha**, 2026-10-01 foydalanuvchi roziligi bilan fast-forward (`b69d4d2`). Push qilinmagan |
+| `main`ga qo'shilganmi | **Ha**, 2026-10-01 foydalanuvchi roziligi bilan fast-forward: lenta ishi (`b69d4d2`), keyin AppKit oyna (`8b1bd61`, branch `appkit-window`). Push qilinmagan |
 | Testlar | 216 (ZapFastCoreTests) + 31 (FeatureConversationTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi |
 
 ```bash
@@ -101,15 +101,15 @@ hujjat (Quick Look, yuklab olish, sudrab chiqarish), ovozli xabar (ijro, pauza, 
 link preview bosish, reaksiya picker, kontekst menyu, matn tanlash, composer (glass), "eng yangi xabar" tugmasi,
 chatlar orasida o'tishda fade, Liquid Glass ko'rinishi.
 
-**Stage A2: to'liq AppKit oyna** (ixtiyoriy, o'lchovga ko'ra). Hozirgi xarajat (benchmark trace):
-- resize qadami 24–27 ms, shundan ~40% SwiftUI (NavigationSplitView, toolbar item'lari);
-- chatni qayta ochish ~40 ms, shundan ~65% SwiftUI graph yangilanishlari (toolbar header, sidebar tanlovi, composer oroli);
-- scroll paytida kursor uchun `setCursorForMouseLocation` ildiz `NSHostingView.hitTest`ga tushadi.
-
-Reja: `NSWindowController` + `NSSplitViewController` (sidebar: `NSHostingController(ChatListView)`, detail: `ConversationViewController`,
-inspector: qidiruv paneli) + `NSToolbar` (header, qidiruv, chat menyusi, filtr va yangi chat `NSHostingMenu` bilan).
-`.searchable` sidebar'da ishlamaydi, qidiruv maydoni sidebar tepasiga o'tadi. Buyruqlar `Settings` scene'iga ko'chadi.
-Avval bayroq ortida (`ZAPFAST_APPKIT_WINDOW=1`) qilinsa, ikkalasini solishtirish mumkin.
+**Stage A2: to'liq AppKit oyna. Bajarildi** (`8b1bd61`, 2026-10-01, foydalanuvchi haqiqiy akkauntda sinadi va ma'qulladi).
+`MainWindowController` → `NSSplitViewController` (`SidebarViewController`, `ChatDetailViewController`, qidiruv inspektori) + bitta
+`NSToolbar`; `ChatWindowController` alohida chat oynasi. Qulf va ulanish ekranlari split view o'rnida. SwiftUI faqat orollarda
+(qatorlar, header, composer, menyular, notice'lar, sheet presenter'lari); Settings va menyu buyruqlari SwiftUI scene.
+Resize (121 qatorli chat, 40 qadam): qadam 20–30 → 16 ms, birinchi qadam 370 → 9–10 ms.
+Ko'rinishni SwiftUI'dagidek qilish uchun: header'da shisha kapsula yo'q (element `glassBehavior` = 0 qaytaradi, yopiq qiymat),
+lenta ustida toolbar ostida `TitleBandView` (titlebar materiali + chiziq), chunki AppKit'ning o'z edge effekti scroll view
+o'zi chizgan fonni talab qiladi, lentaning foni esa orqadagi wallpaper. Debug build'da shell buyruqlari bor (`tree`, `shot`,
+`resize`, `scroll`, `select`, `open`), README'da yozilgan; `shot` ilovaning o'z oynasini ruxsatsiz rasmga oladi.
 
 **Boshqa ochiq ishlar:**
 - Sidebar qatorlari hali SwiftUI (`NSHostingView<AnyView>` har qatorda). Boshqa chatda xabar kelganda p95 ~28 ms.
@@ -122,8 +122,10 @@ Avval bayroq ortida (`ZAPFAST_APPKIT_WINDOW=1`) qilinsa, ikkalasini solishtirish
 
 ## 6. Arxitektura (hozirgi)
 
-- `ConversationView` (SwiftUI): toolbar, sheet'lar, info dialoglar, qidiruv inspector'i, wallpaper, fayl tashlash.
-  Ichida `ConversationPane` (representable) → `ConversationViewController` (AppKit).
+- `MainWindowController` (AppKit): oyna, `NSToolbar`, `RootViewController` (chatlar, qulf yoki ulanish; notice'lar va umumiy sheet'lar).
+  `MainSplitViewController`: `SidebarViewController` (qidiruv, `ChatTableController`, filtr menyusi), `ChatDetailViewController`
+  (wallpaper, `ConversationViewController`, sheet presenter'lari, fayl tashlash, header/qidiruv/menyu toolbar elementlari),
+  inspektor (chat qidiruvi). `ChatWindowController` bitta chat uchun xuddi shu detail'ni ishlatadi.
 - `ConversationViewController`: `TimelineController`ning scroll view'i (oddiy subview), `ConversationOverlay` oroli
   (bosishlarni o'tkazadi), `NewestMessageIsland` (faqat tugma bosiladi), `ConversationBottomBar` (composer, tanlash yoki read-only).
   Lenta kirishlarini (xabarlar, tema, matn o'lchami, unread, tanlash, jump, scroll) `withObservationTracking` bilan kuzatadi.

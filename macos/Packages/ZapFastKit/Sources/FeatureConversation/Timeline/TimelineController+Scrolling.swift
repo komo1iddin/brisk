@@ -17,18 +17,15 @@ extension TimelineController {
     func place(frame: CGRect, topInset: CGFloat, bottomInset: CGFloat = 0) {
         let insets = NSEdgeInsets(top: topInset, left: 0, bottom: bottomInset, right: 0)
         let moved = scrollView.frame != frame
-        // A scroll view that AppKit insets keeps AppKit's top; the bottom is
-        // asked of it as extra safe area.
-        let reinset = !scrollView.automaticallyAdjustsContentInsets
-            && (clip.contentInsets.top != topInset || clip.contentInsets.bottom != bottomInset)
-        let covered = scrollView.additionalSafeAreaInsets.bottom != bottomInset
-        guard moved || reinset || covered else { return }
+        let reinset = clip.contentInsets.top != topInset || clip.contentInsets.bottom != bottomInset
+        guard moved || reinset else { return }
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()
         scrollView.frame = frame
-        scrollView.additionalSafeAreaInsets = NSEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
         if reinset {
             scrollView.contentInsets = insets
+            // The bar runs between the title bar and the composer, never
+            // under either.
             scrollView.scrollerInsets = insets
         }
         if follow {

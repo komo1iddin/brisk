@@ -77,7 +77,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
     }
 
-    let scrollView = NSScrollView()
+    let scrollView = HoverScrollView()
     let tableView = TimelineTableView()
     var chatID: String?
     private var revision: Int?
@@ -170,9 +170,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
-        // Content scrolls under the title bar and the composer; AppKit insets
-        // it, by the title bar and by the safe area `place` gives it.
-        scrollView.automaticallyAdjustsContentInsets = true
+        // Content scrolls under the title bar and the composer; `place` insets
+        // it by both, and keeps the scroll bar clear of them.
+        scrollView.automaticallyAdjustsContentInsets = false
 
         let clip = scrollView.contentView
         clip.postsBoundsChangedNotifications = true

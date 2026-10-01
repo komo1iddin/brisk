@@ -68,7 +68,7 @@ private struct ContactsPage: View {
                         )
                         VStack(alignment: .leading, spacing: 0) {
                             Text(person.name).lineLimit(1)
-                            if let phone = phoneOf(id: person.id) {
+                            if let phone = PhoneFormat.display(id: person.id) {
                                 Text(phone).font(.caption).foregroundStyle(.secondary)
                             }
                         }

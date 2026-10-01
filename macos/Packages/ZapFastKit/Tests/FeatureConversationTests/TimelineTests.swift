@@ -396,7 +396,7 @@ struct DocumentAndLinkBubbleTests {
         )
         let source = try #require(BubbleSource.make(message, startsRun: true, isGroup: true, colors: colors, chats: chats))
         #expect(source.senderName == "~Dilfuza Abdullayeva")
-        #expect(source.senderPhone == phoneOf(id: message.sender))
+        #expect(source.senderPhone == "+998 90 111 22 33")
         let layout = TimelineLayoutEngine.layout(for: source, widthLimit: 560)
         let name = try #require(layout.name)
         let phone = try #require(layout.phone)
@@ -405,6 +405,34 @@ struct DocumentAndLinkBubbleTests {
         // Only on a run's first message, which shows the name.
         let later = try #require(BubbleSource.make(message, startsRun: false, isGroup: true, colors: colors, chats: chats))
         #expect(later.senderPhone == nil)
+        // And not when Settings turns numbers off.
+        let off = try #require(BubbleSource.make(message, startsRun: true, isGroup: true, colors: colors, chats: chats, senderPhones: false))
+        #expect(off.senderPhone == nil)
+    }
+
+    @Test func aQuoteRunsAlmostToTheBubblesSidesWithItsBarOnItsEdge() throws {
+        var reply = MessageRecord(
+            id: "q", chat: "g@g.us", sender: "998901112233@s.whatsapp.net", senderName: "Dilfuza", fromMe: false,
+            timestamp: 1_780_000_000, content: .text(text: "Bu ham to'g'ri", preview: nil), status: .none, deliveredAt: nil, readAt: nil,
+            quoted: nil, reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: nil, summary: ""
+        )
+        reply.quoted = QuotedMessage(
+            id: "o", sender: "998901112244@s.whatsapp.net", senderName: "Aziza",
+            summary: String(repeating: "Savdo palatasidan keladigan asl shakl ", count: 12), mentions: []
+        )
+        let source = try #require(BubbleSource.make(reply, startsRun: false, isGroup: true, colors: colors, chats: chats))
+        #expect(source.quote?.phone == "+998 90 111 22 44")
+        let layout = TimelineLayoutEngine.layout(for: source, widthLimit: 560)
+        let quote = try #require(layout.quote)
+        #expect(quote.rect.minX == TimelineGeometry.quoteInset)
+        #expect(quote.rect.maxX == layout.bubbleSize.width - TimelineGeometry.quoteInset)
+        // The first part of the bubble: close to its top as to its sides.
+        #expect(quote.rect.minY == TimelineGeometry.quoteInset)
+        #expect(quote.bar.minX == quote.rect.minX && quote.bar.height == quote.rect.height)
+        let fonts = TimelineText.bodyFonts(scale: 1)
+        #expect(quote.summary.rect.height == TimelineText.height(ofLines: TimelineGeometry.quoteSummaryLines, fonts.nameDetail))
+        #expect((quote.phone?.rect.maxX ?? 0) <= quote.rect.maxX - TimelineGeometry.quoteTextInset + 0.5)
+        #expect(quote.name.rect.maxX <= (quote.phone?.rect.minX ?? .infinity))
     }
 
     @Test func aDocumentHereHasNoArrowAndAPDFShowsItsPage() throws {

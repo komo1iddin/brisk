@@ -12,8 +12,10 @@ struct MessageBubble: View {
     var endsRun = true
     let model: AppModel
     @Environment(\.chatTheme) private var theme
+    @Environment(\.messageTextScale) private var scale
 
     var body: some View {
+        let nameSize = TimelineText.bodyFonts(scale: scale).name.pointSize
         BubbleStack(spacing: Metrics.xs) {
             if let senderName {
                 // Opens the sender's page in the chat's info, as WhatsApp does.
@@ -22,14 +24,14 @@ struct MessageBubble: View {
                 } label: {
                     HStack(spacing: TimelineGeometry.phoneGap) {
                         Text(senderName)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Palette.sender(message.sender))
+                            .font(.system(size: nameSize, weight: .semibold))
+                            .foregroundStyle(Palette.name(model.chats.nameColor(message.sender, in: message.chat)))
                             .lineLimit(1)
                         // Beside the name of someone not saved, as WhatsApp does.
-                        if let phone = model.chats.unsavedPhone(message.sender), phone != senderName {
+                        if model.preferences.senderPhones, let phone = model.chats.unsavedPhone(message.sender), phone != senderName {
                             Spacer(minLength: 0)
                             Text(phone)
-                                .font(.caption)
+                                .font(.system(size: nameSize))
                                 .foregroundStyle(secondaryText)
                                 .lineLimit(1)
                                 .layoutPriority(1)
@@ -51,6 +53,8 @@ struct MessageBubble: View {
                 QuoteView(quoted: quoted, chat: message.chat, fromMe: message.fromMe, textColor: primaryText, model: model) {
                     model.showQuoted(in: message)
                 }
+                // Almost to the bubble's sides, as WhatsApp's quote runs.
+                .padding(.horizontal, isMedia ? 0 : TimelineGeometry.quoteInset - Metrics.m)
             }
             if let text = inlineFooterText {
                 // The time tucks into the last line, as on the phone: the
@@ -163,33 +167,45 @@ private struct QuoteView: View {
     let show: () -> Void
 
     @State private var picture: NSImage?
+    @Environment(\.messageTextScale) private var scale
 
     var body: some View {
         let preview = QuotePreview(
             quoted, original: quoted.id.isEmpty ? nil : model.conversations.conversation(chat).message(quoted.id)
         )
+        let size = TimelineText.bodyFonts(scale: scale).name.pointSize
+        let name = model.chats.displayName(quoted.sender, hint: quoted.senderName)
+        let nameColor = Palette.name(model.chats.nameColor(quoted.sender, in: chat))
         HStack(spacing: 0) {
-            HStack(spacing: Metrics.s) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(fromMe ? textColor : Palette.sender(quoted.sender))
-                    .frame(width: 3)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(model.chats.displayName(quoted.sender, hint: quoted.senderName))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(fromMe ? textColor : Palette.sender(quoted.sender))
-                    HStack(alignment: .firstTextBaseline, spacing: TimelineGeometry.quoteSymbolGap) {
-                        if let symbol = preview.symbol {
-                            Image(systemName: symbol).font(.callout).opacity(0.7)
-                        }
-                        Text(preview.summary)
-                            .font(.callout)
-                            .lineLimit(2)
-                            .opacity(0.85)
+            // The bar is the quote's left edge, rounded with its corners.
+            Rectangle()
+                .fill(fromMe ? textColor : nameColor)
+                .frame(width: TimelineGeometry.quoteBarWidth)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: TimelineGeometry.phoneGap) {
+                    Text(name)
+                        .font(.system(size: size, weight: .semibold))
+                        .foregroundStyle(fromMe ? textColor : nameColor)
+                        .lineLimit(1)
+                    if model.preferences.senderPhones, model.chats.chat(chat)?.kind == .group,
+                       let phone = model.chats.unsavedPhone(quoted.sender), phone != name {
+                        Spacer(minLength: 0)
+                        Text(phone).font(.system(size: size)).opacity(0.6).lineLimit(1).layoutPriority(1)
                     }
                 }
-                Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: TimelineGeometry.quoteSymbolGap) {
+                    if let symbol = preview.symbol {
+                        Image(systemName: symbol).font(.system(size: size - 1)).opacity(0.7)
+                    }
+                    Text(preview.summary)
+                        .font(.system(size: size))
+                        .lineLimit(TimelineGeometry.quoteSummaryLines)
+                        .opacity(0.75)
+                }
             }
-            .padding(Metrics.s)
+            .padding(.horizontal, TimelineGeometry.quoteTextInset)
+            .padding(.vertical, TimelineGeometry.quoteVerticalPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             if preview.thumbnail != nil {
                 Rectangle()
                     .fill(.quaternary)
@@ -207,7 +223,7 @@ private struct QuoteView: View {
                     }
             }
         }
-        .background(Palette.quoteBar.opacity(0.5))
+        .background(Palette.inset)
         .clipShape(.rect(cornerRadius: Metrics.controlRadius))
         .fixedSize(horizontal: false, vertical: true)
         .contentShape(.rect(cornerRadius: Metrics.controlRadius))

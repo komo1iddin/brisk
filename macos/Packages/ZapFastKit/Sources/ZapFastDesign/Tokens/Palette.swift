@@ -6,13 +6,19 @@ import SwiftUI
 public enum Palette {
     public static let bubbleIncoming = Color("BubbleIncoming", bundle: .module)
     public static let bubbleOutgoingText = Color("BubbleOutgoingText", bundle: .module)
-    public static let quoteBar = Color("QuoteBar", bundle: .module)
     public static let dayChip = Color("DayChip", bundle: .module)
+    /// `AppKitPalette.inset`: a quote's or a card's ground in a bubble.
+    public static let inset = Color(nsColor: AppKitPalette.inset)
 
     /// Outgoing bubbles follow the accent colour the person chose.
     public static var bubbleOutgoing: Color { .accentColor }
 
-    /// Stable per-sender colours for names in group chats.
+    /// `AppKitPalette.name(_:)`: a name's colour in a group chat.
+    public static func name(_ index: Int) -> Color {
+        Color(nsColor: AppKitPalette.name(index))
+    }
+
+    /// Stable per-person colours, for avatars without a photo.
     public static func sender(_ id: String) -> Color {
         let colors: [Color] = [.orange, .pink, .purple, .teal, .indigo, .green, .brown, .cyan, .red, .mint]
         var hash: UInt64 = 5381

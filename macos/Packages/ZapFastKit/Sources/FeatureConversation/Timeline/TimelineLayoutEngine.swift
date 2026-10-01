@@ -70,18 +70,20 @@ nonisolated enum TimelineLayoutEngine {
         let footerHeight = max(timeSize.height, editedSize.height)
 
         // Parts and how wide each would like to be.
-        let name = source.senderName.map { T.line($0, T.captionSemibold, AppKitPalette.sender(source.senderID)) }
-        let phone = source.senderName == nil ? nil : source.senderPhone.map { T.line($0, T.caption, secondary) }
+        let name = source.senderName.map { T.line($0, fonts.name, AppKitPalette.name(source.nameColor)) }
+        let phone = source.senderName == nil ? nil : source.senderPhone.map { T.line($0, fonts.nameDetail, secondary) }
         let phoneRoom = phone.map { T.size($0).width + G.phoneGap } ?? 0
         let forwarded = source.forwarded ? T.line(String(localized: "Forwarded"), T.captionItalic, secondary) : nil
         let quoteName = source.quote.map {
-            T.line($0.name, T.captionSemibold, onAccent ? colors.outgoingText : AppKitPalette.sender($0.senderID))
+            T.line($0.name, fonts.name, onAccent ? colors.outgoingText : AppKitPalette.name($0.nameColor))
         }
+        let quotePhone = source.quote?.phone.map { T.line($0, fonts.nameDetail, T.faded(textColor, 0.6)) }
+        let quotePhoneRoom = quotePhone.map { T.size($0).width + G.phoneGap } ?? 0
         let quoteSummary = source.quote.map { quote -> NSAttributedString in
             let paragraph = NSMutableParagraphStyle()
             paragraph.lineBreakMode = .byWordWrapping
             return NSAttributedString(string: quote.summary, attributes: [
-                .font: T.callout, .foregroundColor: T.faded(textColor, 0.85), .paragraphStyle: paragraph,
+                .font: fonts.nameDetail, .foregroundColor: T.faded(textColor, 0.75), .paragraphStyle: paragraph,
             ])
         }
         let placeholderColor = T.faded(textColor, 0.75)
@@ -108,7 +110,9 @@ nonisolated enum TimelineLayoutEngine {
             pictureSize = CGSize(width: contentLimit, height: (pictureSize.height * contentLimit / pictureSize.width).rounded())
         }
 
-        let quoteChrome = G.quotePadding * 3 + G.quoteBarWidth
+        // The quote reaches past the text's sides into the bubble's padding.
+        let quoteReach = max(0, side - G.quoteInset) * 2
+        let quoteChrome = G.quoteBarWidth + G.quoteTextInset * 2
         let placeholderChrome = G.placeholderIconWidth + G.placeholderSpacing
         let width: CGFloat
         if media {
@@ -127,7 +131,8 @@ nonisolated enum TimelineLayoutEngine {
             if let quote = source.quote, let quoteName, let quoteSummary {
                 let symbol = quote.symbol == nil ? 0 : G.quoteSymbolWidth + G.quoteSymbolGap
                 let picture = quote.thumbnail == nil ? 0 : G.quoteThumbnail
-                ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, symbol + T.size(quoteSummary).width) + picture)
+                let texts = max(T.size(quoteName).width + quotePhoneRoom, symbol + T.size(quoteSummary).width)
+                ideal = max(ideal, quoteChrome - quoteReach + texts + picture)
             }
             if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
             ideal = max(ideal, pictureSize.width)
@@ -141,7 +146,10 @@ nonisolated enum TimelineLayoutEngine {
         let left = side
         let textLeft = side + inset
         let textWidth = width - inset * 2
-        var y = top
+        // A quote that comes first sits close to the bubble's top, as its
+        // sides sit close to the bubble's sides.
+        let quoteFirst = source.quote != nil && name == nil && forwarded == nil && !media && !bare
+        var y = quoteFirst ? G.quoteInset : top
         func advance(_ height: CGFloat) -> CGFloat {
             defer { y += height + G.partSpacing }
             return y
@@ -151,10 +159,11 @@ nonisolated enum TimelineLayoutEngine {
         let namePiece = name.map { string in
             let height = T.size(string).height
             let top = advance(height)
-            // The number keeps its room; a long name is cut short.
+            // The number keeps its room; a long name is cut short, down to
+            // a few letters.
             if let phone {
                 let size = T.size(phone)
-                let width = min(size.width, max(0, textWidth / 2))
+                let width = min(size.width, max(0, textWidth - G.phoneGap - G.shortestName))
                 phonePiece = TextPiece(string: phone, rect: CGRect(
                     x: textLeft + textWidth - width, y: top + ((height - size.height) / 2).rounded(), width: width, height: size.height
                 ))
@@ -175,28 +184,44 @@ nonisolated enum TimelineLayoutEngine {
         var quote: BubbleLayout.QuoteLayout?
         if let source = source.quote, let quoteName, let quoteSummary {
             let picture = source.thumbnail == nil ? 0 : G.quoteThumbnail
-            let textWidth = max(1, width - quoteChrome - picture)
+            let quoteLeft = left - quoteReach / 2
+            let quoteWidth = width + quoteReach
+            let textWidth = max(1, quoteWidth - quoteChrome - picture)
             let symbolRoom = source.symbol == nil ? 0 : G.quoteSymbolWidth + G.quoteSymbolGap
             let summaryWidth = max(1, textWidth - symbolRoom)
-            let nameHeight = T.height(ofLines: 1, T.captionSemibold)
-            let summaryHeight = min(T.size(quoteSummary, width: summaryWidth).height, twoCalloutLines)
-            let height = max(G.quotePadding * 2 + nameHeight + 1 + summaryHeight, picture)
-            let rect = CGRect(x: left, y: advance(height), width: width, height: height)
-            let textX = rect.minX + G.quotePadding * 2 + G.quoteBarWidth
-            let summaryY = rect.minY + G.quotePadding + nameHeight + 1
+            let nameHeight = T.height(ofLines: 1, fonts.name)
+            let summaryHeight = min(
+                T.size(quoteSummary, width: summaryWidth).height, T.height(ofLines: G.quoteSummaryLines, fonts.nameDetail)
+            )
+            let height = max(G.quoteVerticalPadding * 2 + nameHeight + 2 + summaryHeight, picture)
+            let rect = CGRect(x: quoteLeft, y: advance(height), width: quoteWidth, height: height)
+            let textX = rect.minX + G.quoteBarWidth + G.quoteTextInset
+            let nameY = rect.minY + G.quoteVerticalPadding
+            let summaryY = nameY + nameHeight + 2
+            // The quoted sender's number keeps its room on the name's line.
+            let phonePiece = quotePhone.map { phone in
+                let size = T.size(phone)
+                let width = min(size.width, max(0, textWidth - G.phoneGap - G.shortestName))
+                return TextPiece(string: phone, rect: CGRect(
+                    x: textX + textWidth - width, y: nameY + ((nameHeight - size.height) / 2).rounded(), width: width, height: size.height
+                ))
+            }
+            let nameWidth = phonePiece.map { $0.rect.minX - G.phoneGap - textX } ?? textWidth
             quote = .init(
                 rect: rect,
-                bar: CGRect(x: rect.minX + G.quotePadding, y: rect.minY + G.quotePadding, width: G.quoteBarWidth, height: height - G.quotePadding * 2),
-                barColor: onAccent ? colors.outgoingText : AppKitPalette.sender(source.senderID),
-                name: TextPiece(string: quoteName, rect: CGRect(x: textX, y: rect.minY + G.quotePadding, width: textWidth, height: nameHeight)),
+                bar: CGRect(x: rect.minX, y: rect.minY, width: G.quoteBarWidth, height: height),
+                barColor: onAccent ? colors.outgoingText : AppKitPalette.name(source.nameColor),
+                name: TextPiece(string: quoteName, rect: CGRect(x: textX, y: nameY, width: max(1, nameWidth), height: nameHeight)),
+                phone: phonePiece,
                 summary: TextPiece(string: quoteSummary, rect: CGRect(
                     x: textX + symbolRoom, y: summaryY, width: summaryWidth, height: summaryHeight
                 )),
                 symbol: source.symbol,
                 symbolRect: source.symbol.map { _ in
-                    CGRect(x: textX, y: summaryY, width: G.quoteSymbolWidth, height: T.height(ofLines: 1, T.callout))
+                    CGRect(x: textX, y: summaryY, width: G.quoteSymbolWidth, height: T.height(ofLines: 1, fonts.nameDetail))
                 },
                 symbolColor: T.faded(textColor, 0.7),
+                symbolSize: fonts.nameDetail.pointSize - 1,
                 thumbnail: source.thumbnail == nil ? nil : CGRect(x: rect.maxX - picture, y: rect.minY, width: picture, height: height),
                 thumbnailData: source.thumbnail
             )
@@ -520,8 +545,6 @@ nonisolated enum TimelineLayoutEngine {
             accessibilityTitle: title
         )
     }
-
-    private static let twoCalloutLines = TimelineText.height(ofLines: 2, TimelineText.callout)
 
     /// Reactions grouped by emoji, most chosen first, as `ReactionPills`;
     /// ours unmarked, as on the phone.

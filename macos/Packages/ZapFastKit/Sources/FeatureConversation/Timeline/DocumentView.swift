@@ -101,7 +101,7 @@ final class DocumentView: AttachmentView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            card.backgroundColor = TimelineText.faded(AppKitPalette.quoteBar, 0.5).cgColor
+            card.backgroundColor = AppKitPalette.inset.cgColor
             divider.backgroundColor = NSColor.separatorColor.cgColor
         }
         texts.appearance = effectiveAppearance
@@ -294,7 +294,7 @@ final class LinkPreviewView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            card.backgroundColor = TimelineText.faded(AppKitPalette.quoteBar, 0.5).cgColor
+            card.backgroundColor = AppKitPalette.inset.cgColor
         }
         texts.appearance = effectiveAppearance
         CATransaction.commit()

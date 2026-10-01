@@ -122,6 +122,12 @@ public final class Preferences {
         didSet { defaults.set(voiceAvatars, forKey: Key.voiceAvatars) }
     }
 
+    /// In a group, the number of someone not saved shows beside their name,
+    /// over their messages and in quotes of them, as on the phone.
+    public var senderPhones: Bool {
+        didSet { defaults.set(senderPhones, forKey: Key.senderPhones) }
+    }
+
     /// The app lock's password verifier (upstream's salted PBKDF2); nil
     /// leaves the lock off. The password itself is never kept.
     public var appLockVerifier: String? {
@@ -163,6 +169,7 @@ public final class Preferences {
             Key.mentionSound: NotificationSoundInfo.alert.storageValue,
             Key.groupSounds: true,
             Key.voiceAvatars: true,
+            Key.senderPhones: true,
             Key.enterSends: true,
             Key.menuBarIcon: true,
             Key.textScale: 1.0,
@@ -181,6 +188,7 @@ public final class Preferences {
         mentionSound = defaults.string(forKey: Key.mentionSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .alert
         groupSounds = defaults.bool(forKey: Key.groupSounds)
         voiceAvatars = defaults.bool(forKey: Key.voiceAvatars)
+        senderPhones = defaults.bool(forKey: Key.senderPhones)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
         lastChat = defaults.string(forKey: Key.lastChat)
@@ -211,6 +219,7 @@ public final class Preferences {
         static let mentionSound = "mentionSound"
         static let groupSounds = "groupSounds"
         static let voiceAvatars = "voiceAvatars"
+        static let senderPhones = "senderPhones"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
         static let lastChat = "lastChat"

@@ -466,7 +466,7 @@ public final class AppModel {
                 return member.name.trimmingPrefix("~").lowercased().contains(needle)
                     || (!digits.isEmpty && (MentionEncoding.user(of: member.id)?.contains(digits) ?? false))
             }
-            .map { MentionCandidate(id: $0.id, name: $0.name, phone: phoneOf(id: $0.id)) }
+            .map { MentionCandidate(id: $0.id, name: $0.name, phone: PhoneFormat.display(id: $0.id)) }
     }
 
     /// A member was picked; the composer now holds `@name` for them.
@@ -2343,7 +2343,7 @@ public final class AppModel {
             }
         case let .contactReady(id, name):
             newContactPending = false
-            startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? phoneOf(id: id))
+            startChat(with: id, name: name.flatMap { $0.isEmpty ? nil : $0 } ?? PhoneFormat.display(id: id))
         case let .groupSaving(chat, saving):
             if saving { groupSaving.insert(chat) } else { groupSaving.remove(chat) }
         case let .interactiveReplyState(chat, message, pending):

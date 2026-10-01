@@ -11,6 +11,10 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         var name: String
         var summary: String
         var senderID: String
+        /// The quoted sender's number, when they are not saved.
+        var phone: String?
+        /// Their name's colour in this chat (`NameColors`).
+        var nameColor = 0
         /// The quoted message's kind, before the summary.
         var symbol: String?
         /// Its picture, on the quote's right.
@@ -175,6 +179,8 @@ nonisolated struct BubbleSource: Equatable, Sendable {
     var senderName: String?
     /// Beside the name, when the sender is not a saved contact.
     var senderPhone: String?
+    /// The name's colour in this chat (`NameColors`).
+    var nameColor = 0
     var senderID: String
     var forwarded: Bool
     var quote: Quote?
@@ -206,14 +212,17 @@ nonisolated struct TextPiece: @unchecked Sendable {
 nonisolated final class BubbleLayout: @unchecked Sendable {
     struct QuoteLayout {
         var rect: CGRect
+        /// Flush with the quote's left edge, rounded with it.
         var bar: CGRect
         var barColor: NSColor
         var name: TextPiece
+        var phone: TextPiece?
         var summary: TextPiece
         /// The kind's symbol at the start of the summary's first line.
         var symbol: String?
         var symbolRect: CGRect?
         var symbolColor: NSColor
+        var symbolSize: CGFloat
         /// The quoted message's picture, flush with the quote's right edge.
         var thumbnail: CGRect?
         var thumbnailData: Data?
@@ -455,10 +464,18 @@ nonisolated enum TimelineGeometry {
     /// The footer hangs this far below the text's last line.
     static let footerDrop: CGFloat = 2
     static let ticksWidth: CGFloat = 14
-    /// Between a sender's name and their number.
+    /// Between a sender's name and their number, and the least of the
+    /// name the number leaves.
     static let phoneGap = Metrics.m
-    static let quotePadding = Metrics.s
-    static let quoteBarWidth: CGFloat = 3
+    static let shortestName: CGFloat = 60
+    /// A quote runs almost to the bubble's sides, as WhatsApp's does, its
+    /// bar flush with its left edge; text sits this far in from the bar and
+    /// the right edge, and this far from the top and bottom.
+    static let quoteInset = Metrics.xs
+    static let quoteBarWidth: CGFloat = 4
+    static let quoteTextInset = Metrics.s
+    static let quoteVerticalPadding: CGFloat = 6
+    static let quoteSummaryLines = 3
     /// The quoted message's picture: this wide, the quote's height, and the
     /// quote no shorter.
     static let quoteThumbnail: CGFloat = 46
@@ -493,10 +510,18 @@ nonisolated enum TimelineText {
         let code: NSFont
         /// A message of emoji alone.
         let largeEmoji: NSFont
+        /// A sender's name over their message and in a quote, as WhatsApp
+        /// sets it: a little smaller than the text, semibold; their number
+        /// and a quote's text at the same size.
+        let name: NSFont
+        let nameDetail: NSFont
         let dotWidth: CGFloat
 
         init(scale: Double) {
             body = NSFont.systemFont(ofSize: NSFont.systemFontSize * scale)
+            let nameSize = (body.pointSize * 0.92).rounded()
+            name = NSFont.systemFont(ofSize: nameSize, weight: .semibold)
+            nameDetail = NSFont.systemFont(ofSize: nameSize)
             bold = TimelineText.styled(body, .bold)
             italic = TimelineText.styled(body, .italic)
             code = NSFont.monospacedSystemFont(ofSize: body.pointSize, weight: .regular)

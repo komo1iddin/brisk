@@ -145,7 +145,7 @@ private struct Carousel: View {
                         ButtonList(message: message, buttons: card.buttons, sends: false, model: model)
                     }
                     .frame(width: 220, alignment: .topLeading)
-                    .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+                    .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
                     .clipShape(.rect(cornerRadius: Metrics.controlRadius))
                 }
             }

@@ -97,7 +97,7 @@ private struct ContactNameSheet: View {
                 TextField("First name", text: $first)
                 TextField("Last name", text: $last)
             } header: {
-                Text(phoneOf(id: id) ?? model.chats.displayName(id))
+                Text(PhoneFormat.display(id: id) ?? model.chats.displayName(id))
             } footer: {
                 Text(model.preferences.saveContactsToPhone
                      ? "The name is also saved to your phone's contacts."

@@ -91,7 +91,7 @@ struct ForwardSheet: View {
             let members = model.chats.participantNames(chat)
             return members.isEmpty || members == model.chats.title(for: chat) ? nil : members
         case .direct:
-            guard let phone = chat.phone, phone != model.chats.title(for: chat) else { return nil }
+            guard let phone = PhoneFormat.display(id: chat.id) ?? chat.phone, phone != model.chats.title(for: chat) else { return nil }
             return phone
         case .broadcast:
             return nil

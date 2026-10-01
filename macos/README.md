@@ -9,13 +9,16 @@ as-is. Only the interface is new: SwiftUI and AppKit, designed to Apple's HIG.
 
 1. **Never edit upstream files.** Everything outside `macos/` belongs to
    upstream. That keeps `git merge upstream/main` free of conflicts. When the
-   bridge needs something upstream lacks, propose it upstream.
+   bridge needs something upstream lacks, propose it upstream. The one
+   exception so far is listed under [Following upstream](#following-upstream).
 2. **The Rust side is the contract.** Swift talks to upstream only through
    `zapfast::backend::{Command, Event}`, via `macos/Bridge`. Protocol,
    storage and sync behaviour are never reimplemented in Swift.
 3. **Pure upstream rules are exported, not copied.** Functions such as
    `search_key` and `phone_of` are exported from the bridge, so Swift behaves
-   exactly like upstream.
+   exactly like upstream. Numbers are written with PhoneNumberKit
+   (libphonenumber's formats, as WhatsApp writes them) once `phone_of` says
+   an id is a phone number.
 4. **Privacy as upstream:** never log message contents, phone numbers, keys
    or QR payloads, and never read `archive.db` contents while debugging.
 
@@ -337,10 +340,16 @@ A downloaded photo, video or document drags out of its bubble to the
 Finder or another app, under the name it was sent with (a copy, so
 ZapFast's own file stays).
 
-A document shows the icon the Finder gives its kind (Excel's or Word's
-when they are installed) and, above it, the top of its first page: a
-PDF's drawn by Quick Look once the file is here, else the sender's
-preview.
+A document shows a badge for its kind, as WhatsApp's do (a red PDF, a
+blue W), and, above it, the top of its first page: a PDF's drawn by Quick
+Look once the file is here, else the page preview WhatsApp keeps on its
+media servers, fetched once when the document first shows, else the
+sender's small inline preview.
+
+In a group, someone not in your contacts has their number beside their
+name, over their messages and in quotes of them; Settings › Chats turns
+the numbers off. Names take WhatsApp's colours, one of their own for each
+member of the group while there are enough.
 
 Voice messages show the photo of whoever recorded them at the end of the
 player, with a microphone that turns blue once yours was played; while
@@ -454,3 +463,8 @@ and builds the bridge. A compile error then says exactly what changed:
 
 If the app stops linking after a bump, run `Scripts/print-link-libs.sh` and
 update the `ZapFastBridge` linker settings in `Package.swift`.
+
+One change lives in upstream's files in this fork, to be offered upstream:
+fetching a document's page preview (`Command::FetchPreview`,
+`src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`). A merge
+may conflict there; keep upstream's side and re-apply that commit.

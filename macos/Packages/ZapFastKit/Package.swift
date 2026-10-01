@@ -30,6 +30,10 @@ let package = Package(
     products: [
         .library(name: "ZapFastShell", targets: ["ZapFastShell"]),
     ],
+    dependencies: [
+        // libphonenumber's formats, for numbers written as WhatsApp writes them.
+        .package(url: "https://github.com/PhoneNumberKit/PhoneNumberKit", from: "5.0.11"),
+    ],
     targets: [
         // Rust static library and C header, built by Scripts/build-bridge.sh.
         .binaryTarget(
@@ -66,7 +70,7 @@ let package = Package(
         // State, intents, and the backend connection. No views.
         .target(
             name: "ZapFastCore",
-            dependencies: ["ZapFastBridge"],
+            dependencies: ["ZapFastBridge", .product(name: "PhoneNumberKit", package: "PhoneNumberKit")],
             swiftSettings: uiSettings
         ),
 

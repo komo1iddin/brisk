@@ -75,7 +75,7 @@ private struct AccountSettings: View {
                     )
                     VStack(alignment: .leading, spacing: Metrics.xxs) {
                         Text(account?.name ?? String(localized: "Linked device")).font(.headline)
-                        Text(account.flatMap { phoneOf(id: $0.id) } ?? "").foregroundStyle(.secondary)
+                        Text(account.flatMap { PhoneFormat.display(id: $0.id) } ?? "").foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button("Change Picture…") { choosingPicture = true }
@@ -253,6 +253,7 @@ private struct ChatSettings: View {
                     Text(verbatim: "A").font(.title3)
                 }
                 Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
+                Toggle("Show the numbers of people not in your contacts in groups", isOn: $preferences.senderPhones)
             } header: {
                 Text("Messages")
             } footer: {

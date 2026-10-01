@@ -675,14 +675,15 @@ private struct ReplyPreview: View {
     let cancel: () -> Void
 
     var body: some View {
+        let nameColor = Palette.name(model.chats.nameColor(message.sender, in: message.chat))
         HStack(spacing: Metrics.s) {
             RoundedRectangle(cornerRadius: 2)
-                .fill(Palette.sender(message.sender))
+                .fill(nameColor)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Replying to \(model.chats.displayName(message.sender, hint: message.senderName))")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Palette.sender(message.sender))
+                    .foregroundStyle(nameColor)
                 Text(message.summary)
                     .font(.callout)
                     .foregroundStyle(.secondary)

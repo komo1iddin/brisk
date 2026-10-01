@@ -81,7 +81,7 @@ struct ChatHeader: View {
                 if presence.online { return String(localized: "online") }
                 if let seen = presence.lastSeen { return DateText.lastSeen(seen) }
             }
-            return chat.phone ?? ""
+            return PhoneFormat.display(id: chat.id) ?? chat.phone ?? ""
         }
     }
 }

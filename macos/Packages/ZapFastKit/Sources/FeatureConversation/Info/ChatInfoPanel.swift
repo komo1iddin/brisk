@@ -163,7 +163,7 @@ private struct InfoPage: View {
 
     private func phone(_ chat: ChatSummary?) -> String? {
         guard chat?.kind != .group else { return nil }
-        return chat?.phone ?? phoneOf(id: id)
+        return PhoneFormat.display(id: id) ?? chat?.phone
     }
 
     // MARK: Header

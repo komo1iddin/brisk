@@ -460,6 +460,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                     guard !swiftUIRows, let source = BubbleSource.make(
                         message, startsRun: startsRun, endsRun: endsRun, isGroup: isGroup, colors: colors, chats: model.chats,
                         voiceAvatars: model.preferences.voiceAvatars,
+                        senderPhones: model.preferences.senderPhones,
                         playingVoice: { model.voice.current.flatMap { $0.chat == chat ? $0.message : nil } },
                         own: model.session.account.map { ($0.id, $0.name ?? "") },
                         original: original

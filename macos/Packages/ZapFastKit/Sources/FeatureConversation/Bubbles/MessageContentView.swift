@@ -69,7 +69,7 @@ struct MessageContentView: View {
                     Text("View").font(.callout.weight(.semibold))
                 }
                 .padding(Metrics.s)
-                .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+                .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
@@ -178,7 +178,7 @@ private struct ContactCard: View {
             }
         }
         .frame(minWidth: 240)
-        .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+        .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
         .accessibilityElement(children: .contain)
     }
 
@@ -226,7 +226,7 @@ private struct LinkPreviewCard: View {
             Spacer(minLength: 0)
         }
         .padding(Metrics.s)
-        .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+        .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
         .task(id: key) {
             guard let thumbnail else { return }
             image = await Thumbnails.load(thumbnail, key: "preview-\(key)", points: 56)
@@ -512,7 +512,7 @@ private struct DocumentContent: View {
                 .padding(Metrics.s)
             }
             .frame(width: Self.width)
-            .background(Palette.quoteBar.opacity(0.5))
+            .background(Palette.inset)
             .clipShape(.rect(cornerRadius: Metrics.controlRadius))
             .contentShape(.rect(cornerRadius: Metrics.controlRadius))
         }

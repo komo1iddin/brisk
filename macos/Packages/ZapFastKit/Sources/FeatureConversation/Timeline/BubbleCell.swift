@@ -927,8 +927,7 @@ nonisolated private final class BubbleChromeLayer: CALayer {
         }
     }
 
-    @MainActor
-    private static let quoteFill = TimelineText.faded(AppKitPalette.quoteBar, 0.5)
+
     @MainActor
     private static let capsuleFill = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -949,15 +948,19 @@ nonisolated private final class BubbleChromeLayer: CALayer {
             forwarded.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         }
         if let quote = layout.quote {
-            // Half the bar colour's own alpha, as SwiftUI's `opacity` does;
-            // `withAlphaComponent` would replace it.
-            quoteFill.setFill()
-            NSBezierPath(roundedRect: quote.rect, xRadius: Metrics.controlRadius, yRadius: Metrics.controlRadius).fill()
+            let shape = NSBezierPath(roundedRect: quote.rect, xRadius: Metrics.controlRadius, yRadius: Metrics.controlRadius)
+            AppKitPalette.inset.setFill()
+            shape.fill()
+            // The bar is the quote's left edge, rounded with its corners.
+            NSGraphicsContext.saveGraphicsState()
+            shape.addClip()
             quote.barColor.setFill()
-            NSBezierPath(roundedRect: quote.bar, xRadius: 2, yRadius: 2).fill()
+            quote.bar.fill()
+            NSGraphicsContext.restoreGraphicsState()
             quote.name.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+            quote.phone?.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
             if let symbol = quote.symbol, let rect = quote.symbolRect {
-                Symbols.draw(symbol, in: rect, pointSize: TimelineText.callout.pointSize - 1, weight: .regular, color: quote.symbolColor)
+                Symbols.draw(symbol, in: rect, pointSize: quote.symbolSize, weight: .regular, color: quote.symbolColor)
             }
             quote.summary.draw(options: [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine])
         }

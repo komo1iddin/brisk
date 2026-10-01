@@ -222,7 +222,7 @@ public final class ChatStore {
         if let chat = chats[id], !chat.name.isEmpty, !chat.name.allSatisfy(\.isNumber) {
             return chat.name
         }
-        return phoneOf(id: id) ?? String(localized: "Unknown")
+        return PhoneFormat.display(id: id) ?? String(localized: "Unknown")
     }
 
     /// The number shown beside a group member's name when they are not a
@@ -231,14 +231,30 @@ public final class ChatStore {
     public func unsavedPhone(_ id: String) -> String? {
         guard contacts[id]?.fullName.nonEmpty == nil, !session.isOurs(id) else { return nil }
         // Asked of every run in a group each time its rows are made; the
-        // answer for an id never changes, and asking Rust costs a call.
+        // answer for an id never changes, and finding it costs a call into
+        // Rust and libphonenumber.
         if let known = phones[id] { return known }
-        let phone = phoneOf(id: id)
+        let phone = PhoneFormat.display(id: id)
         phones[id] = phone
         return phone
     }
 
     @ObservationIgnored private var phones: [String: String?] = [:]
+
+    /// A person's name colour in a chat (`NameColors`): in a group, one of
+    /// their own among its members; elsewhere the one their id leads to.
+    public func nameColor(_ person: String, in chat: String) -> Int {
+        guard let members = chats[chat]?.participants, !members.isEmpty else { return NameColors.hashed(person) }
+        if let known = nameColors[chat], known.members == members {
+            return known.colors[person] ?? NameColors.hashed(person)
+        }
+        let colors = NameColors.assign(members: members)
+        nameColors[chat] = (members, colors)
+        return colors[person] ?? NameColors.hashed(person)
+    }
+
+    /// Each group's colours, made again when its members change.
+    @ObservationIgnored private var nameColors: [String: (members: [String], colors: [String: Int])] = [:]
 
     /// "Name (You)" as on the phone.
     public var selfTitle: String {

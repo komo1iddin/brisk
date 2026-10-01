@@ -22,6 +22,7 @@ extension BubbleSource {
         colors: BubbleColors,
         chats: ChatStore,
         voiceAvatars: Bool = true,
+        senderPhones: Bool = true,
         playingVoice: () -> String? = { nil },
         own: (id: String, name: String)? = nil,
         original: (String) -> MessageRecord? = { _ in nil }
@@ -89,14 +90,19 @@ extension BubbleSource {
                 uniquingKeysWith: { first, _ in first }
             ),
             senderName: senderName,
-            senderPhone: senderName == nil ? nil : chats.unsavedPhone(message.sender).flatMap { $0 == senderName ? nil : $0 },
+            senderPhone: senderName == nil || !senderPhones
+                ? nil : chats.unsavedPhone(message.sender).flatMap { $0 == senderName ? nil : $0 },
+            nameColor: senderName == nil ? 0 : chats.nameColor(message.sender, in: message.chat),
             senderID: message.sender,
             forwarded: message.forwarded,
             quote: message.quoted.map { quoted in
                 let preview = QuotePreview(quoted, original: quoted.id.isEmpty ? nil : original(quoted.id))
+                let name = chats.displayName(quoted.sender, hint: quoted.senderName)
                 return .init(
-                    name: chats.displayName(quoted.sender, hint: quoted.senderName), summary: preview.summary,
-                    senderID: quoted.sender, symbol: preview.symbol, thumbnail: preview.thumbnail
+                    name: name, summary: preview.summary, senderID: quoted.sender,
+                    phone: isGroup && senderPhones ? chats.unsavedPhone(quoted.sender).flatMap { $0 == name ? nil : $0 } : nil,
+                    nameColor: chats.nameColor(quoted.sender, in: message.chat),
+                    symbol: preview.symbol, thumbnail: preview.thumbnail
                 )
             },
             edited: message.edited,

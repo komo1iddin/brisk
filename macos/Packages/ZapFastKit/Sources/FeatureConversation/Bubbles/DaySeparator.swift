@@ -28,8 +28,8 @@ private struct TimelineChip: View {
 
     var body: some View {
         Text(title)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.primary)
             .padding(.horizontal, Metrics.m)
             .padding(.vertical, Metrics.xs)
             .background(theme.chip, in: Capsule())

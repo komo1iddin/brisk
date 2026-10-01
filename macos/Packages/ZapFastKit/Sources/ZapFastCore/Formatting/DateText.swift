@@ -28,7 +28,9 @@ public nonisolated enum DateText {
         date(unixSeconds).formatted(date: .omitted, time: .shortened)
     }
 
-    /// Day separator: "Today", "Yesterday", a weekday, or a full date.
+    /// Day separator: "Today", "Yesterday", a weekday within the week, else
+    /// the short weekday and date as WhatsApp writes them ("Sun, 6 Sep"),
+    /// with the year when it is not this one.
     public static func day(_ unixSeconds: Int64, now: Date = .now, calendar: Calendar = .current) -> String {
         let date = date(unixSeconds)
         if calendar.isDateInToday(date) { return String(localized: "Today") }
@@ -37,9 +39,8 @@ public nonisolated enum DateText {
             return date.formatted(.dateTime.weekday(.wide))
         }
         let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
-        return sameYear
-            ? date.formatted(.dateTime.day().month(.wide))
-            : date.formatted(.dateTime.day().month(.wide).year())
+        let style = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+        return date.formatted(sameYear ? style : style.year())
     }
 
     /// When a receipt arrived (upstream's `moment_stamp`): the time today,

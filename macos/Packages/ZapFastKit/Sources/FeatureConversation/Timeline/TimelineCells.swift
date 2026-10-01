@@ -7,7 +7,8 @@ import ZapFastDesign
 // MARK: - Day separator and unread divider
 
 /// `DaySeparator` and `UnreadSeparator` drawn by Core Animation: a caption
-/// in a capsule of the theme's chip colour, centred.
+/// in a capsule of the theme's chip colour, centred, in the text colour as
+/// WhatsApp's are.
 final class ChipCell: NSView {
     static let identifier = NSUserInterfaceItemIdentifier("TimelineChip")
 
@@ -18,7 +19,7 @@ final class ChipCell: NSView {
 
     /// The chip's size and the row's height for a title.
     static func measure(_ title: String) -> (text: NSAttributedString, chip: CGSize, rowHeight: CGFloat) {
-        let string = TimelineText.line(title, TimelineText.captionMedium, .secondaryLabelColor)
+        let string = TimelineText.line(title, TimelineText.captionSemibold, .labelColor)
         let size = TimelineText.size(string)
         let chip = CGSize(width: size.width + Metrics.m * 2, height: size.height + Metrics.xs * 2)
         return (string, chip, chip.height + Metrics.s * 2)

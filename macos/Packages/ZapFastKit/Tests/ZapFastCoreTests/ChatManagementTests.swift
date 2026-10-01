@@ -159,6 +159,22 @@ struct ChatManagementTests {
         #expect(DateText.moment(yesterday, now: now, calendar: calendar).hasPrefix("Yesterday at "))
     }
 
+    @Test func daySeparatorsNameTheWeekdayAndTheYearOnlyWhenNotThisOne() {
+        // Midday in the middle of a year, so no time zone moves the dates.
+        let now = Date(timeIntervalSince1970: 1_783_771_200) // 2026-07-11 12:00 UTC
+        let calendar = Calendar.current
+        func day(daysAgo days: Double) -> (title: String, date: Date) {
+            let date = now.addingTimeInterval(-days * 86_400)
+            return (DateText.day(Int64(date.timeIntervalSince1970), now: now, calendar: calendar), date)
+        }
+        let thisYear = day(daysAgo: 30)
+        #expect(thisYear.title.contains(thisYear.date.formatted(.dateTime.weekday(.abbreviated))), "\(thisYear.title)")
+        #expect(!thisYear.title.contains("2026"), "\(thisYear.title)")
+        let lastYear = day(daysAgo: 300)
+        #expect(lastYear.title.contains(lastYear.date.formatted(.dateTime.weekday(.abbreviated))), "\(lastYear.title)")
+        #expect(lastYear.title.contains("2025"), "\(lastYear.title)")
+    }
+
     @Test func lastSeenNamesTheDayAndTheTimeAsThePhoneDoes() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .gmt

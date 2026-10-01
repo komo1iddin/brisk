@@ -7,13 +7,14 @@ import ZapFastSharedUI
 /// What floats over the timeline and takes no clicks: the spinner while
 /// older messages come, and the note in a chat with nothing yet.
 struct ConversationOverlay: View {
-    let chatID: String
-    let model: AppModel
+    let pane: ConversationPaneState
 
     var body: some View {
         ZStack {
-            EmptyConversation(chatID: chatID, model: model)
-            LoadingOlder(chatID: chatID, model: model)
+            if pane.empty {
+                EmptyConversation()
+            }
+            LoadingOlder(loading: pane.loadingOlder)
                 .frame(maxHeight: .infinity, alignment: .top)
         }
     }
@@ -47,12 +48,14 @@ struct NewestMessageIsland: View {
 struct ConversationBottomBar: View {
     let chatID: String
     let model: AppModel
+    /// Says whether the chat takes messages: read from the chat here, its
+    /// every message would make the composer again.
+    let pane: ConversationPaneState
 
     var body: some View {
-        let chat = model.chats.chat(chatID)
         if let selection = model.selection, selection.chat == chatID {
             SelectionBar(selection: selection, model: model)
-        } else if let chat, !chat.canSend {
+        } else if let chat = pane.closedChat {
             ReadOnlyBar(chat: chat)
         } else {
             ComposerBar(chatID: chatID, model: model)

@@ -6,10 +6,18 @@ import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
-/// What the "newest message" button needs from the timeline.
+/// What the islands over the timeline show of it: the "newest message"
+/// button, the empty chat's note and the spinner while older messages come.
 @Observable
 final class ConversationPaneState {
     var scroll = TimelineController.ScrollState()
+    /// The chat has nothing, once the archive and phone have said so.
+    var empty = false
+    /// Older messages are on their way, from the archive or the phone.
+    var loadingOlder = false
+    /// The chat, without its latest activity, while it takes no messages
+    /// from us; the composer's place says why.
+    var closedChat: ChatSummary?
 }
 
 /// An open chat, in AppKit: the timeline is a plain subview, and around it
@@ -72,8 +80,9 @@ final class ConversationViewController: NSViewController {
         ])
         view.onLayout = { [weak self] in self?.placeTimeline() }
         self.view = view
-        showIslands()
+        // The pane's state first: the islands show it.
         observeTimeline()
+        showIslands()
     }
 
     /// Another chat in the same place: the timeline, composer and islands
@@ -82,8 +91,8 @@ final class ConversationViewController: NSViewController {
         guard chatID != self.chatID else { return }
         self.chatID = chatID
         pane.scroll = .init()
-        showIslands()
         observeTimeline()
+        showIslands()
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
         view.alphaValue = 0
         NSAnimationContext.runAnimationGroup { context in
@@ -98,10 +107,10 @@ final class ConversationViewController: NSViewController {
     private func showIslands() {
         let chatID = chatID
         let model = model
-        overlay.rootView = AnyView(ConversationOverlay(chatID: chatID, model: model).chatStyle(chatID, model: model))
+        overlay.rootView = AnyView(ConversationOverlay(pane: pane).chatStyle(chatID, model: model))
         newest.rootView = AnyView(NewestMessageIsland(pane: pane) { model.scrollTimeline(.bottom) }.chatStyle(chatID, model: model))
         // A new composer for each chat, as the SwiftUI view made one.
-        bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model).id(chatID).chatStyle(chatID, model: model))
+        bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model, pane: pane).id(chatID).chatStyle(chatID, model: model))
     }
 
     /// The timeline scrolls under the title bar, its first row inset clear
@@ -134,10 +143,14 @@ final class ConversationViewController: NSViewController {
         let pane = pane
         let inputs = withObservationTracking {
             let conversation = model.conversations.conversation(chatID)
+            let chat = model.chats.chat(chatID)
             return (
+                closedChat: chat.flatMap { $0.canSend ? nil : $0.withoutActivity },
+                empty: conversation.requested && conversation.messages.isEmpty && !conversation.fetchingPhone,
+                loadingOlder: conversation.loadingOlder || conversation.fetchingPhone,
                 messages: conversation.messages,
                 revision: conversation.messagesRevision,
-                isGroup: model.chats.chat(chatID)?.kind == .group,
+                isGroup: chat?.kind == .group,
                 style: TimelineStyle(theme: model.chatTheme(for: chatID), textScale: model.preferences.textScale),
                 unread: model.unreadDivider?.chat == chatID ? model.unreadDivider : nil,
                 jump: model.jump,
@@ -151,6 +164,11 @@ final class ConversationViewController: NSViewController {
                 }
             }
         }
+        // Set when they change only: the islands that show them would be
+        // made again by every message otherwise.
+        if pane.empty != inputs.empty { pane.empty = inputs.empty }
+        if pane.loadingOlder != inputs.loadingOlder { pane.loadingOlder = inputs.loadingOlder }
+        if pane.closedChat != inputs.closedChat { pane.closedChat = inputs.closedChat }
         timeline.update(
             chatID: chatID,
             messages: inputs.messages,

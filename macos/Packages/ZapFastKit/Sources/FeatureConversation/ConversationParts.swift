@@ -13,14 +13,8 @@ extension ChatSummary {
 
 /// Shown when the chat has nothing, once the archive and phone have said so.
 struct EmptyConversation: View {
-    let chatID: String
-    let model: AppModel
-
     var body: some View {
-        let conversation = model.conversations.conversation(chatID)
-        if conversation.requested, conversation.messages.isEmpty, !conversation.fetchingPhone {
-            ContentUnavailableView("No messages here yet", systemImage: "bubble.left.and.bubble.right")
-        }
+        ContentUnavailableView("No messages here yet", systemImage: "bubble.left.and.bubble.right")
     }
 }
 
@@ -28,13 +22,10 @@ struct EmptyConversation: View {
 /// the archive usually answers within a frame, and a glass card shown and
 /// removed for every page cost more than the page.
 struct LoadingOlder: View {
-    let chatID: String
-    let model: AppModel
+    let loading: Bool
     @State private var shown = false
 
     var body: some View {
-        let conversation = model.conversations.conversation(chatID)
-        let loading = conversation.loadingOlder || conversation.fetchingPhone
         Group {
             if shown {
                 ProgressView()

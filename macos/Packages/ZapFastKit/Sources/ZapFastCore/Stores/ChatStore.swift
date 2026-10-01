@@ -233,13 +233,28 @@ public final class ChatStore {
         return String(localized: "You")
     }
 
-    /// Short member names for an untitled group or a header subtitle.
+    /// Short member names for an untitled group or a header subtitle
+    /// (upstream's `participant_names`, for the first `limit` members: the
+    /// title is asked for on every row and search keystroke, so it cannot
+    /// look at everyone).
     public func participantNames(_ chat: ChatSummary, limit: Int = 6) -> String {
         let names = chat.participants
             .filter { !session.isOurs($0) }
             .prefix(limit)
-            .map { id in contacts[id]?.firstName.nonEmpty ?? personName(id, hint: nil) }
+            .map(shortName)
         return names.joined(separator: ", ")
+    }
+
+    /// A member's saved first name, whole, as WhatsApp shows it ("My Dih"
+    /// can be a first name). Without one (a profile name, or a contact
+    /// synced before first names were kept) the first word of the name, so
+    /// the line stays short. A number is not split.
+    func shortName(_ id: String) -> String {
+        if let first = contacts[id]?.firstName.nonEmpty { return first }
+        let name = personName(id, hint: nil)
+        if name.hasPrefix("+") || name == String(localized: "Unknown") { return name }
+        let bare = name.drop { $0 == "~" }
+        return bare.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? String(bare)
     }
 
     /// People to start a chat with (upstream's `new_chat`): saved contacts

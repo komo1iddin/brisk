@@ -45,6 +45,24 @@ struct ChatInfoTests {
         #expect(names.count == 4)
     }
 
+    @Test func theMemberLineKeepsASavedFirstNameWholeAndOtherwiseTheFirstWord() {
+        let (model, _) = model()
+        model.apply([
+            .me(id: "999@s.whatsapp.net", lid: nil, name: "Me", about: nil),
+            .contacts(contacts: [
+                ContactRecord(id: "1@s.whatsapp.net", fullName: "My Dih Example", firstName: "My Dih", pushName: nil),
+                ContactRecord(id: "2@s.whatsapp.net", fullName: "Mary Ann Evans", firstName: nil, pushName: nil),
+                ContactRecord(id: "3@s.whatsapp.net", fullName: nil, firstName: nil, pushName: "Bob Builder"),
+            ]),
+        ])
+        let stray = "15551230000@s.whatsapp.net"
+        let chat = group(["999@s.whatsapp.net", "1@s.whatsapp.net", "2@s.whatsapp.net", "3@s.whatsapp.net", stray])
+
+        // A profile name loses its tilde with its second word; a number stays whole.
+        let number = model.chats.personName(stray, hint: nil)
+        #expect(model.chats.participantNames(chat) == "My Dih, Mary, Bob, \(number)")
+    }
+
     @Test func infoOpensOverTheSearchAndSearchingClosesIt() {
         let (model, _) = model()
         model.selectedChatID = "g@g.us"

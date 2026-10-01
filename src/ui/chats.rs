@@ -33,13 +33,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         app.settings.sidebar_width = width;
         app.actions.push(Action::SettingsChanged);
     }
-    // Separate the panel from the conversation.
-    let rect = response.response.rect;
-    ui.painter().vline(
-        rect.right(),
-        rect.y_range(),
-        egui::Stroke::new(1.0, palette.outline),
-    );
+    // Separate the panel from the conversation, as the header's line does.
+    widgets::paint_edge_beside(ui, &palette, response.response.rect);
 }
 
 /// Walks matching chats while the global search field keeps keyboard focus.
@@ -278,8 +273,8 @@ fn macos_header(app: &mut App, ui: &mut egui::Ui) {
     Frame::new()
         .inner_margin(Margin::symmetric(14, 8))
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.set_min_height(44.0);
+            let row = ui.horizontal(|ui| {
+                ui.set_min_height(super::conversation::HEADER_ROW);
                 ui.add_space((inset - 14.0).max(0.0));
                 if app.show_archived || app.locked_folder {
                     if theme::icon_button(
@@ -345,6 +340,8 @@ fn macos_header(app: &mut App, ui: &mut egui::Ui) {
                     }
                 });
             });
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(header_row_id(), row.response.rect));
             ui.add_space(6.0);
             let mut text = app.search.clone();
             let response = widgets::search_field(
@@ -1301,12 +1298,7 @@ pub fn compact_show(app: &mut App, ui: &mut egui::Ui) {
         compact_list(app, ui);
     });
     // Separate the rail from the conversation, exactly as the full list does.
-    let rect = response.response.rect;
-    ui.painter().vline(
-        rect.right(),
-        rect.y_range(),
-        egui::Stroke::new(1.0, palette.outline),
-    );
+    widgets::paint_edge_beside(ui, &palette, response.response.rect);
 }
 
 /// The avatars: the chats the full list would show right now, under the same

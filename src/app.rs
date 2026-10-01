@@ -30,8 +30,11 @@ pub const EDIT_WINDOW: Duration = Duration::from_secs(15 * 60);
 /// WhatsApp revoke-for-everyone window.
 pub const REVOKE_WINDOW: Duration = Duration::from_secs(2 * 24 * 60 * 60);
 
-/// Pause after which a trackpad gesture selects a new axis.
-const SCROLL_GESTURE_GAP: Duration = Duration::from_millis(150);
+/// Pause, in seconds, after which a trackpad gesture ends: a new one selects
+/// its own axis and pane, and a lifted one starts to glide. Measured on the
+/// frame's input clock (`InputState::time`), not on the wall clock, so a
+/// slow frame is not taken for a pause and tests can run it at their pace.
+const SCROLL_GESTURE_GAP: f64 = 0.15;
 /// Linux trackpad scroll multiplier.
 const TRACKPAD_SCALE: f32 = 1.8;
 /// Trackpad glide decay, minimum start speed, and stop speed.
@@ -69,8 +72,8 @@ pub struct ScrollRoute {
     placing: std::sync::Mutex<Vec<(ScrollPane, egui::Rect)>>,
     /// The pane the gesture under way began over.
     owner: Option<ScrollPane>,
-    /// When the gesture last had input.
-    last_input: Option<Instant>,
+    /// When the gesture last had input, in egui input time.
+    last_input: Option<f64>,
     /// Whether the gesture's fingers lifted: new input starts another.
     lifted: bool,
     /// Scrolling taken for the owner this frame.
@@ -105,7 +108,7 @@ impl ScrollRoute {
     fn route(&mut self, ctx: &egui::Context, moved: bool, lifted: bool, gliding: bool) {
         self.placed = std::mem::take(self.placing.get_mut().unwrap_or_else(|p| p.into_inner()));
         self.carry = None;
-        let now = Instant::now();
+        let now = ctx.input(|input| input.time);
         // Floating layers, such as menus and dialogs, are no pane.
         let under = ctx
             .input(|input| input.pointer.hover_pos())
@@ -121,7 +124,7 @@ impl ScrollRoute {
             });
         let recent = self
             .last_input
-            .is_some_and(|at| now.duration_since(at) < SCROLL_GESTURE_GAP);
+            .is_some_and(|at| now - at < SCROLL_GESTURE_GAP);
         if moved {
             if self.lifted || !recent {
                 self.owner = under;
@@ -464,6 +467,10 @@ pub struct App {
     /// Picker anchor at the composer button.
     pub picker_anchor: Option<egui::Rect>,
     pub picker_search: String,
+    /// Recent emoji as they stood when the emoji picker opened. The row keeps
+    /// that order while the picker is open, so the same emoji can be sent
+    /// again from where it was; it catches up the next time it opens (#294).
+    pub picker_recent: Option<Vec<String>>,
     /// Whether the newly opened picker should focus search.
     pub picker_focus: bool,
     /// Message the full emoji reaction picker is targeting.
@@ -514,6 +521,8 @@ pub struct App {
     pauses_media: bool,
     /// Image currently shown in the native preview.
     pub image_preview: Option<PreviewState>,
+    /// Whether the loaded video covers the window instead of its bubble.
+    pub video_expanded: bool,
     /// Voice messages with a sent played receipt.
     played_told: HashSet<String>,
     /// Message bodies registered for transcript copy formatting.
@@ -554,12 +563,14 @@ pub struct App {
     pub sticker_preview_pending: bool,
     /// A pack just created here, selected once the backend lists it.
     sticker_pack_created: Option<String>,
-    scroll_lock: Option<(ScrollAxis, Instant)>,
+    /// The locked axis and when its gesture last moved, in egui input time.
+    scroll_lock: Option<(ScrollAxis, f64)>,
     scroll_from_trackpad: bool,
     scroll_history: egui::util::History<egui::Vec2>,
     scroll_accum: egui::Vec2,
     glide: Option<egui::Vec2>,
-    scroll_last_event: Option<Instant>,
+    /// When the trackpad gesture last moved, in egui input time.
+    scroll_last_event: Option<f64>,
     /// Keeps a scroll gesture with the pane it began over.
     pub scroll_route: ScrollRoute,
 
@@ -644,6 +655,9 @@ pub struct App {
     /// Cross-thread window repaint handle.
     waker: Waker,
     tray: Option<fastframe_tray::Tray>,
+    /// Whether the tray menu offers "Lock ZapFast": whether an app lock
+    /// password was set when it last changed.
+    tray_lockable: bool,
     /// Whether the app is running without a window.
     pub window_hidden: bool,
     /// Whether window close should keep the process running.
@@ -790,25 +804,24 @@ fn tray_action(event: fastframe_tray::Event, window_hidden: bool) -> Option<Acti
 }
 
 /// The tray item: ZapFast's icon, and a menu to show or hide the window,
-/// to lock it when an app lock password is set, and to quit. The title and
+/// to lock it while an app lock password is set, and to quit. The title and
 /// the menu never name a chat, so they are safe while locked.
 ///
-/// fastframe-tray fixes the menu when the item is made, so a password set
-/// or removed while ZapFast runs changes the menu at the next start; until
-/// then "Lock ZapFast" does nothing without a password.
+/// "Lock ZapFast" is always in the menu, hidden without a password;
+/// `App::sync_tray` shows or hides it as the password is set or removed.
 fn tray_config(lockable: bool) -> fastframe_tray::Config {
     use fastframe_tray::MenuItem;
-    let mut menu = vec![MenuItem::action(TRAY_SHOW, "Show or hide ZapFast")];
-    if lockable {
-        menu.push(MenuItem::action(TRAY_LOCK, "Lock ZapFast"));
-    }
-    menu.extend([MenuItem::Separator, MenuItem::action(TRAY_QUIT, "Quit")]);
     fastframe_tray::Config {
         id: "zapfast",
         title: "ZapFast".into(),
         icon: crate::util::app_icon_rgba,
         template_icon: Some(crate::util::tray_template_rgba),
-        menu,
+        menu: vec![
+            MenuItem::action(TRAY_SHOW, "Show or hide ZapFast"),
+            MenuItem::action(TRAY_LOCK, "Lock ZapFast").visible(lockable),
+            MenuItem::Separator,
+            MenuItem::action(TRAY_QUIT, "Quit"),
+        ],
     }
 }
 
@@ -844,8 +857,8 @@ impl App {
             .ok();
         if options.tray {
             let waker = waker.clone();
-            let lockable = app.settings.app_lock_hash.is_some();
-            app.tray = fastframe_tray::Tray::spawn(tray_config(lockable), move || waker.wake());
+            app.tray =
+                fastframe_tray::Tray::spawn(tray_config(app.tray_lockable), move || waker.wake());
         }
         // The clock preference may run a helper on Linux; keep it off the
         // first frame.
@@ -899,6 +912,7 @@ impl App {
         let locale = crate::i18n::resolve(settings.interface_language);
         // With a password set, ZapFast starts locked.
         let app_lock = crate::app_lock::AppLock::new(settings.app_lock_hash.is_some());
+        let tray_lockable = settings.app_lock_hash.is_some();
         let mut app = Self {
             dirs,
             settings,
@@ -978,6 +992,7 @@ impl App {
             picker: None,
             picker_anchor: None,
             picker_search: String::new(),
+            picker_recent: None,
             picker_focus: false,
             reaction_target: None,
             reaction_anchor: None,
@@ -1001,6 +1016,7 @@ impl App {
             media_hold: None,
             pauses_media: false,
             image_preview: None,
+            video_expanded: false,
             played_told: HashSet::new(),
             copy_rows: Default::default(),
             selection_view: Default::default(),
@@ -1080,6 +1096,7 @@ impl App {
             start_with_system: None,
             waker,
             tray: None,
+            tray_lockable,
             window_hidden: false,
             hide_intent: false,
             wants_show: false,
@@ -1134,6 +1151,7 @@ impl App {
     }
 
     fn handle_tray(&mut self) {
+        self.sync_tray();
         let Some(events) = self.tray.as_ref().map(fastframe_tray::Tray::events) else {
             return;
         };
@@ -1143,6 +1161,19 @@ impl App {
                 .into_iter()
                 .filter_map(|event| tray_action(event, hidden)),
         );
+    }
+
+    /// Offers "Lock ZapFast" in the tray exactly while an app lock password
+    /// is set, so setting or removing one changes the menu at once.
+    fn sync_tray(&mut self) {
+        let lockable = self.settings.app_lock_hash.is_some();
+        if lockable == self.tray_lockable {
+            return;
+        }
+        self.tray_lockable = lockable;
+        if let Some(tray) = &mut self.tray {
+            tray.set_visible(TRAY_LOCK, lockable);
+        }
     }
 
     fn handle_control_commands(&mut self) {
@@ -1303,6 +1334,10 @@ impl App {
         ctx.add_plugin(crate::ui::conversation::SelectionLeash::new(
             std::sync::Arc::clone(&self.selection_view),
         ));
+        // Colour emoji in labels, menus, tooltips and text fields; message
+        // bodies paint their own over placeholders, which it leaves alone.
+        ctx.add_plugin(crate::emoji::plugin());
+        crate::theme::set_font(ctx, self.settings.font);
         crate::theme::install(ctx);
         // Use a faster wheel speed for short chat rows.
         ctx.options_mut(|options| options.input_options.line_scroll_speed = 120.0);
@@ -1753,9 +1788,16 @@ impl App {
                 numbers.push(name);
             } else {
                 // The saved first name, as WhatsApp shows here, whole: it can
-                // hold several words. Without one, the whole name.
+                // hold several words. Without one (a profile name, or a
+                // contact synced before first names were kept), the first
+                // word, so the line stays short.
                 let first = self.contacts.get(id).and_then(Contact::first_name);
-                names.push(first.unwrap_or(name.trim_start_matches('~')).to_owned());
+                let name = name.trim_start_matches('~');
+                names.push(
+                    first
+                        .unwrap_or_else(|| name.split_whitespace().next().unwrap_or(name))
+                        .to_owned(),
+                );
             }
         }
         names.sort_by_key(|name| name.to_lowercase());
@@ -4066,6 +4108,21 @@ impl App {
             }
             Action::SeekVideo { message, fraction } => self.video.seek(&message, fraction),
             Action::ToggleVideoSound => self.video.toggle_mute(),
+            Action::ExpandVideo { message, path } => {
+                if self.video.message() != Some(message.as_str()) {
+                    self.video.set_expanded(true);
+                    self.play_video(message, path);
+                }
+                if self.video.message().is_some() {
+                    self.video.set_expanded(true);
+                    self.video.resume();
+                    self.video_expanded = true;
+                }
+            }
+            Action::CollapseVideo => {
+                self.video_expanded = false;
+                self.video.set_expanded(false);
+            }
             Action::SeekVoice {
                 message,
                 path,
@@ -4138,6 +4195,12 @@ impl App {
                     self.picker = Some(tab);
                     self.picker_search.clear();
                     self.picker_focus = tab == PickerTab::Emoji;
+                    if tab == PickerTab::Emoji {
+                        crate::emoji::prewarm(
+                            ctx,
+                            crate::ui::picker::first_page(&self.settings.recent_emoji),
+                        );
+                    }
                     self.emoji_selected = 0;
                     self.emoji_jump = None;
                     if tab == PickerTab::Stickers {
@@ -4188,6 +4251,13 @@ impl App {
                     ctx.data(|data| data.get_temp::<egui::Rect>(id.with(anchor)));
                 self.reaction_beside_menu = beside_menu;
                 self.reaction_target = Some((chat, message));
+                let frequent: Vec<String> = self
+                    .settings
+                    .reaction_emoji
+                    .iter()
+                    .map(|(emoji, _)| emoji.clone())
+                    .collect();
+                crate::emoji::prewarm(ctx, crate::ui::picker::first_page(&frequent));
                 self.picker_search.clear();
                 self.picker_focus = true;
                 self.emoji_selected = 0;
@@ -4779,6 +4849,12 @@ impl App {
                 self.mark_settings_dirty();
                 self.apply_theme(ctx);
             }
+            Action::SetFont(choice) => {
+                self.settings.font = choice;
+                self.mark_settings_dirty();
+                crate::theme::set_font(ctx, choice);
+                ctx.request_repaint();
+            }
             Action::SetInterfaceLanguage(choice) => {
                 self.settings.interface_language = choice;
                 self.locale = crate::i18n::resolve(choice);
@@ -5358,6 +5434,10 @@ impl App {
         if self.video.message().is_some() && self.video_chat != self.open_chat {
             self.video.stop();
         }
+        if self.video_expanded && self.video.message().is_none() {
+            self.video_expanded = false;
+            self.video.set_expanded(false);
+        }
         if let Some(crate::video::Notice::Unsupported(path)) = self.video.poll(ctx) {
             self.toast(crate::i18n::gettext(
                 self.locale,
@@ -5751,7 +5831,7 @@ impl App {
                 && input.smooth_scroll_delta.y == 0.0;
             (sum, pointish && !remapped, ended)
         });
-        let now = Instant::now();
+        let now = ctx.input(|input| input.time);
         if raw != egui::Vec2::ZERO {
             self.scroll_from_trackpad = from_trackpad;
         }
@@ -5762,8 +5842,7 @@ impl App {
         if trackpad_here && raw != egui::Vec2::ZERO {
             self.glide = None;
             self.scroll_accum += raw * TRACKPAD_SCALE;
-            self.scroll_history
-                .add(ctx.input(|input| input.time), self.scroll_accum);
+            self.scroll_history.add(now, self.scroll_accum);
             self.scroll_last_event = Some(now);
             ctx.request_repaint_after(Duration::from_millis(60));
         } else if raw != egui::Vec2::ZERO || ctx.input(|input| input.pointer.any_down()) {
@@ -5779,7 +5858,7 @@ impl App {
         let quiet = first_pass
             && self
                 .scroll_last_event
-                .is_some_and(|at| now.duration_since(at).as_secs_f32() > 0.15);
+                .is_some_and(|at| now - at > SCROLL_GESTURE_GAP);
         if ended || quiet {
             let mut velocity = self.scroll_history.velocity().unwrap_or(egui::Vec2::ZERO);
             if let Some((axis, _)) = self.scroll_lock {
@@ -5812,7 +5891,7 @@ impl App {
         }
         let held = self
             .scroll_lock
-            .filter(|(_, at)| now.duration_since(*at) < SCROLL_GESTURE_GAP)
+            .filter(|(_, at)| now - *at < SCROLL_GESTURE_GAP)
             .map(|(axis, _)| axis);
         let moved = raw != egui::Vec2::ZERO;
         let axis = match held {
@@ -6191,9 +6270,7 @@ mod tests {
                     }
                     if redone {
                         // As if the first pass had taken a second.
-                        app.scroll_last_event = app
-                            .scroll_last_event
-                            .and_then(|at| at.checked_sub(Duration::from_secs(1)));
+                        app.scroll_last_event = app.scroll_last_event.map(|at| at - 1.0);
                     }
                     app.lock_scroll_axis(&ctx);
                     if redone {
@@ -6206,6 +6283,74 @@ mod tests {
         }
         assert!(app.glide.is_none(), "the gesture glides while it goes on");
         assert!(app.scroll_last_event.is_some(), "the gesture goes on");
+    }
+
+    /// A trackpad gesture's pauses are measured on the frames' input clock.
+    /// A frame that is slow to draw is no pause: the gesture keeps its axis,
+    /// its pane, and its fingers on the pad. A pause in the input ends it.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_trackpad_gesture_pauses_on_the_input_clock() {
+        let mut app = app();
+        let ctx = egui::Context::default();
+        let run = |app: &mut App, time: f64, delta: egui::Vec2| {
+            let events = if delta == egui::Vec2::ZERO {
+                Vec::new()
+            } else {
+                vec![egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta,
+                    modifiers: egui::Modifiers::NONE,
+                    phase: egui::TouchPhase::Move,
+                }]
+            };
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    time: Some(time),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let ctx = ui.ctx().clone();
+                    app.lock_scroll_axis(&ctx);
+                    app.route_scroll(&ctx);
+                },
+            );
+            output.textures_delta.clear();
+        };
+        for frame in 0..6 {
+            run(&mut app, f64::from(frame) / 60.0, egui::vec2(0.0, 30.0));
+        }
+        app.scroll_route.owner = Some(ScrollPane::Messages);
+        // A frame that takes a quarter of a second to draw, 16 ms of input
+        // time after the last: nothing about the gesture has changed.
+        std::thread::sleep(Duration::from_millis(250));
+        run(&mut app, 6.0 / 60.0, egui::Vec2::ZERO);
+        assert!(app.glide.is_none(), "a slow frame lets the gesture glide");
+        assert!(
+            app.scroll_last_event.is_some(),
+            "a slow frame ends the gesture"
+        );
+        assert_eq!(
+            app.scroll_route.owner,
+            Some(ScrollPane::Messages),
+            "a slow frame lets go of the gesture's pane"
+        );
+        // Sideways input just after keeps the vertical axis.
+        run(&mut app, 7.0 / 60.0, egui::vec2(30.0, 0.0));
+        let held = app.scroll_lock.map(|(axis, _)| axis);
+        assert_eq!(held, Some(ScrollAxis::Vertical), "the axis is held");
+        // A pause in the input itself ends the gesture, which glides.
+        run(&mut app, 7.0 / 60.0 + 0.2, egui::Vec2::ZERO);
+        assert!(
+            app.scroll_last_event.is_none(),
+            "the pause ends the gesture"
+        );
+        assert!(app.glide.is_some(), "the lifted gesture glides");
+        run(&mut app, 2.0, egui::Vec2::ZERO);
+        run(&mut app, 3.0, egui::vec2(30.0, 0.0));
+        let held = app.scroll_lock.map(|(axis, _)| axis);
+        assert_eq!(held, Some(ScrollAxis::Horizontal), "a new gesture picks");
     }
 
     /// A chat that is gone or emptied takes its confirmation with it: a modal
@@ -7259,28 +7404,36 @@ mod tests {
             Some(Action::Quit)
         ));
         assert!(super::tray_action(Event::Menu("other"), false).is_none());
-        let menu = super::tray_config(false).menu;
-        assert_eq!(
-            menu,
-            [
-                fastframe_tray::MenuItem::action(super::TRAY_SHOW, "Show or hide ZapFast"),
-                fastframe_tray::MenuItem::Separator,
-                fastframe_tray::MenuItem::action(super::TRAY_QUIT, "Quit"),
-            ]
-        );
         assert!(matches!(
             super::tray_action(Event::Menu(super::TRAY_LOCK), false),
             Some(Action::LockApp)
         ));
-        assert_eq!(
-            super::tray_config(true).menu,
-            [
-                fastframe_tray::MenuItem::action(super::TRAY_SHOW, "Show or hide ZapFast"),
-                fastframe_tray::MenuItem::action(super::TRAY_LOCK, "Lock ZapFast"),
-                fastframe_tray::MenuItem::Separator,
-                fastframe_tray::MenuItem::action(super::TRAY_QUIT, "Quit"),
-            ]
-        );
+        for lockable in [false, true] {
+            assert_eq!(
+                super::tray_config(lockable).menu,
+                [
+                    fastframe_tray::MenuItem::action(super::TRAY_SHOW, "Show or hide ZapFast"),
+                    fastframe_tray::MenuItem::action(super::TRAY_LOCK, "Lock ZapFast")
+                        .visible(lockable),
+                    fastframe_tray::MenuItem::Separator,
+                    fastframe_tray::MenuItem::action(super::TRAY_QUIT, "Quit"),
+                ]
+            );
+        }
+    }
+
+    /// The tray offers "Lock ZapFast" as soon as a password is set and stops
+    /// as soon as it is removed, not at the next start.
+    #[test]
+    fn the_tray_offers_the_lock_while_a_password_is_set() {
+        let mut app = app();
+        assert!(!app.tray_lockable);
+        app.settings.app_lock_hash = Some(crate::app_lock::verifier("secret"));
+        app.handle_tray();
+        assert!(app.tray_lockable);
+        app.settings.app_lock_hash = None;
+        app.handle_tray();
+        assert!(!app.tray_lockable);
     }
 
     #[test]
@@ -8510,6 +8663,72 @@ mod tests {
         app.open_chat = None;
         app.tick_video(&ctx);
         assert!(app.video.message().is_none());
+    }
+
+    /// Choosing a font saves the choice and installs it at once.
+    #[test]
+    fn choosing_a_font_saves_and_applies_it() {
+        use crate::settings::FontChoice;
+        let mut app = app();
+        let ctx = egui::Context::default();
+        app.attach(&ctx);
+        assert_eq!(app.settings.font, FontChoice::System);
+        app.apply(Action::SetFont(FontChoice::Inter), &ctx);
+        assert_eq!(app.settings.font, FontChoice::Inter);
+        assert!(crate::theme::inter_chosen());
+        app.apply(Action::SetFont(FontChoice::System), &ctx);
+        assert_eq!(app.settings.font, FontChoice::System);
+        assert!(!crate::theme::inter_chosen());
+    }
+
+    /// A video opens over the window at a size worth the room, goes back to
+    /// its message at the bubble's, and does not outlive the chat.
+    #[test]
+    fn a_video_covers_the_window_and_goes_back_to_its_message() {
+        let mut app = app();
+        app.video.silence();
+        let chat = "fixture@s.whatsapp.net";
+        app.open_chat = Some(chat.into());
+        let ctx = egui::Context::default();
+        let path = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/video/sample.mp4"
+        ));
+        let bubble = app.video.side();
+        let expand = || Action::ExpandVideo {
+            message: "clip".into(),
+            path: path.clone(),
+        };
+
+        // Not loaded yet: it starts, already at the larger size.
+        app.apply(expand(), &ctx);
+        assert_eq!(app.video.message(), Some("clip"));
+        assert!(app.video_expanded && app.video.is_active());
+        assert!(app.video.side() > bubble);
+
+        app.apply(Action::CollapseVideo, &ctx);
+        assert!(!app.video_expanded);
+        assert_eq!(app.video.side(), bubble);
+        assert_eq!(app.video.message(), Some("clip"), "it stays loaded");
+
+        // Paused in its bubble, expanding it plays it.
+        app.apply(
+            Action::PlayVideo {
+                message: "clip".into(),
+                path: path.clone(),
+            },
+            &ctx,
+        );
+        assert!(!app.video.is_active());
+        app.apply(expand(), &ctx);
+        assert!(app.video_expanded && app.video.is_active());
+
+        // Leaving the chat stops the video and takes the view down with it.
+        app.open_chat = None;
+        app.tick_video(&ctx);
+        assert!(app.video.message().is_none());
+        assert!(!app.video_expanded);
+        assert_eq!(app.video.side(), bubble);
     }
 
     #[test]
@@ -10154,6 +10373,67 @@ mod tests {
         assert!(app.focus_composer);
     }
 
+    /// Plain egui text (a label, a tooltip) gets its emoji in colour from
+    /// the plugin, while a line laid out with placeholders gets exactly one
+    /// picture, its own, and no second one from the plugin.
+    #[test]
+    fn plain_text_emoji_are_coloured_without_painting_placeholders_twice() {
+        use egui::epaint::{Shape, TextureId};
+        fn pictures(shape: &Shape) -> usize {
+            match shape {
+                Shape::Vec(shapes) => shapes.iter().map(pictures).sum(),
+                Shape::Mesh(mesh) if mesh.texture_id != TextureId::default() => 1,
+                _ => 0,
+            }
+        }
+        assert!(
+            crate::emoji::available(),
+            "the bundled font is always there"
+        );
+        let mut app = app();
+        let ctx = egui::Context::default();
+        app.attach(&ctx);
+        let count = |draw: &dyn Fn(&mut egui::Ui)| {
+            let mut total = 0;
+            // A new area is measured in its first frame and drawn after.
+            for _ in 0..2 {
+                let mut output = ctx.run_ui(egui::RawInput::default(), |ui| draw(ui));
+                output.textures_delta.clear();
+                total = output
+                    .shapes
+                    .iter()
+                    .map(|clipped| pictures(&clipped.shape))
+                    .sum::<usize>();
+            }
+            total
+        };
+        assert_eq!(count(&|ui| drop(ui.label("plain 😀"))), 1, "a label");
+        assert_eq!(
+            count(&|ui| {
+                egui::Area::new(egui::Id::new("tip"))
+                    .order(egui::Order::Tooltip)
+                    .show(ui.ctx(), |ui| ui.label("tip 👍🏽"));
+            }),
+            1,
+            "a tooltip"
+        );
+        assert_eq!(
+            count(&|ui| {
+                let line = crate::ui::widgets::line(
+                    ui,
+                    "placeholder 😀",
+                    egui::FontId::proportional(14.0),
+                    egui::Color32::WHITE,
+                    300.0,
+                    1,
+                );
+                line.paint(ui, egui::pos2(0.0, 0.0), egui::Color32::WHITE);
+            }),
+            1,
+            "a placeholder line"
+        );
+    }
+
     #[test]
     fn returning_to_a_conversation_does_not_interrupt_search() {
         let mut app = app();
@@ -10259,12 +10539,13 @@ mod name_tests {
             );
             chat.participants.push(id);
         }
-        // A profile name is not split either.
+        // Without a saved first name (a profile name, or a contact synced
+        // before first names were kept) the line keeps the first word.
         chat.participants.push("2@s.whatsapp.net".into());
         app.contacts.get_mut("2@s.whatsapp.net").unwrap().push_name = Some("Bob Builder".into());
         assert_eq!(
             app.participant_names(&chat),
-            "Bob Builder, Grace, Mary Ann Evans, My Dih, Stray Name"
+            "Bob, Grace, Mary, My Dih, Stray"
         );
     }
 

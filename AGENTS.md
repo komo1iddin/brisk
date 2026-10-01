@@ -117,11 +117,20 @@ protocol. These notes are for coding agents and new contributors.
   and in the `fastframe_icons::icons!` table; an icon fastframe-icons already
   ships is named there as `lucide "name"` instead of copied.
 - `src/markup.rs` turns WhatsApp's text markup, links, and mentions into an
-  egui `LayoutJob`; `src/emoji.rs` swaps every emoji for a placeholder
-  glyph at layout time and paints the desktop's colour emoji bitmap over
-  it afterwards (resolving sequences through the font's GSUB ligatures).
-  Any text that can hold an emoji goes through `widgets::line` /
-  `widgets::rich_text` or `markup::layout`, never a bare `Label`.
+  egui `LayoutJob`; `src/emoji.rs` hands emoji to fastframe-emoji, which
+  swaps every emoji for a placeholder glyph at layout time and paints the
+  platform's picture over it afterwards (Apple Color Emoji, Segoe UI Emoji
+  through DirectWrite, or the desktop's bitmap emoji font, with the bundled
+  Noto behind them). New pictures are drawn on its worker thread; tests and
+  demo builds draw them inside the frame. The interface font is the
+  platform's own (`fastframe_fonts::Primary::System`), and Inter in tests.
+  fastframe-emoji's `EmojiPlugin` (added in `App::attach`) colours the
+  emoji in every other egui text: labels, menus, tooltips, text fields. It
+  leaves placeholders and `editor_job` glyphs alone, so the two never paint
+  one emoji twice. Message text and chat names still go through
+  `widgets::line` / `widgets::rich_text` or `markup::layout`: their
+  placeholders keep the emoji-only sizing and let `transcript::refine`
+  put copied emoji back.
 - `src/animation.rs` plays animated stickers and GIFs: WebP/GIF frames
   decode in-process, and so do MP4s (the `mp4` crate demuxes, `openh264`
   decodes the H.264 WhatsApp uses, samples converted from AVCC to Annex
@@ -299,7 +308,8 @@ egui pitfalls this code has already hit:
   `ui/keys.rs`. Layouts that put another character on the shifted key never
   produce either spelling; `Alt+↑/↓` is the layout-independent way to switch
   chats. A long label in `SHORTCUTS` widens the dialog's key column and
-  truncates the descriptions at the default window size.
+  leaves its descriptions less room to wrap in; the dialog takes two columns
+  in a wide window and scrolls in a short one.
 - `with_layout(..., Align::Center)` directly inside a vertical container
   claims the whole available height; wrap it in `ui.horizontal`.
 - `ui.horizontal` inside a right-aligned bubble lays out right to left;

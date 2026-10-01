@@ -1346,6 +1346,14 @@ pub enum Action {
     },
     /// Mutes or unmutes video playback.
     ToggleVideoSound,
+    /// Shows a downloaded video over the whole window, starting it if it is
+    /// not the one loaded.
+    ExpandVideo {
+        message: String,
+        path: PathBuf,
+    },
+    /// Puts the video covering the window back in its message.
+    CollapseVideo,
     /// Starts, cancels, or sends a voice recording.
     StartRecording,
     CancelRecording,
@@ -1593,6 +1601,8 @@ pub enum Action {
     DownloadUpdate,
     InstallUpdate,
     SetTheme(crate::settings::ThemeChoice),
+    /// Draws the interface in the platform's font or in the bundled Inter.
+    SetFont(crate::settings::FontChoice),
     SetInterfaceLanguage(Option<crate::i18n::Locale>),
     SetCustomTheme(String),
     SetWallpaperColor(crate::settings::WallpaperColor),

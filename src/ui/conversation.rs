@@ -55,6 +55,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         header.right(),
         header.bottom(),
     );
+    // The chat list, or its rail of avatars, stands at the header's level
+    // beside the conversation: it casts the same shadow across it, from
+    // under the header down.
+    widgets::paint_shadow_beside(
+        ui,
+        &app.palette,
+        header.left(),
+        header.bottom(),
+        ui.max_rect().bottom(),
+    );
 }
 
 fn empty(app: &mut App, ui: &mut egui::Ui) {
@@ -5420,7 +5430,7 @@ fn rich_body(
     // Click links and drag to select text.
     // Text selection and pointer links do not need a sequential Tab stop.
     // The surrounding transcript remains available to accessibility readers.
-    let (rect, _) = ui.allocate_exact_size(allocation, Sense::hover());
+    let (_, rect) = ui.allocate_space(allocation);
     // egui matches selection endpoints to widgets by id every frame and drops
     // the selection when one is missed. A positional auto id shifts whenever
     // a sibling allocates differently (virtualized rows), killing the
@@ -5927,7 +5937,10 @@ fn video(
 ) -> f32 {
     use crate::video::State;
     let palette = view.palette;
-    let Some(thumbnail) = message.thumbnail.as_deref() else {
+    // A video sent before ZapFast made thumbnails has none; its file is
+    // here, so its first frame stands in. Without either, it is a file card.
+    let thumbnail = message.thumbnail.as_deref();
+    if thumbnail.is_none() && media.path.is_none() {
         let title = if gif { "GIF" } else { "Video" };
         let mut detail = Vec::new();
         if let Some(seconds) = seconds {
@@ -5946,9 +5959,16 @@ fn video(
             actions,
         );
         return width;
-    };
+    }
     let limit = width.min(PICTURE_WIDTH);
-    let size = frame_size(media, Some((16, 9)), limit, PICTURE_HEIGHT.min(limit * 1.3));
+    // Without its size, a widescreen frame that fills the bubble: the hint is
+    // in pixels, so a bare 16 by 9 would shrink it to the narrowest picture.
+    let size = frame_size(
+        media,
+        Some((1280, 720)),
+        limit,
+        PICTURE_HEIGHT.min(limit * 1.3),
+    );
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let playing = match (&media.path, gif) {
         (Some(path), true) => Some(animation::frame(
@@ -5997,14 +6017,31 @@ fn video(
                     6.0,
                 );
             }
-            None => {
-                // Registering the poster decodes it, so it waits for the row to show.
-                let uri = thumbnail_uri(ui.ctx(), &message.chat, &message.id, thumbnail);
-                egui::Image::new(uri)
-                    .fit_to_exact_size(size)
-                    .corner_radius(6.0)
-                    .paint_at(ui, rect);
-            }
+            None => match (thumbnail, &media.path) {
+                (Some(thumbnail), _) => {
+                    // Registering the poster decodes it, so it waits for the row to show.
+                    let uri = thumbnail_uri(ui.ctx(), &message.chat, &message.id, thumbnail);
+                    egui::Image::new(uri)
+                        .fit_to_exact_size(size)
+                        .corner_radius(6.0)
+                        .paint_at(ui, rect);
+                }
+                (None, Some(path)) => {
+                    ui.painter().rect_filled(rect, 6.0, Color32::BLACK);
+                    if let animation::Frame::Ready(texture) =
+                        animation::frame(ui, path, rect, false)
+                    {
+                        paint_texture(
+                            ui,
+                            fit_within(texture.size_vec2(), rect),
+                            texture.id(),
+                            Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+                            6.0,
+                        );
+                    }
+                }
+                (None, None) => {}
+            },
         }
         let state = status.as_ref().map(|status| status.state);
         if state != Some(State::Playing) {
@@ -6041,7 +6078,20 @@ fn video(
                 if status.state == State::Paused
                     || (status.state == State::Playing && ui.rect_contains_pointer(rect))
                 {
-                    video_controls(ui, view, message, path, rect, status, actions);
+                    video_controls(
+                        ui,
+                        &VideoControls {
+                            player: view.video,
+                            locale: view.locale,
+                            accent: view.palette.accent,
+                            expanded: false,
+                        },
+                        &message.id,
+                        path,
+                        rect,
+                        status,
+                        actions,
+                    );
                 }
             }
             _ => {
@@ -6088,11 +6138,20 @@ fn video(
             message: message.id.clone(),
         });
     }
-    if response
-        .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .clicked()
-    {
+    let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if response.clicked() {
         video_clicked(view, message, media, gif, auto, actions);
+    }
+    // The two clicks of a double-click play and pause between them; the
+    // video then opens over the window as it was.
+    if response.double_clicked()
+        && !gif
+        && let Some(path) = &media.path
+    {
+        actions.push(Action::ExpandVideo {
+            message: message.id.clone(),
+            path: path.clone(),
+        });
     }
     size.x
 }
@@ -6130,12 +6189,22 @@ fn video_clicked(
     }
 }
 
-/// Play/pause, the time, a seek bar, and a sound switch along the bottom of
-/// a playing video.
-fn video_controls(
+/// What the video controls need besides the video: the bubble and the view
+/// covering the window share them.
+pub(crate) struct VideoControls<'a> {
+    pub player: &'a crate::video::Player,
+    pub locale: crate::i18n::Locale,
+    pub accent: Color32,
+    /// Whether the video covers the window; its button then puts it back.
+    pub expanded: bool,
+}
+
+/// Play/pause, the time, a seek bar, a sound switch, and the switch between
+/// the message and the whole window, along the bottom of a playing video.
+pub(crate) fn video_controls(
     ui: &mut egui::Ui,
-    view: &View<'_>,
-    message: &Message,
+    controls: &VideoControls<'_>,
+    message: &str,
     path: &Path,
     rect: Rect,
     status: &crate::video::Status,
@@ -6152,7 +6221,7 @@ fn video_controls(
         },
         Color32::from_black_alpha(150),
     );
-    let id = ui.id().with(("video-controls", &message.id));
+    let id = ui.id().with(("video-controls", message));
     let toggle = Rect::from_center_size(pos2(bar.left() + 18.0, bar.center().y), Vec2::splat(26.0));
     let playing = status.state == crate::video::State::Playing;
     theme::paint_icon(
@@ -6163,9 +6232,9 @@ fn video_controls(
         Color32::WHITE,
     );
     let tooltip = if playing {
-        crate::i18n::gettext(view.locale, "Pause")
+        crate::i18n::gettext(controls.locale, "Pause")
     } else {
-        crate::i18n::gettext(view.locale, "Play")
+        crate::i18n::gettext(controls.locale, "Play")
     };
     if ui
         .interact(toggle, id.with("toggle"), Sense::click())
@@ -6174,12 +6243,48 @@ fn video_controls(
         .clicked()
     {
         actions.push(Action::PlayVideo {
-            message: message.id.clone(),
+            message: message.to_owned(),
             path: path.to_owned(),
         });
     }
-    let sound = Rect::from_center_size(pos2(bar.right() - 18.0, bar.center().y), Vec2::splat(26.0));
-    let muted = view.video.muted();
+    let window =
+        Rect::from_center_size(pos2(bar.right() - 18.0, bar.center().y), Vec2::splat(26.0));
+    theme::paint_icon(
+        ui,
+        if controls.expanded {
+            Icon::Minimize
+        } else {
+            Icon::Maximize
+        },
+        window,
+        16.0,
+        Color32::WHITE,
+    );
+    let tooltip = if controls.expanded {
+        crate::i18n::gettext(controls.locale, "Back to the message (Esc)")
+    } else {
+        crate::i18n::gettext(controls.locale, "Fill the window")
+    };
+    if ui
+        .interact(window, id.with("window"), Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(tooltip.as_ref())
+        .clicked()
+    {
+        actions.push(if controls.expanded {
+            Action::CollapseVideo
+        } else {
+            Action::ExpandVideo {
+                message: message.to_owned(),
+                path: path.to_owned(),
+            }
+        });
+    }
+    let sound = Rect::from_center_size(
+        pos2(window.left() - 15.0, bar.center().y),
+        Vec2::splat(26.0),
+    );
+    let muted = controls.player.muted();
     theme::paint_icon(
         ui,
         if muted { Icon::VolumeX } else { Icon::Volume2 },
@@ -6188,9 +6293,9 @@ fn video_controls(
         Color32::WHITE,
     );
     let tooltip = if muted {
-        crate::i18n::gettext(view.locale, "Unmute")
+        crate::i18n::gettext(controls.locale, "Unmute")
     } else {
-        crate::i18n::gettext(view.locale, "Mute")
+        crate::i18n::gettext(controls.locale, "Mute")
     };
     if ui
         .interact(sound, id.with("sound"), Sense::click())
@@ -6205,9 +6310,11 @@ fn video_controls(
         crate::util::duration(status.position.as_secs() as u32),
         crate::util::duration(status.total.as_secs() as u32)
     );
-    let galley = ui
-        .painter()
-        .layout_no_wrap(time, theme::medium(11.5), Color32::WHITE);
+    let galley = ui.painter().layout_no_wrap(
+        time,
+        theme::tabular(fastframe_fonts::Weight::Medium, 11.5),
+        Color32::WHITE,
+    );
     let text = pos2(toggle.right() + 4.0, bar.center().y - galley.size().y / 2.0);
     let track = Rect::from_min_max(
         pos2(text.x + galley.size().x + 10.0, bar.center().y - 8.0),
@@ -6235,14 +6342,14 @@ fn video_controls(
     ui.painter().rect_filled(
         Rect::from_min_max(line.min, pos2(played.x, line.bottom())),
         1.5,
-        view.palette.accent,
+        controls.accent,
     );
-    ui.painter().circle_filled(played, 5.0, view.palette.accent);
+    ui.painter().circle_filled(played, 5.0, controls.accent);
     if (response.clicked() || response.drag_stopped())
         && let Some(fraction) = pointed
     {
         actions.push(Action::SeekVideo {
-            message: message.id.clone(),
+            message: message.to_owned(),
             fraction,
         });
     }
@@ -6355,9 +6462,11 @@ fn video_note(
                 .or_else(|| media.path.is_none().then(|| crate::util::bytes(media.size))),
         };
         if let Some(label) = label {
-            let galley = ui
-                .painter()
-                .layout_no_wrap(label, theme::medium(11.5), Color32::WHITE);
+            let galley = ui.painter().layout_no_wrap(
+                label,
+                theme::tabular(fastframe_fonts::Weight::Medium, 11.5),
+                Color32::WHITE,
+            );
             let chip = Rect::from_center_size(
                 pos2(center.x, picture.bottom() - galley.size().y / 2.0 - 16.0),
                 galley.size() + vec2(12.0, 6.0),
@@ -6685,11 +6794,16 @@ fn voice_player(
                         .map(crate::util::duration)
                         .unwrap_or_else(|| crate::util::bytes(media.size)),
                 };
-                let text = match &media.state {
-                    MediaState::Failed(error) => format!("{error}. Click to retry."),
-                    _ => shown,
+                let (text, font) = match &media.state {
+                    MediaState::Failed(error) => {
+                        (format!("{error}. Click to retry."), theme::regular(11.5))
+                    }
+                    _ => (
+                        shown,
+                        theme::tabular(fastframe_fonts::Weight::Regular, 11.5),
+                    ),
                 };
-                theme::text(ui, text, theme::regular(11.5), palette.secondary);
+                theme::text(ui, text, font, palette.secondary);
             });
             // Speed chip, cycling 1x, 1.5x, and 2x like the phone. The
             // message menu lists every speed, including 1.25x and 1.75x.
@@ -6785,7 +6899,7 @@ fn recording_strip(app: &mut App, ui: &mut egui::Ui) {
             theme::text(
                 ui,
                 crate::util::duration(elapsed.as_secs() as u32),
-                theme::medium(14.0),
+                theme::tabular(fastframe_fonts::Weight::Medium, 14.0),
                 palette.text,
             );
             // Recent audio levels, newest on the right against send.

@@ -13,12 +13,14 @@ is ZapFast's sibling: the same native interface, for Spotify. Both are built
 on [fastframe](https://github.com/crmne/fastframe), the shared foundation for
 native Rust apps built with egui.
 
+https://github.com/user-attachments/assets/2bf86b54-45fc-4add-8de7-c426c3cdad9b
+
+See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.png">
   <img src="docs/screenshot.png" alt="ZapFast showing a conversation with an attachment, voice messages, reactions, a quoted reply, and a link preview">
 </picture>
-
-See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-group-light.png">
@@ -66,7 +68,7 @@ See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
   The filters stay on one row and scroll horizontally in narrow sidebars.
   Unnamed groups use a shared participant summary for their title and subtitle.
   It names each saved contact by its whole first name as saved on the phone (the
-  full name when none was saved), repeated names appear as `Andrea ×3`, and your
+  first word of the name when none is known), repeated names appear as `Andrea ×3`, and your
   own entry is shown as `You`.
   Incomplete group metadata preserves known names and retries with backoff;
   an empty cached subject remains eligible for recovery.
@@ -114,10 +116,13 @@ See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
   face the right way. As in WhatsApp, a message whose first strong character is
   Hebrew or Arabic is aligned to the right, with its time on its own line when
   the text has more than one. Carets and copied text stay on the logical message.
-  Emoji use the bundled Noto
-  Color Emoji on macOS and Windows. On Linux, ZapFast prefers an installed
-  Noto Color Emoji and falls back to the bundled copy. Emoji-only messages
-  are larger.
+  Text uses the system's interface font (San Francisco on macOS, Segoe UI
+  on Windows, the desktop's `system-ui` font on Linux), or the bundled Inter
+  if you choose it under **Settings > Appearance > Font**, and emoji look as they
+  do in the system's other apps: Apple Color Emoji on macOS, Segoe UI Emoji on
+  Windows, and the desktop's emoji font on Linux. The bundled Noto Color Emoji
+  draws whatever those lack (country flags on Windows, or every emoji on a
+  Linux desktop without an emoji font). Emoji-only messages are larger.
 - **Readable text.** Secondary text in the built-in light and dark themes
   reaches WCAG AA contrast. Inside message bubbles, times, ticks, and other
   grey text adjust to the bubble's colour, in custom themes as well.
@@ -160,14 +165,16 @@ See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
   seconds. Error messages stay above the composer until you dismiss them, and
   a button copies their text for a bug report. A repeated error replaces its
   earlier copy, and only the three newest are kept.
-- **Send attachments with captions.** Paste a picture, drop files, or choose
-  **Send files** from the plus menu. They stay in the composer until you send them or press Escape.
+- **Send attachments with captions.** Paste a picture or copied files, drop
+  files (not yet on Wayland), or choose **Send files** from the plus menu. They stay in the composer until you send them or press Escape.
   Pasting a picture uses its image data without adding the source URL or HTML
   to your caption. Files copied in Finder, Explorer, or a Linux file manager
   paste as the files themselves, not their icons. Text-only clipboard contents
   still paste as text.
   MP3, M4A, AAC, and OGG files go as audio messages; other audio, such as
   WAV or FLAC, goes as a document so the recipient gets the original file.
+  An MP4 video goes with a preview picture, its size, and its length, so it
+  shows as a video before it is downloaded and plays in its message here too.
 - **Mute chats** for eight hours, one week, or indefinitely. The setting also
   applies on your phone and to desktop notifications. Mute changes from your
   phone survive history arriving later, including during initial linking.
@@ -253,7 +260,11 @@ See **[zapfast.rocks](https://zapfast.rocks)** for downloads and guides.
   Ctrl+C (Cmd+C on macOS); a downloaded image's message menu has **Copy image**
   too, without opening the preview. Click a video to play it in its message, with
   sound, a seek bar, and a mute switch; round video messages play inside their
-  circle with a progress ring, like on the phone. A video that is not
+  circle with a progress ring, like on the phone. Double-click a video, or use
+  the button at the end of its controls, to play it over the whole window at a
+  higher resolution: there Space plays and pauses, the left and right arrows
+  jump five seconds, M mutes, and Escape, the close button, or a click beside
+  the picture puts it back in its message. A video that is not
   downloaded yet downloads first and then plays. Videos in codecs other than
   H.264, such as HEVC, open in your system player, and so does **Open in system
   player** in a video's right-click menu. Unsupported pictures and documents
@@ -463,6 +474,7 @@ Builds for every release are on the
 | Platform | File |
 | --- | --- |
 | Linux x86_64 and arm64 | `zapfast-vX.Y.Z-<target>.tar.gz`, with the desktop file and icon in `packaging/` |
+| Linux x86_64 and arm64, one file | `zapfast-X.Y.Z-x86_64.AppImage` or `-aarch64.AppImage`: make it executable and run it |
 | Windows x64 and arm64 | `zapfast-vX.Y.Z-<target>-setup.exe` (no administrator rights needed), or the `.zip` |
 | macOS, universal | `zapfast-vX.Y.Z-macos-universal.dmg` |
 
@@ -637,8 +649,8 @@ type a password of at least six characters twice. ZapFast then starts locked
 and locks again after 1 minute, 15 minutes (the default), or 1 hour without
 input in its window, a choice under **Lock after**. Time spent hidden in the
 tray counts as time without input. **Lock ZapFast** in the tray menu and
-`Ctrl+Shift+L` lock it at once. The tray entry appears from the next start
-after a password is set. **Change password…** and **Turn off…** ask for the
+`Ctrl+Shift+L` lock it at once; the tray entry is there while a password is
+set. **Change password…** and **Turn off…** ask for the
 current password first.
 
 While locked the window shows only the lock screen: no chats, names,
@@ -830,7 +842,7 @@ See [update signing](packaging/UPDATE_SIGNING.md) for key custody and recovery.
 The in-app updater supports marked portable downloads, the Windows installer,
 and the macOS app in Applications. Keep `zapfast-portable.txt` beside a portable
 executable. AUR, DEB, RPM, Flatpak, Cargo and Homebrew installations use their
-package manager. Older portable downloads without the marker need one manual
+package manager, and an AppImage is replaced by downloading the new one. Older portable downloads without the marker need one manual
 upgrade. No account or additional service is needed.
 
 ## Developing
@@ -876,8 +888,10 @@ and selects Reply, types quickly, completes emoji and mentions, searches the GIF
 picker and sends a still sticker, opens group information and the shortcut list,
 and changes themes through Settings. It uses the normal mouse and keyboard handlers;
 a local responder handles outgoing messages with no WhatsApp connection.
-The GIF-search thumbnails and still stickers are rendered from the bundled
-Noto emoji font; demo GIF search uses these local fixtures. The tour makes no
+The demo's profile pictures, photos, video clips, GIF-search thumbnails, and captioned stickers
+are stock media compiled into demo builds only, all CC0 or in the public domain
+(`assets/demo/SOURCES.md` lists each source); demo GIF search uses these local
+fixtures, and the remaining stickers come from the bundled Noto emoji font. The tour makes no
 sound and holds its final frame. Space rebuilds the sample and replays.
 For an automatic start, add `--demo-tour-delay 5000` (milliseconds).
 Use `--demo` instead of `--demo-tour` to explore the sample chats yourself.
@@ -899,7 +913,8 @@ and its attachment and poll menu. `typing`, `mention`, and
 Use `--demo-page chat-menu` to preview the compact chat context menu,
 `--demo-page chat-header-menu` for the menu at the top of an open chat, and
 `--demo-page chat,voice,voice-menu` for a voice message's menu with its speeds.
-`--demo-page video` shows a video and round video messages, and
+`--demo-page video` shows a video and round video messages,
+`--demo-page video-expanded` the video over the whole window, and
 `video-playing` or `note-playing` starts one of them, silently.
 For deterministic theme screenshots, `--demo-page settings,omarchy` and
 `--demo-page settings,omarchy-light` preview following dark and light Omarchy

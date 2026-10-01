@@ -368,7 +368,14 @@ The app keeps its data in `~/Library/Application Support/<bundle id>` and
 Set `ZAPFAST_VERBOSE=1` for debug logging. Each launch logs how long its
 steps took (`Launch: … after N ms`, subsystem `ZapFast`, category `Launch`),
 and a main thread that stops answering for 250 ms or more logs how long
-(`Hang: …`, category `Hangs`), so a freeze can be found afterwards.
+(`Hang: …`, category `Hangs`) and where it was (`Hang stack …`: code
+addresses as `image+offset` with the nearest exported symbol, no data), so a
+freeze can be found afterwards. An offset in the app's own image reads back
+with `atos -o <image> -l 0 <offset>`.
+
+Judge speed in a Release build (`make run CONFIG=Release`): a Debug build is
+not optimised, and on the author's Mac it showed the window after 1.4 s where
+Release did after 0.27 s.
 
 ## Timeline benchmark
 
@@ -377,8 +384,8 @@ linked account (no backend, no archive, own preferences), measures the
 message timeline, prints a report and quits. It times opening a chat,
 scrolling up at 5,000 pt/s while older pages of 60 arrive, scrolling a fully
 loaded chat, quick flicks up and back down, jumps, resizing, scrolling the
-chat list, and what a message or presence change in another chat costs the
-main thread. The
+chat list, and what a message or presence change in another chat, and a
+message in the open one, cost the main thread. The
 phrases and speed match Telefast's benchmark, so the numbers compare.
 
 About half of each chat is what real chats hold besides text: photos,
@@ -407,18 +414,24 @@ were. The window ignores the pointer unless `ZAPFAST_BENCHMARK_POINTER=1`;
 scrolling with a trackpad. `ZAPFAST_BENCHMARK_DELAY=<seconds>` waits before
 starting, to attach Instruments; each scroll step is a `Frame` interval in
 Points of Interest.
+Each event is an interval too (`Presence`, `Elsewhere`, `Here`).
 `ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI row
-instead of the drawn bubble, to compare them, in the app or the benchmark. In a Debug build,
-`ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` draws a gallery of messages
+instead of the drawn bubble, and every chat in the sidebar as the earlier
+SwiftUI `ChatRow`, to compare them, in the app or the benchmark. In a Debug
+build, `ZAPFAST_SNAPSHOT_TIMELINE=/path/to.png` draws a gallery of messages
 through the real timeline twice, drawn bubbles on the left and SwiftUI rows
-on the right, in light and dark, and quits.
+on the right, in light and dark, and quits; `ZAPFAST_SNAPSHOT_SIDEBAR=/path/to.png`
+does the same for made-up chats in every state a sidebar row shows, with a
+chat selected, captured as the window server composites them (which is
+where vibrancy and colours can be compared).
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
 A Debug build also takes commands from a shell
 (`DistributedNotificationCenter`, name `com.komoliddin.ZapFastMac.debug`,
 the command as the object): `tree` writes the main window's views and
 safe areas, `resize:<steps>:<points>` times each step of a resize,
 `select:<n>` opens a chat, `top:<n>` loads older pages, `open:search` and
-the like open parts of the window. Answers go to
+the like open parts of the window, `shot` captures the window as shown,
+and `action:<selector>` sends an action (`action:terminate:` quits). Answers go to
 `~/Library/Caches/<bundle id>/debug/` and name views and numbers only.
 
 ## Following upstream

@@ -42,6 +42,13 @@ that decide whether two numbers can be compared:
   moment the process started (Console.app, subsystem `ZapFast`, category
   `Launch`, or the Xcode console). A slow start under Xcode that is fast
   from the Finder is the debugger, not the app.
+- **Judge speed in Release.** A Debug build (`make run`) is not optimised:
+  on the linked account it showed the window 1.36 s after the process
+  started, a Release build 0.27 s, with the chat list at 0.32 s. Every
+  number here is Release.
+- **A hang names its place:** category `Hangs` logs up to four stacks of
+  the main thread while it was stuck, as `image+offset` (`atos -o <image>
+  -l 0 <offset>` reads one back).
 
 ## History
 
@@ -61,6 +68,7 @@ chat, 200 chats, three alternating runs of each build.
 | 10-01 | A message changed in place (a download, a receipt, a reaction) remakes its row only, not the chat's | scroll hitches 38–62 → 15–22 ms/s, flicks 4–6; with the pointer over the timeline 22–24 ms/s. The gaps between frames had been whole rebuilds of 2,000 rows as downloads finished |
 | 10-01 | The chat's content in AppKit (`ConversationViewController`): the timeline a plain subview, the composer and what floats over it SwiftUI islands; the toolbar, sheets and search stay SwiftUI | scroll hitches 15–22 → 1–4 ms/s, flicks 0–3; open again 58 → 52 ms; resize step unchanged at 24 ms (the window's SwiftUI split view) |
 | 10-01 | The main window in AppKit (`MainWindowController`: split view, toolbar, sidebar and chat controllers; SwiftUI only in islands) | on the linked account, a chat of 121 rows, 40 resize steps of 12 pt each with 8 ms of run loop: step median 20–30 → 16 ms, first step 370 → 9–10 ms, worst 33 ms |
+| 10-01 | The sidebar's rows drawn (`ChatCell`), each following its own chat; the chat's header and menu given the chat without its latest activity; the menu bar given the Go to Chat names; the sidebar's toolbar items set only on change; the islands over the timeline and the composer read the pane's state; arriving messages added to the rows in place | four alternating runs against `a6f0535`: a message elsewhere p50 8–12 → 1.8–3.2 ms with 2,000 rows, 9–14 → 3.4–4.2 with a page; a message in the open chat 24–31 → 9–12 ms with 2,000 rows, 19–23 → 8–9 with a page; chat list scroll hitches 4–19 → 0 ms/s in three runs of four; the rest unchanged within noise |
 
 ### On the linked account
 
@@ -102,27 +110,20 @@ branch after launch.
 
 ## Open
 
-- **Launch waits about three seconds for the chat list on this account.**
-  The Rust worker withholds chats and messages until it has confirmed which
-  chats are locked on the phone. Here that recovery fails at every launch
-  (`chat settings recovery failed (Snapshot): snapshot MAC mismatch` in
-  `zapfast.log`), so the marker that would skip it is never saved and each
-  launch waits for the attempt to fail. This is upstream and whatsapp-rust
-  behaviour; a new link starts with an incremental sync instead.
-- Resizing the window still lays out its SwiftUI root (the split view,
-  toolbar and sidebar) on every step, about 24 ms. An AppKit window with
-  an AppKit split view would take that away too.
-
-- A message elsewhere still costs up to ~37 ms at the 99th percentile,
-  the first time a chat moves to the top of the list.
-- The source of the window's root `NSHostingView.layout()` while
-  scrolling was the chat's own SwiftUI content around the timeline: every
-  row the table added or moved invalidated it. It is AppKit now.
-- Documents, voice messages, link previews, polls and cards are still
-  SwiftUI rows, measured on the main thread once per bubble width. In a
-  trace with media they were a quarter of the main thread while
-  scrolling, most of it SwiftUI rendering their display lists again as
-  they moved.
+- **Connecting takes about three and a half seconds on this account.** On
+  10-01 a Release launch showed the chat list from the archive 0.32 s after
+  the process started and was connected at 3.6 s. Earlier the chat list
+  itself waited about three seconds: the Rust worker withholds chats until
+  it has confirmed which are locked on the phone, and here that recovery
+  failed at every launch (`chat settings recovery failed (Snapshot):
+  snapshot MAC mismatch` in `zapfast.log`). That is upstream and
+  whatsapp-rust behaviour.
+- A message elsewhere still costs ~20 ms at the 95th percentile with a
+  page open, the first time the other chat moves to the top of the list
+  (the same before and after the drawn rows).
+- Polls, places, contacts, business cards and sticker packs are still
+  SwiftUI rows in the timeline, measured on the main thread once per bubble
+  width; they are rare.
 
 ## Rules
 
@@ -179,3 +180,20 @@ Each of these came from a trace or a benchmark.
     Rows the table adds while scrolling invalidate layout up the view
     tree, and a window resize lays out everything in it: a SwiftUI
     ancestor answers either by laying out and rendering all it holds.
+14. **What changes with every message reaches SwiftUI as a value that
+    changes only when what the view shows does.** The chat's menu read the
+    whole chat and SwiftUI rebuilt it for every message (a fifth of what a
+    message cost); the header, the composer's place and the islands over the
+    timeline were evaluated again each time, and the menu bar's Go to Chat
+    read the whole sidebar order. An AppKit controller that reads the
+    stores anyway (it costs microseconds there) hands views
+    `ChatSummary.withoutActivity`, names, or flags, set only when they
+    change; toolbar items are set only when they change, since any change
+    lays the toolbar out again.
+15. **In a sidebar, draw as SwiftUI does there.** The sidebar's appearance
+    is vibrant: AppKit's system colours take other values there than
+    SwiftUI's (use `NSColor(Color.red)` and the like), and SwiftUI draws
+    secondary and tertiary styles vibrant, so drawn rows put those in a
+    view that allows vibrancy. Compare in the sidebar gallery, captured as
+    the window server composites it; `cacheDisplay` gets layer colours
+    wrong.

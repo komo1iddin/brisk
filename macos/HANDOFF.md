@@ -11,19 +11,24 @@ nima qilingan, nima tekshirilishi kerak, nima qolgan va qanday o'lchanadi.
 | Narsa | Qiymat |
 |---|---|
 | Repo | `~/Developer/Self-projects/zapfast-mac-native` (crmne/zapfast fork'i). Native UI faqat `macos/` ichida. **`macos/` dan tashqaridagi fayllarga tegilmaydi** (upstream). |
-| Ish branch'i | `timeline-performance` |
-| Worktree | `~/Developer/Self-projects/zapfast-mac-native-timeline` (branch shu yerda ochiq) |
-| Asos | `main` @ `92981d3`. Tarix chiziqli, merge commit yo'q |
+| Hozirgi ish branch'i | `perf-followups` (HANDOFF'dagi qolgan ishlar), `upstream-0.18.2` (`b14c858`) ustiga rebase qilingan |
+| Upstream | `upstream-0.18.2`: upstream 0.18.2 merge (`4dd150f`, `make sync` yo'li bilan, faqat upstream fayllari), bridge sinxroni va 5 ta Swift moslashtirish (sidebar qidiruvida strelkalar, xabarlarni sudrab tanlash, a'zolar qatori, last seen, view-once matni) |
+| Worktree | `~/Developer/Self-projects/zapfast-mac-native-window` (branch shu yerda ochiq) |
+| Oldingi branch'lar | `timeline-performance` (lenta), `appkit-window` (AppKit oyna), `upstream-0.18.2`; hammasi `main`da |
 | Zaxira | `backup/timeline-performance-pre-rebase` (`89ed0db`) |
-| `main`ga qo'shilganmi | **Ha**, 2026-10-01 foydalanuvchi roziligi bilan fast-forward: lenta ishi (`b69d4d2`), keyin AppKit oyna (`8b1bd61`, branch `appkit-window`). Push qilinmagan |
-| Testlar | 216 (ZapFastCoreTests) + 31 (FeatureConversationTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi |
+| `main`ga qo'shilganmi | **Ha**, 2026-10-01 foydalanuvchi roziligi bilan fast-forward: lenta ishi, AppKit oyna, keyin `upstream-0.18.2` va uning ustidagi `perf-followups`. Hech narsa push qilinmagan |
+| Zaxira | `backup/perf-followups-pre-upstream` (`1512049`, rebase'dan oldingi holat) |
+| Testlar | 229 (ZapFastCoreTests) + 39 (FeatureConversationTests) + 7 (FeatureChatsTests). `make check`: ogohlantirishlar ham tekshiriladi, hammasi o'tadi. Branch'dagi har bir commit alohida kompilyatsiya bo'ladi |
 
 ```bash
-cd ~/Developer/Self-projects/zapfast-mac-native-timeline/macos
-make run        # Debug, ilovani ochadi (avval o'zingizning ZapFast'ingizni yoping)
-make release    # Release (arm64)
-make check      # ogohlantirishlar + testlar
+cd ~/Developer/Self-projects/zapfast-mac-native-window/macos
+make run                  # Debug, ilovani ochadi (avval o'zingizning ZapFast'ingizni yoping)
+make run CONFIG=Release   # tezlikni shunda baholang: Debug optimizatsiyasiz
+make check                # ogohlantirishlar + testlar
 ```
+
+**Debug va Release.** `make run` Debug build ochadi, u optimizatsiyasiz. Haqiqiy akkauntda Debug oynani jarayon
+boshlanganidan 1,36 s keyin ko'rsatdi, Release 0,27 s keyin (chat ro'yxati 0,32 s da). Qotish va sekinlikni Release'da baholash kerak.
 
 ---
 
@@ -56,6 +61,25 @@ overlay faqat lenta ustida, "eng yangi xabar" oroli faqat tugmada bosiladi.
 
 ---
 
+## 2b. `perf-followups` (2026-10-01; `a6f0535` ustida yozildi, keyin `upstream-0.18.2` ustiga rebase qilindi, konfliktsiz)
+
+Hash'lar rebase'dan oldingi; mavzular tartibi o'sha.
+
+| Commit | Nima qiladi |
+|---|---|
+| `432266f` | Benchmark ochiq chatga xabar kelishini ham o'lchaydi (`message here`) |
+| `e266188` | Kelgan xabar butun lentani qayta qurmaydi, faqat o'z qatorlarini qo'shadi (oldingi xabarlar qatorlari o'zgarmaydi) |
+| `b11e635` | **Qotish joyi log'ga yoziladi**: `HangMonitor` qotish paytida main thread stack'ini o'qiydi (faqat kod manzillari, `image+offset`), category `Hangs` |
+| `47e443b` | Benchmark'ning har bir hodisasi signpost (`Presence`, `Elsewhere`, `Here`), trace'da topish uchun |
+| `6e3c9cc` | **Sidebar qatorlari native** (`ChatCell`, `FolderCell`): SwiftUI `ChatRow` o'rniga Core Animation. Ko'rinish SwiftUI bilan pikselma-piksel solishtirildi (gallery `ZAPFAST_SNAPSHOT_SIDEBAR`). Kulrang matn vibrant, ranglar SwiftUI'niki. Tanlangan qatorda vaqt va son endi ko'rinadi (SwiftUI'da urg'u fonida yo'qolardi) |
+| `b962ae9` | Sidebar toolbar elementlari faqat o'zgarganda o'rnatiladi (har xabarda toolbar qayta joylashtirilardi) |
+| `e80c63b` | Menyu satri (Go to Chat) chatlar tartibini emas, birinchi 9 nomni o'qiydi |
+| `897b38b` | Chat header'i va amallar menyusi chatning "barqaror" nusxasini oladi (`ChatSummary.withoutActivity`). Menyu har xabarda SwiftUI tomonidan qayta qurilardi, bu xabar narxining beshdan biri edi |
+| `939deeb` | Lenta ustidagi orollar va composer joyi pane holatidan o'qiydi (bo'sh, yuklanmoqda, yopiq chat) |
+| `7a7e053` | Kelgan qatorlar ro'yxatga joyida qo'shiladi (nusxalash, solishtirish va qayta indekslashsiz) |
+
+---
+
 ## 3. O'lchangan natijalar
 
 **Benchmark** (M3 Pro, 120 Hz; 2000 xabar, yarmi media; kursor oynaga ta'sir qilmaydi):
@@ -72,6 +96,17 @@ overlay faqat lenta ustida, "eng yangi xabar" oroli faqat tugmada bosiladi.
 | Xotira | 240 MB | 115–135 MB |
 | Integrity (bo'sh qatorlar) | 2/5 ishga tushirishda xato | 0 |
 | Chat ro'yxatini scroll qilish | o'lchanmagan | hitch yo'q |
+
+**`perf-followups` benchmark** (4 juftlik navbatma-navbat, `a6f0535` bilan, p50):
+
+| | `a6f0535` | `perf-followups` |
+|---|---|---|
+| Boshqa chatga xabar (2000 qatorli chat ochiq) | 8–12 ms | 1,8–3,2 ms |
+| Boshqa chatga xabar (bir sahifa ochiq) | 9–14 ms | 3,4–4,2 ms |
+| Ochiq chatga xabar (2000 qator) | 24–31 ms | 9–12 ms |
+| Ochiq chatga xabar (bir sahifa) | 19–23 ms | 8–9 ms |
+| Chat ro'yxati scroll, hitch | 4–19 ms/s | 4 ishga tushirishdan 3 tasida 0 |
+| Ochish, resize, sakrash, xotira | | shovqin ichida o'zgarmadi |
 
 **Haqiqiy akkaunt (2026-10-01).** Foydalanuvchi `main`dagi eski build'da "tarix spinneri chiqqandan keyin ilova qotadi" dedi.
 Uning oynasida, o'sha chatda (121 qator) lldb orqali 80 qadamli resize o'lchandi: `main` har qadamda 215–490 ms
@@ -111,19 +146,18 @@ lenta ustida toolbar ostida `TitleBandView` (titlebar materiali + chiziq), chunk
 o'zi chizgan fonni talab qiladi, lentaning foni esa orqadagi wallpaper. Debug build'da shell buyruqlari bor (`tree`, `shot`,
 `resize`, `scroll`, `select`, `open`), README'da yozilgan; `shot` ilovaning o'z oynasini ruxsatsiz rasmga oladi.
 
-**Boshqa ochiq ishlar:**
-- Sidebar qatorlari hali SwiftUI (`NSHostingView<AnyView>` har qatorda). Boshqa chatda xabar kelganda p95 ~28 ms.
-  Telefast'dagidek native chat kataklari yordam beradi.
-- Qolgan SwiftUI qatorlari (so'rovnoma va boshqalar) hover'ni `.onHover` bilan oladi. Kam uchraydi.
-- Yangi xabar kelganda (xabarlar soni o'zgarganda) lenta hali to'liq qayta quriladi. Oxiriga qo'shilgan xabarlar uchun ham
-  in-place yo'l qilish mumkin (`TimelineController.editedInPlace` ga o'xshash).
+**Boshqa ochiq ishlar** (sidebar qatorlari va kelgan xabarning in-place yo'li `perf-followups`da bajarildi):
+- Qolgan SwiftUI qatorlari: so'rovnoma, joylashuv, kontakt, biznes kartalar, stiker to'plami. Hover'ni `.onHover` bilan oladi.
+  Kam uchraydi; tugmali kontent (ovoz berish, "Message"/"Add", xarita) native qilish ancha ish.
+- Bir sahifali chat ochiq turganda boshqa chatga birinchi xabar p95 ~20 ms (chat ro'yxat tepasiga ko'chganda). Oldin ham shunday edi.
+- Ulanish ~3,6 s (upstream'dagi kutish).
 
 ---
 
 ## 6. Arxitektura (hozirgi)
 
 - `MainWindowController` (AppKit): oyna, `NSToolbar`, `RootViewController` (chatlar, qulf yoki ulanish; notice'lar va umumiy sheet'lar).
-  `MainSplitViewController`: `SidebarViewController` (qidiruv, `ChatTableController`, filtr menyusi), `ChatDetailViewController`
+  `MainSplitViewController`: `SidebarViewController` (qidiruv, `ChatTableController` native `ChatCell`/`FolderCell` bilan, filtr menyusi), `ChatDetailViewController`
   (wallpaper, `ConversationViewController`, sheet presenter'lari, fayl tashlash, header/qidiruv/menyu toolbar elementlari),
   inspektor (chat qidiruvi). `ChatWindowController` bitta chat uchun xuddi shu detail'ni ishlatadi.
 - `ConversationViewController`: `TimelineController`ning scroll view'i (oddiy subview), `ConversationOverlay` oroli
@@ -148,6 +182,16 @@ Env: `ZAPFAST_BENCHMARK_COUNT` (default 2000), `ZAPFAST_BENCHMARK_MEDIA=0` (faqa
 `ZAPFAST_BENCHMARK_POINTER=1|over`, `ZAPFAST_BENCHMARK_DELAY=<s>` (Instruments ulash uchun),
 `ZAPFAST_SWIFTUI_ROWS=1` (barcha qatorlar eski SwiftUI qatori, solishtirish uchun).
 Natijalar mashina yuklamasiga bog'liq: A/B navbatma-navbat, kamida 2–3 martadan.
+
+**Sidebar gallery** (Debug, akkauntsiz): har holatdagi soxta chatlar, chapda native katak, o'ngda SwiftUI `ChatRow`,
+yorug' va qorong'i, tanlangan qator bilan. Oyna server kompozitsiyasidan olinadi (vibrancy va ranglar shunda to'g'ri):
+```bash
+ZAPFAST_SNAPSHOT_SIDEBAR=$PWD/Build/Gallery/sidebar.png Build/DerivedData/Build/Products/Debug/ZapFast.app/Contents/MacOS/ZapFast
+# sidebar.png, sidebar-dark.png, sidebar-b.png, sidebar-b-dark.png
+```
+
+**Qotish stack'lari:** `log show --predicate 'subsystem == "ZapFast" AND category == "Hangs"'` qotish davomiyligi va
+`Hang stack N #k: image+0x... ← ...` qatorlarini beradi. Ilovaning o'z manzili: `atos -o <image> -l 0 <offset>`.
 
 **Gallery** (Debug, akkauntsiz): native pufakchalar va SwiftUI qatorlari yonma-yon, yorug' va qorong'i:
 ```bash

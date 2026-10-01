@@ -111,7 +111,7 @@ private final class BenchmarkRun: NSObject {
             SyntheticChats.pagedChat,
             rows: TimelineRow.build(Array(paged.suffix(BenchmarkBackend.page))).count
         )
-        let eventsWithFirstPage = await eventCosts()
+        let eventsWithFirstPage = await eventCosts(open: SyntheticChats.pagedChat, name: "Benchmark (paged)")
         let pagingScroll = await scroll(speed: 5_000, duration: 8)
         let pagingFlicks = await flicks()
 
@@ -122,7 +122,7 @@ private final class BenchmarkRun: NSObject {
         let fullScroll = await scroll(speed: 5_000, duration: 8)
         let fullFlicks = await flicks()
         let jumps = measureJumps()
-        let eventsWithFullHistory = await eventCosts()
+        let eventsWithFullHistory = await eventCosts(open: SyntheticChats.fullChat, name: "Benchmark (full)")
         let resize = await measureResize()
 
         let small = backend.history(SyntheticChats.smallChat)
@@ -386,10 +386,11 @@ private final class BenchmarkRun: NSObject {
     // MARK: Events elsewhere
 
     /// What the open chat pays for things that happen in another one: a
-    /// contact coming online, and a message arriving there. Each sample is
-    /// the main thread's CPU time from the event until the window has had
-    /// time to update, less the same wait with no event.
-    private func eventCosts() async -> BenchmarkReport.EventCost {
+    /// contact coming online, and a message arriving there; then for a
+    /// message arriving in the open chat itself. Each sample is the main
+    /// thread's CPU time from the event until the window has had time to
+    /// update, less the same wait with no event.
+    private func eventCosts(open: String, name: String) async -> BenchmarkReport.EventCost {
         let samples = 15
         let settle = Duration.milliseconds(80)
         func sample(_ event: () -> Void) async -> Double {
@@ -433,13 +434,36 @@ private final class BenchmarkRun: NSObject {
                 ])
             } - baseline)
         }
+        let rows = timeline?.numberOfRows ?? 0
+
+        // A member writes in the open chat, read at once (the reader is at
+        // the bottom).
+        var here: [Double] = []
+        let last = model.conversations.conversation(open).messages.last?.timestamp ?? newest
+        for index in 0..<samples {
+            let timestamp = max(last, newest + Int64(samples)) + Int64(index + 1)
+            let message = SyntheticChats.message(
+                chat: open, id: "here-\(eventRound)-\(index)",
+                sender: "998900000001@s.whatsapp.net", senderName: "Dilnoza", fromMe: false,
+                timestamp: timestamp, text: "Ok 👍"
+            )
+            let chat = SyntheticChats.chat(id: open, name: name, kind: .group, activity: timestamp)
+            here.append(await sample {
+                backend.inject([
+                    .messages(chat: open, messages: [message], older: false, complete: false),
+                    .chatUpdated(chat: chat),
+                    .incoming(chat: open, message: message),
+                ])
+            } - baseline)
+        }
         eventRound += 1
 
         return .init(
-            rows: timeline?.numberOfRows ?? 0,
+            rows: rows,
             baselineMs: baseline,
             presenceElsewhereMs: .init(presence),
-            messageElsewhereMs: .init(messages)
+            messageElsewhereMs: .init(messages),
+            messageHereMs: .init(here)
         )
     }
 

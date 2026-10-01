@@ -57,6 +57,8 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
         var baselineMs: Double
         var presenceElsewhereMs: Distribution
         var messageElsewhereMs: Distribution
+        /// A message arriving in the open chat, which follows it.
+        var messageHereMs: Distribution
     }
 
     /// Rows on screen that were not drawn where the table put them: the
@@ -140,6 +142,7 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
             \(e.rows) rows (idle baseline \(ms(e.baselineMs)) ms subtracted)
                 presence elsewhere  \(dist(e.presenceElsewhereMs))
                 message elsewhere   \(dist(e.messageElsewhereMs))
+                message here        \(dist(e.messageHereMs))
             """
         }
         return """

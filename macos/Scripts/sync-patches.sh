@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Copies upstream's [patch.crates-io] table into the bridge manifest.
+# Copies upstream's [patch.crates-io] table into the bridge manifest, and
+# keeps the bridge's fastframe-log on upstream's tag.
 #
 # Cargo honours [patch] only in the workspace root, and the bridge is its own
 # root, so upstream's egui/winit forks must be repeated there verbatim or the
@@ -27,6 +28,14 @@ BLOCK="$block" awk '
   !skipping                   { print }
 ' "$bridge" > "$tmp"
 mv "$tmp" "$bridge"
+
+# The bridge logs through the same fastframe-log as upstream. A different tag
+# would put two copies of the crate in the build.
+tag="$(sed -n 's/^fastframe-log = .*tag = "\([^"]*\)".*/\1/p' "$upstream" | head -n 1)"
+if [[ -n "$tag" ]]; then
+  perl -pi -e 's|^(fastframe-log = \{ git = "[^"]*", tag = ")[^"]*(")|${1}'"$tag"'${2}|' "$bridge"
+  echo "Aligned the bridge's fastframe-log with upstream's $tag."
+fi
 
 # Start from upstream's lockfile so the bridge resolves the exact versions
 # upstream tested; cargo only adds the bridge's own dependencies on top.

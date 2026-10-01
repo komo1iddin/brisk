@@ -180,6 +180,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         scrollView.automaticallyAdjustsContentInsets = false
 
         floatingDay.passesPointer = true
+        floatingDay.large = true
         floatingDay.alphaValue = 0
         scrollView.addSubview(floatingDay)
         NotificationCenter.default.addObserver(

@@ -6,9 +6,24 @@ import AppKit
 public final class SlimScroller: NSScroller {
     private static let thickness: CGFloat = 10
     private static let knobWidth: CGFloat = 4
+    private static let shortest: CGFloat = 36
+    private static let longest: CGFloat = 84
 
     override public class func scrollerWidth(for controlSize: NSControl.ControlSize, scrollerStyle: NSScroller.Style) -> CGFloat {
         thickness
+    }
+
+    /// The knob is short, as Telegram's: what the content's proportion gives,
+    /// held between a floor and a ceiling, so it is no long bar on a short
+    /// list and still no speck on a long one. It travels the whole slot.
+    override public func rect(for part: NSScroller.Part) -> NSRect {
+        let rect = super.rect(for: part)
+        guard part == .knob, rect.height > 0 else { return rect }
+        let slot = super.rect(for: .knobSlot)
+        let length = min(max(rect.height, Self.shortest), min(Self.longest, slot.height))
+        let travelled = slot.height - rect.height
+        let along = travelled > 0 ? (rect.minY - slot.minY) / travelled : 0
+        return NSRect(x: rect.minX, y: slot.minY + (slot.height - length) * along, width: rect.width, height: length)
     }
 
     override public func draw(_ dirtyRect: NSRect) {

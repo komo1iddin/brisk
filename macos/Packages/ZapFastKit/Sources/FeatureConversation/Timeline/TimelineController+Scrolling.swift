@@ -200,7 +200,7 @@ extension TimelineController {
             floatingTitle = day.title
             floatingDay.configure(title: day.title, isHeader: false, colors: colors)
         }
-        let height = ChipCell.measure(day.title).rowHeight
+        let height = ChipCell.measure(day.title, large: true).rowHeight
         let top = clip.contentInsets.top
         floatingDay.frame = CGRect(
             x: 0, y: scrollView.isFlipped ? top : scrollView.bounds.height - top - height,

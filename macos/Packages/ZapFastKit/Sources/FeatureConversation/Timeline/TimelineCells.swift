@@ -17,13 +17,22 @@ final class ChipCell: NSView {
     private var title: NSAttributedString?
     private var colors: BubbleColors?
 
-    /// The chip's size and the row's height for a title.
-    static func measure(_ title: String) -> (text: NSAttributedString, chip: CGSize, rowHeight: CGFloat) {
-        let string = TimelineText.line(title, TimelineText.captionSemibold, .labelColor)
+    /// The chip's size and the row's height for a title. The day floating
+    /// over the timeline is larger than the separators it stands in for.
+    static func measure(_ title: String, large: Bool = false) -> (text: NSAttributedString, chip: CGSize, rowHeight: CGFloat) {
+        let string = TimelineText.line(title, large ? TimelineText.calloutSemibold : TimelineText.captionSemibold, .labelColor)
         let size = TimelineText.size(string)
-        let chip = CGSize(width: size.width + Metrics.m * 2, height: size.height + Metrics.xs * 2)
+        let (across, down) = padding(large: large)
+        let chip = CGSize(width: size.width + across * 2, height: size.height + down * 2)
         return (string, chip, chip.height + Metrics.s * 2)
     }
+
+    private static func padding(large: Bool) -> (across: CGFloat, down: CGFloat) {
+        large ? (Metrics.l, Metrics.xs + 2) : (Metrics.m, Metrics.xs)
+    }
+
+    /// Drawn larger: the day over the top of the timeline.
+    var large = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -54,11 +63,12 @@ final class ChipCell: NSView {
     }
 
     func configure(title: String, isHeader: Bool, colors: BubbleColors) {
-        let measured = Self.measure(title)
+        let measured = Self.measure(title, large: large)
         self.title = measured.text
         self.colors = colors
+        let pad = Self.padding(large: large)
         text.piece = TextPiece(string: measured.text, rect: CGRect(
-            origin: CGPoint(x: Metrics.m, y: Metrics.xs),
+            origin: CGPoint(x: pad.across, y: pad.down),
             size: TimelineText.size(measured.text)
         ))
         setAccessibilityLabel(title)
@@ -83,7 +93,8 @@ final class ChipCell: NSView {
     private func placeChip() {
         guard let title else { return }
         let size = TimelineText.size(title)
-        let chipSize = CGSize(width: size.width + Metrics.m * 2, height: size.height + Metrics.xs * 2)
+        let pad = Self.padding(large: large)
+        let chipSize = CGSize(width: size.width + pad.across * 2, height: size.height + pad.down * 2)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         chip.frame = CGRect(

@@ -296,6 +296,7 @@ public final class AppModel {
         self.verbose = verbose
         appLock.startIdleTimer()
         Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
+        Task.detached(priority: .utility) { PhoneFormat.warmUp() }
         // The saved proxy is in use from the first connection on.
         if backend is LiveBackend { proxyConfigure(setting: preferences.proxy) }
         do {

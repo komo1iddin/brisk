@@ -279,7 +279,7 @@ private struct ChatSettings: View {
                     .settingsFootnote()
             }
         }
-        .settingsPane(height: 400)
+        .settingsPane(height: 450)
     }
 }
 
@@ -306,7 +306,7 @@ private struct NotificationSettings: View {
             }
             .disabled(!preferences.notifications)
         }
-        .settingsPane(height: 300)
+        .settingsPane(height: 320)
     }
 }
 

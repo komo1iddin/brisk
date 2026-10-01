@@ -96,9 +96,12 @@ public enum HexColor {
         return (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 
-    /// Dark text on light fills, white on the rest, whichever reads better.
+    /// White text on every fill it reads on (3:1, the bar for large and
+    /// bold text, which message text beside its own bubble is), dark text
+    /// on the light ones. The strictly better of the two would set black on
+    /// a mid blue, where every messenger sets white.
     public static func text(on fill: String) -> String {
-        contrast(fill, "#111b21") >= contrast(fill, "#ffffff") ? "#111b21" : "#ffffff"
+        contrast(fill, "#ffffff") >= 3 ? "#ffffff" : "#111b21"
     }
 
     public static func nsColor(_ hex: String) -> NSColor {

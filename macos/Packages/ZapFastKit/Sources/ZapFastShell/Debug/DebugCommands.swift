@@ -1,6 +1,8 @@
 #if DEBUG
 import AppKit
 import FeatureConversation
+import FeatureSettings
+import SwiftUI
 import ZapFastDesign
 import ZapFastCore
 
@@ -135,6 +137,29 @@ enum DebugCommands {
             var out = "\(type(of: view)) \(view.frame)\n"
             dump(layer, 0, &out)
             write(name, out)
+        case "settings":
+            // settings:<tab>: that tab in a window of its own, as tall as it makes itself.
+            let tab = parts.count > 1 ? parts[1] : "chats"
+            guard let pane = SettingsDebug.panes(model: model).first(where: { $0.name == tab }) else { return }
+            let host = NSHostingController(rootView: pane.view.frame(width: 560))
+            let window = NSWindow(contentViewController: host)
+            window.title = tab
+            window.makeKeyAndOrderFront(nil)
+            Task {
+                try? await Task.sleep(for: .milliseconds(800))
+                write(name, "\(tab) \(window.frame.size) content \(window.contentView?.frame.size ?? .zero)")
+                let image = capture(window)
+                if let data = image {
+                    let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+                        .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
+                    try? data.write(to: folder.appending(path: "settings-\(tab).png"))
+                }
+                window.close()
+            }
+        case "windows":
+            write(name, NSApp.windows.map {
+                "\(NSStringFromClass(type(of: $0))) \"\($0.title)\" \($0.frame.integral) visible=\($0.isVisible) mask=\($0.styleMask.rawValue)"
+            }.joined(separator: "\n"))
         case "front":
             // front: the main window becomes key, as glass and pockets draw
             // differently in a window that is not.
@@ -152,7 +177,7 @@ enum DebugCommands {
             write(name, "set")
         case "shot":
             // shot:popover captures the popover over the window instead.
-            write(name, shot(popover: parts.count > 1 && parts[1] == "popover"))
+            write(name, shot(popover: parts.count > 1 && parts[1] == "popover", other: parts.count > 1 && parts[1] == "other"))
         case "action":
             // action:<selector>, colons and all (`action:terminate:` quits).
             let selector = String(command.dropFirst("action:".count))
@@ -311,11 +336,25 @@ enum DebugCommands {
 
     // MARK: Shot
 
+    /// A window of the app as the screen shows it, as PNG data.
+    private static func capture(_ window: NSWindow) -> Data? {
+        typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+        guard let handle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
+              let symbol = dlsym(handle, "CGWindowListCreateImage") else { return nil }
+        let grab = unsafeBitCast(symbol, to: Capture.self)
+        guard let image = grab(.null, 1 << 3, UInt32(window.windowNumber), 1 << 0 | 1 << 3)?.takeRetainedValue() else { return nil }
+        return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+    }
+
     /// `CGWindowListCreateImage`, which Swift no longer offers but the
     /// system still answers for the app's own windows.
-    private static func shot(popover: Bool = false) -> String {
+    private static func shot(popover: Bool = false, other: Bool = false) -> String {
         let popoverWindow = NSApp.windows.last { NSStringFromClass(type(of: $0)).contains("Popover") && $0.isVisible }
-        guard let window = popover ? popoverWindow : mainWindow() else { return "no window" }
+        // Another titled window of the app, such as Settings.
+        let otherWindow = NSApp.windows.last {
+            $0.isVisible && $0.styleMask.contains(.titled) && (500...700).contains($0.frame.width)
+        }
+        guard let window = popover ? popoverWindow : other ? otherWindow : mainWindow() else { return "no window" }
         typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
         guard let handle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
               let symbol = dlsym(handle, "CGWindowListCreateImage") else { return "no capture" }
@@ -328,7 +367,7 @@ enum DebugCommands {
         guard let data = rep.representation(using: .png, properties: [:]) else { return "no png" }
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
-        try? data.write(to: folder.appending(path: popover ? "popover.png" : "shot.png"))
+        try? data.write(to: folder.appending(path: popover ? "popover.png" : other ? "other.png" : "shot.png"))
         return "\(image.width)x\(image.height)"
     }
 

@@ -393,21 +393,24 @@ private final class BenchmarkRun: NSObject {
     private func eventCosts(open: String, name: String) async -> BenchmarkReport.EventCost {
         let samples = 15
         let settle = Duration.milliseconds(80)
-        func sample(_ event: () -> Void) async -> Double {
+        // Each sample is a signpost, to find it in a trace.
+        func sample(_ name: StaticString = "Event", _ event: () -> Void) async -> Double {
+            let interval = Self.signposter.beginInterval(name)
             let cpu = Self.mainThreadCPU()
             event()
             await pause(settle)
+            Self.signposter.endInterval(name, interval)
             return Self.mainThreadCPU() - cpu
         }
 
         await pause(.milliseconds(300))
         var idle: [Double] = []
-        for _ in 0..<samples { idle.append(await sample {}) }
+        for _ in 0..<samples { idle.append(await sample("Idle") {}) }
         let baseline = BenchmarkReport.Distribution(idle).p50
 
         var presence: [Double] = []
         for index in 0..<samples {
-            presence.append(await sample {
+            presence.append(await sample("Presence") {
                 backend.inject([.presence(id: SyntheticChats.otherChat, online: index.isMultiple(of: 2), lastSeen: nil)])
             } - baseline)
         }
@@ -426,7 +429,7 @@ private final class BenchmarkRun: NSObject {
                 activity: timestamp, unread: UInt32(index + 1)
             )
             // What the worker sends for a message in a chat that is not open.
-            messages.append(await sample {
+            messages.append(await sample("Elsewhere") {
                 backend.inject([
                     .messages(chat: SyntheticChats.otherChat, messages: [message], older: false, complete: false),
                     .chatUpdated(chat: chat),
@@ -448,7 +451,7 @@ private final class BenchmarkRun: NSObject {
                 timestamp: timestamp, text: "Ok 👍"
             )
             let chat = SyntheticChats.chat(id: open, name: name, kind: .group, activity: timestamp)
-            here.append(await sample {
+            here.append(await sample("Here") {
                 backend.inject([
                     .messages(chat: open, messages: [message], older: false, complete: false),
                     .chatUpdated(chat: chat),

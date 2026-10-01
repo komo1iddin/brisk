@@ -8,18 +8,21 @@ import ZapFastSharedUI
 /// as WhatsApp draws them. A click opens the chat's info over the chat.
 struct ChatHeader: View {
     let chat: ChatSummary
+    /// The chat's name and a group's members, read by the caller (from
+    /// stores that change with every message).
+    let title: String
+    let members: String
     let model: AppModel
     let request: (InfoRequest) -> Void
     @State private var hovering = false
 
     var body: some View {
-        let title = model.chats.title(for: chat)
         let subtitle = subtitle
         Button {
             if model.infoChat == chat.id { model.closeInfo() } else { model.showInfo(in: chat.id) }
         } label: {
             HStack(spacing: Metrics.s) {
-                ChatAvatar(chat: chat, model: model, size: Metrics.headerAvatar)
+                ChatAvatar(chat: chat, model: model, size: Metrics.headerAvatar, title: title)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
                         .font(.headline)
@@ -70,7 +73,7 @@ struct ChatHeader: View {
         }
         switch chat.kind {
         case .group:
-            return model.chats.participantNames(chat)
+            return members
         case .broadcast:
             return chat.isChannel ? String(localized: "Channel") : String(localized: "Broadcast list")
         case .direct:

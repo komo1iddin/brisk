@@ -9,11 +9,15 @@ public struct ChatAvatar: View {
     private let chat: ChatSummary
     private let model: AppModel
     private let size: CGFloat
+    /// The chat's name when the caller has it: read here, it is read from
+    /// stores that change with every message.
+    private let title: String?
 
-    public init(chat: ChatSummary, model: AppModel, size: CGFloat) {
+    public init(chat: ChatSummary, model: AppModel, size: CGFloat, title: String? = nil) {
         self.chat = chat
         self.model = model
         self.size = size
+        self.title = title
     }
 
     public var body: some View {
@@ -30,7 +34,7 @@ public struct ChatAvatar: View {
         switch chat.kind {
         case .group: .symbol("person.2.fill")
         case .broadcast: .symbol("megaphone.fill")
-        case .direct: .initials(model.chats.title(for: chat))
+        case .direct: .initials(title ?? model.chats.title(for: chat))
         }
     }
 }

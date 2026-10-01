@@ -21,6 +21,18 @@ extension ChatSummary {
         guard kind == .group else { return false }
         return ours.isEmpty || participants.isEmpty || participants.contains(where: ours.contains)
     }
+
+    /// The chat without what changes with each of its messages: the last
+    /// one, its time, and how many are unread beyond whether any are. A view
+    /// that shows only the rest (the chat's header, its menu) is given this
+    /// and made again when it changes, not for every message.
+    public var withoutActivity: ChatSummary {
+        var chat = self
+        chat.last = nil
+        chat.lastActivity = 0
+        chat.unread = min(chat.unread, 1)
+        return chat
+    }
 }
 
 /// Upstream's `compose_name`: a full name from first and last, and the

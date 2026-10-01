@@ -94,22 +94,29 @@ struct ConversationPresenters: View {
 
 /// The chat's picture and name at the head of the window, in the toolbar.
 struct ConversationHeader: View {
-    let chatID: String
+    /// What the header shows of the chat, read by its controller.
+    struct Content: Equatable {
+        /// The chat without its latest activity (`withoutActivity`).
+        var chat: ChatSummary
+        var title: String
+        /// A group's members, its subtitle while nobody types.
+        var members: String
+    }
+
+    let content: Content
     let model: AppModel
     let chrome: ConversationChrome
 
     var body: some View {
-        if let chat = model.chats.chat(chatID) {
-            let theme = model.chatTheme(for: chatID)
-            ChatHeader(chat: chat, model: model) { request in
-                // The popover goes first; the window answers.
-                model.closeInfo()
-                Task { @MainActor in chrome.infoRequest = request }
-            }
-            .environment(\.chatTheme, theme)
-            .tint(theme.accent)
-            .opensInviteLinks(model: model)
+        let theme = model.chatTheme(for: content.chat.id)
+        ChatHeader(chat: content.chat, title: content.title, members: content.members, model: model) { request in
+            // The popover goes first; the window answers.
+            model.closeInfo()
+            Task { @MainActor in chrome.infoRequest = request }
         }
+        .environment(\.chatTheme, theme)
+        .tint(theme.accent)
+        .opensInviteLinks(model: model)
     }
 }
 

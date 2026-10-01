@@ -1,6 +1,7 @@
 import AppKit
 import Observation
 import SwiftUI
+import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
@@ -52,6 +53,9 @@ public final class ChatDetailViewController: NSViewController {
     private var header: NSHostingView<AnyView>?
     private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
     private var observed = 0
+    /// The open chat as its menu shows it, and as its header does.
+    private var shownChat: ChatSummary?
+    private var shownHeader: ConversationHeader.Content?
 
     public init(model: AppModel, source: Source) {
         self.model = model
@@ -104,9 +108,20 @@ public final class ChatDetailViewController: NSViewController {
             case .chat(let id): id
             }
             let chat = id.flatMap { model.chats.chat($0) }
+            let title = chat.map { model.chats.title(for: $0) }
             return (
                 id: id,
-                title: chat.map { model.chats.title(for: $0) },
+                chat: chat?.withoutActivity,
+                // Names are read here, where reading them costs nothing:
+                // read in the header, they made SwiftUI and the toolbar lay
+                // it out again for every message in any chat.
+                header: chat.map { chat in
+                    ConversationHeader.Content(
+                        chat: chat.withoutActivity, title: title ?? "",
+                        members: chat.kind == .group ? model.chats.participantNames(chat) : ""
+                    )
+                },
+                title: title,
                 search: id.map { model.search.chat?.chat == $0 } ?? false
             )
         } onChange: { [weak self] in
@@ -118,6 +133,15 @@ public final class ChatDetailViewController: NSViewController {
             }
         }
         if state.id != chatID { show(state.id) }
+        // Another chat is another value too.
+        if state.chat != shownChat {
+            shownChat = state.chat
+            updateMenu()
+        }
+        if state.header != shownHeader {
+            shownHeader = state.header
+            updateHeader()
+        }
         if state.title != chatTitle || state.search != searchShown {
             chatTitle = state.title
             searchShown = state.search
@@ -149,7 +173,6 @@ public final class ChatDetailViewController: NSViewController {
         }
         placeholder.isHidden = id != nil
         (inspectorController as? NSHostingController<AnyView>)?.rootView = AnyView(ConversationInspector(chatID: id, model: model))
-        updateItems()
         view.needsLayout = true
     }
 
@@ -204,25 +227,34 @@ public final class ChatDetailViewController: NSViewController {
             return nil
         }
         items[identifier] = item
-        updateItems()
+        updateMenu()
+        updateHeader()
         return item
     }
 
-    private func updateItems() {
-        let model = model
-        let chrome = chrome
-        // A menu of its own for each chat: changing a hosting menu's root
-        // view once it was made stops SwiftUI.
-        let actions = items[Self.actionsItem] as? NSMenuToolbarItem
-        if let chatID {
-            header?.rootView = AnyView(ConversationHeader(chatID: chatID, model: model, chrome: chrome))
-            actions?.menu = NSHostingMenu(rootView: ChatActionsMenu(chatID: chatID, model: model))
+    // The header and the menu show the chat as they were given it: they are
+    // made again when what they show of it changes, not for each message
+    // (the menu, rebuilt by SwiftUI, cost a few milliseconds a message).
+
+    private func updateHeader() {
+        if let content = shownHeader {
+            header?.rootView = AnyView(ConversationHeader(content: content, model: model, chrome: chrome))
         } else {
             header?.rootView = AnyView(EmptyView())
+        }
+    }
+
+    private func updateMenu() {
+        // A menu of its own each time: changing a hosting menu's root view
+        // once it was made stops SwiftUI.
+        let actions = items[Self.actionsItem] as? NSMenuToolbarItem
+        if let chat = shownChat {
+            actions?.menu = NSHostingMenu(rootView: ChatActions(chat: chat, model: model))
+        } else {
             actions?.menu = NSMenu()
         }
         for item in items.values {
-            item.isHidden = chatID == nil
+            item.isHidden = shownChat == nil
         }
     }
 
@@ -232,18 +264,6 @@ public final class ChatDetailViewController: NSViewController {
             model.closeChatSearch()
         } else {
             model.openChatSearch(in: chatID)
-        }
-    }
-}
-
-/// The chat's menu, rebuilt as the chat changes (pinned, muted, read).
-private struct ChatActionsMenu: View {
-    let chatID: String
-    let model: AppModel
-
-    var body: some View {
-        if let chat = model.chats.chat(chatID) {
-            ChatActions(chat: chat, model: model)
         }
     }
 }

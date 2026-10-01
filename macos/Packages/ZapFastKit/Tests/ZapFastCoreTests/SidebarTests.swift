@@ -31,6 +31,24 @@ struct SidebarTests {
         )
     }
 
+    /// A chat's header and menu are given the chat without what each
+    /// message changes, so they are not made again for every message.
+    @Test func aChatWithoutActivityChangesOnlyWithWhatItsMenuShows() {
+        var chat = chat("a", unread: 2)
+        let settled = chat.withoutActivity
+        chat.unread = 5
+        chat.lastActivity = 99
+        chat.last = ChatPreview(fromMe: false, sender: "a", senderName: nil, summary: "Salom", full: "Salom", status: .none)
+        #expect(chat.withoutActivity == settled)
+        chat.unread = 0
+        chat.looksUnread = false
+        #expect(chat.withoutActivity != settled, "Mark as Read becomes Mark as Unread")
+        chat.unread = 5
+        chat.looksUnread = true
+        chat.pinned = true
+        #expect(chat.withoutActivity != settled)
+    }
+
     @Test func aChatOpenedFromTheUnreadListStaysThereOnceRead() {
         let (model, _) = model()
         model.keepUnread("unread")

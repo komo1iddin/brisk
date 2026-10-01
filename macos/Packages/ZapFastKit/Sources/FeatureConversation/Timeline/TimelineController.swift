@@ -93,10 +93,9 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var onReachTop: () -> Void = {}
     var onScrollState: (ScrollState) -> Void = { _ in }
 
-    var items: [Item] = [] {
-        didSet { itemIndex = Dictionary(items.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }) }
-    }
-    /// Where each item is, for cells asking about their message.
+    private(set) var items: [Item] = []
+    /// Where each item is, for cells asking about their message; kept with
+    /// `items` by `setItems`, and by the changes that keep or add to them.
     private var itemIndex: [String: Int] = [:]
     private var plans: [Plan] = []
     /// The bubble width the items are laid out for.
@@ -228,7 +227,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             self.chatID = chatID
             self.isGroup = isGroup
             self.revision = nil
-            items = []
+            setItems([])
             // Layouts and heights stay, keyed by message: going back to a
             // chat read a moment ago measures nothing again. Only their
             // number is bounded.
@@ -312,9 +311,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// changed and at most a few dozen did.
     private func changed(from old: [MessageRecord], to new: ArraySlice<MessageRecord>) -> [MessageRecord]? {
         var edited: [MessageRecord] = []
-        for (before, after) in zip(old, new) where before != after {
-            guard before.id == after.id, before.timestamp == after.timestamp, before.sender == after.sender,
-                  before.fromMe == after.fromMe, edited.count < 48 else { return nil }
+        // By index: zipping copied every message out of both lists.
+        for index in old.indices where old[index] != new[new.startIndex + index] {
+            let after = new[new.startIndex + index]
+            guard old[index].id == after.id, old[index].timestamp == after.timestamp, old[index].sender == after.sender,
+                  old[index].fromMe == after.fromMe, edited.count < 48 else { return nil }
             edited.append(after)
         }
         return edited
@@ -322,7 +323,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
 
     /// Adds the rows of messages that arrived after `last`: their day and
     /// the unread divider if they start one, then the messages themselves,
-    /// measured here (they are a few). The rows above are left alone.
+    /// measured here (they are a few). The rows above are left alone, and
+    /// the list is added to in place rather than compared with a new one:
+    /// in a long chat that copying and comparing was most of a message's
+    /// cost.
     private func append(_ arrived: ArraySlice<MessageRecord>, after last: MessageRecord) {
         let rows = TimelineRow.build([last] + arrived, unread: unread)
         guard let lastRow = rows.firstIndex(where: { $0.id == last.id }) else {
@@ -331,8 +335,30 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         }
         let resolved = resolve(Array(rows[(lastRow + 1)...]))
         let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
+        let added = resolved.map { item(for: $0, limit: limit) }
+        guard !added.isEmpty, added.allSatisfy({ itemIndex[$0.id] == nil }) else {
+            rebuild()
+            return
+        }
+        let follow = followsBottom
+        let anchor = follow ? nil : readingAnchor()
+        let start = items.count
         plans += resolved
-        apply(items + resolved.map { item(for: $0, limit: limit) }, restyled: false)
+        items += added
+        for (offset, item) in added.enumerated() { itemIndex[item.id] = start + offset }
+        tableView.insertRows(at: IndexSet(integersIn: start..<items.count), withAnimation: [])
+        if follow {
+            scrollToBottom()
+        } else {
+            if let anchor { restore(anchor) }
+            // Counted for the "newest message" button's badge.
+            newBelow += added.count { $0.message.map { !$0.fromMe } ?? false }
+        }
+    }
+
+    private func setItems(_ new: [Item]) {
+        items = new
+        itemIndex = Dictionary(new.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// Makes the rows of `edited` again, where they are, and tells the table
@@ -360,6 +386,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
             updated[index] = item
         }
         guard !changed.isEmpty else { return }
+        // The same rows in the same places: the index holds.
         items = updated
         reload(changed, resized: resized)
         if follow {
@@ -506,7 +533,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()
         let diff = TimelineDiff.between(old.map(\.id), new.map(\.id)) { new[$1].differs(from: old[$0]) }
-        items = new
+        setItems(new)
 
         switch diff {
         case .none:

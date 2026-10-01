@@ -1261,6 +1261,16 @@ impl Archive {
         Ok(())
     }
 
+    /// Replaces a message's preview picture, as a document's sharper page
+    /// preview replaces its inline one.
+    pub fn set_thumbnail(&self, chat: &str, id: &str, thumbnail: &[u8]) -> Result<()> {
+        self.connection.execute(
+            "UPDATE messages SET thumbnail = ?3 WHERE chat = ?1 AND id = ?2",
+            params![chat, id, thumbnail],
+        )?;
+        Ok(())
+    }
+
     pub fn delete_message(&self, chat: &str, id: &str) -> Result<bool> {
         let deleted = self.connection.execute(
             "DELETE FROM messages WHERE chat = ?1 AND id = ?2",
@@ -2006,6 +2016,22 @@ pub(crate) mod tests {
                 .map(|m| m.id),
             Some("m1".into())
         );
+    }
+
+    #[test]
+    fn a_documents_page_preview_replaces_its_inline_thumbnail() {
+        let archive = Archive::in_memory().expect("opens");
+        let mut document = message("1@s.whatsapp.net", "d1", 1, false);
+        document.thumbnail = Some(vec![1, 2, 3]);
+        archive.insert_message(&document, None).expect("insert");
+        archive
+            .set_thumbnail("1@s.whatsapp.net", "d1", &[4, 5, 6, 7])
+            .expect("set");
+        let read = archive
+            .message("1@s.whatsapp.net", "d1")
+            .expect("read")
+            .expect("exists");
+        assert_eq!(read.thumbnail, Some(vec![4, 5, 6, 7]));
     }
 
     #[test]

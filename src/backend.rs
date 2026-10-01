@@ -212,6 +212,12 @@ pub enum Command {
         chat: ChatId,
         message: String,
     },
+    /// Fetches a document's page preview, which WhatsApp keeps apart from
+    /// the small inline one, once per session.
+    FetchPreview {
+        chat: ChatId,
+        message: String,
+    },
     /// Requests a profile picture; `full` selects the info-dialog size.
     FetchAvatar {
         id: String,
@@ -588,6 +594,12 @@ pub enum Command {
         chat: ChatId,
         id: String,
         result: Result<PathBuf, String>,
+    },
+    /// Internal document-preview result: the decrypted JPEG.
+    PreviewFetched {
+        chat: ChatId,
+        id: String,
+        result: Result<Vec<u8>, String>,
     },
     /// Internal recent-sticker download result.
     StickerFetched {

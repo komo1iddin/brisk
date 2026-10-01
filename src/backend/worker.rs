@@ -38,6 +38,7 @@ use whatsapp_rust::{MediaRetryResult, MediaReuploadRequest};
 mod bot_replies;
 mod channel_pictures;
 mod device_store;
+mod document_preview;
 mod early_events;
 use early_events::WaitingReaction;
 mod favorite_chats;
@@ -520,6 +521,7 @@ pub async fn run(
         favorites_recovered,
         favorites_recovering: false,
         downloads: HashSet::new(),
+        previews: HashSet::new(),
         read_sync: ReadSync::default(),
         favorite_chats: Default::default(),
         poll_decrypting: 0,
@@ -804,6 +806,8 @@ struct Worker {
     favorites_recovering: bool,
     /// Active attachment downloads by chat, message id, and carousel card.
     downloads: HashSet<(ChatId, String, Option<usize>)>,
+    /// Document previews asked for this session, fetched or not.
+    previews: HashSet<(ChatId, String)>,
     /// Serial forward in flight. The next send waits for the running one.
     forward_queue: Option<ForwardQueue<ForwardJob>>,
 }
@@ -4386,6 +4390,7 @@ impl Worker {
                 chat,
                 message,
             } => self.download_media(chat, message, card),
+            Command::FetchPreview { chat, message } => self.fetch_preview(chat, message),
             Command::FetchAvatar { id, full } => self.fetch_avatar(id, full),
             Command::EditText {
                 chat,
@@ -5481,6 +5486,7 @@ impl Worker {
                 id,
                 result,
             } => self.downloaded(chat, id, card, result),
+            Command::PreviewFetched { chat, id, result } => self.preview_fetched(chat, id, result),
             Command::AvatarFetched { id, full, path } => {
                 self.emit(Event::Avatar { id, full, path })
             }
@@ -6467,6 +6473,58 @@ impl Worker {
     }
 
     /// Files the result and releases any picker request that started it.
+    /// Fetches a document's sharper page preview, once a session, when the
+    /// archive holds none or only the small inline one.
+    fn fetch_preview(&mut self, chat: ChatId, id: String) {
+        if self.previews.contains(&(chat.clone(), id.clone())) {
+            return;
+        }
+        // Not connected: asked again the next time the document shows.
+        let Some(client) = self.client.clone() else {
+            return;
+        };
+        self.previews.insert((chat.clone(), id.clone()));
+        let sharp = self
+            .archive
+            .message(&chat, &id)
+            .ok()
+            .flatten()
+            .and_then(|message| message.thumbnail)
+            .is_some_and(|thumbnail| thumbnail.len() >= document_preview::SHARP_PREVIEW_BYTES);
+        if sharp {
+            return;
+        }
+        let raw = self.archive.raw(&chat, &id).ok().flatten();
+        let Some(preview) = raw
+            .and_then(|raw| wa::Message::decode_from_slice(&raw).ok())
+            .and_then(|message| document_preview::DocumentPreview::of(message.get_base_message()))
+        else {
+            return;
+        };
+        let commands = self.commands.clone();
+        tokio::spawn(async move {
+            let result = with_attachment_deadline(document_preview::PREVIEW_TIMEOUT, async {
+                let payload = client
+                    .download(&preview)
+                    .await
+                    .map_err(|error| error.to_string())?;
+                preview.decrypt(payload)
+            })
+            .await;
+            let _ = commands.send(Command::PreviewFetched { chat, id, result });
+        });
+    }
+
+    fn preview_fetched(&mut self, chat: ChatId, id: String, result: Result<Vec<u8>, String>) {
+        match result {
+            Ok(jpeg) => match self.archive.set_thumbnail(&chat, &id, &jpeg) {
+                Ok(()) => self.emit_message(&chat, &id),
+                Err(error) => log::warn!("could not keep a document preview: {error}"),
+            },
+            Err(error) => log::info!("document preview unavailable: {error}"),
+        }
+    }
+
     fn downloaded(
         &mut self,
         chat: ChatId,
@@ -11289,6 +11347,7 @@ mod receipt_tests {
             favorites_recovered: true,
             favorites_recovering: false,
             downloads: HashSet::new(),
+            previews: HashSet::new(),
             read_sync: ReadSync::default(),
             favorite_chats: Default::default(),
             poll_decrypting: 0,

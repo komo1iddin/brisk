@@ -55,6 +55,7 @@ final class VoiceView: NSView {
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
+        spinner.alphaValue = 0
         addSubview(spinner)
     }
 
@@ -90,14 +91,18 @@ final class VoiceView: NSView {
     /// Playback moved on, or started, stopped or paused.
     func apply(_ new: VoiceState, force: Bool = false) {
         guard force || new != state, let layout = voiceLayout else { return }
+        let before = state
+        // A change on screen eases; a cell made for another message does not.
+        let animated = !force && window != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         state = new
         let voice = layout.voice
         let color = layout.color
         let symbol = voice.path == nil ? "arrow.down.circle.fill" : state.current && state.playing ? "pause.circle.fill" : "play.circle.fill"
-        button.configure(symbol: symbol, pointSize: 30, weight: .regular, palette: [color])
+        let redrawn = button.configure(symbol: symbol, pointSize: 30, weight: .regular, palette: [color])
+        if redrawn, animated, !state.busy, !before.busy { crossfade(button) }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        button.isHidden = state.busy
+        button.opacity = state.busy ? 0 : 1
         wave.color = color
         wave.progress = state.current ? state.progress : 0
         let total = voice.seconds.map(TimeInterval.init) ?? (state.current ? state.duration : 0)
@@ -121,8 +126,53 @@ final class VoiceView: NSView {
         CATransaction.commit()
         time.setNeedsDisplay()
         wave.setNeedsDisplay()
-        if state.busy { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
+        if before.busy != state.busy || force {
+            // The button and the spinner swap places, each easing out as the other in.
+            if animated {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = state.busy ? 1 : 0
+                fade.toValue = state.busy ? 0 : 1
+                fade.duration = Self.easeTime
+                button.add(fade, forKey: "swap")
+            }
+            if state.busy { spinner.startAnimation(nil) }
+            let (spinner, busy) = (spinner, state.busy)
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = animated ? Self.easeTime : 0
+                spinner.animator().alphaValue = busy ? 1 : 0
+            } completionHandler: {
+                // AppKit calls this on the main thread.
+                MainActor.assumeIsolated { if !busy { spinner.stopAnimation(nil) } }
+            }
+        }
         setAccessibilityValue(state.current && state.playing ? String(localized: "Playing") : nil)
+    }
+
+    private static let easeTime: CFTimeInterval = 0.16
+
+    /// The layer's new drawing fades in over its old.
+    private func crossfade(_ layer: CALayer) {
+        let fade = CATransition()
+        fade.type = .fade
+        fade.duration = Self.easeTime
+        fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(fade, forKey: "crossfade")
+    }
+
+    /// The play button gives a little under the pointer and comes back.
+    private func press(_ down: Bool) {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        let scale = down ? 0.9 : 1.0
+        let move = CABasicAnimation(keyPath: "transform.scale")
+        move.fromValue = button.presentation()?.value(forKeyPath: "transform.scale") ?? 1
+        move.toValue = scale
+        move.duration = down ? 0.08 : 0.14
+        move.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        button.setValue(scale, forKeyPath: "transform.scale")
+        CATransaction.commit()
+        button.add(move, forKey: "press")
     }
 
     /// The recorder's photo, once there is one.
@@ -179,12 +229,14 @@ final class VoiceView: NSView {
             return
         }
         pressed = part(at: convert(event.locationInWindow, from: nil))
+        if pressed == .button { press(true) }
         if pressed == nil { super.mouseDown(with: event) }
     }
 
     override func mouseUp(with event: NSEvent) {
         guard let pressed, let id = messageID, let layout = voiceLayout else { return }
         self.pressed = nil
+        if pressed == .button { press(false) }
         let point = convert(event.locationInWindow, from: nil)
         switch pressed {
         case .button:

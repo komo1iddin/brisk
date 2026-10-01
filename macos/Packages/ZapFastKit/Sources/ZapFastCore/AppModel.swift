@@ -23,6 +23,7 @@ public final class AppModel {
     public let voice = VoicePlayer()
     public let video = VideoPlayback()
     public let recorder = VoiceRecorder()
+    public let calls: CallStore
     public let appLock: AppLock
     public let lockedChats: LockedChats
 
@@ -257,7 +258,8 @@ public final class AppModel {
     public init(
         backend: Backend = LiveBackend(),
         paths: AppPaths = .standard(),
-        preferences: Preferences = Preferences()
+        preferences: Preferences = Preferences(),
+        calls: CallService? = nil
     ) {
         self.preferences = preferences
         let session = SessionStore()
@@ -270,6 +272,13 @@ public final class AppModel {
         self.appLock = AppLock(preferences: preferences)
         self.themes = ThemeStore(defaults: preferences.defaults, wallpapersFolder: paths.data.appending(path: "Wallpapers"))
         self.lockedChats = LockedChats(preferences: preferences)
+        // Only the live backend's process has a WhatsApp client to call with.
+        let live = backend is LiveBackend
+        self.calls = CallStore(
+            service: calls ?? (live ? LiveCallService() : PreviewCallService()),
+            live: live
+        )
+        self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
         appLock.onLock = { [weak self] in self?.locked() }
         appLock.onUnlock = { [weak self] in self?.unlocked() }

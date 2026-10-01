@@ -195,7 +195,8 @@ public final class VoiceRecorder {
         if levels.count > Self.levelsKept { levels.removeFirst(levels.count - Self.levelsKept) }
     }
 
-    private static func microphoneAllowed() async -> Bool {
+    /// Asks for the microphone if needed; calls use it too.
+    static func microphoneAllowed() async -> Bool {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: true
         case .notDetermined: await AVCaptureDevice.requestAccess(for: .audio)

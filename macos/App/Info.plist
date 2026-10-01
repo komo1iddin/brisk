@@ -40,6 +40,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ZapFast records voice messages when you ask it to.</string>
+	<string>ZapFast uses the microphone for voice messages and calls, only when you start one.</string>
 </dict>
 </plist>

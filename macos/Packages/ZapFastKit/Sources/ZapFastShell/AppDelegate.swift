@@ -1,4 +1,5 @@
 import AppKit
+import FeatureCalls
 import FeatureConversation
 import Observation
 import ZapFastCore
@@ -11,6 +12,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarIcon: MenuBarIcon?
     private var mainWindow: MainWindowController?
     private var chatWindows: [ChatWindowController] = []
+    private var callWindow: CallWindowController?
 
     override public init() {
         model = TimelineBenchmark.isRequested ? TimelineBenchmark.makeModel() : AppModel()
@@ -63,6 +65,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.mainWindow?.show()
         }
         model.openChatWindow = { [weak self] chat in self?.openChatWindow(chat) }
+        callWindow = CallWindowController(model: model)
         model.start(verbose: verbose)
         HangMonitor.start()
         // Copies handed to drags and to Contacts last time are done with.

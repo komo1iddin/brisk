@@ -9,8 +9,8 @@ as-is. Only the interface is new: SwiftUI and AppKit, designed to Apple's HIG.
 
 1. **Never edit upstream files.** Everything outside `macos/` belongs to
    upstream. That keeps `git merge upstream/main` free of conflicts. When the
-   bridge needs something upstream lacks, propose it upstream. The one
-   exception so far is listed under [Following upstream](#following-upstream).
+   bridge needs something upstream lacks, propose it upstream. The two
+   exceptions so far are listed under [Following upstream](#following-upstream).
 2. **The Rust side is the contract.** Swift talks to upstream only through
    `zapfast::backend::{Command, Event}`, via `macos/Bridge`. Protocol,
    storage and sync behaviour are never reimplemented in Swift.
@@ -32,6 +32,7 @@ macos/
 │   ├── src/commands.rs        BridgeCommand → upstream Command
 │   ├── src/events.rs          upstream Event → BridgeEvent (exhaustive match)
 │   ├── src/helpers.rs         exported pure upstream helpers
+│   ├── src/calls/             voice calls on the worker's WhatsApp client
 │   ├── src/types/             FFI mirrors of upstream model types
 │   └── uniffi-bindgen/        the binding generator binary
 ├── Packages/ZapFastKit/       Swift package, one module per layer
@@ -45,6 +46,7 @@ macos/
 │       ├── FeatureConversation/ the open chat (AppKit): pane, timeline (NSTableView, drawn cells), composer
 │       ├── FeatureSettings/   the Settings window
 │       ├── FeatureLock/       the app lock's lock screen
+│       ├── FeatureCalls/      the call panel
 │       └── ZapFastShell/      AppKit windows (split view, toolbar), Settings scene, menus, app delegate
 ├── App/                       thin app target: @main, Info.plist, assets
 ├── Scripts/                   build-bridge, sync-patches, sync-upstream, print-link-libs
@@ -356,6 +358,26 @@ player, with a microphone that turns blue once yours was played; while
 one plays, the speed control takes the photo's place. Settings › Chats
 turns the photos off.
 
+### Voice calls
+
+A person's chat has a phone button in the toolbar. An incoming call rings
+in a small panel at the top right of the screen, over other windows and
+Spaces, and bounces the Dock; Return answers, Esc declines. While the app
+lock is closed the panel says only "WhatsApp Call". During a call the
+panel shows the time and has Mute and End; the ringback plays while the
+other side's phone rings.
+
+Calls are whatsapp-rust's: the bridge turns its `voip` features on (MLOW,
+libopus for peers outside the MLOW rollout, the UDP relay) and receives
+the worker's client through `zapfast::backend::set_client_hook`, since
+upstream's interface has no calls. Audio crosses the bridge as 16 kHz mono
+frames of 60 ms; Swift captures and plays them through one `AVAudioEngine`
+with the system's voice processing, which cancels the speaker's echo.
+
+Not yet: video (a video call can be answered with voice only), group
+calls, a second call while one goes (that offer keeps ringing on the
+phone), and a call history in the chat.
+
 ## Build
 
 Requirements: Xcode 26+, Rust via rustup (the toolchain comes from
@@ -464,7 +486,13 @@ and builds the bridge. A compile error then says exactly what changed:
 If the app stops linking after a bump, run `Scripts/print-link-libs.sh` and
 update the `ZapFastBridge` linker settings in `Package.swift`.
 
-One change lives in upstream's files in this fork, to be offered upstream:
-fetching a document's page preview (`Command::FetchPreview`,
-`src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`). A merge
-may conflict there; keep upstream's side and re-apply that commit.
+Two changes live in upstream's files in this fork, to be offered upstream:
+
+- fetching a document's page preview (`Command::FetchPreview`,
+  `src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`);
+- handing the worker's WhatsApp client to an embedder for calls
+  (`src/backend/client_hook.rs`, one line in `start_bot`).
+
+A merge may conflict there; keep upstream's side and re-apply that commit.
+The bridge names upstream's whatsapp-rust revision to add the VoIP
+features; `Scripts/sync-patches.sh` keeps the two revisions equal.

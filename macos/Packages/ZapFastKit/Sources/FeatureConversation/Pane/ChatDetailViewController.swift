@@ -26,6 +26,7 @@ public final class ChatDetailViewController: NSViewController {
     public static let headerItem = NSToolbarItem.Identifier("ZapFastChatHeader")
     public static let searchItem = NSToolbarItem.Identifier("ZapFastChatSearch")
     public static let actionsItem = NSToolbarItem.Identifier("ZapFastChatActions")
+    public static let callItem = NSToolbarItem.Identifier("ZapFastChatCall")
 
     public let model: AppModel
     private let source: Source
@@ -220,6 +221,14 @@ public final class ChatDetailViewController: NSViewController {
             item.isBordered = true
             item.target = self
             item.action = #selector(toggleSearch)
+        case Self.callItem:
+            item = NSToolbarItem(itemIdentifier: identifier)
+            item.image = NSImage(systemSymbolName: "phone", accessibilityDescription: nil)
+            item.label = String(localized: "Voice Call")
+            item.toolTip = String(localized: "Voice call")
+            item.isBordered = true
+            item.target = self
+            item.action = #selector(call)
         case Self.actionsItem:
             let menuItem = NSMenuToolbarItem(itemIdentifier: identifier)
             menuItem.showsIndicator = true
@@ -260,6 +269,19 @@ public final class ChatDetailViewController: NSViewController {
         for item in items.values {
             item.isHidden = shownChat == nil
         }
+        items[Self.callItem]?.isHidden = !Self.canCall(shownChat, model: model)
+    }
+
+    /// A person's chat, other than our own, can be called.
+    static func canCall(_ chat: ChatSummary?, model: AppModel) -> Bool {
+        guard let chat, chat.kind == .direct, !chat.isChannel, !chat.readOnly else { return false }
+        return !model.session.isOurs(chat.id)
+    }
+
+    @objc private func call() {
+        guard let chatID else { return }
+        let calls = model.calls
+        Task { await calls.place(chat: chatID) }
     }
 
     @objc private func toggleSearch() {

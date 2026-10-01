@@ -3,6 +3,7 @@ import AppKit
 import FeatureConversation
 import FeatureSettings
 import SwiftUI
+import ZapFastBridge
 import ZapFastDesign
 import ZapFastCore
 
@@ -32,6 +33,9 @@ import ZapFastCore
 ///   scroll view with whole numbers, to try AppKit's settings live.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
+/// - `call:<ringing|calling|active|muted|ended|none>`: shows the call
+///   window for a made-up number, with no sound and no network;
+///   `shot:call` captures it.
 @MainActor
 enum DebugCommands {
     private static var observer: NSObjectProtocol?
@@ -187,9 +191,25 @@ enum DebugCommands {
             }
             let scroller = bar.verticalScroller
             write(name, "bar frame \(bar.frame) clip \(bar.contentView.frame) bounds \(bar.contentView.bounds) insets \(bar.contentInsets) doc \(bar.documentView?.frame.size ?? .zero) scroller \(scroller?.frame ?? .zero) knobRect \(scroller?.rect(for: .knob) ?? .zero) slot \(scroller?.rect(for: .knobSlot) ?? .zero) flipped \(scroller?.isFlipped ?? false) knob \(scroller?.knobProportion ?? -1) value \(scroller?.doubleValue ?? -1) style \(bar.scrollerStyle.rawValue)")
+        case "call":
+            let phase: CallPhase? = switch parts.count > 1 ? parts[1] : "" {
+            case "ringing": .ringing
+            case "calling": .calling
+            case "active", "muted": .active
+            case "ended": .ended(reason: .peerHungUp)
+            default: nil
+            }
+            model.calls.debugShow(phase.map {
+                CallInfo(
+                    session: 1, chat: "998900000000@s.whatsapp.net", incoming: $0 == .ringing,
+                    videoOffered: false, phase: $0, muted: parts.count > 1 && parts[1] == "muted"
+                )
+            })
+            write(name, "\(phase.map { "\($0)" } ?? "none")")
         case "shot":
             // shot:popover captures the popover over the window instead.
-            write(name, shot(popover: parts.count > 1 && parts[1] == "popover", other: parts.count > 1 && parts[1] == "other"))
+            let target = parts.count > 1 ? parts[1] : ""
+            write(name, shot(popover: target == "popover", other: target == "other", call: target == "call"))
         case "action":
             // action:<selector>, colons and all (`action:terminate:` quits).
             let selector = String(command.dropFirst("action:".count))
@@ -360,13 +380,16 @@ enum DebugCommands {
 
     /// `CGWindowListCreateImage`, which Swift no longer offers but the
     /// system still answers for the app's own windows.
-    private static func shot(popover: Bool = false, other: Bool = false) -> String {
+    private static func shot(popover: Bool = false, other: Bool = false, call: Bool = false) -> String {
         let popoverWindow = NSApp.windows.last { NSStringFromClass(type(of: $0)).contains("Popover") && $0.isVisible }
         // Another titled window of the app, such as Settings.
         let otherWindow = NSApp.windows.last {
             $0.isVisible && $0.styleMask.contains(.titled) && (500...700).contains($0.frame.width)
         }
-        guard let window = popover ? popoverWindow : other ? otherWindow : mainWindow() else { return "no window" }
+        let callWindow = NSApp.windows.last { $0 is NSPanel && $0.title == String(localized: "Call") && $0.isVisible }
+        guard let window = call ? callWindow : popover ? popoverWindow : other ? otherWindow : mainWindow() else {
+            return "no window"
+        }
         typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
         guard let handle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
               let symbol = dlsym(handle, "CGWindowListCreateImage") else { return "no capture" }
@@ -379,7 +402,8 @@ enum DebugCommands {
         guard let data = rep.representation(using: .png, properties: [:]) else { return "no png" }
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
-        try? data.write(to: folder.appending(path: popover ? "popover.png" : other ? "other.png" : "shot.png"))
+        let file = call ? "call.png" : popover ? "popover.png" : other ? "other.png" : "shot.png"
+        try? data.write(to: folder.appending(path: file))
         return "\(image.width)x\(image.height)"
     }
 

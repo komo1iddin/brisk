@@ -155,6 +155,7 @@ final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private static let items: [NSToolbarItem.Identifier] = [
         ChatDetailViewController.headerItem,
         .flexibleSpace,
+        ChatDetailViewController.callItem,
         ChatDetailViewController.searchItem,
         ChatDetailViewController.actionsItem,
     ]

@@ -13,17 +13,28 @@ public final class SlimScroller: NSScroller {
         thickness
     }
 
-    /// The knob is short, as Telegram's: what the content's proportion gives,
-    /// held between a floor and a ceiling, so it is no long bar on a short
-    /// list and still no speck on a long one. It travels the whole slot.
+    /// The knob is short, as Telegram's: the proportion of what is on screen,
+    /// held between a floor and a ceiling, so it is no long bar on a short list
+    /// and no speck on a long one. Where it sits is read from the scroll view
+    /// itself, offset and insets together, each time it is drawn: the values
+    /// AppKit hands the scroller differ between ways of scrolling when the
+    /// view is inset (a chat list under its toolbar).
     override public func rect(for part: NSScroller.Part) -> NSRect {
         let rect = super.rect(for: part)
-        guard part == .knob, rect.height > 0 else { return rect }
+        guard part == .knob, rect.height > 0, let scrollView = superview as? NSScrollView,
+              let document = scrollView.documentView else { return rect }
+        let clip = scrollView.contentView
+        let insets = clip.contentInsets
+        let visible = clip.bounds.height - insets.top - insets.bottom
+        let total = document.frame.height
+        guard visible > 0, total > visible else { return rect }
         let slot = super.rect(for: .knobSlot)
-        let length = min(max(rect.height, Self.shortest), min(Self.longest, slot.height))
-        let travelled = slot.height - rect.height
-        let along = travelled > 0 ? (rect.minY - slot.minY) / travelled : 0
-        return NSRect(x: rect.minX, y: slot.minY + (slot.height - length) * along, width: rect.width, height: length)
+        let length = min(max(visible / total * slot.height, Self.shortest), min(Self.longest, slot.height))
+        let along = min(1, max(0, (clip.bounds.minY + insets.top) / (total - visible)))
+        // The slot's own direction: the knob starts at its top when the
+        // scroller is flipped, and at its bottom when it is not.
+        let offset = (slot.height - length) * (isFlipped ? along : 1 - along)
+        return NSRect(x: rect.minX, y: slot.minY + offset, width: rect.width, height: length)
     }
 
     override public func draw(_ dirtyRect: NSRect) {
@@ -83,18 +94,9 @@ public final class HoverScrollView: NSScrollView {
         }
     }
 
-    /// The knob shows what is on screen of what there is: AppKit measures a
-    /// scroll view that is inset (a chat list under its toolbar) with the
-    /// insets counted as content on one side only, which stretches it.
     override public func reflectScrolledClipView(_ clipView: NSClipView) {
         super.reflectScrolledClipView(clipView)
-        guard clipView === contentView, let scroller = verticalScroller, let document = documentView else { return }
-        let insets = clipView.contentInsets
-        let visible = clipView.bounds.height - insets.top - insets.bottom
-        let total = document.frame.height
-        guard visible > 0, total > visible else { return }
-        scroller.knobProportion = visible / total
-        scroller.doubleValue = min(1, max(0, (clipView.bounds.minY + insets.top) / (total - visible)))
+        verticalScroller?.needsDisplay = true
     }
 
     override public func mouseEntered(with event: NSEvent) {

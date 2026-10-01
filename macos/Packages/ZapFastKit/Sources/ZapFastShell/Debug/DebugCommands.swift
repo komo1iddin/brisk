@@ -177,8 +177,16 @@ enum DebugCommands {
             }
             guard let content = mainWindow()?.contentView, let bar = find(content) else { return }
             bar.setBarVisible(parts.count > 1 && parts[1] == "on")
+            // scrollbar:on:<fraction>: the list scrolled that far, 0 top to 1 bottom.
+            if parts.count > 2, let fraction = Double(parts[2]), let document = bar.documentView {
+                let clip = bar.contentView
+                let visible = clip.bounds.height - clip.contentInsets.top - clip.contentInsets.bottom
+                let y = -clip.contentInsets.top + fraction * (document.frame.height - visible)
+                clip.scroll(to: NSPoint(x: 0, y: y))
+                bar.reflectScrolledClipView(clip)
+            }
             let scroller = bar.verticalScroller
-            write(name, "bar frame \(bar.frame) clip \(bar.contentView.frame) bounds \(bar.contentView.bounds) insets \(bar.contentInsets) doc \(bar.documentView?.frame.size ?? .zero) scroller \(scroller?.frame ?? .zero) knob \(scroller?.knobProportion ?? -1) value \(scroller?.doubleValue ?? -1) style \(bar.scrollerStyle.rawValue)")
+            write(name, "bar frame \(bar.frame) clip \(bar.contentView.frame) bounds \(bar.contentView.bounds) insets \(bar.contentInsets) doc \(bar.documentView?.frame.size ?? .zero) scroller \(scroller?.frame ?? .zero) knobRect \(scroller?.rect(for: .knob) ?? .zero) slot \(scroller?.rect(for: .knobSlot) ?? .zero) flipped \(scroller?.isFlipped ?? false) knob \(scroller?.knobProportion ?? -1) value \(scroller?.doubleValue ?? -1) style \(bar.scrollerStyle.rawValue)")
         case "shot":
             // shot:popover captures the popover over the window instead.
             write(name, shot(popover: parts.count > 1 && parts[1] == "popover", other: parts.count > 1 && parts[1] == "other"))

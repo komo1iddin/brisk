@@ -11,6 +11,8 @@ extension BubbleSource {
     /// A voice message's photo shows beside it with `voiceAvatars` (else
     /// only its speed while it plays: `playingVoice` is asked then, so only
     /// then is playback observed); `own` names our own recordings.
+    /// `original` finds a quoted message among those loaded, for its kind
+    /// and picture.
     @MainActor
     static func make(
         _ message: MessageRecord,
@@ -20,7 +22,8 @@ extension BubbleSource {
         chats: ChatStore,
         voiceAvatars: Bool = true,
         playingVoice: () -> String? = { nil },
-        own: (id: String, name: String)? = nil
+        own: (id: String, name: String)? = nil,
+        original: (String) -> MessageRecord? = { _ in nil }
     ) -> BubbleSource? {
         var text = ""
         var emojiOnly = false
@@ -81,8 +84,12 @@ extension BubbleSource {
                 ? chats.personName(message.sender, hint: message.senderName) : nil,
             senderID: message.sender,
             forwarded: message.forwarded,
-            quote: message.quoted.map {
-                .init(name: chats.displayName($0.sender, hint: $0.senderName), summary: $0.summary, senderID: $0.sender)
+            quote: message.quoted.map { quoted in
+                let preview = QuotePreview(quoted, original: quoted.id.isEmpty ? nil : original(quoted.id))
+                return .init(
+                    name: chats.displayName(quoted.sender, hint: quoted.senderName), summary: preview.summary,
+                    senderID: quoted.sender, symbol: preview.symbol, thumbnail: preview.thumbnail
+                )
             },
             edited: message.edited,
             timestamp: message.timestamp,

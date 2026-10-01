@@ -356,6 +356,37 @@ struct DocumentAndLinkBubbleTests {
         #expect(body.rect.height > TimelineText.height(ofLines: 1, TimelineText.body) * 2)
     }
 
+    @Test func aQuoteOfALoadedFileNamesItWithItsKindAndPicture() throws {
+        let file = MessageRecord(
+            id: "f", chat: "c@s.whatsapp.net", sender: "a@s.whatsapp.net", senderName: nil, fromMe: false,
+            timestamp: 1_780_000_000, content: .document(media: pdf(), fileName: "Hisobot.pdf", caption: nil, pages: 1),
+            status: .none, deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false, mentions: [],
+            forwarded: false, thumbnail: Data([1]), summary: "Document: Hisobot.pdf"
+        )
+        let quoted = QuotedMessage(id: "f", sender: "a@s.whatsapp.net", senderName: nil, summary: "Document: Hisobot.pdf", mentions: [])
+        var reply = file
+        reply.id = "r"
+        reply.content = .text(text: "Bu ham to'g'ri", preview: nil)
+        reply.thumbnail = nil
+        reply.quoted = quoted
+        let loaded = try #require(BubbleSource.make(
+            reply, startsRun: true, isGroup: false, colors: colors, chats: chats, original: { $0 == "f" ? file : nil }
+        ))
+        #expect(loaded.quote?.summary == "Hisobot.pdf • 1 page")
+        #expect(loaded.quote?.symbol == "doc.fill")
+        let layout = TimelineLayoutEngine.layout(for: loaded, widthLimit: 560)
+        let quote = try #require(layout.quote)
+        let picture = try #require(quote.thumbnail)
+        #expect(picture.maxX == quote.rect.maxX)
+        #expect(picture.height == quote.rect.height)
+        #expect(quote.summary.rect.maxX <= picture.minX)
+        #expect((quote.symbolRect?.maxX ?? .infinity) <= quote.summary.rect.minX)
+        // Not loaded: upstream's summary alone.
+        let unknown = try #require(BubbleSource.make(reply, startsRun: true, isGroup: false, colors: colors, chats: chats))
+        #expect(unknown.quote?.summary == "Document: Hisobot.pdf")
+        #expect(unknown.quote?.symbol == nil && unknown.quote?.thumbnail == nil)
+    }
+
     @Test func aDocumentHereHasNoArrowAndAPDFShowsItsPage() throws {
         let here = try layout(.document(media: pdf(path: "/tmp/a.pdf"), fileName: "a.pdf", caption: nil, pages: nil))
         #expect(here.document?.indicator == nil)

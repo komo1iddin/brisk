@@ -564,6 +564,9 @@ private final class BubbleView: NSView {
     private(set) var linkView: LinkPreviewView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
+    /// The quoted message's picture, on the quote's right.
+    private let quoteImage = CALayer()
+    private var quoteLoads = 0
     private var bubbleLayout: BubbleLayout?
     private var bodyHover: Task<Void, Never>?
     private var overBody = false
@@ -581,6 +584,14 @@ private final class BubbleView: NSView {
         layer?.shadowOffset = CGSize(width: 0, height: -0.5)
         layer?.addSublayer(chrome)
         layer?.addSublayer(body)
+        quoteImage.contentsGravity = .resizeAspectFill
+        quoteImage.masksToBounds = true
+        quoteImage.cornerRadius = Metrics.controlRadius
+        quoteImage.cornerCurve = .continuous
+        // Flush with the quote's right edge, whose corners it rounds.
+        quoteImage.maskedCorners = [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+        quoteImage.actions = ["bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull()]
+        layer?.addSublayer(quoteImage)
     }
 
     @available(*, unavailable)
@@ -620,6 +631,7 @@ private final class BubbleView: NSView {
             remove(&linkView)
         }
         overPicture = false
+        showQuotePicture(layout.quote, messageID: messageID)
         chrome.layout = layout
         body.piece = layout.body.map { TextPiece(string: $0.string, rect: CGRect(origin: .zero, size: $0.rect.size)) }
         body.isHidden = layout.body == nil
@@ -639,6 +651,35 @@ private final class BubbleView: NSView {
         applyAppearance()
         chrome.setNeedsDisplay()
         body.setNeedsDisplay()
+    }
+
+    private func showQuotePicture(_ quote: BubbleLayout.QuoteLayout?, messageID: String) {
+        quoteLoads += 1
+        let load = quoteLoads
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        quoteImage.frame = quote?.thumbnail ?? .zero
+        quoteImage.isHidden = quote?.thumbnail == nil
+        CATransaction.commit()
+        guard let rect = quote?.thumbnail, let data = quote?.thumbnailData else {
+            quoteImage.contents = nil
+            return
+        }
+        let key = "quote-\(messageID)"
+        let points = max(rect.width, rect.height)
+        if let cached = Thumbnails.cached(key: key, points: points) {
+            quoteImage.contents = cached.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            return
+        }
+        quoteImage.contents = nil
+        Task { [weak self] in
+            let image = await Thumbnails.load(data, key: key, points: points)
+            guard let self, self.quoteLoads == load else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            self.quoteImage.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            CATransaction.commit()
+        }
     }
 
     /// The attachment's view, made the first time a message needs it.
@@ -849,6 +890,9 @@ nonisolated private final class BubbleChromeLayer: CALayer {
             quote.barColor.setFill()
             NSBezierPath(roundedRect: quote.bar, xRadius: 2, yRadius: 2).fill()
             quote.name.draw(options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+            if let symbol = quote.symbol, let rect = quote.symbolRect {
+                Symbols.draw(symbol, in: rect, pointSize: TimelineText.callout.pointSize - 1, weight: .regular, color: quote.symbolColor)
+            }
             quote.summary.draw(options: [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine])
         }
         let footer = layout.footer

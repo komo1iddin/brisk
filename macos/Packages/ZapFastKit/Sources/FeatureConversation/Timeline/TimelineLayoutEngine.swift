@@ -120,8 +120,10 @@ nonisolated enum TimelineLayoutEngine {
             if !inlineFooter { ideal = max(ideal, footerWidth + capsuleInset * 2) }
             if let name { ideal = max(ideal, T.size(name).width) }
             if let forwarded { ideal = max(ideal, G.forwardedIconWidth + G.footerSpacing + T.size(forwarded).width) }
-            if let quoteName, let quoteSummary {
-                ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, T.size(quoteSummary).width))
+            if let quote = source.quote, let quoteName, let quoteSummary {
+                let symbol = quote.symbol == nil ? 0 : G.quoteSymbolWidth + G.quoteSymbolGap
+                let picture = quote.thumbnail == nil ? 0 : G.quoteThumbnail
+                ideal = max(ideal, quoteChrome + max(T.size(quoteName).width, symbol + T.size(quoteSummary).width) + picture)
             }
             if let placeholderText { ideal = max(ideal, placeholderChrome + T.size(placeholderText).width) }
             ideal = max(ideal, pictureSize.width)
@@ -157,20 +159,31 @@ nonisolated enum TimelineLayoutEngine {
 
         var quote: BubbleLayout.QuoteLayout?
         if let source = source.quote, let quoteName, let quoteSummary {
-            let textWidth = max(1, width - quoteChrome)
+            let picture = source.thumbnail == nil ? 0 : G.quoteThumbnail
+            let textWidth = max(1, width - quoteChrome - picture)
+            let symbolRoom = source.symbol == nil ? 0 : G.quoteSymbolWidth + G.quoteSymbolGap
+            let summaryWidth = max(1, textWidth - symbolRoom)
             let nameHeight = T.height(ofLines: 1, T.captionSemibold)
-            let summaryHeight = min(T.size(quoteSummary, width: textWidth).height, twoCalloutLines)
-            let height = G.quotePadding * 2 + nameHeight + 1 + summaryHeight
+            let summaryHeight = min(T.size(quoteSummary, width: summaryWidth).height, twoCalloutLines)
+            let height = max(G.quotePadding * 2 + nameHeight + 1 + summaryHeight, picture)
             let rect = CGRect(x: left, y: advance(height), width: width, height: height)
             let textX = rect.minX + G.quotePadding * 2 + G.quoteBarWidth
+            let summaryY = rect.minY + G.quotePadding + nameHeight + 1
             quote = .init(
                 rect: rect,
                 bar: CGRect(x: rect.minX + G.quotePadding, y: rect.minY + G.quotePadding, width: G.quoteBarWidth, height: height - G.quotePadding * 2),
                 barColor: onAccent ? colors.outgoingText : AppKitPalette.sender(source.senderID),
                 name: TextPiece(string: quoteName, rect: CGRect(x: textX, y: rect.minY + G.quotePadding, width: textWidth, height: nameHeight)),
                 summary: TextPiece(string: quoteSummary, rect: CGRect(
-                    x: textX, y: rect.minY + G.quotePadding + nameHeight + 1, width: textWidth, height: summaryHeight
-                ))
+                    x: textX + symbolRoom, y: summaryY, width: summaryWidth, height: summaryHeight
+                )),
+                symbol: source.symbol,
+                symbolRect: source.symbol.map { _ in
+                    CGRect(x: textX, y: summaryY, width: G.quoteSymbolWidth, height: T.height(ofLines: 1, T.callout))
+                },
+                symbolColor: T.faded(textColor, 0.7),
+                thumbnail: source.thumbnail == nil ? nil : CGRect(x: rect.maxX - picture, y: rect.minY, width: picture, height: height),
+                thumbnailData: source.thumbnail
             )
         }
 

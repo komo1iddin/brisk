@@ -413,6 +413,16 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let colors = colors
         let swiftUIRows = !drawsBubbles
         let chat = chatID
+        // Quoted messages among those loaded, indexed the first time a
+        // quote asks.
+        let messages = messages
+        var byID: [String: MessageRecord]?
+        func original(_ id: String) -> MessageRecord? {
+            if byID == nil {
+                byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            }
+            return byID?[id]
+        }
         return withObservationTracking {
             rows.map { row -> Plan in
                 switch row {
@@ -426,7 +436,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                         message, startsRun: startsRun, isGroup: isGroup, colors: colors, chats: model.chats,
                         voiceAvatars: model.preferences.voiceAvatars,
                         playingVoice: { model.voice.current.flatMap { $0.chat == chat ? $0.message : nil } },
-                        own: model.session.account.map { ($0.id, $0.name ?? "") }
+                        own: model.session.account.map { ($0.id, $0.name ?? "") },
+                        original: original
                     ) else { return .hosted(row) }
                     return .bubble(row, source)
                 }

@@ -189,6 +189,15 @@ public enum TimelineGallery {
                 mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 92_000,
                 width: nil, height: nil, path: nil
             ), fileName: "Narxlar.xlsx", caption: nil, pages: nil)),
+            // Quotes of a file and of a photo: the kind's symbol, the
+            // file's name and pages, the picture on the right.
+            extra("59", from: "a", content: .text(text: "Bu ham to'g'ri", preview: nil), quoted: QuotedMessage(
+                id: "50", sender: "a@s.whatsapp.net", senderName: "Aziza",
+                summary: "Document: Loyiha rejasi va arxitektura bo'yicha batafsil hujjat.pdf", mentions: []
+            )),
+            extra("60", fromMe: true, content: .text(text: "Qayerda bu?", preview: nil), quoted: QuotedMessage(
+                id: "40", sender: "a@s.whatsapp.net", senderName: "Aziza", summary: "Photo: Tog'dagi manzara", mentions: []
+            )),
         ]
     }
 

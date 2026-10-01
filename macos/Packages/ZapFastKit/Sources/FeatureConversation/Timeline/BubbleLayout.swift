@@ -11,6 +11,10 @@ nonisolated struct BubbleSource: Equatable, Sendable {
         var name: String
         var summary: String
         var senderID: String
+        /// The quoted message's kind, before the summary.
+        var symbol: String?
+        /// Its picture, on the quote's right.
+        var thumbnail: Data?
     }
 
     /// What a bubble holds besides text, between its headers and its text.
@@ -181,6 +185,13 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
         var barColor: NSColor
         var name: TextPiece
         var summary: TextPiece
+        /// The kind's symbol at the start of the summary's first line.
+        var symbol: String?
+        var symbolRect: CGRect?
+        var symbolColor: NSColor
+        /// The quoted message's picture, flush with the quote's right edge.
+        var thumbnail: CGRect?
+        var thumbnailData: Data?
     }
 
     struct Footer {
@@ -391,6 +402,11 @@ nonisolated enum TimelineGeometry {
     static let ticksWidth: CGFloat = 14
     static let quotePadding = Metrics.s
     static let quoteBarWidth: CGFloat = 3
+    /// The quoted message's picture: this wide, the quote's height, and the
+    /// quote no shorter.
+    static let quoteThumbnail: CGFloat = 46
+    static let quoteSymbolWidth: CGFloat = 14
+    static let quoteSymbolGap: CGFloat = 3
     static let forwardedIconWidth: CGFloat = 13
     /// `Placeholder`'s label: a symbol, then the text.
     static let placeholderIconWidth: CGFloat = 18

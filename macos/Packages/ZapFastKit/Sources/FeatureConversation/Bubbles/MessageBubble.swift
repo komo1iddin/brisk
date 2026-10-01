@@ -35,7 +35,7 @@ struct MessageBubble: View {
                     .insetForMedia(isMedia)
             }
             if let quoted = message.quoted {
-                QuoteView(quoted: quoted, fromMe: message.fromMe, textColor: primaryText, model: model) {
+                QuoteView(quoted: quoted, chat: message.chat, fromMe: message.fromMe, textColor: primaryText, model: model) {
                     model.showQuoted(in: message)
                 }
             }
@@ -139,30 +139,60 @@ struct MessageBubble: View {
 /// scrolls to the original.
 private struct QuoteView: View {
     let quoted: QuotedMessage
+    let chat: String
     let fromMe: Bool
     /// Our bubble's text colour, which its quote's bar and name take.
     let textColor: Color
     let model: AppModel
     let show: () -> Void
 
+    @State private var picture: NSImage?
+
     var body: some View {
-        HStack(spacing: Metrics.s) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(fromMe ? textColor : Palette.sender(quoted.sender))
-                .frame(width: 3)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(model.chats.displayName(quoted.sender, hint: quoted.senderName))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(fromMe ? textColor : Palette.sender(quoted.sender))
-                Text(quoted.summary)
-                    .font(.callout)
-                    .lineLimit(2)
-                    .opacity(0.85)
+        let preview = QuotePreview(
+            quoted, original: quoted.id.isEmpty ? nil : model.conversations.conversation(chat).message(quoted.id)
+        )
+        HStack(spacing: 0) {
+            HStack(spacing: Metrics.s) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(fromMe ? textColor : Palette.sender(quoted.sender))
+                    .frame(width: 3)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(model.chats.displayName(quoted.sender, hint: quoted.senderName))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(fromMe ? textColor : Palette.sender(quoted.sender))
+                    HStack(alignment: .firstTextBaseline, spacing: TimelineGeometry.quoteSymbolGap) {
+                        if let symbol = preview.symbol {
+                            Image(systemName: symbol).font(.callout).opacity(0.7)
+                        }
+                        Text(preview.summary)
+                            .font(.callout)
+                            .lineLimit(2)
+                            .opacity(0.85)
+                    }
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(Metrics.s)
+            if preview.thumbnail != nil {
+                Rectangle()
+                    .fill(.quaternary)
+                    .frame(width: TimelineGeometry.quoteThumbnail)
+                    .frame(minHeight: TimelineGeometry.quoteThumbnail)
+                    .overlay {
+                        if let picture {
+                            Image(nsImage: picture).resizable().aspectRatio(contentMode: .fill)
+                        }
+                    }
+                    .clipped()
+                    .task(id: quoted.id) {
+                        guard let data = preview.thumbnail else { return }
+                        picture = await Thumbnails.load(data, key: "quote-view-\(quoted.id)", points: TimelineGeometry.quoteThumbnail * 1.5)
+                    }
+            }
         }
-        .padding(Metrics.s)
-        .background(Palette.quoteBar.opacity(0.5), in: .rect(cornerRadius: Metrics.controlRadius))
+        .background(Palette.quoteBar.opacity(0.5))
+        .clipShape(.rect(cornerRadius: Metrics.controlRadius))
         .fixedSize(horizontal: false, vertical: true)
         .contentShape(.rect(cornerRadius: Metrics.controlRadius))
         .onTapGesture(perform: show)

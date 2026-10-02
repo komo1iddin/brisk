@@ -135,7 +135,10 @@ final class PictureView: AttachmentView {
         gifCapsule.isHidden = layout.gif == nil || !here || moving
         durationCapsule.isHidden = layout.duration == nil || playing
         CATransaction.commit()
-        badge.isHidden = here || picture.isSticker
+        // A sticker shows no badge while it comes, but one that failed says so
+        // and can be tried again, instead of staying a grey square.
+        let failed = if case .failed = download { true } else { false }
+        badge.isHidden = here || (picture.isSticker && !failed)
         if !badge.isHidden {
             badge.show(download, bytes: picture.bytes)
             let size = badge.fittingSize

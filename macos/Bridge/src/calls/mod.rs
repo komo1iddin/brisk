@@ -94,7 +94,11 @@ pub(crate) fn install() -> Arc<CallCenter> {
         .get_or_init(|| {
             let center = Center::new();
             let hooked = center.clone();
-            if !zapfast::backend::set_client_hook(Box::new(move |client| hooked.link(client))) {
+            if !zapfast::backend::set_client_hook(Box::new(move |client| {
+                // The one hook upstream allows: the link module shares the client.
+                crate::link::made(&client);
+                hooked.link(client);
+            })) {
                 log::warn!("calls: another client hook is installed; calls are off");
             }
             Arc::new(CallCenter { center })

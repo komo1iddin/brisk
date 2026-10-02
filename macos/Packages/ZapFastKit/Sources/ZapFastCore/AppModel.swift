@@ -222,6 +222,8 @@ public final class AppModel {
     @ObservationIgnored let launch = LaunchTimer()
     @ObservationIgnored private let eventStats = EventStats()
     @ObservationIgnored lazy var phoneHistory = PhoneHistory(defaults: preferences.defaults)
+    /// Brings the link back when the network does, created on start.
+    @ObservationIgnored private var networkWatch: NetworkWatch?
     @ObservationIgnored private var verbose = false
     @ObservationIgnored private let log = Logger(subsystem: "ZapFast", category: "AppModel")
     /// Chats we told the backend we are typing in, and the task that will
@@ -309,6 +311,17 @@ public final class AppModel {
         self.verbose = verbose
         appLock.startIdleTimer()
         Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
+        if networkWatch == nil, backend is LiveBackend {
+            let watch = NetworkWatch(
+                needsReconnect: { [weak self] in
+                    guard let session = self?.session else { return false }
+                    return session.linkSaysLinked && !session.isConnected
+                },
+                reconnect: { [weak self] in self?.backend.reconnectNow() }
+            )
+            watch.start()
+            networkWatch = watch
+        }
         Task.detached(priority: .utility) { PhoneFormat.warmUp() }
         // The saved proxy is in use from the first connection on.
         if backend is LiveBackend { proxyConfigure(setting: preferences.proxy) }
@@ -340,6 +353,8 @@ public final class AppModel {
         if let selectedChatID { flushDraft(for: selectedChatID) }
         backend.shutdown()
         started = false
+        networkWatch?.stop()
+        networkWatch = nil
     }
 
     /// Linked data exists, even while offline; upstream's `App::is_linked`.
@@ -357,7 +372,8 @@ public final class AppModel {
         backend.send(.pairWithPhone(phone: digits))
     }
 
-    /// Reconnects, or retries starting when the backend never came up.
+    /// Reconnects, or retries starting when the backend never came up. A link
+    /// that is down is dialled again now, not when the library's wait ends.
     public func reconnect() {
         guard started else {
             start(verbose: verbose)
@@ -366,6 +382,7 @@ public final class AppModel {
         backend.send(.reconnect)
     }
     public func unlink() { backend.send(.unlink) }
+        if session.linkSaysLinked, !session.isConnected { backend.reconnectNow() }
     public func startOverArchive() { backend.send(.startOverArchive) }
 
     /// Whether the person is looking at the app; the phone keeps its push

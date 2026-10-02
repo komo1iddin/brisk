@@ -12,6 +12,10 @@ public protocol Backend: AnyObject {
         deliver: @escaping @MainActor ([BridgeEvent]) -> Void
     ) throws
     func send(_ command: BridgeCommand)
+    /// Reconnects to WhatsApp now, without waiting out the delay the library
+    /// puts between tries. `false` when there is nothing to reconnect yet.
+    @discardableResult
+    func reconnectNow() -> Bool
     /// Opens a reader on the archive, for exporting a chat. Unlocking the
     /// archive takes a moment, so it does not run on the main actor.
     func openChatReader() async throws -> any ChatReaderProtocol
@@ -20,6 +24,9 @@ public protocol Backend: AnyObject {
 }
 
 extension Backend {
+    @discardableResult
+    public func reconnectNow() -> Bool { false }
+
     /// Backends without an archive have nothing to export.
     public func openChatReader() async throws -> any ChatReaderProtocol {
         throw BridgeError.NotRunning
@@ -46,6 +53,11 @@ public final class LiveBackend: Backend {
 
     public func send(_ command: BridgeCommand) {
         client.send(command: command)
+    }
+
+    @discardableResult
+    public func reconnectNow() -> Bool {
+        client.reconnectNow()
     }
 
     public func openChatReader() async throws -> any ChatReaderProtocol {
@@ -82,6 +94,8 @@ nonisolated private final class EventRelay: EventListener, Sendable {
 /// A backend that goes nowhere, for previews, galleries, and tests.
 public final class PreviewBackend: Backend {
     public private(set) var sent: [BridgeCommand] = []
+    /// How many times a reconnect without waiting was asked for.
+    public private(set) var reconnectsWithoutWaiting = 0
 
     public init() {}
 
@@ -93,6 +107,12 @@ public final class PreviewBackend: Backend {
 
     public func send(_ command: BridgeCommand) {
         sent.append(command)
+    }
+
+    @discardableResult
+    public func reconnectNow() -> Bool {
+        reconnectsWithoutWaiting += 1
+        return true
     }
 
     public func shutdown() {}

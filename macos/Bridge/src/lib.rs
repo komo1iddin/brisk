@@ -22,6 +22,7 @@ mod commands;
 mod events;
 mod export;
 mod helpers;
+mod link;
 mod logging;
 mod pump;
 pub mod types;

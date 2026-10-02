@@ -128,6 +128,14 @@ impl BridgeClient {
         }
     }
 
+    /// Reconnects to WhatsApp now, without waiting out the library's delay
+    /// between tries (up to fifteen minutes after repeated failures). For a
+    /// link that is down when the network comes back; Swift calls it then.
+    /// Returns `false` when there is no client to ask yet.
+    pub fn reconnect_now(&self) -> bool {
+        crate::link::skip_wait()
+    }
+
     /// Opens a reader on the archive for exporting one chat. It has a
     /// connection of its own, so reading does not wait for the worker or
     /// change what the open timeline shows. Does blocking work: call it off

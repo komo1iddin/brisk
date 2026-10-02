@@ -3,11 +3,13 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use zapfast::archive::Archive;
 use zapfast::backend::Backend;
 use zapfast::paths::AppDirs;
 
 use crate::commands::BridgeCommand;
 use crate::events::BridgeEvent;
+use crate::export::ChatReader;
 use crate::pump::Pump;
 
 /// Where the app keeps its files. Swift passes sandbox-aware locations, so
@@ -33,6 +35,12 @@ pub enum BridgeError {
     Storage { message: String },
     #[error("Could not read the recording: {message}")]
     Media { message: String },
+    /// The archive could not be opened or read.
+    #[error("Could not read the chat archive: {message}")]
+    Archive { message: String },
+    /// Asked before `start`, or after `shutdown`.
+    #[error("The backend is not running")]
+    NotRunning,
 }
 
 /// Receives backend events on a background thread, in the order they
@@ -43,6 +51,8 @@ pub trait EventListener: Send + Sync {
 }
 
 struct Running {
+    /// Where the archive lives, for readers that open their own connection.
+    archive: PathBuf,
     backend: Arc<Mutex<Backend>>,
     pump: Pump,
     /// Held while running, so a second copy cannot open the same archive.
@@ -85,6 +95,7 @@ impl BridgeClient {
         crate::calls::install();
         crate::calls::open_log(&dirs.state);
         let (waker, signal) = crate::pump::waker();
+        let archive = dirs.archive_db();
         let mut backend = Backend::spawn(dirs, waker);
         // Upstream waits for its first window frame before touching storage;
         // our window is Swift's, which is already up when it calls start.
@@ -96,6 +107,7 @@ impl BridgeClient {
         log::info!("bridge started");
 
         *running = Some(Running {
+            archive,
             backend,
             pump,
             _instance: instance,
@@ -114,6 +126,24 @@ impl BridgeClient {
                 .unwrap_or_else(|p| p.into_inner())
                 .send(command);
         }
+    }
+
+    /// Opens a reader on the archive for exporting one chat. It has a
+    /// connection of its own, so reading does not wait for the worker or
+    /// change what the open timeline shows. Does blocking work: call it off
+    /// the main thread.
+    pub fn open_chat_reader(&self) -> Result<Arc<ChatReader>, BridgeError> {
+        let path = {
+            let running = self.running.lock().unwrap_or_else(|p| p.into_inner());
+            running
+                .as_ref()
+                .map(|running| running.archive.clone())
+                .ok_or(BridgeError::NotRunning)?
+        };
+        let archive = Archive::open(&path).map_err(|error| BridgeError::Archive {
+            message: error.to_string(),
+        })?;
+        Ok(Arc::new(ChatReader::new(archive)))
     }
 
     /// Flushes and closes the archive and the connection. Blocks for up to a

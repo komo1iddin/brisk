@@ -20,6 +20,7 @@ mod calls;
 mod client;
 mod commands;
 mod events;
+mod export;
 mod helpers;
 mod logging;
 mod pump;
@@ -33,3 +34,4 @@ pub use calls::{
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;
 pub use events::BridgeEvent;
+pub use export::ChatReader;

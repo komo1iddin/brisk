@@ -221,16 +221,19 @@ and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,
 after asking, here and on the phone; both need a connection.
 
-**Export Chat…** in a chat's menu writes the chat the way the phone does: a
-text file with a line per message, `[date, time] Name: message`, or, with
-**Attach Media**, a zip of that file (`_chat.txt`) and the attachments this Mac
-has downloaded, named like the phone's (`00000012-PHOTO-2026-09-30-09-28-15.jpg`;
-a document keeps its own name). It reads only the local archive through a
-connection of its own (`Bridge/src/export.rs`, `ChatExport` in ZapFastCore), so
-it works offline and does not disturb the open chat; a chat holds what this Mac
-has, which can start later than the chat does, and attachments that were never
-downloaded are left out and counted in the notice. Reactions and quotes are not
-written, as in the phone's export.
+**Export Chat…** in a chat's menu writes the chat as a conversation to read: it asks
+for a place, makes a folder there named like the phone's ("WhatsApp Chat - Name", never
+replacing one that exists), and opens its `messages.html` in the browser. The page shows the
+days under headings, theirs on the left and ours on the right, with names in a group,
+replies, reactions, polls and places, in light or dark; a long chat is split into pages of a
+thousand messages (`messages2.html`, ...) that link to each other. With **Attach Media**
+the attachments this Mac has downloaded go beside the pages in folders by kind (`photos`,
+`videos`, `voice_messages`, `audio`, `stickers`, `files`), and without it the pages say
+what was left out. It reads only the local archive through a connection of its own
+(`Bridge/src/export.rs`, `ChatExport` in ZapFastCore), so it works offline and does not
+disturb the open chat; a chat holds what this Mac has, which can start later than the chat
+does, and attachments that were never downloaded are left out and counted in the notice.
+A Lottie sticker is written as a file, since a browser cannot play it.
 
 Settings › Privacy also shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and

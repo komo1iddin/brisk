@@ -1,157 +1,99 @@
 import Foundation
 
-/// What a message is in an exported chat.
-nonisolated enum ChatExportBody: Sendable, Equatable {
-    /// Text that stands as it is.
-    case text(String)
-    /// An attachment: written beside the text when it is downloaded and
-    /// media was asked for, and named by a placeholder otherwise.
-    case media(kind: ChatExportMediaKind, source: URL?, name: String?, caption: String)
-}
-
-nonisolated enum ChatExportMediaKind: Sendable, Equatable {
-    case photo, video, audio, sticker, document
-
-    /// The word WhatsApp's own export puts in an attachment's file name.
-    var word: String {
-        switch self {
-        case .photo: "PHOTO"
-        case .video: "VIDEO"
-        case .audio: "AUDIO"
-        case .sticker: "STICKER"
-        case .document: "DOCUMENT"
-        }
-    }
-}
-
-/// One message of an export, with the pieces that depend on the reader's
-/// language already written.
-nonisolated struct ChatExportEntry: Sendable, Equatable {
-    let timestamp: Int64
-    /// "30/09/2026, 09:28:15", without the brackets.
-    let stamp: String
-    let author: String
-    let body: ChatExportBody
-}
-
-nonisolated public struct ChatExportSummary: Sendable, Equatable {
-    /// The file written: a `.zip` with media, a `.txt` without.
-    public let url: URL
-    public let messages: Int
-    /// Attachments written beside the text.
-    public let attachments: Int
-    /// Attachments left out because they were never downloaded or could
-    /// not be copied (only counted when media was asked for).
-    public let missingMedia: Int
-}
-
-/// Writes an export to disk. Everything here is file work, so it runs off
-/// the main actor.
+/// Writes an export to disk: a folder with the conversation's pages and, when
+/// media was asked for, the attachments in folders by kind. Everything here
+/// is file work, so it runs off the main actor.
 nonisolated enum ChatExportWriter {
-    enum Failure: LocalizedError {
-        case compressionFailed(Int32)
+    /// How many messages one page holds.
+    static let pageSize = 1000
 
-        var errorDescription: String? {
-            switch self {
-            case .compressionFailed:
-                String(localized: "The chat could not be compressed.")
-            }
-        }
-    }
-
-    /// The text file's name inside the zip, as WhatsApp's own export has it.
-    static let textFileName = "_chat.txt"
-
-    /// Writes `entries`, oldest first, to `destination`: the text alone, or
-    /// a zip of the text and the attachments.
+    /// Writes `entries`, oldest first, as a new folder inside `parent`. The
+    /// folder is named after the chat and never replaces one that is there:
+    /// a later export of the same chat gets a number. A failure leaves no
+    /// half-written folder behind.
     @concurrent
     static func write(
         _ entries: [ChatExportEntry],
+        title: String,
+        showsAuthors: Bool,
         includeMedia: Bool,
-        to destination: URL,
-        timeZone: TimeZone = .autoupdatingCurrent
+        into parent: URL,
+        locale: Locale = .autoupdatingCurrent,
+        timeZone: TimeZone = .autoupdatingCurrent,
+        now: Date = .now,
+        pageSize: Int = ChatExportWriter.pageSize
     ) async throws -> ChatExportSummary {
         let files = FileManager.default
-        let staging = files.temporaryDirectory.appending(path: "zapfast-export-\(UUID().uuidString)")
-        try files.createDirectory(at: staging, withIntermediateDirectories: true)
-        defer { try? files.removeItem(at: staging) }
+        let folder = unusedFolder(named: ChatExport.suggestedFolderName(chat: title), in: parent)
+        try files.createDirectory(at: folder, withIntermediateDirectories: false)
+        var finished = false
+        defer { if !finished { try? files.removeItem(at: folder) } }
 
-        var lines: [String] = []
-        lines.reserveCapacity(entries.count)
         var names = FileNames(timeZone: timeZone)
         var attachments = 0
         var missing = 0
+        var placed: [ChatExportHTML.Placed] = []
+        placed.reserveCapacity(entries.count)
         for entry in entries {
             try Task.checkCancellation()
-            let prefix = "[\(entry.stamp)] \(entry.author): "
-            switch entry.body {
-            case .text(let text):
-                lines.append(prefix + text)
-            case let .media(kind, source, name, caption):
-                var marker = String(localized: "<Media omitted>")
-                if includeMedia {
-                    if let source, files.isReadableFile(atPath: source.path(percentEncoded: false)) {
-                        let file = names.next(kind: kind, timestamp: entry.timestamp, source: source, original: name)
-                        do {
-                            try files.copyItem(at: source, to: staging.appending(path: file))
-                            marker = String(localized: "<attached: \(file)>")
-                            attachments += 1
-                        } catch {
-                            missing += 1
-                        }
-                    } else {
-                        missing += 1
-                    }
-                }
-                lines.append(prefix + marker + (caption.isEmpty ? "" : "\n" + caption))
+            guard case let .media(kind, source, name, _, _, _) = entry.body, includeMedia else {
+                placed.append(.init(entry: entry, file: nil))
+                continue
+            }
+            guard let source, files.isReadableFile(atPath: source.path(percentEncoded: false)) else {
+                missing += 1
+                placed.append(.init(entry: entry, file: nil))
+                continue
+            }
+            let relative = names.next(kind: kind, timestamp: entry.timestamp, source: source, original: name)
+            do {
+                let target = folder.appending(path: relative)
+                try files.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try files.copyItem(at: source, to: target)
+                attachments += 1
+                placed.append(.init(entry: entry, file: relative))
+            } catch {
+                missing += 1
+                placed.append(.init(entry: entry, file: nil))
             }
         }
-        let text = lines.joined(separator: "\n") + (lines.isEmpty ? "" : "\n")
 
-        if includeMedia {
-            try text.write(to: staging.appending(path: textFileName), atomically: false, encoding: .utf8)
-            let archive = files.temporaryDirectory.appending(path: "zapfast-export-\(UUID().uuidString).zip")
-            defer { try? files.removeItem(at: archive) }
-            try compress(staging, into: archive)
-            try place(archive, at: destination)
-        } else {
-            try text.write(to: destination, atomically: true, encoding: .utf8)
+        let pages = max(1, (placed.count + pageSize - 1) / pageSize)
+        let exported = now.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: locale))
+        let language = locale.language.languageCode?.identifier ?? "en"
+        for number in 1...pages {
+            try Task.checkCancellation()
+            let items = Array(placed[min(placed.count, (number - 1) * pageSize)..<min(placed.count, number * pageSize)])
+            let html = ChatExportHTML.render(.init(
+                title: title, showsAuthors: showsAuthors, number: number, pages: pages,
+                messages: placed.count, exported: exported, language: language, items: items
+            ))
+            try html.write(to: folder.appending(path: ChatExportHTML.fileName(page: number)), atomically: false, encoding: .utf8)
         }
+        finished = true
         return ChatExportSummary(
-            url: destination, messages: entries.count, attachments: attachments, missingMedia: missing
+            folder: folder, page: folder.appending(path: ChatExportHTML.fileName(page: 1)),
+            messages: entries.count, attachments: attachments, missingMedia: missing
         )
     }
 
-    /// Zips a folder's contents (not the folder itself) with `ditto`, which
-    /// writes archives that Finder, Archive Utility and `unzip` all open.
-    private static func compress(_ folder: URL, into archive: URL) throws {
-        let process = Process()
-        process.executableURL = URL(filePath: "/usr/bin/ditto")
-        process.arguments = [
-            "-c", "-k", "--norsrc", "--noextattr", "--noqtn",
-            folder.path(percentEncoded: false), archive.path(percentEncoded: false),
-        ]
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw Failure.compressionFailed(process.terminationStatus) }
-    }
-
-    /// Moves a finished file into place, replacing one the person chose to
-    /// replace.
-    private static func place(_ finished: URL, at destination: URL) throws {
+    /// `name`, or `name 2`, `name 3`, ... for the first that is not there.
+    static func unusedFolder(named name: String, in parent: URL) -> URL {
         let files = FileManager.default
-        if files.fileExists(atPath: destination.path(percentEncoded: false)) {
-            _ = try files.replaceItemAt(destination, withItemAt: finished)
-        } else {
-            try files.moveItem(at: finished, to: destination)
+        var candidate = parent.appending(path: name, directoryHint: .isDirectory)
+        var copy = 1
+        while files.fileExists(atPath: candidate.path(percentEncoded: false)) {
+            copy += 1
+            candidate = parent.appending(path: "\(name) \(copy)", directoryHint: .isDirectory)
         }
+        return candidate
     }
 
-    /// Gives each attachment a file name no other has: in the numbered
-    /// style of WhatsApp's own export, `00000012-PHOTO-2026-09-30-09-28-15.jpg`,
-    /// and a document keeps the name it was sent with.
+    /// Gives each attachment a path no other has, in the folder of its kind:
+    /// `photos/photo_12@2026-09-30_22-15-09.jpg`, and a document keeps the name
+    /// it was sent with, `files/Report.pdf`.
     struct FileNames {
-        private var sequence = 0
+        private var counts: [ChatExportMediaKind: Int] = [:]
         private var used: Set<String> = []
         private let stamp: DateFormatter
 
@@ -159,27 +101,27 @@ nonisolated enum ChatExportWriter {
             stamp = DateFormatter()
             stamp.locale = Locale(identifier: "en_US_POSIX")
             stamp.timeZone = timeZone
-            stamp.dateFormat = "yyyy-MM-dd-HH-mm-ss"
+            stamp.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         }
 
         mutating func next(kind: ChatExportMediaKind, timestamp: Int64, source: URL, original: String?) -> String {
-            sequence += 1
+            counts[kind, default: 0] += 1
             let ext = source.pathExtension.isEmpty ? "bin" : source.pathExtension
-            let wanted: String
+            let name: String
             if kind == .document, let original, let own = Self.documentName(original) {
-                wanted = own
+                name = own
             } else {
                 let time = stamp.string(from: Date(timeIntervalSince1970: TimeInterval(timestamp)))
-                wanted = String(format: "%08d-%@-%@.%@", sequence, kind.word, time, ext)
+                name = "\(kind.word)_\(counts[kind] ?? 1)@\(time).\(ext)"
             }
-            return unique(wanted)
+            return "\(kind.folder)/\(unique(name, in: kind.folder))"
         }
 
-        /// A name not used yet: "report.pdf", "report (2).pdf", ...
-        private mutating func unique(_ name: String) -> String {
+        /// A name not used yet in its folder: "report.pdf", "report (2).pdf", ...
+        private mutating func unique(_ name: String, in folder: String) -> String {
             var candidate = name
             var copy = 1
-            while used.contains(candidate.lowercased()) {
+            while used.contains("\(folder)/\(candidate)".lowercased()) {
                 copy += 1
                 let file = name as NSString
                 let base = file.deletingPathExtension
@@ -187,13 +129,12 @@ nonisolated enum ChatExportWriter {
                     ? "\(base) (\(copy))"
                     : "\(base) (\(copy)).\(file.pathExtension)"
             }
-            used.insert(candidate.lowercased())
+            used.insert("\(folder)/\(candidate)".lowercased())
             return candidate
         }
 
-        /// A document's own name, if it is fit to use inside a zip and on
-        /// every file system; nil for one that is not, so it gets a numbered
-        /// name instead.
+        /// A document's own name, if it is fit to use on every file system;
+        /// nil for one that is not, so it gets a numbered name instead.
         static func documentName(_ name: String) -> String? {
             let unsafe = CharacterSet(charactersIn: "/\\:").union(.controlCharacters)
             let cleaned = name.unicodeScalars

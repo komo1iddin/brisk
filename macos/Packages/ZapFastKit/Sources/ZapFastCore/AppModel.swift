@@ -2037,13 +2037,13 @@ public final class AppModel {
         exportRequest = ChatExportRequest(chat: chat)
     }
 
-    /// Writes the chat as WhatsApp's own export does (`ChatExport`), from
-    /// what this Mac's archive holds. `finished` hears where it went, or why
-    /// it did not.
+    /// Writes the chat as a conversation to read (`ChatExport`), from what
+    /// this Mac's archive holds, into a new folder inside `parent`.
+    /// `finished` hears where it went, or why it did not.
     public func exportChat(
         _ chat: String,
         includeMedia: Bool,
-        to destination: URL,
+        into parent: URL,
         finished: @escaping @MainActor (Result<ChatExportSummary, Error>) -> Void = { _ in }
     ) {
         exportRequest = nil
@@ -2052,6 +2052,10 @@ public final class AppModel {
         post(.info, String(localized: "Exporting chat…"))
         let me = session.account?.name.nonEmpty ?? String(localized: "You")
         let chats = chats
+        let summary = chats.chat(chat)
+        let title = summary.map(chats.title(for:)) ?? String(localized: "Chat")
+        // Names are given where a conversation is among several people.
+        let showsAuthors = summary?.kind == .group
         Task {
             do {
                 let reader = try await backend.openChatReader()
@@ -2060,12 +2064,15 @@ public final class AppModel {
                     reader: reader,
                     me: me,
                     name: { chats.personName($0.sender, hint: $0.senderName) },
+                    quotedName: { chats.displayName($0.sender, hint: $0.senderName) },
                     mentionName: { chats.displayName($0) }
                 )
-                let summary = try await ChatExportWriter.write(entries, includeMedia: includeMedia, to: destination)
+                let written = try await ChatExportWriter.write(
+                    entries, title: title, showsAuthors: showsAuthors, includeMedia: includeMedia, into: parent
+                )
                 exportingChat = nil
-                post(.info, Self.exportedText(summary))
-                finished(.success(summary))
+                post(.info, Self.exportedText(written))
+                finished(.success(written))
             } catch {
                 exportingChat = nil
                 post(.error, String(localized: "The chat could not be exported: \(error.localizedDescription)"))

@@ -34,8 +34,8 @@ import ZapFastCore
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
 /// - `export:<n>[:media]`: exports the sidebar's nth chat to a temporary
-///   file, answers with the counts it wrote and how long it took, and
-///   deletes the file, so the real archive's reader can be checked without
+///   folder, answers with the counts it wrote and how long it took, and
+///   deletes the folder, so the real archive's reader can be checked without
 ///   anything of the chat being shown.
 /// - `call:<ringing|calling|active|muted|waiting|video|request|group|groupringing|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
@@ -231,16 +231,19 @@ enum DebugCommands {
                 write(name, "no chat \(index) of \(model.sidebarOrder.count)")
                 return
             }
-            let file = FileManager.default.temporaryDirectory
-                .appending(path: "zapfast-debug-export-\(UUID().uuidString).\(media ? "zip" : "txt")")
+            let parent = FileManager.default.temporaryDirectory
+                .appending(path: "zapfast-debug-export-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
             let started = Date()
-            model.exportChat(model.sidebarOrder[index], includeMedia: media, to: file) { result in
-                defer { try? FileManager.default.removeItem(at: file) }
+            model.exportChat(model.sidebarOrder[index], includeMedia: media, into: parent) { result in
+                defer { try? FileManager.default.removeItem(at: parent) }
                 switch result {
                 case .success(let summary):
-                    let bytes = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    let pages = (try? FileManager.default.contentsOfDirectory(atPath: summary.folder.path(percentEncoded: false)))?
+                        .filter { $0.hasSuffix(".html") }.count ?? 0
+                    let bytes = (try? summary.page.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                     let seconds = Date().timeIntervalSince(started).formatted(.number.precision(.fractionLength(2)))
-                    write(name, "messages=\(summary.messages) attachments=\(summary.attachments) missing=\(summary.missingMedia) bytes=\(bytes) seconds=\(seconds)")
+                    write(name, "messages=\(summary.messages) attachments=\(summary.attachments) missing=\(summary.missingMedia) pages=\(pages) firstPageBytes=\(bytes) seconds=\(seconds)")
                 case .failure(let error):
                     write(name, "failed: \(type(of: error))")
                 }

@@ -37,23 +37,25 @@ private struct ChatExportDialog: ViewModifier {
     }
 
     private func message(_ chat: String) -> String {
-        String(localized: "Your chat with \(name(of: chat)) is saved as a text file. Media goes into a zip beside it, but only what this Mac has downloaded. Only messages stored on this Mac are included.")
+        String(localized: "Your chat with \(name(of: chat)) is saved as a web page you can read in a browser, in a new folder. Media goes into folders beside it, but only what this Mac has downloaded. Only messages stored on this Mac are included.")
     }
 
-    /// The Save panel, then the export.
+    /// Asks where the folder goes, then exports and opens the conversation.
     private func choose(_ chat: String, withMedia: Bool) {
-        let panel = NSSavePanel()
+        let panel = NSOpenPanel()
         panel.title = String(localized: "Export Chat")
-        panel.prompt = String(localized: "Export")
+        panel.message = String(localized: "Choose where to put the folder “\(ChatExport.suggestedFolderName(chat: name(of: chat)))”.")
+        panel.prompt = String(localized: "Export Here")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
         panel.canCreateDirectories = true
-        panel.isExtensionHidden = false
-        panel.allowedContentTypes = [withMedia ? .zip : .plainText]
-        panel.nameFieldStringValue = ChatExport.suggestedFileName(chat: name(of: chat), withMedia: withMedia)
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
         panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            model.exportChat(chat, includeMedia: withMedia, to: url) { result in
+            guard response == .OK, let parent = panel.url else { return }
+            model.exportChat(chat, includeMedia: withMedia, into: parent) { result in
                 if case .success(let summary) = result {
-                    NSWorkspace.shared.activateFileViewerSelecting([summary.url])
+                    NSWorkspace.shared.open(summary.page)
                 }
             }
         }

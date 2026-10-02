@@ -44,6 +44,7 @@ use early_events::WaitingReaction;
 mod favorite_chats;
 mod interactive;
 mod link_watch;
+mod media_failure;
 mod poll_history;
 mod polls;
 mod sticker_pace;
@@ -6573,12 +6574,9 @@ impl Worker {
                                             None => Err(text),
                                         }
                                     }
-                                    Ok(_) => {
-                                        Err("No longer available on WhatsApp's servers".to_owned())
-                                    }
-                                    Err(_error) => {
+                                    other => {
                                         log::info!("media re-upload was not granted");
-                                        Err("No longer available on WhatsApp's servers".to_owned())
+                                        Err(media_failure::reupload_failure(&other).to_owned())
                                     }
                                 }
                             }

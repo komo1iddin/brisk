@@ -138,6 +138,8 @@ final class PictureView: AttachmentView {
         // A sticker shows no badge while it comes, but one that failed says so
         // and can be tried again, instead of staying a grey square.
         let failed = if case .failed = download { true } else { false }
+        // Why it failed, under the pointer.
+        toolTip = here ? nil : download?.failure?.explanation
         badge.isHidden = here || (picture.isSticker && !failed)
         if !badge.isHidden {
             badge.show(download, bytes: picture.bytes)
@@ -384,8 +386,8 @@ final class DownloadBadgeView: NSView {
             spinner.startAnimation(nil)
         case .failed, nil:
             spinner.stopAnimation(nil)
-            let title = if case .failed = state {
-                String(localized: "Retry")
+            let title = if let failure = state?.failure {
+                failure.isFinal ? String(localized: "Unavailable") : String(localized: "Retry")
             } else {
                 bytes > 0 ? ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file) : String(localized: "Download")
             }
@@ -400,7 +402,7 @@ final class DownloadBadgeView: NSView {
             icon.isHidden = false
             text.isHidden = false
             icon.configure(
-                symbol: state == nil ? "arrow.down.circle.fill" : "arrow.clockwise",
+                symbol: state == nil ? "arrow.down.circle.fill" : state?.failure?.isFinal == true ? "exclamationmark.circle" : "arrow.clockwise",
                 pointSize: TimelineText.captionMedium.pointSize, weight: .medium, palette: [.white]
             )
             icon.frame = CGRect(origin: CGPoint(x: padding.width, y: padding.height), size: iconSize)

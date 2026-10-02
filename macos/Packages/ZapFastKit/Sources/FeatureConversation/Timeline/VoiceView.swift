@@ -8,6 +8,8 @@ struct VoiceState: Equatable {
     var playing = false
     /// Decoding before it starts, or downloading.
     var busy = false
+    /// Why the file did not come, after a download that failed.
+    var failure: DownloadFailure?
     var progress = 0.0
     /// Seconds played, while current.
     var position: TimeInterval = 0
@@ -97,7 +99,15 @@ final class VoiceView: NSView {
         state = new
         let voice = layout.voice
         let color = layout.color
-        let symbol = voice.path == nil ? "arrow.down.circle.fill" : state.current && state.playing ? "pause.circle.fill" : "play.circle.fill"
+        let symbol = if voice.path == nil {
+            switch state.failure {
+            case nil: "arrow.down.circle.fill"
+            case .some(let failure): failure.isFinal ? "exclamationmark.circle.fill" : "arrow.clockwise.circle.fill"
+            }
+        } else {
+            state.current && state.playing ? "pause.circle.fill" : "play.circle.fill"
+        }
+        toolTip = voice.path == nil ? state.failure?.explanation : nil
         let redrawn = button.configure(symbol: symbol, pointSize: 30, weight: .regular, palette: [color])
         if redrawn, animated, !state.busy, !before.busy { crossfade(button) }
         CATransaction.begin()

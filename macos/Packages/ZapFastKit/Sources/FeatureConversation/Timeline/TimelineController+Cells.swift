@@ -183,7 +183,9 @@ extension TimelineController: TimelineCellDelegate {
         let voice = model.voice
         var state = VoiceState()
         state.current = voice.isCurrent(key)
-        state.busy = voice.preparing == key || model.conversations.download(key) == .downloading
+        let download = model.conversations.download(key)
+        state.busy = voice.preparing == key || download == .downloading
+        state.failure = download?.failure
         if state.current {
             state.playing = voice.isPlaying
             state.progress = voice.progress(of: key)

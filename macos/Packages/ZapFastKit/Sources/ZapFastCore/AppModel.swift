@@ -229,6 +229,8 @@ public final class AppModel {
     /// Chats we told the backend we are typing in, and the task that will
     /// say we stopped.
     @ObservationIgnored private var composingIn: [String: Task<Void, Never>] = [:]
+    /// Downloads the person asked for and has not heard the end of.
+    @ObservationIgnored private var askedDownloads: Set<MessageKey> = []
     /// Voice messages we already sent a played receipt for.
     @ObservationIgnored private var playedTold: Set<String> = []
     /// Created on start: Notification Center needs a real app bundle.
@@ -309,8 +311,6 @@ public final class AppModel {
             self.notifier = notifier
         }
         self.verbose = verbose
-        appLock.startIdleTimer()
-        Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
         if networkWatch == nil, backend is LiveBackend {
             let watch = NetworkWatch(
                 needsReconnect: { [weak self] in
@@ -322,6 +322,8 @@ public final class AppModel {
             watch.start()
             networkWatch = watch
         }
+        appLock.startIdleTimer()
+        Task { [caches = paths.caches] in await MediaExport.sweepOutgoing(in: caches) }
         Task.detached(priority: .utility) { PhoneFormat.warmUp() }
         // The saved proxy is in use from the first connection on.
         if backend is LiveBackend { proxyConfigure(setting: preferences.proxy) }
@@ -351,10 +353,10 @@ public final class AppModel {
     public func shutdown() {
         guard started else { return }
         if let selectedChatID { flushDraft(for: selectedChatID) }
-        backend.shutdown()
-        started = false
         networkWatch?.stop()
         networkWatch = nil
+        backend.shutdown()
+        started = false
     }
 
     /// Linked data exists, even while offline; upstream's `App::is_linked`.
@@ -380,9 +382,9 @@ public final class AppModel {
             return
         }
         backend.send(.reconnect)
+        if session.linkSaysLinked, !session.isConnected { backend.reconnectNow() }
     }
     public func unlink() { backend.send(.unlink) }
-        if session.linkSaysLinked, !session.isConnected { backend.reconnectNow() }
     public func startOverArchive() { backend.send(.startOverArchive) }
 
     /// Whether the person is looking at the app; the phone keeps its push
@@ -1659,8 +1661,11 @@ public final class AppModel {
         backend.send(.composing(chat: chat, composing: false))
     }
 
-    public func download(_ message: MessageRecord) {
+    public func download(_ message: MessageRecord, automatic: Bool = false) {
         let key = MessageKey(chat: message.chat, message: message.id)
+        // A download the person asked for says why it failed; one that began
+        // by itself, as a message scrolled into view, fails quietly.
+        if !automatic { askedDownloads.insert(key) }
         guard conversations.download(key) != .downloading else { return }
         conversations.startDownload(key)
         backend.send(.download(chat: message.chat, message: message.id, card: nil))
@@ -1808,7 +1813,7 @@ public final class AppModel {
         let isSticker = if case .sticker = message.content { true } else { false }
         guard isSticker || preferences.autoDownload else { return }
         guard conversations.download(MessageKey(chat: message.chat, message: message.id)) == nil else { return }
-        download(message)
+        download(message, automatic: true)
     }
 
     /// Asks once a session for a document's page preview, which WhatsApp
@@ -2457,6 +2462,9 @@ public final class AppModel {
         case let .media(chat, message, card, path, error):
             conversations.applyMedia(chat: chat, message: message, card: card.map(Int.init), path: path, error: error)
             let key = MessageKey(chat: chat, message: message)
+            if card == nil, askedDownloads.remove(key) != nil, let error {
+                post(.error, String(localized: "Couldn't download: \(DownloadFailure(error).explanation)"))
+            }
             if videoWanted == key {
                 videoWanted = nil
                 if path != nil, error == nil, isOpen(chat), !appLock.isLocked,

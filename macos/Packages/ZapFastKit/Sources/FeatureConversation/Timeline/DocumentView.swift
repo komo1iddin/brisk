@@ -88,7 +88,14 @@ final class DocumentView: AttachmentView {
         arrow.isHidden = !waiting || downloading
         CATransaction.commit()
         if downloading { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
-        arrow.configure(symbol: "arrow.down.circle", pointSize: 15, weight: .regular, palette: [color])
+        // A download that failed says so and why, where the arrow was.
+        let failure = download?.failure
+        toolTip = waiting ? failure?.explanation : nil
+        let symbol = switch failure {
+        case nil: "arrow.down.circle"
+        case .some(let failure): failure.isFinal ? "exclamationmark.circle" : "arrow.clockwise.circle"
+        }
+        arrow.configure(symbol: symbol, pointSize: 15, weight: .regular, palette: [color])
     }
 
     func refreshColors() {

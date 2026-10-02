@@ -545,7 +545,9 @@ Three changes live in upstream's files in this fork, to be offered upstream:
   (stickers whose file is a `.was` zip with the animation inside; playing it is the
   interface's business), the pictures of an album (what phones send when several are
   picked), and the HD copy of a photo or video, which is a hidden message beside the
-  standard one and is no message of its own. `lottie_inner`, `album_inner`,
+  standard one and is no message of its own (`upgrade_to_hd` gives a photo that is not
+  downloaded yet the keys of its HD copy, so the better picture is the one fetched; a
+  photo already downloaded, or edited, keeps what it has). `lottie_inner`, `album_inner`,
   `is_hd_copy` and `base_of` in `src/backend/worker.rs` look inside the wrappers, and
   `backfill_wrapped_messages` with `Archive::unsupported_with_raw` reads again the
   messages already archived as unsupported (once; an HD copy's placeholder is dropped)

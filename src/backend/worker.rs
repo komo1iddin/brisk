@@ -1442,6 +1442,70 @@ impl Worker {
         }
     }
 
+    /// Gives a photo that has not been downloaded yet the keys of its HD
+    /// copy, which arrives right after it, so the better picture is the one
+    /// fetched. A photo already downloaded, or edited since, is left as it is.
+    fn upgrade_to_hd(&mut self, chat: &str, copy: &wa::Message) {
+        use wa::message_association::AssociationType::HD_IMAGE_DUAL_UPLOAD;
+        if association_of(copy) != Some(HD_IMAGE_DUAL_UPLOAD) {
+            return;
+        }
+        let Some(hd) = copy
+            .get_base_message()
+            .associated_child_message
+            .as_option()
+            .and_then(|child| child.message.as_option())
+            .and_then(|inner| inner.image_message.as_option())
+        else {
+            return;
+        };
+        let Some(parent) = association(copy)
+            .and_then(|association| association.parent_message_key.as_option())
+            .and_then(|key| key.id.clone())
+        else {
+            return;
+        };
+        let Ok(Some(mut row)) = self.archive.message(chat, &parent) else {
+            return;
+        };
+        if row.edited || row.content.media().is_none_or(|media| media.path.is_some()) {
+            return;
+        }
+        let Ok(Some(raw)) = self.archive.raw(chat, &parent) else {
+            return;
+        };
+        let Ok(original) = wa::Message::decode_from_slice(&raw) else {
+            return;
+        };
+        let mut base = original.into_base_message();
+        let Some(picture) = base.image_message.as_option_mut() else {
+            return;
+        };
+        picture.url = hd.url.clone();
+        picture.direct_path = hd.direct_path.clone();
+        picture.media_key = hd.media_key.clone();
+        picture.media_key_timestamp = hd.media_key_timestamp;
+        picture.file_sha256 = hd.file_sha256.clone();
+        picture.file_enc_sha256 = hd.file_enc_sha256.clone();
+        picture.file_length = hd.file_length;
+        picture.width = hd.width;
+        picture.height = hd.height;
+        if hd.mimetype.is_some() {
+            picture.mimetype = hd.mimetype.clone();
+        }
+        let Some(content) = classify(&base) else {
+            return;
+        };
+        row.content = content;
+        if self
+            .archive
+            .insert_message(&row, Some(&base.encode_to_vec()))
+            .is_ok()
+        {
+            self.emit_message(chat, &parent);
+        }
+    }
+
     /// Reads again the archived messages that were filed as unsupported
     /// before the wrapper they travelled in was understood: the pictures of
     /// an album, Lottie stickers, and the HD copy of a photo, which is not a
@@ -3133,6 +3197,10 @@ impl Worker {
             return;
         }
         if self.update_live_location(&chat, &sender, base, info) {
+            return;
+        }
+        if is_hd_copy(message) {
+            self.upgrade_to_hd(&chat, message);
             return;
         }
         let Some(mut content) = classify(message) else {
@@ -7827,7 +7895,7 @@ fn lottie_inner(base: &wa::Message) -> Option<&wa::Message> {
 }
 
 /// How a message that travels as the child of another is related to it.
-fn association_of(message: &wa::Message) -> Option<wa::message_association::AssociationType> {
+fn association(message: &wa::Message) -> Option<&wa::MessageAssociation> {
     let base = message.get_base_message();
     [base, message]
         .into_iter()
@@ -7838,7 +7906,11 @@ fn association_of(message: &wa::Message) -> Option<wa::message_association::Asso
                 .and_then(|child| child.message.as_option())
                 .and_then(|inner| inner.message_context_info.as_option()),
         )
-        .find_map(|context| context.message_association.as_option()?.association_type)
+        .find_map(|context| context.message_association.as_option())
+}
+
+fn association_of(message: &wa::Message) -> Option<wa::message_association::AssociationType> {
+    association(message)?.association_type
 }
 
 /// The picture of an album: WhatsApp wraps each one so that clients which do
@@ -10597,6 +10669,11 @@ mod tests {
     /// A picture as WhatsApp sends one that belongs to something else: wrapped
     /// as a child of the message it is associated with.
     fn child_of(kind: wa::message_association::AssociationType) -> wa::Message {
+        child_to(kind, "")
+    }
+
+    /// The same, a child of the message with this id.
+    fn child_to(kind: wa::message_association::AssociationType, parent: &str) -> wa::Message {
         let inner = wa::Message {
             image_message: whatsapp_rust::prelude::MessageField::some(wa::message::ImageMessage {
                 mimetype: Some("image/jpeg".into()),
@@ -10609,7 +10686,10 @@ mod tests {
         };
         let mut child = whatsapp_rust::wacore::proto_helpers::wrap_as_album_child(
             inner,
-            wa::MessageKey::default(),
+            wa::MessageKey {
+                id: Some(parent.to_owned()),
+                ..Default::default()
+            },
         );
         if let Some(context) = child.message_context_info.as_option_mut()
             && let Some(association) = context.message_association.as_option_mut()
@@ -10648,6 +10728,153 @@ mod tests {
             assert!(is_hd_copy(&copy));
             assert!(classify(&copy).is_none(), "{kind:?} is hidden");
         }
+    }
+
+    fn standard_photo() -> wa::Message {
+        wa::Message {
+            image_message: whatsapp_rust::prelude::MessageField::some(wa::message::ImageMessage {
+                mimetype: Some("image/jpeg".into()),
+                caption: Some("holiday".into()),
+                direct_path: Some("/standard".into()),
+                media_key: Some(vec![1; 32]),
+                file_length: Some(100),
+                width: Some(1600),
+                height: Some(1200),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    fn hd_copy_of(parent: &str) -> wa::Message {
+        let mut copy = child_to(
+            wa::message_association::AssociationType::HD_IMAGE_DUAL_UPLOAD,
+            parent,
+        );
+        if let Some(child) = copy.associated_child_message.as_option_mut()
+            && let Some(inner) = child.message.as_option_mut()
+        {
+            inner.image_message =
+                whatsapp_rust::prelude::MessageField::some(wa::message::ImageMessage {
+                    mimetype: Some("image/jpeg".into()),
+                    direct_path: Some("/hd".into()),
+                    media_key: Some(vec![9; 32]),
+                    file_length: Some(900),
+                    width: Some(4000),
+                    height: Some(3000),
+                    ..Default::default()
+                });
+        }
+        copy
+    }
+
+    /// Files the standard photo as a message with its raw protobuf, as
+    /// receiving it does, and returns the chat.
+    fn file_photo(worker: &mut Worker, edited: bool, path: Option<&str>) -> &'static str {
+        let chat = "someone@s.whatsapp.net";
+        worker.archive.ensure_chat(chat, "Someone").unwrap();
+        let photo = standard_photo();
+        let mut content = classify(&photo).unwrap();
+        if let Content::Image { media, .. } = &mut content {
+            media.path = path.map(PathBuf::from);
+        }
+        let row = Message {
+            id: "photo".into(),
+            chat: chat.into(),
+            sender: chat.into(),
+            sender_name: None,
+            from_me: false,
+            timestamp: 100,
+            content,
+            status: Delivery::Read,
+            delivered_at: None,
+            read_at: None,
+            quoted: None,
+            reactions: vec![crate::model::Reaction {
+                sender: chat.into(),
+                from_me: false,
+                emoji: "x".into(),
+            }],
+            edited,
+            mentions: Vec::new(),
+            forwarded: false,
+            thumbnail: None,
+        };
+        worker
+            .archive
+            .insert_message(&row, Some(&photo.encode_to_vec()))
+            .unwrap();
+        chat
+    }
+
+    #[test]
+    fn a_photo_not_downloaded_yet_is_fetched_in_hd() {
+        let (mut worker, _events, _, _) = receipt_tests::worker();
+        let chat = file_photo(&mut worker, false, None);
+
+        worker.upgrade_to_hd(chat, &hd_copy_of("photo"));
+
+        let row = worker.archive.message(chat, "photo").unwrap().unwrap();
+        match &row.content {
+            Content::Image { caption, media } => {
+                assert_eq!(caption.as_deref(), Some("holiday"), "the caption stays");
+                assert_eq!(
+                    (media.size, media.width, media.height),
+                    (900, Some(4000), Some(3000))
+                );
+                assert!(media.path.is_none());
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        assert_eq!(row.reactions.len(), 1, "what else the row holds stays");
+        let raw = worker.archive.raw(chat, "photo").unwrap().unwrap();
+        let stored = wa::Message::decode_from_slice(&raw).unwrap();
+        let picture = stored.image_message.as_option().unwrap();
+        assert_eq!(picture.direct_path.as_deref(), Some("/hd"));
+        assert_eq!(picture.media_key.as_deref(), Some(&[9u8; 32][..]));
+        assert_eq!(picture.caption.as_deref(), Some("holiday"));
+    }
+
+    #[test]
+    fn a_photo_already_downloaded_or_edited_keeps_what_it_has() {
+        for (edited, path) in [(false, Some("/cache/photo.jpg")), (true, None)] {
+            let (mut worker, _events, _, _) = receipt_tests::worker();
+            let chat = file_photo(&mut worker, edited, path);
+
+            worker.upgrade_to_hd(chat, &hd_copy_of("photo"));
+
+            let raw = worker.archive.raw(chat, "photo").unwrap().unwrap();
+            let stored = wa::Message::decode_from_slice(&raw).unwrap();
+            let picture = stored.image_message.as_option().unwrap();
+            assert_eq!(picture.direct_path.as_deref(), Some("/standard"));
+        }
+    }
+
+    #[test]
+    fn an_hd_copy_of_nothing_we_have_changes_nothing() {
+        let (mut worker, _events, _, _) = receipt_tests::worker();
+        let chat = file_photo(&mut worker, false, None);
+        worker.upgrade_to_hd(chat, &hd_copy_of("elsewhere"));
+        worker.upgrade_to_hd(chat, &hd_copy_of(""));
+        // An album's picture is not an HD copy, whatever it is a child of.
+        worker.upgrade_to_hd(
+            chat,
+            &child_to(
+                wa::message_association::AssociationType::MEDIA_ALBUM,
+                "photo",
+            ),
+        );
+        let raw = worker.archive.raw(chat, "photo").unwrap().unwrap();
+        let stored = wa::Message::decode_from_slice(&raw).unwrap();
+        assert_eq!(
+            stored
+                .image_message
+                .as_option()
+                .unwrap()
+                .direct_path
+                .as_deref(),
+            Some("/standard")
+        );
     }
 
     #[test]

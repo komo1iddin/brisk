@@ -111,8 +111,16 @@ impl StickerLibrary {
         Self {
             favorites: favorites.into_iter().map(path_string).collect(),
             packs: packs.into_iter().map(Into::into).collect(),
-            recent: recent.into_iter().map(path_string).collect(),
-            received: received.into_iter().map(path_string).collect(),
+            recent: recent
+                .into_iter()
+                .filter(|path| !is_lottie(path))
+                .map(path_string)
+                .collect(),
+            received: received
+                .into_iter()
+                .filter(|path| !is_lottie(path))
+                .map(path_string)
+                .collect(),
             emojis,
         }
     }
@@ -179,5 +187,35 @@ impl From<GifError> for GifFailure {
     fn from(error: GifError) -> Self {
         let GifError { message, bad_key } = error;
         Self { message, bad_key }
+    }
+}
+
+/// A Lottie sticker's file is an animation in a zip, not a picture: it plays
+/// in its chat, but the picker cannot show it or send it again.
+fn is_lottie(path: &std::path::Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("was"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lottie_stickers_stay_out_of_the_pickers_shelves() {
+        let library = StickerLibrary::new(
+            vec![PathBuf::from("/s/fav.webp")],
+            Vec::new(),
+            vec![PathBuf::from("/s/mine.webp")],
+            vec![
+                PathBuf::from("/s/theirs.webp"),
+                PathBuf::from("/s/moving.was"),
+                PathBuf::from("/s/LOUD.WAS"),
+            ],
+            HashMap::new(),
+        );
+        assert_eq!(library.favorites, ["/s/fav.webp"]);
+        assert_eq!(library.recent, ["/s/mine.webp"]);
+        assert_eq!(library.received, ["/s/theirs.webp"]);
     }
 }

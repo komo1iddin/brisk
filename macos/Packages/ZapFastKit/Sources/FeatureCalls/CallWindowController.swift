@@ -92,8 +92,18 @@ public final class CallWindowController: NSWindowController {
             self.attention = nil
         }
         guard let call else {
-            window.orderOut(nil)
             shown = nil
+            // Fades out rather than vanishing; a call that rings meanwhile
+            // keeps the panel.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.35
+                window.animator().alphaValue = 0
+            } completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.shown == nil else { return }
+                    window.orderOut(nil)
+                }
+            }
             return
         }
         let now = Shown(session: call.session, waiting: waiting, video: call.showsVideo)
@@ -105,9 +115,17 @@ public final class CallWindowController: NSWindowController {
         } else {
             place(window)
         }
+        let appearing = !window.isVisible || window.alphaValue < 1
         shown = now
         // Over everything, without taking the keyboard from what has it.
+        if appearing, !window.isVisible { window.alphaValue = 0 }
         window.orderFrontRegardless()
+        if appearing {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                window.animator().alphaValue = 1
+            }
+        }
     }
 
     /// The top right of the screen with the pointer, clear of the menu bar.

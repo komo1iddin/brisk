@@ -199,6 +199,12 @@ private struct CallButtons: View {
     let call: CallInfo
     let calls: CallStore
 
+    /// How long the call went, once it has ended.
+    private var talked: TimeInterval? {
+        guard let start = calls.connectedAt else { return nil }
+        return (calls.endedAt ?? .now).timeIntervalSince(start)
+    }
+
     var body: some View {
         HStack(spacing: 28) {
             switch call.phase {
@@ -224,10 +230,32 @@ private struct CallButtons: View {
             case .calling, .connecting, .active:
                 InCallButtons(call: call, calls: calls)
             case .ended:
-                EmptyView()
+                EndedMark(talked: talked)
             }
         }
         .frame(minHeight: 72)
+    }
+}
+
+/// Where the buttons were, once the call is over: the hung-up phone, greyed,
+/// and how long the call went.
+private struct EndedMark: View {
+    let talked: TimeInterval?
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "phone.down.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 50, height: 50)
+                .background(Circle().fill(Color.secondary.opacity(0.5)))
+            Text(talked.map(CallStatus.duration) ?? String(localized: "Ended"))
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+        .transition(.opacity)
+        .accessibilityElement(children: .combine)
     }
 }
 

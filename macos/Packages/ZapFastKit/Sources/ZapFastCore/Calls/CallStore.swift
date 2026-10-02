@@ -15,6 +15,8 @@ public final class CallStore {
     public private(set) var waiting: CallInfo?
     /// When both sides of `call` started talking.
     public private(set) var connectedAt: Date?
+    /// When `call` ended, while it lingers.
+    public private(set) var endedAt: Date?
     /// Each chat's calls, for its timeline.
     public let history: CallHistory
     /// The other side's video, for the call window to show.
@@ -170,14 +172,17 @@ public final class CallStore {
             guard let self, self.call?.session == session else { return }
             self.call = nil
             self.connectedAt = nil
+            self.endedAt = nil
         }
     }
 
     private func show(_ new: CallInfo) {
         if call?.session != new.session {
             connectedAt = nil
+            endedAt = nil
         }
         if new.phase == .active, connectedAt == nil { connectedAt = .now }
+        if new.phase.isEnded, endedAt == nil { endedAt = .now }
         call = new
     }
 
@@ -187,7 +192,9 @@ public final class CallStore {
     public func debugShow(_ call: CallInfo?, waiting: CallInfo? = nil) {
         self.call = call
         self.waiting = waiting
-        connectedAt = call?.phase == .active ? .now.addingTimeInterval(-75) : nil
+        let talked = call?.phase == .active || call?.phase.isEnded == true
+        connectedAt = talked ? .now.addingTimeInterval(-75) : nil
+        endedAt = call?.phase.isEnded == true ? .now : nil
     }
     #endif
 

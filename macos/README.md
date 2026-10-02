@@ -239,6 +239,26 @@ disturb the open chat; a chat holds what this Mac has, which can start later tha
 does, and attachments that were never downloaded are left out and counted in the notice.
 A Lottie sticker is written as a file, since a browser cannot play it.
 
+**Download from Phone…** in a chat's menu gets what the chat has on the phone and this Mac
+does not. Files come one at a time as they scroll into view, once, so the sheet counts
+what a chat holds (`ChatReader.census`, `Bridge/src/export.rs`: messages, since when, and
+each photo, video, voice message, audio file and document with whether its file is here)
+and downloads the chosen kinds newest first, three at a time (`PhoneFetch`, `MediaQueue`).
+A file WhatsApp's servers no longer have is asked of the phone, which has to be on and
+reachable: when it stays silent three times in a row the queue waits (**Try Again**), when
+the link is down it waits for the link, and a file the phone says it no longer has is
+remembered, as a hash, so a later run does not ask again (`GoneMedia`). The sheet can also
+ask the phone for older messages request after request (`HistoryRun`) until it has none or
+stops answering. It goes on in the background when the sheet is closed, and says how it
+went in a notice. A file that did not come says why where the arrow was, on the pointer
+and, when it was asked for, in a notice (`DownloadFailure`): the phone has no such file, the
+phone did not answer (open WhatsApp on it and try again), or the link was down.
+
+When the network returns while a linked device is not connected, `NetworkWatch` reconnects
+at once (`BridgeClient.reconnect_now`, which pauses and resumes the library's client, the
+way it is told to skip its wait of up to fifteen minutes), and again a few times at growing
+gaps if that did not take; **Reconnect** in the menu does the same.
+
 Settings › Privacy also shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and
 calls. The values live on the phone: they are read each time Settings
@@ -521,7 +541,11 @@ safe areas, `resize:<steps>:<points>` times each step of a resize,
 `select:<n>` opens a chat, `top:<n>` loads older pages, `open:search` and
 the like open parts of the window, `shot` captures the window as shown,
 `export:<n>[:media]` exports the nth chat to a temporary file and answers with
-the counts (then deletes the file), and `action:<selector>` sends an action
+the counts (then deletes the file), `fetchstats:<n>`, `fetchhistory:<n>:<messages>` and
+`fetchfiles:<n>[:<pvaf>]` count, load older messages of and download the files of the nth
+chat (numbers only; the last two use the phone and the last writes files), `fetch:<stage>`
+and `shot:fetch` show the Download from Phone sheet over a made-up chat,
+`reconnectnow` reconnects without waiting, and `action:<selector>` sends an action
 (`action:terminate:` quits). Answers go to
 `~/Library/Caches/<bundle id>/debug/` and name views and numbers only.
 
@@ -542,7 +566,7 @@ and builds the bridge. A compile error then says exactly what changed:
 If the app stops linking after a bump, run `Scripts/print-link-libs.sh` and
 update the `ZapFastBridge` linker settings in `Package.swift`.
 
-Three changes live in upstream's files in this fork, to be offered upstream:
+Five changes live in upstream's files in this fork, to be offered upstream:
 
 - fetching a document's page preview (`Command::FetchPreview`,
   `src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`);
@@ -558,6 +582,16 @@ Three changes live in upstream's files in this fork, to be offered upstream:
   `is_hd_copy` and `base_of` in `src/backend/worker.rs` look inside the wrappers, and
   `backfill_wrapped_messages` with `Archive::unsupported_with_raw` reads again the
   messages already archived as unsupported (once; an HD copy's placeholder is dropped)
+
+- telling apart why a file could not be fetched (`src/backend/worker/media_failure.rs`,
+  three lines in `download_media`): upstream called a phone that did not answer the request
+  to upload a file again "no longer available", the same as a file that is gone;
+- naming a direct chat to the phone by its privacy id (`src/backend/worker/phone_address.rs`,
+  one line each in `fetch_older`, `download_media` and the poll history request). The
+  archive files a direct chat under its phone number, but the phone has moved direct chats
+  to privacy ids and does not answer a request for older messages that names one by number
+  (a group has one name and always answered); with the privacy id the phone answers within
+  seconds
 
 A merge may conflict there; keep upstream's side and re-apply that commit.
 The bridge names upstream's whatsapp-rust revision to add the VoIP

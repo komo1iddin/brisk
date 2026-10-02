@@ -43,6 +43,9 @@ import ZapFastSharedUI
 /// - `fetchstats:<n>`: the numbers the "Download from Phone" sheet counts for
 ///   the sidebar's nth chat (messages, files by kind, how many are not here),
 ///   and how long the count took. Nothing is downloaded.
+/// - `fetchfiles:<n>[:<pvaf>]`: fetches the files of the sidebar's nth chat that this Mac
+///   does not have, as the sheet's Download does (they are downloaded);
+///   numbers only.
 /// - `fetchhistory:<n>:<messages>`: asks the phone for older messages of the
 ///   sidebar's nth chat until that many came, then stops; numbers only.
 /// - `fetch:<ready|files|paused|done|history|historyend>`: the "Download from
@@ -293,6 +296,45 @@ enum DebugCommands {
                     write(name, "phase=\(fetch.phase) messages=\(fetch.messages) \(groups) seconds=\(seconds)")
                 } else {
                     write(name, "no job")
+                }
+                model.closePhoneFetch()
+            }
+        case "fetchfiles":
+            // fetchfiles:<n>: fetches the files of the sidebar's nth chat that
+            // this Mac does not have, as the sheet's Download does, and
+            // answers with numbers only. It does download them.
+            let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            guard model.sidebarOrder.indices.contains(index) else {
+                write(name, "no chat \(index) of \(model.sidebarOrder.count)")
+                return
+            }
+            let started = Date()
+            model.openPhoneFetch(model.sidebarOrder[index])
+            Task {
+                while model.phoneFetch?.phase == .counting { try? await Task.sleep(for: .milliseconds(50)) }
+                guard let fetch = model.phoneFetch else { return }
+                // fetchfiles:<n>:<letters> narrows it: p photos, v videos, a audio, f files.
+                if parts.count > 2 {
+                    fetch.selected = Set(parts[2].compactMap { letter -> FetchGroup? in
+                        switch letter {
+                        case "p": .photos
+                        case "v": .videos
+                        case "a": .audio
+                        case "f": .files
+                        default: nil
+                        }
+                    })
+                }
+                let wanted = fetch.wanted
+                fetch.startFiles()
+                while let files = fetch.files, files.running, Date().timeIntervalSince(started) < 600 {
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+                let seconds = Date().timeIntervalSince(started).formatted(.number.precision(.fractionLength(1)))
+                if let files = fetch.files {
+                    write(name, "wanted=\(wanted) done=\(files.done) gone=\(files.gone) failed=\(files.failed) held=\(files.held) pause=\(String(describing: files.pause)) seconds=\(seconds)")
+                } else {
+                    write(name, "wanted=\(wanted) nothing started")
                 }
                 model.closePhoneFetch()
             }

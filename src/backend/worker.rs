@@ -45,6 +45,7 @@ mod favorite_chats;
 mod interactive;
 mod link_watch;
 mod media_failure;
+mod phone_address;
 mod poll_history;
 mod polls;
 mod sticker_pace;
@@ -4297,7 +4298,7 @@ impl Worker {
         if self.pending_older.contains_key(&chat) {
             return;
         }
-        let (Some(client), Some(jid)) = (self.client.clone(), Self::jid_of(&chat)) else {
+        let (Some(client), Some(jid)) = (self.client.clone(), self.phone_jid(&chat)) else {
             // Offline requests retry after reconnection; the banner shows state.
             self.emit(Event::OlderFetched { chat, more: true });
             return;
@@ -6503,7 +6504,7 @@ impl Worker {
                     .and_then(|media| media.media_key.clone())
             })
             .unwrap_or_default();
-        let jid = Self::jid_of(&chat);
+        let jid = self.phone_jid(&chat);
         let row = self.archive.message(&chat, &id).ok().flatten();
         let is_from_me = row.as_ref().is_some_and(|row| row.from_me);
         let participant = match (&jid, &row) {

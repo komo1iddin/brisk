@@ -104,7 +104,7 @@ impl Worker {
             return;
         };
         let prepared = (|| {
-            let jid = Self::jid_of(&chat)?;
+            let jid = self.phone_jid(&chat)?;
             let row = self.archive.message(&chat, &id).ok()??;
             if !matches!(row.content, Content::Poll { .. }) {
                 return None;

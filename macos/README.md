@@ -200,6 +200,15 @@ messages play in their circle. A video played before it is here starts
 once its download lands, if its chat is still open. GIFs and animated stickers move while the
 pointer is over them, as upstream's do.
 
+Lottie stickers (WhatsApp's `.was` files: a zip with a Lottie animation inside) are
+downloaded like any sticker and played by Lottie (the `lottie-ios` package) under the
+pointer too, showing their first frame at rest. `WasArchive` unpacks one into
+`~/Library/Caches/<bundle id>/Lottie/` once; `LottieStickerView` draws it. They stay out
+of the sticker picker, and a click does nothing, since Quick Look has nothing to show.
+The animation comes from `animation/animation_secondary.json`, or any other JSON under
+`animation/`; this was checked against the file layout community tools write, not
+against stickers WhatsApp itself sends, so a sticker that does not play is worth a report.
+
 Notifications sound as upstream's do: its receive sound for new
 messages and its alert for a mention of you or a reply to you (Pidgin's
 sounds, GPL-2.0 data files bundled from `assets/sounds`), the system's,
@@ -495,7 +504,8 @@ through the real timeline twice, drawn bubbles on the left and SwiftUI rows
 on the right, in light and dark, and quits; `ZAPFAST_SNAPSHOT_SIDEBAR=/path/to.png`
 does the same for made-up chats in every state a sidebar row shows, with a
 chat selected, captured as the window server composites them (which is
-where vibrancy and colours can be compared).
+where vibrancy and colours can be compared); `ZAPFAST_SNAPSHOT_LOTTIE=/path/to.png`
+draws a made-up Lottie sticker, one still and one moving, and writes `-later` after it.
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
 A Debug build also takes commands from a shell
 (`DistributedNotificationCenter`, name `com.komoliddin.ZapFastMac.debug`,

@@ -98,6 +98,17 @@ enum DebugSnapshot {
         ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_SIDEBAR"]
     }
 
+    /// `ZAPFAST_SNAPSHOT_LOTTIE=/path/to.png`: a made-up Lottie sticker, still
+    /// and moving, in a real window; then the app quits.
+    static var lottiePath: String? {
+        ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_LOTTIE"]
+    }
+
+    static func renderLottieAndQuit() {
+        guard let path = lottiePath else { return }
+        LottieGallery.render(to: path) { NSApp.terminate(nil) }
+    }
+
     static func renderSidebarAndQuit() {
         guard let path = sidebarPath else { return }
         SidebarGallery.render(to: path) { NSApp.terminate(nil) }

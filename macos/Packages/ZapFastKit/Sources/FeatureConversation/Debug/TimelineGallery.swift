@@ -127,6 +127,7 @@ public enum TimelineGallery {
         let landscape = picture(width: 1280, height: 960, hue: 0.55, to: folder.appending(path: "landscape.jpg"))
         let portrait = picture(width: 960, height: 1280, hue: 0.08, to: folder.appending(path: "portrait.jpg"))
         let sticker = picture(width: 512, height: 512, hue: 0.9, to: folder.appending(path: "sticker.png"), clear: true)
+        let lottie = lottieSticker(in: folder)
         let quote = QuotedMessage(id: "1", sender: "a@s.whatsapp.net", senderName: "Aziza", summary: "Salom! Qalaysiz?", mentions: [])
         return BubbleGallery.messages + [
             extra("30", from: "a", content: .revoked),
@@ -145,6 +146,9 @@ public enum TimelineGallery {
             extra("43", from: "b", content: .sticker(media: MediaInfo(
                 mime: "image/webp", size: 30_000, width: 512, height: 512, path: sticker.path
             ), animated: false)),
+            extra("46", from: "a", content: .sticker(media: MediaInfo(
+                mime: WasArchive.mime, size: 2_000, width: 512, height: 512, path: lottie
+            ), animated: true)),
             extra("44", fromMe: true, content: .video(caption: nil, media: MediaInfo(
                 mime: "video/mp4", size: 900_000, width: 480, height: 480, path: nil
             ), seconds: 18, gif: false, note: true), thumbnail: portrait.thumbnail),
@@ -225,6 +229,37 @@ public enum TimelineGallery {
             deliveredAt: nil, readAt: nil, quoted: quoted, reactions: [], edited: false,
             mentions: [], forwarded: forwarded, thumbnail: thumbnail, summary: "Attachment"
         )
+    }
+
+    /// A made-up Lottie sticker, a `.was` zip of one animation: a red square
+    /// that turns, written into `folder`.
+    static func lottieSticker(in folder: URL) -> String? {
+        let source = folder.appending(path: "lottie-source", directoryHint: .isDirectory)
+        let json = source.appending(path: "animation/animation_secondary.json")
+        let file = folder.appending(path: "lottie.was")
+        try? FileManager.default.removeItem(at: file)
+        let animation = """
+        {"v":"5.7.0","fr":30,"ip":0,"op":60,"w":512,"h":512,"nm":"square","ddd":0,"assets":[],
+         "layers":[{"ddd":0,"ind":1,"ty":4,"nm":"square","sr":1,
+           "ks":{"o":{"a":0,"k":100},
+                 "r":{"a":1,"k":[{"t":0,"s":[0],"i":{"x":[0.5],"y":[1]},"o":{"x":[0.5],"y":[0]}},{"t":60,"s":[360]}]},
+                 "p":{"a":0,"k":[256,256,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},
+           "ao":0,
+           "shapes":[{"ty":"gr","it":[
+             {"ty":"rc","d":1,"s":{"a":0,"k":[300,300]},"p":{"a":0,"k":[0,0]},"r":{"a":0,"k":40}},
+             {"ty":"fl","c":{"a":0,"k":[1,0.25,0.25,1]},"o":{"a":0,"k":100}},
+             {"ty":"tr","p":{"a":0,"k":[0,0]},"a":{"a":0,"k":[0,0]},"s":{"a":0,"k":[100,100]},"r":{"a":0,"k":0},"o":{"a":0,"k":100}}]}],
+           "ip":0,"op":60,"st":0,"bm":0}],"markers":[]}
+        """
+        try? FileManager.default.createDirectory(at: json.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard (try? Data(animation.utf8).write(to: json)) != nil else { return nil }
+        let zip = Process()
+        zip.executableURL = URL(filePath: "/usr/bin/ditto")
+        zip.arguments = ["-c", "-k", "--norsrc", "--noextattr", "--noqtn",
+                         source.path(percentEncoded: false), file.path(percentEncoded: false)]
+        guard (try? zip.run()) != nil else { return nil }
+        zip.waitUntilExit()
+        return zip.terminationStatus == 0 ? file.path(percentEncoded: false) : nil
     }
 
     /// A made-up picture written to `url`, and its 64-pixel JPEG preview.

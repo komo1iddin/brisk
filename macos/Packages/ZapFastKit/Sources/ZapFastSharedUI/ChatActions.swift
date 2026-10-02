@@ -93,6 +93,10 @@ public struct ChatActions: View {
         Button("Export Chat…", systemImage: "arrow.down.doc") { model.requestExport(chat.id) }
             .disabled(model.exportingChat != nil)
 
+        // Reads this Mac's archive, then asks the phone for what it lacks.
+        Button("Download from Phone…", systemImage: "iphone.and.arrow.forward") { model.openPhoneFetch(chat.id) }
+            .disabled(model.exportingChat != nil)
+
         // Both reach the phone first, so they wait for a connection.
         Button("Clear Chat…", systemImage: "eraser") { model.confirmClear(chat.id) }
             .disabled(!model.canClearOrDeleteChats)

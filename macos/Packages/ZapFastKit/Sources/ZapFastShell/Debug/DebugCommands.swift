@@ -6,6 +6,7 @@ import SwiftUI
 import ZapFastBridge
 import ZapFastDesign
 import ZapFastCore
+import ZapFastSharedUI
 
 /// Development aid: commands posted from a shell, for checking the AppKit
 /// windows without Accessibility (which scripting the app would need).
@@ -37,12 +38,23 @@ import ZapFastCore
 ///   folder, answers with the counts it wrote and how long it took, and
 ///   deletes the folder, so the real archive's reader can be checked without
 ///   anything of the chat being shown.
+/// - `reconnectnow`: reconnects to WhatsApp without waiting, as the network
+///   coming back does; the log shows how long the link took.
+/// - `fetchstats:<n>`: the numbers the "Download from Phone" sheet counts for
+///   the sidebar's nth chat (messages, files by kind, how many are not here),
+///   and how long the count took. Nothing is downloaded.
+/// - `fetchhistory:<n>:<messages>`: asks the phone for older messages of the
+///   sidebar's nth chat until that many came, then stops; numbers only.
+/// - `fetch:<ready|files|paused|done|history|historyend>`: the "Download from
+///   Phone" sheet over a made-up chat, in a window of its own;
+///   `shot:fetch` captures it.
 /// - `call:<ringing|calling|active|muted|waiting|video|request|group|groupringing|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
 ///   `shot:call` captures it.
 @MainActor
 enum DebugCommands {
     private static var observer: NSObjectProtocol?
+    private static var fetchWindow: NSWindow?
 
     static func start(model: AppModel) {
         observer = DistributedNotificationCenter.default().addObserver(
@@ -248,10 +260,91 @@ enum DebugCommands {
                     write(name, "failed: \(type(of: error))")
                 }
             }
+        case "reconnectnow":
+            // The network coming back, without the network going away.
+            write(name, "asked: \(model.debugReconnectNow())")
+        case "chatkinds":
+            // The kind and address family of the first chats, not their names.
+            let lines = model.sidebarOrder.prefix(12).enumerated().map { index, id -> String in
+                let server = id.split(separator: "@").last.map(String.init) ?? "?"
+                return "\(index): \(server) \(model.chats.chat(id).map { "\($0.kind)" } ?? "?")"
+            }
+            write(name, lines.joined(separator: "\n"))
+        case "fetchstats":
+            // fetchstats:<n>: what the sheet would count for the sidebar's nth
+            // chat, as numbers only, and how long the count took.
+            let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            guard model.sidebarOrder.indices.contains(index) else {
+                write(name, "no chat \(index) of \(model.sidebarOrder.count)")
+                return
+            }
+            let started = Date()
+            model.openPhoneFetch(model.sidebarOrder[index])
+            Task {
+                while model.phoneFetch?.phase == .counting, Date().timeIntervalSince(started) < 120 {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                let seconds = Date().timeIntervalSince(started).formatted(.number.precision(.fractionLength(2)))
+                if let fetch = model.phoneFetch {
+                    let groups = FetchGroup.allCases.map { group -> String in
+                        let c = fetch.counts[group] ?? .init()
+                        return "\(group)=total \(c.total) missing \(c.missing) bytes \(c.missingBytes) large \(c.tooLarge) gone \(c.unavailable)"
+                    }.joined(separator: "; ")
+                    write(name, "phase=\(fetch.phase) messages=\(fetch.messages) \(groups) seconds=\(seconds)")
+                } else {
+                    write(name, "no job")
+                }
+                model.closePhoneFetch()
+            }
+        case "fetchhistory":
+            // fetchhistory:<n>:<messages>: asks the phone for older messages of
+            // the sidebar's nth chat until that many came, the phone has no
+            // more or does not answer; numbers only.
+            let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            let wanted = parts.count > 2 ? Int(parts[2]) ?? 100 : 100
+            guard model.sidebarOrder.indices.contains(index) else {
+                write(name, "no chat \(index) of \(model.sidebarOrder.count)")
+                return
+            }
+            let started = Date()
+            model.openPhoneFetch(model.sidebarOrder[index])
+            Task {
+                while model.phoneFetch?.phase == .counting { try? await Task.sleep(for: .milliseconds(50)) }
+                guard let fetch = model.phoneFetch else { return }
+                let before = fetch.messages
+                fetch.startHistory()
+                while let history = fetch.history, history.state == .asking, history.loaded < wanted,
+                      Date().timeIntervalSince(started) < 240 {
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+                let loaded = fetch.history?.loaded ?? 0
+                let state = fetch.history?.state
+                fetch.stopHistory()
+                try? await Task.sleep(for: .seconds(1.5))
+                let seconds = Date().timeIntervalSince(started).formatted(.number.precision(.fractionLength(1)))
+                write(name, "stateBeforeStop=\(String(describing: state)) loaded=\(loaded) messagesBefore=\(before) messagesAfter=\(fetch.messages) seconds=\(seconds)")
+                model.closePhoneFetch()
+            }
+        case "fetch":
+            // fetch:<stage>: the "Download from Phone" sheet over a made-up
+            // chat, in a window of its own; `shot:fetch` captures it.
+            let stage = parts.count > 1 ? parts[1] : "ready"
+            Task {
+                let (fetch, demo) = await PhoneFetch.demo(stage: stage)
+                fetchWindow?.close()
+                let window = NSWindow(contentViewController: NSHostingController(rootView: debugPhoneFetchSheet(fetch: fetch, model: demo)))
+                window.title = "Fetch Demo"
+                window.styleMask = [.titled, .closable]
+                window.isReleasedWhenClosed = false
+                window.center()
+                window.makeKeyAndOrderFront(nil)
+                fetchWindow = window
+                write(name, "\(stage)")
+            }
         case "shot":
             // shot:popover captures the popover over the window instead.
             let target = parts.count > 1 ? parts[1] : ""
-            write(name, shot(popover: target == "popover", other: target == "other", call: target == "call"))
+            write(name, shot(popover: target == "popover", other: target == "other", call: target == "call", fetch: target == "fetch"))
         case "action":
             // action:<selector>, colons and all (`action:terminate:` quits).
             let selector = String(command.dropFirst("action:".count))
@@ -422,14 +515,14 @@ enum DebugCommands {
 
     /// `CGWindowListCreateImage`, which Swift no longer offers but the
     /// system still answers for the app's own windows.
-    private static func shot(popover: Bool = false, other: Bool = false, call: Bool = false) -> String {
+    private static func shot(popover: Bool = false, other: Bool = false, call: Bool = false, fetch: Bool = false) -> String {
         let popoverWindow = NSApp.windows.last { NSStringFromClass(type(of: $0)).contains("Popover") && $0.isVisible }
         // Another titled window of the app, such as Settings.
         let otherWindow = NSApp.windows.last {
             $0.isVisible && $0.styleMask.contains(.titled) && (500...700).contains($0.frame.width)
         }
         let callWindow = NSApp.windows.last { $0 is NSPanel && $0.title == String(localized: "Call") && $0.isVisible }
-        guard let window = call ? callWindow : popover ? popoverWindow : other ? otherWindow : mainWindow() else {
+        guard let window = fetch ? fetchWindow : call ? callWindow : popover ? popoverWindow : other ? otherWindow : mainWindow() else {
             return "no window"
         }
         typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
@@ -444,7 +537,7 @@ enum DebugCommands {
         guard let data = rep.representation(using: .png, properties: [:]) else { return "no png" }
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
-        let file = call ? "call.png" : popover ? "popover.png" : other ? "other.png" : "shot.png"
+        let file = fetch ? "fetch.png" : call ? "call.png" : popover ? "popover.png" : other ? "other.png" : "shot.png"
         try? data.write(to: folder.appending(path: file))
         return "\(image.width)x\(image.height)"
     }

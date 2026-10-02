@@ -163,6 +163,11 @@ public final class AppModel {
     public var exportRequest: ChatExportRequest?
     /// The chat being exported. One export runs at a time.
     public private(set) var exportingChat: String?
+    /// The chat whose files and older messages are being fetched from the
+    /// phone. One at a time; it goes on when its sheet is closed.
+    public private(set) var phoneFetch: PhoneFetch?
+    /// The sheet of `phoneFetch` is showing.
+    public var phoneFetchShown = false
 
     /// The message whose "Message info" sheet is open. A group message's
     /// receipts are followed while it is.
@@ -222,6 +227,8 @@ public final class AppModel {
     @ObservationIgnored let launch = LaunchTimer()
     @ObservationIgnored private let eventStats = EventStats()
     @ObservationIgnored lazy var phoneHistory = PhoneHistory(defaults: preferences.defaults)
+    /// Files the phone no longer has, so fetching a chat does not ask twice.
+    @ObservationIgnored lazy var goneMedia = GoneMedia(defaults: preferences.defaults)
     /// Brings the link back when the network does, created on start.
     @ObservationIgnored private var networkWatch: NetworkWatch?
     @ObservationIgnored private var verbose = false
@@ -2108,6 +2115,57 @@ public final class AppModel {
         return done + ". " + String(localized: "Attachments that are not downloaded were left out.")
     }
 
+    // MARK: Intents: fetching from the phone
+
+    /// Opens the sheet for getting a chat's files and older messages from the
+    /// phone. A job already under way stays the one shown.
+    public func openPhoneFetch(_ chat: String) {
+        if let current = phoneFetch, current.isRunning || current.chat == chat {
+            phoneFetchShown = true
+            return
+        }
+        let fetch = PhoneFetch(chat: chat, hooks: .init(
+            openReader: { [backend] in try await backend.openChatReader() },
+            download: { [weak self] message in self?.fetchDownload(chat: chat, message: message) },
+            askOlder: { [weak self] in self?.fetchOlder(chat: chat) },
+            isConnected: { [weak self] in self?.session.isConnected ?? false },
+            finished: { [weak self] summary in
+                guard let self else { return }
+                log.info("fetch finished: \(summary, privacy: .public)")
+                guard !phoneFetchShown else { return }
+                post(.info, summary)
+            },
+            gone: goneMedia
+        ))
+        phoneFetch = fetch
+        phoneFetchShown = true
+    }
+
+    #if DEBUG
+    /// Reconnects without waiting, as the network coming back does.
+    public func debugReconnectNow() -> Bool {
+        backend.reconnectNow()
+    }
+    #endif
+
+    /// Hides the sheet. A job that runs keeps going; any other is forgotten.
+    public func closePhoneFetch() {
+        phoneFetchShown = false
+        if phoneFetch?.isRunning != true { phoneFetch = nil }
+    }
+
+    /// One download of the fetch job: a file the person did not scroll to.
+    private func fetchDownload(chat: String, message: String) {
+        conversations.startDownload(MessageKey(chat: chat, message: message))
+        backend.send(.download(chat: chat, message: message, card: nil))
+    }
+
+    /// One request for older messages of the fetch job.
+    private func fetchOlder(chat: String) {
+        phoneHistory.asking(chat, holding: conversations.conversation(chat).messages.count)
+        backend.send(.fetchOlder(chat: chat))
+    }
+
     // MARK: Intents: chat list
 
     public func setPinned(_ pinned: Bool, chat: String) {
@@ -2389,6 +2447,7 @@ public final class AppModel {
             if unreadDivider?.chat == chat { resolveUnreadDivider() }
             if pendingJump?.chat == chat { continueJump() }
             if !older { followForwards(messages) }
+            if older, phoneFetch?.chat == chat { phoneFetch?.olderArrived(count: messages.count) }
         case .messageUpdated(let message):
             conversations.applyUpdated(message)
             followForwards([message])
@@ -2462,6 +2521,7 @@ public final class AppModel {
         case let .media(chat, message, card, path, error):
             conversations.applyMedia(chat: chat, message: message, card: card.map(Int.init), path: path, error: error)
             let key = MessageKey(chat: chat, message: message)
+            if card == nil, phoneFetch?.chat == chat { phoneFetch?.fileFinished(message: message, error: error) }
             if card == nil, askedDownloads.remove(key) != nil, let error {
                 post(.error, String(localized: "Couldn't download: \(DownloadFailure(error).explanation)"))
             }
@@ -2480,6 +2540,7 @@ public final class AppModel {
         case let .olderFetched(chat, more):
             conversations.applyOlderFetched(chat: chat, more: more)
             phoneHistory.answered(chat, more: more, holding: conversations.conversation(chat).messages.count)
+            if phoneFetch?.chat == chat { phoneFetch?.olderAnswered(more: more) }
         case .receiptsPrivacy(let disabled):
             session.receiptsDisabled = disabled
         case .pinLimit(let limit):
@@ -2582,6 +2643,7 @@ public final class AppModel {
             chats.clear()
             conversations.clear()
             phoneHistory.clear()
+            goneMedia.clear()
             search.clear()
             stickers.clear()
             avatars.clear()
@@ -2606,6 +2668,8 @@ public final class AppModel {
             groupSaving = []
             pollResults = nil
             pollRefreshAsked = []
+            phoneFetchShown = false
+            phoneFetch = nil
             chatConfirmation = nil
             messageInfo = nil
             receipts = nil
@@ -2624,6 +2688,7 @@ public final class AppModel {
             break
         }
         session.link = state
+        if case .connected = state { phoneFetch?.linkConnected() }
     }
 
     // MARK: Notifications (upstream's `maybe_notify`)

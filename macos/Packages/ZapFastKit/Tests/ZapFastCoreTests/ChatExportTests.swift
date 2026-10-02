@@ -11,6 +11,10 @@ private final class FakeReader: ChatReaderProtocol, @unchecked Sendable {
 
     init(_ messages: [MessageRecord]) { self.messages = messages }
 
+    func census(chat: String) throws -> ChatCensus {
+        ChatCensus(messages: UInt64(messages.count), oldest: messages.first?.timestamp, media: [])
+    }
+
     func page(chat: String, before: PageKey?, limit: UInt32) throws -> [MessageRecord] {
         reads += 1
         let end = before.flatMap { key in messages.firstIndex { $0.id == key.id } } ?? messages.count

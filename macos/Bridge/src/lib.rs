@@ -35,4 +35,4 @@ pub use calls::{
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;
 pub use events::BridgeEvent;
-pub use export::ChatReader;
+pub use export::{ChatCensus, ChatMedia, ChatMediaKind, ChatReader};

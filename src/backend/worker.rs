@@ -539,7 +539,7 @@ pub async fn run(
     worker.backfill_video_notes();
     worker.backfill_view_once();
     worker.backfill_interactive();
-    worker.backfill_lottie_stickers();
+    worker.backfill_wrapped_messages();
     worker.relocate_media();
     discard_attachment_staging(&worker.dirs.media_cache_dir());
     discard_attachment_staging(&worker.dirs.sticker_cache_dir());
@@ -1351,7 +1351,7 @@ impl Worker {
             let Ok(message) = wa::Message::decode_from_slice(&raw) else {
                 continue;
             };
-            let base = message.get_base_message();
+            let base = base_of(&message);
             let Some(mut content) = classify(&message) else {
                 continue;
             };
@@ -1442,29 +1442,40 @@ impl Worker {
         }
     }
 
-    /// Turns archived Lottie stickers, filed as unsupported before they could
-    /// be played, into stickers. Only their content changes: the file is
-    /// fetched like any sticker's.
-    fn backfill_lottie_stickers(&mut self) {
-        const KEY: &str = "lottie_stickers";
+    /// Reads again the archived messages that were filed as unsupported
+    /// before the wrapper they travelled in was understood: the pictures of
+    /// an album, Lottie stickers, and the HD copy of a photo, which is not a
+    /// message of its own and goes. Only content changes; the file is
+    /// fetched like any other.
+    fn backfill_wrapped_messages(&mut self) {
+        const KEY: &str = "wrapped_messages";
         if self.archive.meta(KEY).ok().flatten().as_deref() == Some("1") {
             return;
         }
-        let rows = match self.archive.lottie_placeholders() {
+        let rows = match self.archive.unsupported_with_raw() {
             Ok(rows) => rows,
             Err(error) => {
-                log::warn!("could not read archived stickers: {error}");
+                log::warn!("could not read archived messages: {error}");
                 return;
             }
         };
-        let mut updated = 0;
+        let (mut recovered, mut removed) = (0, 0);
         for (chat, id, raw) in rows {
             let Ok(message) = wa::Message::decode_from_slice(&raw) else {
                 continue;
             };
-            let Some(content @ Content::Sticker { .. }) = classify(&message) else {
+            if is_hd_copy(&message) {
+                if self.archive.delete_message(&chat, &id).unwrap_or(false) {
+                    removed += 1;
+                }
+                continue;
+            }
+            let Some(content) = classify(&message) else {
                 continue;
             };
+            if matches!(content, Content::Unsupported { .. }) {
+                continue;
+            }
             let Ok(Some(existing)) = self.archive.message(&chat, &id) else {
                 continue;
             };
@@ -1473,12 +1484,14 @@ impl Worker {
                 .set_content(&chat, &id, &content, existing.edited)
                 .is_ok()
             {
-                updated += 1;
+                recovered += 1;
             }
         }
         let _ = self.archive.set_meta(KEY, "1");
-        if updated > 0 {
-            log::info!("recovered {updated} archived animated stickers");
+        if recovered + removed > 0 {
+            log::info!(
+                "recovered {recovered} archived wrapped messages, dropped {removed} HD copies"
+            );
             self.emit_chats();
         }
     }
@@ -3016,7 +3029,7 @@ impl Worker {
             self.canonical(&info.source.sender)
         };
         let push_name = (!info.push_name.is_empty()).then(|| info.push_name.clone());
-        let base = message.get_base_message();
+        let base = base_of(message);
         if let Some(expiration) = base.get_ephemeral_expiration()
             && self
                 .archive
@@ -6328,7 +6341,7 @@ impl Worker {
             );
             return;
         };
-        let original = message.get_base_message();
+        let original = base_of(&message);
         let original = lottie_inner(original).unwrap_or(original);
         let base = match interactive::image_at(original, card) {
             Some(image) => wa::Message {
@@ -7813,12 +7826,63 @@ fn lottie_inner(base: &wa::Message) -> Option<&wa::Message> {
         .filter(|inner| inner.sticker_message.is_set())
 }
 
+/// How a message that travels as the child of another is related to it.
+fn association_of(message: &wa::Message) -> Option<wa::message_association::AssociationType> {
+    let base = message.get_base_message();
+    [base, message]
+        .into_iter()
+        .filter_map(|outer| outer.message_context_info.as_option())
+        .chain(
+            base.associated_child_message
+                .as_option()
+                .and_then(|child| child.message.as_option())
+                .and_then(|inner| inner.message_context_info.as_option()),
+        )
+        .find_map(|context| context.message_association.as_option()?.association_type)
+}
+
+/// The picture of an album: WhatsApp wraps each one so that clients which do
+/// not know albums skip it, and the wrapper says which album it belongs to.
+fn album_inner(base: &wa::Message) -> Option<&wa::Message> {
+    use wa::message_association::AssociationType::MEDIA_ALBUM;
+    let child = base
+        .associated_child_message
+        .as_option()?
+        .message
+        .as_option()?;
+    (association_of(base) == Some(MEDIA_ALBUM)).then_some(child)
+}
+
+/// The HD copy of a photo or video that is already a message of its own,
+/// sent beside it so a client can fetch the better one. The standard copy
+/// stands for both.
+fn is_hd_copy(message: &wa::Message) -> bool {
+    use wa::message_association::AssociationType::{
+        HD_IMAGE_DUAL_UPLOAD, HD_VIDEO_DUAL_UPLOAD, HEVC_VIDEO_DUAL_UPLOAD,
+    };
+    message.get_base_message().associated_child_message.is_set()
+        && matches!(
+            association_of(message),
+            Some(HD_IMAGE_DUAL_UPLOAD | HD_VIDEO_DUAL_UPLOAD | HEVC_VIDEO_DUAL_UPLOAD)
+        )
+}
+
+/// [`MessageExt::get_base_message`], and beyond an album's wrapper: the
+/// message that says what was sent.
+fn base_of(message: &wa::Message) -> &wa::Message {
+    let base = message.get_base_message();
+    album_inner(base).unwrap_or(base)
+}
+
 /// Converts a protocol message to visible content, or `None` for internal
 /// traffic. Takes the whole message, wrappers included: view-once media
 /// arrives wrapped, and WhatsApp keeps it for the phone, so a linked device
 /// shows a placeholder instead of an attachment that cannot be fetched.
 fn classify(message: &wa::Message) -> Option<Content> {
-    let content = classify_base(message.get_base_message())?;
+    if is_hd_copy(message) {
+        return None;
+    }
+    let content = classify_base(base_of(message))?;
     // Interactive messages travel in the same wrapper, so only media turns
     // into a placeholder.
     if message.is_view_once()
@@ -10530,6 +10594,81 @@ mod tests {
         }
     }
 
+    /// A picture as WhatsApp sends one that belongs to something else: wrapped
+    /// as a child of the message it is associated with.
+    fn child_of(kind: wa::message_association::AssociationType) -> wa::Message {
+        let inner = wa::Message {
+            image_message: whatsapp_rust::prelude::MessageField::some(wa::message::ImageMessage {
+                mimetype: Some("image/jpeg".into()),
+                caption: Some("from the album".into()),
+                file_length: Some(10),
+                jpeg_thumbnail: Some(vec![1, 2, 3]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let mut child = whatsapp_rust::wacore::proto_helpers::wrap_as_album_child(
+            inner,
+            wa::MessageKey::default(),
+        );
+        if let Some(context) = child.message_context_info.as_option_mut()
+            && let Some(association) = context.message_association.as_option_mut()
+        {
+            association.association_type = Some(kind);
+        }
+        child
+    }
+
+    #[test]
+    fn the_pictures_of_an_album_are_pictures() {
+        use wa::message_association::AssociationType::MEDIA_ALBUM;
+        let child = child_of(MEDIA_ALBUM);
+        match classify(&child) {
+            Some(Content::Image { caption, media }) => {
+                assert_eq!(caption.as_deref(), Some("from the album"));
+                assert_eq!(media.mime, "image/jpeg");
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        // Its preview is found inside the wrapper too, for the row.
+        assert_eq!(thumbnail_of(base_of(&child)), Some(vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn the_hd_copy_of_a_photo_is_no_message_of_its_own() {
+        use wa::message_association::AssociationType::{
+            HD_IMAGE_DUAL_UPLOAD, HD_VIDEO_DUAL_UPLOAD, HEVC_VIDEO_DUAL_UPLOAD,
+        };
+        for kind in [
+            HD_IMAGE_DUAL_UPLOAD,
+            HD_VIDEO_DUAL_UPLOAD,
+            HEVC_VIDEO_DUAL_UPLOAD,
+        ] {
+            let copy = child_of(kind);
+            assert!(is_hd_copy(&copy));
+            assert!(classify(&copy).is_none(), "{kind:?} is hidden");
+        }
+    }
+
+    #[test]
+    fn a_child_of_another_kind_is_still_shown_as_unsupported() {
+        use wa::message_association::AssociationType::{MEDIA_ALBUM, STATUS_POLL};
+        let other = child_of(STATUS_POLL);
+        assert!(!is_hd_copy(&other));
+        assert!(matches!(
+            classify(&other),
+            Some(Content::Unsupported { .. })
+        ));
+        // And an ordinary picture is neither wrapped nor hidden.
+        let plain = wa::Message {
+            image_message: whatsapp_rust::prelude::MessageField::some(Default::default()),
+            ..Default::default()
+        };
+        assert!(!is_hd_copy(&plain));
+        assert!(album_inner(&plain).is_none());
+        assert!(album_inner(&child_of(MEDIA_ALBUM)).is_some());
+    }
+
     #[test]
     fn a_lottie_sticker_is_a_sticker_that_moves() {
         let message = lottie_message(Some(wa::message::StickerMessage {
@@ -10564,57 +10703,69 @@ mod tests {
     }
 
     #[test]
-    fn archived_lottie_stickers_are_recovered_once() {
+    fn wrapped_messages_filed_as_unsupported_are_recovered_once() {
+        use wa::message_association::AssociationType::{HD_IMAGE_DUAL_UPLOAD, MEDIA_ALBUM};
         let (mut worker, _events, _, _) = receipt_tests::worker();
-        let message = lottie_message(Some(wa::message::StickerMessage {
+        let chat = "someone@s.whatsapp.net";
+        worker.archive.ensure_chat(chat, "Someone").unwrap();
+        let file = |id: &str, what: &str, at: i64, message: &wa::Message| {
+            let filed = Message {
+                id: id.into(),
+                chat: chat.into(),
+                sender: chat.into(),
+                sender_name: None,
+                from_me: false,
+                timestamp: at,
+                content: Content::Unsupported { what: what.into() },
+                status: Delivery::Read,
+                delivered_at: None,
+                read_at: None,
+                quoted: None,
+                reactions: Vec::new(),
+                edited: false,
+                mentions: Vec::new(),
+                forwarded: false,
+                thumbnail: None,
+            };
+            worker
+                .archive
+                .insert_message(&filed, Some(&message.encode_to_vec()))
+                .unwrap();
+        };
+        let lottie = lottie_message(Some(wa::message::StickerMessage {
             mimetype: Some("application/was".into()),
             ..Default::default()
         }));
-        let filed = Message {
-            id: "lottie".into(),
-            chat: "someone@s.whatsapp.net".into(),
-            sender: "someone@s.whatsapp.net".into(),
-            sender_name: None,
-            from_me: false,
-            timestamp: 100,
-            content: Content::Unsupported {
-                what: "animated sticker".into(),
-            },
-            status: Delivery::Read,
-            delivered_at: None,
-            read_at: None,
-            quoted: None,
-            reactions: Vec::new(),
-            edited: false,
-            mentions: Vec::new(),
-            forwarded: false,
-            thumbnail: None,
+        file("lottie", "animated sticker", 100, &lottie);
+        file("album", "message", 200, &child_of(MEDIA_ALBUM));
+        file("hd", "message", 300, &child_of(HD_IMAGE_DUAL_UPLOAD));
+        // Something nobody understands stays as it was.
+        let unknown = wa::Message {
+            lottie_sticker_message: whatsapp_rust::prelude::MessageField::some(Default::default()),
+            ..Default::default()
         };
-        worker
-            .archive
-            .ensure_chat("someone@s.whatsapp.net", "Someone")
-            .unwrap();
-        worker
-            .archive
-            .insert_message(&filed, Some(&message.encode_to_vec()))
-            .unwrap();
+        file("unknown", "message", 400, &unknown);
 
-        worker.backfill_lottie_stickers();
+        worker.backfill_wrapped_messages();
 
-        let recovered = worker
-            .archive
-            .message("someone@s.whatsapp.net", "lottie")
-            .unwrap()
-            .unwrap();
+        let stored = |id: &str| worker.archive.message(chat, id).unwrap();
         assert!(matches!(
-            recovered.content,
+            stored("lottie").unwrap().content,
             Content::Sticker { animated: true, .. }
         ));
+        assert!(matches!(
+            stored("album").unwrap().content,
+            Content::Image { .. }
+        ));
+        assert!(stored("hd").is_none(), "the HD copy is gone");
+        assert!(matches!(
+            stored("unknown").unwrap().content,
+            Content::Unsupported { .. }
+        ));
         assert_eq!(
-            worker.archive.meta("lottie_stickers").unwrap().as_deref(),
+            worker.archive.meta("wrapped_messages").unwrap().as_deref(),
             Some("1")
         );
-        assert!(worker.archive.lottie_placeholders().unwrap().is_empty());
     }
 
     #[test]

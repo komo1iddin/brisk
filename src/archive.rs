@@ -1223,12 +1223,14 @@ impl Archive {
         rows.collect()
     }
 
-    /// Lottie stickers filed as unsupported, with their raw protobuf.
-    pub fn lottie_placeholders(&self) -> Result<Vec<(String, String, Vec<u8>)>> {
+    /// Messages filed as unsupported that may be understood now (an
+    /// animated sticker, or any message of a shape not recognised), with their
+    /// raw protobuf.
+    pub fn unsupported_with_raw(&self) -> Result<Vec<(String, String, Vec<u8>)>> {
         let mut statement = self.connection.prepare(
             "SELECT chat, id, raw FROM messages WHERE raw IS NOT NULL AND json_valid(content)
              AND json_extract(content, '$.kind') = 'unsupported'
-             AND json_extract(content, '$.what') = 'animated sticker'",
+             AND json_extract(content, '$.what') IN ('animated sticker', 'message')",
         )?;
         let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
         rows.collect()

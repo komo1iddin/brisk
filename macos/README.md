@@ -541,11 +541,14 @@ Three changes live in upstream's files in this fork, to be offered upstream:
   `src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`);
 - handing the worker's WhatsApp client to an embedder for calls
   (`src/backend/client_hook.rs`, one line in `start_bot`);
-- Lottie stickers as stickers instead of "unsupported": `lottie_inner` and the
-  `classify_base` and `download` lines that use it in `src/backend/worker.rs`,
-  and `backfill_lottie_stickers` with `Archive::lottie_placeholders`, which
-  recovers the ones already archived. The file is a `.was` zip with the
-  animation inside; playing it is the interface's business.
+- messages that travel in a wrapper, no longer shown as "unsupported": Lottie stickers
+  (stickers whose file is a `.was` zip with the animation inside; playing it is the
+  interface's business), the pictures of an album (what phones send when several are
+  picked), and the HD copy of a photo or video, which is a hidden message beside the
+  standard one and is no message of its own. `lottie_inner`, `album_inner`,
+  `is_hd_copy` and `base_of` in `src/backend/worker.rs` look inside the wrappers, and
+  `backfill_wrapped_messages` with `Archive::unsupported_with_raw` reads again the
+  messages already archived as unsupported (once; an HD copy's placeholder is dropped)
 
 A merge may conflict there; keep upstream's side and re-apply that commit.
 The bridge names upstream's whatsapp-rust revision to add the VoIP

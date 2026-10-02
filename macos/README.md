@@ -525,12 +525,17 @@ and builds the bridge. A compile error then says exactly what changed:
 If the app stops linking after a bump, run `Scripts/print-link-libs.sh` and
 update the `ZapFastBridge` linker settings in `Package.swift`.
 
-Two changes live in upstream's files in this fork, to be offered upstream:
+Three changes live in upstream's files in this fork, to be offered upstream:
 
 - fetching a document's page preview (`Command::FetchPreview`,
   `src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`);
 - handing the worker's WhatsApp client to an embedder for calls
-  (`src/backend/client_hook.rs`, one line in `start_bot`).
+  (`src/backend/client_hook.rs`, one line in `start_bot`);
+- Lottie stickers as stickers instead of "unsupported": `lottie_inner` and the
+  `classify_base` and `download` lines that use it in `src/backend/worker.rs`,
+  and `backfill_lottie_stickers` with `Archive::lottie_placeholders`, which
+  recovers the ones already archived. The file is a `.was` zip with the
+  animation inside; playing it is the interface's business.
 
 A merge may conflict there; keep upstream's side and re-apply that commit.
 The bridge names upstream's whatsapp-rust revision to add the VoIP

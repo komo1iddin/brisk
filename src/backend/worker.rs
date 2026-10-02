@@ -539,6 +539,7 @@ pub async fn run(
     worker.backfill_video_notes();
     worker.backfill_view_once();
     worker.backfill_interactive();
+    worker.backfill_lottie_stickers();
     worker.relocate_media();
     discard_attachment_staging(&worker.dirs.media_cache_dir());
     discard_attachment_staging(&worker.dirs.sticker_cache_dir());
@@ -1437,6 +1438,47 @@ impl Worker {
         let _ = self.archive.set_meta(KEY, "1");
         if updated > 0 {
             log::info!("marked {updated} archived messages as view once");
+            self.emit_chats();
+        }
+    }
+
+    /// Turns archived Lottie stickers, filed as unsupported before they could
+    /// be played, into stickers. Only their content changes: the file is
+    /// fetched like any sticker's.
+    fn backfill_lottie_stickers(&mut self) {
+        const KEY: &str = "lottie_stickers";
+        if self.archive.meta(KEY).ok().flatten().as_deref() == Some("1") {
+            return;
+        }
+        let rows = match self.archive.lottie_placeholders() {
+            Ok(rows) => rows,
+            Err(error) => {
+                log::warn!("could not read archived stickers: {error}");
+                return;
+            }
+        };
+        let mut updated = 0;
+        for (chat, id, raw) in rows {
+            let Ok(message) = wa::Message::decode_from_slice(&raw) else {
+                continue;
+            };
+            let Some(content @ Content::Sticker { .. }) = classify(&message) else {
+                continue;
+            };
+            let Ok(Some(existing)) = self.archive.message(&chat, &id) else {
+                continue;
+            };
+            if self
+                .archive
+                .set_content(&chat, &id, &content, existing.edited)
+                .is_ok()
+            {
+                updated += 1;
+            }
+        }
+        let _ = self.archive.set_meta(KEY, "1");
+        if updated > 0 {
+            log::info!("recovered {updated} archived animated stickers");
             self.emit_chats();
         }
     }
@@ -6287,6 +6329,7 @@ impl Worker {
             return;
         };
         let original = message.get_base_message();
+        let original = lottie_inner(original).unwrap_or(original);
         let base = match interactive::image_at(original, card) {
             Some(image) => wa::Message {
                 image_message: MessageField::some(image.clone()),
@@ -7758,6 +7801,18 @@ fn live_location_newer(share: &Message, incoming: &Content) -> bool {
     }
 }
 
+/// The mimetype of a Lottie sticker's file: a zip holding the animation.
+const LOTTIE_MIME: &str = "application/was";
+
+/// The message inside a Lottie sticker's wrapper, which carries the sticker.
+fn lottie_inner(base: &wa::Message) -> Option<&wa::Message> {
+    base.lottie_sticker_message
+        .as_option()?
+        .message
+        .as_option()
+        .filter(|inner| inner.sticker_message.is_set())
+}
+
 /// Converts a protocol message to visible content, or `None` for internal
 /// traffic. Takes the whole message, wrappers included: view-once media
 /// arrives wrapped, and WhatsApp keeps it for the phone, so a linked device
@@ -7782,6 +7837,22 @@ fn classify(message: &wa::Message) -> Option<Content> {
 fn classify_base(base: &wa::Message) -> Option<Content> {
     if let Some(inner) = bot_replies::invoked(base) {
         return classify_base(inner);
+    }
+    // A Lottie sticker is a sticker in a wrapper that clients which cannot
+    // play it skip. Its file is a `.was` archive, whatever its mimetype says.
+    if let Some(inner) = lottie_inner(base) {
+        return classify_base(inner).map(|content| match content {
+            Content::Sticker { mut media, .. } => {
+                if media.mime.is_empty() {
+                    media.mime = LOTTIE_MIME.to_owned();
+                }
+                Content::Sticker {
+                    media,
+                    animated: true,
+                }
+            }
+            other => other,
+        });
     }
     if let Some(text) = base.text_content() {
         let preview = base.extended_text_message.as_option().and_then(|extended| {
@@ -10441,6 +10512,109 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    fn lottie_message(sticker: Option<wa::message::StickerMessage>) -> wa::Message {
+        wa::Message {
+            lottie_sticker_message: whatsapp_rust::prelude::MessageField::some(
+                wa::message::FutureProofMessage {
+                    message: whatsapp_rust::prelude::MessageField::some(wa::Message {
+                        sticker_message: sticker
+                            .map(whatsapp_rust::prelude::MessageField::some)
+                            .unwrap_or_default(),
+                        ..Default::default()
+                    }),
+                },
+            ),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_lottie_sticker_is_a_sticker_that_moves() {
+        let message = lottie_message(Some(wa::message::StickerMessage {
+            mimetype: Some("application/was".into()),
+            file_length: Some(2048),
+            is_lottie: Some(true),
+            ..Default::default()
+        }));
+        match classify(&message) {
+            Some(Content::Sticker { media, animated }) => {
+                assert!(animated, "Lottie stickers move");
+                assert_eq!(media.mime, "application/was");
+                assert_eq!(media.size, 2048);
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        // Without a mimetype the file is still known for what it is.
+        let bare = lottie_message(Some(wa::message::StickerMessage::default()));
+        match classify(&bare) {
+            Some(Content::Sticker { media, .. }) => assert_eq!(media.mime, LOTTIE_MIME),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_lottie_wrapper_without_a_sticker_stays_unsupported() {
+        assert!(lottie_inner(&lottie_message(None)).is_none());
+        match classify(&lottie_message(None)) {
+            Some(Content::Unsupported { what }) => assert_eq!(what, "animated sticker"),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn archived_lottie_stickers_are_recovered_once() {
+        let (mut worker, _events, _, _) = receipt_tests::worker();
+        let message = lottie_message(Some(wa::message::StickerMessage {
+            mimetype: Some("application/was".into()),
+            ..Default::default()
+        }));
+        let filed = Message {
+            id: "lottie".into(),
+            chat: "someone@s.whatsapp.net".into(),
+            sender: "someone@s.whatsapp.net".into(),
+            sender_name: None,
+            from_me: false,
+            timestamp: 100,
+            content: Content::Unsupported {
+                what: "animated sticker".into(),
+            },
+            status: Delivery::Read,
+            delivered_at: None,
+            read_at: None,
+            quoted: None,
+            reactions: Vec::new(),
+            edited: false,
+            mentions: Vec::new(),
+            forwarded: false,
+            thumbnail: None,
+        };
+        worker
+            .archive
+            .ensure_chat("someone@s.whatsapp.net", "Someone")
+            .unwrap();
+        worker
+            .archive
+            .insert_message(&filed, Some(&message.encode_to_vec()))
+            .unwrap();
+
+        worker.backfill_lottie_stickers();
+
+        let recovered = worker
+            .archive
+            .message("someone@s.whatsapp.net", "lottie")
+            .unwrap()
+            .unwrap();
+        assert!(matches!(
+            recovered.content,
+            Content::Sticker { animated: true, .. }
+        ));
+        assert_eq!(
+            worker.archive.meta("lottie_stickers").unwrap().as_deref(),
+            Some("1")
+        );
+        assert!(worker.archive.lottie_placeholders().unwrap().is_empty());
     }
 
     #[test]

@@ -4,9 +4,15 @@ import ZapFastBridge
 /// The seam between call state and the bridge's call center.
 /// `LiveCallService` is the real one; previews and tests pass their own.
 public protocol CallService: AnyObject {
-    /// Delivers call changes on the main actor, and the other side's audio
-    /// into `playout` straight from the bridge's thread.
-    func connect(playout: PlayoutBuffer, onCall: @escaping @MainActor (CallInfo) -> Void)
+    /// Delivers call changes and history entries on the main actor, and the
+    /// other side's audio into `playout` straight from the bridge's thread.
+    func connect(
+        playout: PlayoutBuffer,
+        onCall: @escaping @MainActor (CallInfo) -> Void,
+        onCallLog: @escaping @MainActor (CallLogEntry) -> Void
+    )
+    /// A chat's calls, oldest first.
+    func history(chat: String) -> [CallLogEntry]
     func place(chat: String) -> Bool
     func answer(session: UInt64)
     /// Declines the call if it rings, or ends it.
@@ -21,9 +27,15 @@ public final class LiveCallService: CallService {
 
     public init() {}
 
-    public func connect(playout: PlayoutBuffer, onCall: @escaping @MainActor (CallInfo) -> Void) {
-        center.setListener(listener: CallRelay(playout: playout, onCall: onCall))
+    public func connect(
+        playout: PlayoutBuffer,
+        onCall: @escaping @MainActor (CallInfo) -> Void,
+        onCallLog: @escaping @MainActor (CallLogEntry) -> Void
+    ) {
+        center.setListener(listener: CallRelay(playout: playout, onCall: onCall, onCallLog: onCallLog))
     }
+
+    public func history(chat: String) -> [CallLogEntry] { center.history(chat: chat) }
 
     public func place(chat: String) -> Bool { center.place(chat: chat) }
     public func answer(session: UInt64) { center.answer(session: session) }
@@ -40,10 +52,16 @@ public final class LiveCallService: CallService {
 nonisolated private final class CallRelay: CallListener, Sendable {
     private let playout: PlayoutBuffer
     private let onCall: @MainActor (CallInfo) -> Void
+    private let onCallLog: @MainActor (CallLogEntry) -> Void
 
-    init(playout: PlayoutBuffer, onCall: @escaping @MainActor (CallInfo) -> Void) {
+    init(
+        playout: PlayoutBuffer,
+        onCall: @escaping @MainActor (CallInfo) -> Void,
+        onCallLog: @escaping @MainActor (CallLogEntry) -> Void
+    ) {
         self.playout = playout
         self.onCall = onCall
+        self.onCallLog = onCallLog
     }
 
     func onCall(call: CallInfo) {
@@ -55,6 +73,13 @@ nonisolated private final class CallRelay: CallListener, Sendable {
 
     func onPlayout(samples: [Int16]) {
         playout.write(samples)
+    }
+
+    func onCallLog(entry: CallLogEntry) {
+        let onCallLog = self.onCallLog
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { onCallLog(entry) }
+        }
     }
 }
 
@@ -68,12 +93,24 @@ public final class PreviewCallService: CallService {
     public private(set) var requests: [Request] = []
     /// What `place` answers.
     public var accepts = true
+    /// The calls `history` reads.
+    public var calls: [CallLogEntry] = []
     private var onCall: (@MainActor (CallInfo) -> Void)?
+    private var onCallLog: (@MainActor (CallLogEntry) -> Void)?
 
     public init() {}
 
-    public func connect(playout: PlayoutBuffer, onCall: @escaping @MainActor (CallInfo) -> Void) {
+    public func connect(
+        playout: PlayoutBuffer,
+        onCall: @escaping @MainActor (CallInfo) -> Void,
+        onCallLog: @escaping @MainActor (CallLogEntry) -> Void
+    ) {
         self.onCall = onCall
+        self.onCallLog = onCallLog
+    }
+
+    public func history(chat: String) -> [CallLogEntry] {
+        calls.filter { $0.chat == chat }
     }
 
     public func place(chat: String) -> Bool {
@@ -89,5 +126,10 @@ public final class PreviewCallService: CallService {
     /// Plays the bridge reporting `call`.
     public func report(_ call: CallInfo) {
         onCall?(call)
+    }
+
+    /// Plays the bridge filing `entry` in the history.
+    public func report(log entry: CallLogEntry) {
+        onCallLog?(entry)
     }
 }

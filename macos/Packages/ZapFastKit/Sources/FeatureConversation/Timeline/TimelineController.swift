@@ -91,6 +91,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var floatingTitle: String?
     var floatingHide: Task<Void, Never>?
     private var unread: UnreadDivider?
+    /// The chat's calls, shown among the messages of their time.
+    private var calls: [CallLogEntry] = []
+    /// The messages reach the chat's start, so older calls show too.
+    private var fromStart = false
     /// `ZAPFAST_SWIFTUI_ROWS=1` shows every message as the earlier SwiftUI
     /// row, to compare the two, in the app or the benchmark.
     var drawsBubbles = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
@@ -221,6 +225,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         chatID: String,
         messages: [MessageRecord],
         revision: Int,
+        calls: [CallLogEntry] = [],
+        fromStart: Bool = false,
         isGroup: Bool,
         model: AppModel,
         style: TimelineStyle,
@@ -266,7 +272,10 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let restyled = style != self.style
         // Anything that regroups or restyles the rows makes them all again.
         // Picking messages does not: each row shows its checkbox itself.
-        var rebuilds = restyled || unread != self.unread
+        var rebuilds = restyled || unread != self.unread || calls != self.calls
+            || (fromStart != self.fromStart && !calls.isEmpty)
+        self.calls = calls
+        self.fromStart = fromStart
         if restyled {
             self.style = style
             colors = BubbleColors(style)
@@ -443,7 +452,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// Rows for the current messages: resolved on the main actor, measured
     /// wherever suits, installed on the main actor.
     private func rebuild(restyled: Bool = false) {
-        let rows = TimelineRow.build(messages, unread: unread)
+        let rows = TimelineRow.build(messages, calls: calls, fromStart: fromStart, unread: unread)
         plans = resolve(rows)
         prepare(limit: widthLimit > 0 ? widthLimit : currentWidthLimit(), restyled: restyled)
     }
@@ -477,6 +486,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
                 case .unread(let count):
                     let title = String(AttributedString(localized: "^[\(count) unread message](inflect: true)").characters)
                     return .chip(id: row.id, title: title, isDay: false)
+                case .call(let entry):
+                    return .chip(id: row.id, title: CallText.title(entry), isDay: false)
                 case let .message(message, startsRun, endsRun):
                     guard !swiftUIRows, let source = BubbleSource.make(
                         message, startsRun: startsRun, endsRun: endsRun, isGroup: isGroup, colors: colors, chats: model.chats,

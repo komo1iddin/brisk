@@ -12,7 +12,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use whatsapp_rust::Client;
 use whatsapp_rust::Jid;
@@ -20,9 +20,10 @@ use whatsapp_rust::async_channel;
 use whatsapp_rust::voip::{CallEvent, CallHandle};
 use whatsapp_rust::wacore::types::call::{CallAction, ElsewhereOutcome, IncomingCall};
 use whatsapp_rust::wacore::types::events::{
-    Event, EventHandler, EventInterest, EventKind, Subscription,
+    CallLogSync, Event, EventHandler, EventInterest, EventKind, Subscription,
 };
 
+use super::history::{self, CallLog, CallLogEntry, Source};
 use super::phase::{self, CallPhase, Signal};
 use super::{CallInfo, CallListener};
 
@@ -43,6 +44,8 @@ pub(crate) struct Center {
     /// Live calls, oldest first. A call leaves once it has ended.
     calls: Mutex<Vec<Session>>,
     next_session: AtomicU64,
+    /// The call history, once the bridge has opened it.
+    log: Mutex<Option<Arc<CallLog>>>,
 }
 
 /// The worker's current client and the runtime it lives on.
@@ -60,6 +63,10 @@ struct Session {
     offer: Option<IncomingCall>,
     handle: Option<CallHandle>,
     microphone: Option<async_channel::Sender<Vec<i16>>>,
+    /// When it began ringing or calling, in Unix seconds.
+    started: i64,
+    /// When both sides started talking.
+    connected: Option<Instant>,
 }
 
 impl Session {
@@ -88,7 +95,40 @@ impl Center {
             listener: Mutex::new(None),
             calls: Mutex::new(Vec::new()),
             next_session: AtomicU64::new(1),
+            log: Mutex::new(None),
         })
+    }
+
+    pub fn set_log(&self, log: Arc<CallLog>) {
+        *lock(&self.log) = Some(log);
+    }
+
+    /// The chat's calls, oldest first.
+    pub fn history(&self, chat: &str) -> Vec<CallLogEntry> {
+        let Some(log) = lock(&self.log).clone() else {
+            return Vec::new();
+        };
+        log.chat(chat).unwrap_or_else(|_| {
+            log::warn!("calls: could not read the call history");
+            Vec::new()
+        })
+    }
+
+    /// Files a call in the history and tells Swift if that changed it.
+    fn file(&self, entry: CallLogEntry, source: Source) {
+        let Some(store) = lock(&self.log).clone() else {
+            return;
+        };
+        match store.record(&entry, source) {
+            Ok(true) => {
+                let listener = lock(&self.listener).clone();
+                if let Some(listener) = listener {
+                    listener.on_call_log(entry);
+                }
+            }
+            Ok(false) => {}
+            Err(_) => log::warn!("calls: could not file a call in the history"),
+        }
     }
 
     /// Called by the backend's hook, on its runtime, for each new client.
@@ -142,6 +182,10 @@ impl Center {
             offer: None,
             handle: None,
             microphone: None,
+            started: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs() as i64),
+            connected: None,
         }
     }
 
@@ -153,9 +197,15 @@ impl Center {
             let mut calls = lock(&self.calls);
             let index = calls.iter().position(|s| s.info.session == id)?;
             let next = phase::next(&calls[index].info.phase, signal)?;
+            if next == CallPhase::Active && calls[index].connected.is_none() {
+                calls[index].connected = Some(Instant::now());
+            }
             calls[index].info.phase = next;
             if calls[index].info.phase.is_ended() {
                 let session = calls.remove(index);
+                if let Some(entry) = history_entry(&session) {
+                    self.file(entry, Source::Here);
+                }
                 (
                     session.info,
                     Some(Ended {
@@ -480,6 +530,7 @@ impl Center {
                 }
             }
             Event::MissedCall(_) => log::info!("calls: a call was missed while offline"),
+            Event::CallLogSync(sync) => self.on_call_log(sync),
             _ => {}
         }
     }
@@ -560,6 +611,83 @@ impl Center {
     }
 }
 
+impl Center {
+    /// Files a call the phone synced, under the chat it belongs to.
+    fn on_call_log(self: &Arc<Self>, sync: &CallLogSync) {
+        let record = &sync.record;
+        let Some(outcome) = history::outcome_of(record, sync.from_me) else {
+            return;
+        };
+        let Some((client, runtime)) = self.client() else {
+            return;
+        };
+        let group = record.group_jid.clone().filter(|g| !g.is_empty());
+        // The other side: whoever called us, or the first other person on
+        // a call we placed.
+        let peer = if sync.from_me {
+            record
+                .participants
+                .iter()
+                .filter_map(|p| p.user_jid.as_deref()?.parse::<Jid>().ok())
+                .find(|jid| jid.user_base() != sync.call_creator_jid.user_base())
+        } else {
+            Some(sync.call_creator_jid.clone())
+        };
+        let entry = CallLogEntry {
+            call_id: sync.call_id.clone(),
+            chat: String::new(),
+            from_me: sync.from_me,
+            video: record.is_video.unwrap_or(false),
+            outcome,
+            timestamp: record
+                .start_time
+                .map_or(sync.timestamp.timestamp(), history::seconds),
+            duration: record
+                .duration
+                .map_or(0, |d| u32::try_from(d.max(0)).unwrap_or(u32::MAX)),
+        };
+        let center = self.clone();
+        runtime.spawn(async move {
+            let chat = match (group, peer) {
+                (Some(group), _) => group,
+                (None, Some(peer)) => canonical(&client, &peer).await,
+                (None, None) => return,
+            };
+            center.file(CallLogEntry { chat, ..entry }, Source::Phone);
+        });
+    }
+}
+
+/// What a session that ended adds to the history, if WhatsApp knew the call.
+fn history_entry(session: &Session) -> Option<CallLogEntry> {
+    let CallPhase::Ended { reason } = &session.info.phase else {
+        return None;
+    };
+    let call_id = session.wa_id.clone()?;
+    let duration = session.connected.map_or(0, |at| {
+        u32::try_from(at.elapsed().as_secs()).unwrap_or(u32::MAX)
+    });
+    Some(CallLogEntry {
+        call_id,
+        chat: session.info.chat.clone(),
+        from_me: !session.info.incoming,
+        video: session.info.video_offered,
+        outcome: history::here_outcome(session.info.incoming, session.connected.is_some(), reason),
+        timestamp: session.started,
+        duration,
+    })
+}
+
+/// A person's chat id, by phone number when the privacy id's is known.
+async fn canonical(client: &Client, jid: &Jid) -> String {
+    if jid.is_lid()
+        && let Ok(Some(entry)) = client.get_lid_pn_entry(jid).await
+    {
+        return format!("{}@s.whatsapp.net", entry.phone_number);
+    }
+    jid.to_non_ad_string()
+}
+
 /// The caller's chat id, by phone number when it is known, as upstream files
 /// chats behind a privacy id.
 async fn chat_of(client: &Client, offer: &IncomingCall) -> String {
@@ -574,12 +702,7 @@ async fn chat_of(client: &Client, offer: &IncomingCall) -> String {
     if let Some(pn) = caller_pn {
         return pn.to_non_ad_string();
     }
-    if call_creator.is_lid()
-        && let Ok(Some(entry)) = client.get_lid_pn_entry(call_creator).await
-    {
-        return format!("{}@s.whatsapp.net", entry.phone_number);
-    }
-    call_creator.to_non_ad_string()
+    canonical(client, call_creator).await
 }
 
 fn describe(phase: &CallPhase) -> String {
@@ -607,6 +730,7 @@ impl EventHandler for CallEvents {
             EventKind::IncomingCall,
             EventKind::MissedCall,
             EventKind::CallEndedElsewhere,
+            EventKind::CallLogSync,
         ])
     }
 }

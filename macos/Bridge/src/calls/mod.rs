@@ -14,11 +14,13 @@
 //! Video and group calls are not handled, nor a third call: such an offer is
 //! left to ring on the phone.
 
+mod history;
 mod phase;
 mod session;
 
 use std::sync::{Arc, OnceLock};
 
+pub use history::{CallLogEntry, CallOutcome};
 pub use phase::{CallEndReason, CallPhase};
 
 use session::Center;
@@ -47,6 +49,8 @@ pub trait CallListener: Send + Sync {
     fn on_call(&self, call: CallInfo);
     /// One frame of the other side's audio to play.
     fn on_playout(&self, samples: Vec<i16>);
+    /// A call was added to (or changed in) a chat's history.
+    fn on_call_log(&self, entry: CallLogEntry);
 }
 
 /// Places, answers and ends calls.
@@ -113,6 +117,21 @@ impl CallCenter {
     /// The live calls, oldest first.
     pub fn current(&self) -> Vec<CallInfo> {
         self.center.current()
+    }
+
+    /// A chat's calls, oldest first; empty until the bridge has started.
+    pub fn history(&self, chat: String) -> Vec<CallLogEntry> {
+        self.center.history(&chat)
+    }
+}
+
+/// Opens the call history in the app's state folder. Without it calls still
+/// work; they are only not remembered.
+pub(crate) fn open_log(state: &std::path::Path) {
+    let center = install();
+    match history::CallLog::open(&state.join("calls.db")) {
+        Ok(store) => center.center.set_log(Arc::new(store)),
+        Err(_) => log::warn!("calls: the call history could not be opened"),
     }
 }
 

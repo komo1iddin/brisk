@@ -15,6 +15,8 @@ public final class CallStore {
     public private(set) var waiting: CallInfo?
     /// When both sides of `call` started talking.
     public private(set) var connectedAt: Date?
+    /// Each chat's calls, for its timeline.
+    public let history: CallHistory
 
     /// Shows a short message in the window's notice banner.
     @ObservationIgnored public var onNotice: (Notice.Kind, String) -> Void = { _, _ in }
@@ -33,8 +35,13 @@ public final class CallStore {
     public init(service: CallService, live: Bool) {
         self.service = service
         self.live = live
+        history = CallHistory(read: { [service] chat in service.history(chat: chat) })
         microphoneAllowed = live ? { await VoiceRecorder.microphoneAllowed() } : { true }
-        service.connect(playout: playout) { [weak self] call in self?.update(call) }
+        service.connect(
+            playout: playout,
+            onCall: { [weak self] call in self?.update(call) },
+            onCallLog: { [weak self] entry in self?.history.add(entry) }
+        )
     }
 
     /// A call is ringing or going; a new one cannot start.

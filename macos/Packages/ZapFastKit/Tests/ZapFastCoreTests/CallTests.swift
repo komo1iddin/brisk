@@ -236,3 +236,92 @@ struct CallToneTests {
         #expect(samples[Int(2 * CallTones.sampleRate)] == 0)
     }
 }
+
+/// A chat's calls show among its messages: in their place by time, breaking
+/// the runs around them, and only as far back as the messages go.
+@MainActor
+struct CallHistoryTests {
+    private let chat = "c@s.whatsapp.net"
+    /// Noon on 14 November 2023, UTC.
+    private let noon: Int64 = 1_699_963_200
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func message(_ id: String, at time: Int64) -> MessageRecord {
+        MessageRecord(
+            id: id, chat: chat, sender: "a@s.whatsapp.net", senderName: nil, fromMe: false, timestamp: time,
+            content: .text(text: id, preview: nil), status: .none, deliveredAt: nil, readAt: nil, quoted: nil,
+            reactions: [], edited: false, mentions: [], forwarded: false, thumbnail: nil, summary: id
+        )
+    }
+
+    private func call(_ id: String, at time: Int64, outcome: CallOutcome = .missed) -> CallLogEntry {
+        CallLogEntry(
+            callId: id, chat: chat, fromMe: false, video: false, outcome: outcome, timestamp: time, duration: 0
+        )
+    }
+
+    private func rows(_ messages: [MessageRecord], _ calls: [CallLogEntry], fromStart: Bool = false) -> [TimelineRow] {
+        TimelineRow.build(messages, calls: calls, fromStart: fromStart, calendar: calendar)
+    }
+
+    @Test func aCallSitsBetweenTheMessagesOfItsTime() {
+        let built = rows([message("a", at: noon), message("b", at: noon + 120)], [call("x", at: noon + 60)])
+        #expect(built.map(\.id) == ["day-1699920000", "a", "call-x", "b"])
+    }
+
+    @Test func aCallBreaksTheRunAroundIt() {
+        let built = rows([message("a", at: noon), message("b", at: noon + 120)], [call("x", at: noon + 60)])
+        let runs = built.compactMap { row -> (Bool, Bool)? in
+            if case let .message(_, starts, ends) = row { (starts, ends) } else { nil }
+        }
+        #expect(runs.map(\.0) == [true, true])
+        #expect(runs.map(\.1) == [true, true])
+    }
+
+    @Test func aCallOnItsOwnDayGetsTheDay() {
+        let built = rows([message("a", at: noon)], [call("x", at: noon + 86_400)])
+        #expect(built.map(\.id) == ["day-1699920000", "a", "day-1700006400", "call-x"])
+    }
+
+    @Test func olderCallsWaitForTheirPage() {
+        let old = call("x", at: noon - 3600)
+        #expect(!rows([message("a", at: noon)], [old]).contains { $0.id == "call-x" })
+        #expect(rows([message("a", at: noon)], [old], fromStart: true).map(\.id).dropFirst().first == "call-x")
+    }
+
+    @Test func aChatOfOnlyCallsShowsThem() {
+        #expect(rows([], [call("x", at: noon)]).map(\.id) == ["day-1699920000", "call-x"])
+    }
+
+    @Test func withoutCallsTheRowsAreAsBefore() {
+        let messages = [message("a", at: noon), message("b", at: noon + 10)]
+        #expect(rows(messages, []) == TimelineRow.build(messages, calendar: calendar))
+    }
+
+    @Test func historyReadsOnceAndFollowsTheBridge() {
+        let service = PreviewCallService()
+        service.calls = [call("x", at: noon)]
+        let calls = CallStore(service: service, live: false)
+        #expect(calls.history.calls(in: chat).map(\.callId) == ["x"])
+        service.calls = []
+        #expect(calls.history.calls(in: chat).count == 1, "read once, then kept")
+        service.report(log: call("w", at: noon - 10))
+        service.report(log: call("x", at: noon, outcome: .connected))
+        #expect(calls.history.calls(in: chat).map(\.callId) == ["w", "x"])
+        #expect(calls.history.calls(in: chat).last?.outcome == .connected)
+    }
+
+    @Test func aCallReadsAsThePhoneShowsIt() {
+        #expect(CallText.title(call("x", at: noon)).hasPrefix("Missed voice call · "))
+        var talked = call("y", at: noon, outcome: .connected)
+        talked.duration = 125
+        #expect(CallText.title(talked).hasPrefix("Voice call · 2 min"))
+        talked.duration = 40
+        #expect(CallText.title(talked).hasPrefix("Voice call · 40 sec"))
+    }
+}

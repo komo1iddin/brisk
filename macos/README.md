@@ -375,9 +375,17 @@ upstream's interface has no calls. Audio crosses the bridge as 16 kHz mono
 frames of 60 ms; Swift captures and plays them through one `AVAudioEngine`
 with the system's voice processing, which cancels the speaker's echo.
 
+A chat shows its calls among its messages, as centred rows ("Missed voice
+call · 14:05", "Voice call · 2 min · 14:05"): the calls the phone syncs
+through app state (`call_log`), and those rung or placed here, the phone's
+record winning. Upstream's archive has no place for them, so the bridge
+keeps `State/calls.db`, encrypted as the archive is (SQLCipher, its own
+random key in the keychain). The phone sends its whole call history only
+when the device links; a device linked before this version shows the calls
+from now on.
+
 Not yet: video (a video call can be answered with voice only), group
-calls, a third call at once (that offer keeps ringing on the phone), and a
-call history in the chat.
+calls, and a third call at once (that offer keeps ringing on the phone).
 
 ## Build
 

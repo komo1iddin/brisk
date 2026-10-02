@@ -26,7 +26,9 @@ mod pump;
 pub mod types;
 mod vcard;
 
-pub use calls::{CallCenter, CallEndReason, CallInfo, CallListener, CallPhase};
+pub use calls::{
+    CallCenter, CallEndReason, CallInfo, CallListener, CallLogEntry, CallOutcome, CallPhase,
+};
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;
 pub use events::BridgeEvent;

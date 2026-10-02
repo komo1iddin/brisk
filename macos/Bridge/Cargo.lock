@@ -8589,15 +8589,22 @@ dependencies = [
 name = "zapfast-bridge"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "apple-native-keyring-store",
  "egui",
  "emojis",
  "fastframe-log",
+ "getrandom 0.4.3",
+ "keyring-core",
  "log",
+ "rusqlite",
+ "sha2",
  "thiserror 2.0.20",
  "tokio",
  "uniffi",
  "whatsapp-rust",
  "zapfast",
+ "zeroize",
 ]
 
 [[package]]

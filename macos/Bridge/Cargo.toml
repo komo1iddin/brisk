@@ -31,6 +31,15 @@ emojis = "0.9"
 # touching upstream's manifest. Keep the revision equal to upstream's.
 whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "f7468ae2920a2b0aedbd0848cf121de56a07f93c", default-features = false, features = ["voip"] }
 tokio = { version = "1", features = ["rt", "time"] }
+# The call history's own store, encrypted as upstream's archive is: the
+# same SQLCipher build and a key in the keychain.
+anyhow = "1"
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+keyring-core = "1"
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+zeroize = "1"
+getrandom = "0.4"
+sha2 = "0.11"
 
 [workspace]
 members = [".", "uniffi-bindgen"]

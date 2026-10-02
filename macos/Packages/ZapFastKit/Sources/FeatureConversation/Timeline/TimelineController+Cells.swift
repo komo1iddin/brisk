@@ -144,6 +144,10 @@ extension TimelineController: TimelineCellDelegate {
             model.playVideo(message)
         } else if MediaGallery.kind(of: message) != nil {
             model.openMediaViewer(message)
+        } else if case .sticker(let media, _) = message.content, WasArchive.isLottie(mime: media.mime) {
+            // Quick Look has nothing to show for an animation in a zip; it
+            // moves under the pointer instead.
+            return
         } else if let url = message.mediaURL {
             QuickLook.shared.show([url])
         } else {

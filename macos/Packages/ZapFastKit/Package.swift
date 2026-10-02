@@ -34,6 +34,8 @@ let package = Package(
     dependencies: [
         // libphonenumber's formats, for numbers written as WhatsApp writes them.
         .package(url: "https://github.com/PhoneNumberKit/PhoneNumberKit", from: "5.0.11"),
+        // Plays Lottie stickers (WhatsApp's .was files hold a Lottie animation).
+        .package(url: "https://github.com/airbnb/lottie-ios", from: "4.6.1"),
     ],
     targets: [
         // Rust static library and C header, built by Scripts/build-bridge.sh.
@@ -101,7 +103,10 @@ let package = Package(
         ),
         .target(
             name: "FeatureConversation",
-            dependencies: ["ZapFastCore", "ZapFastDesign", "ZapFastSharedUI"],
+            dependencies: [
+                "ZapFastCore", "ZapFastDesign", "ZapFastSharedUI",
+                .product(name: "Lottie", package: "lottie-ios"),
+            ],
             swiftSettings: uiSettings
         ),
         .target(

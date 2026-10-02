@@ -25,6 +25,9 @@ final class PictureView: AttachmentView {
     private let badge = DownloadBadgeView()
     private var player: PlayerView.WindowedPlayerView?
     private var looping: LoopingVideo.LoopingView?
+    /// A Lottie sticker's player, made once its file is here.
+    private var lottie: LottieStickerView?
+    private var lottieFile: String?
 
     private var image: CGImage?
     private var hasImage: Bool { image != nil }
@@ -103,7 +106,9 @@ final class PictureView: AttachmentView {
         CATransaction.commit()
         player?.frame = bounds
         looping?.frame = bounds
+        lottie?.frame = bounds
         if !same { loadImage(keepingShown: sameMessage) }
+        refreshLottie()
         placeholder.configure(
             symbol: Self.placeholderSymbol(layout.picture.kind), pointSize: 26, weight: .regular,
             palette: [TimelineText.faded(color, 0.55)]
@@ -125,7 +130,7 @@ final class PictureView: AttachmentView {
         let playing = player != nil
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        placeholder.isHidden = hasImage || !(here || picture.isSticker)
+        placeholder.isHidden = hasImage || lottie?.isReady == true || !(here || picture.isSticker)
         glyph.isHidden = layout.glyph == nil || playing || !here
         gifCapsule.isHidden = layout.gif == nil || !here || moving
         durationCapsule.isHidden = layout.duration == nil || playing
@@ -160,7 +165,7 @@ final class PictureView: AttachmentView {
         CATransaction.setDisableActions(true)
         effectiveAppearance.performAsCurrentDrawingAppearance {
             // `.quaternary` behind a picture not decoded yet.
-            picture.backgroundColor = hasImage ? nil : TimelineText.faded(textColor, 0.12).cgColor
+            picture.backgroundColor = hasImage || lottie?.isReady == true ? nil : TimelineText.faded(textColor, 0.12).cgColor
         }
         for layer in [placeholder, glyph] { layer.appearance = effectiveAppearance }
         CATransaction.commit()
@@ -178,6 +183,36 @@ final class PictureView: AttachmentView {
             layer.contentsScale = scale
             layer.setNeedsDisplay()
         }
+    }
+
+    // MARK: A Lottie sticker
+
+    /// The player of a Lottie sticker whose file is here; none for anything
+    /// else. It shows the first frame at once and moves with `setMoving`.
+    private func refreshLottie() {
+        guard let layout = pictureLayout, layout.picture.isLottie, let path = layout.picture.path else {
+            dropLottie()
+            return
+        }
+        guard lottieFile != path else { return }
+        dropLottie()
+        lottieFile = path
+        let view = LottieStickerView(frame: bounds)
+        addSubview(view, positioned: .below, relativeTo: badge)
+        lottie = view
+        Task { [weak self, weak view] in
+            guard let view, await view.load(file: URL(filePath: path)) else { return }
+            guard let self, self.lottie === view else { return }
+            if self.moving { view.setPlaying(true) }
+            self.applyAppearance()
+            self.refreshOverlays()
+        }
+    }
+
+    private func dropLottie() {
+        lottie?.removeFromSuperview()
+        lottie = nil
+        lottieFile = nil
     }
 
     // MARK: The picture
@@ -253,7 +288,9 @@ final class PictureView: AttachmentView {
                 looping = nil
             }
         case .animatedSticker:
-            if on, let path = layout.picture.path {
+            if layout.picture.isLottie {
+                lottie?.setPlaying(on)
+            } else if on, let path = layout.picture.path {
                 let load = loads
                 Task { [weak self] in
                     guard let frames = await AnimatedFrames.load(URL(filePath: path), points: layout.points),

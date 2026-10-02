@@ -142,6 +142,11 @@ nonisolated struct BubbleSource: Equatable, Sendable {
             kind == .sticker || kind == .animatedSticker
         }
 
+        /// A Lottie sticker: its file is an animation in a zip, not a picture.
+        var isLottie: Bool {
+            isSticker && WasArchive.isLottie(mime: mime)
+        }
+
         /// `VisualMedia.displaySize`: the picture's shape within 300 points
         /// (160 for a sticker), at most one and a half times its pixels, and
         /// no smaller than 120 by 80.

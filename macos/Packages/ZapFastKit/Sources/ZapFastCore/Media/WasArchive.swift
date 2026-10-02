@@ -7,6 +7,14 @@ import Foundation
 /// Unpacked once into a folder of the cache, where the Lottie player reads
 /// it, and left there: a sticker's file never changes.
 nonisolated public enum WasArchive {
+    /// The mimetype WhatsApp gives the file.
+    public static let mime = "application/was"
+
+    /// Whether a sticker's mimetype says it is a Lottie animation.
+    public static func isLottie(mime: String) -> Bool {
+        mime.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased() == Self.mime
+    }
+
     public enum Failure: LocalizedError, Equatable {
         case notAZip
         case unsupported

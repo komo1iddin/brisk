@@ -37,7 +37,7 @@ private struct ChatExportDialog: ViewModifier {
     }
 
     private func message(_ chat: String) -> String {
-        String(localized: "Your chat with \(name(of: chat)) is saved as a web page you can read in a browser, in a new folder. Media goes into folders beside it, but only what this Mac has downloaded. Only messages stored on this Mac are included.")
+        String(localized: "Your chat with \(name(of: chat)) is saved as a web page you can read in a browser, in a new folder. Media goes into folders beside it, but only what this Mac has downloaded. Only messages stored on this Mac are included. To include more, cancel and use Download from Phone first.")
     }
 
     /// Asks where the folder goes, then exports and opens the conversation.

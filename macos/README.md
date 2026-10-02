@@ -212,6 +212,17 @@ and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,
 after asking, here and on the phone; both need a connection.
 
+**Export Chat…** in a chat's menu writes the chat the way the phone does: a
+text file with a line per message, `[date, time] Name: message`, or, with
+**Attach Media**, a zip of that file (`_chat.txt`) and the attachments this Mac
+has downloaded, named like the phone's (`00000012-PHOTO-2026-09-30-09-28-15.jpg`;
+a document keeps its own name). It reads only the local archive through a
+connection of its own (`Bridge/src/export.rs`, `ChatExport` in ZapFastCore), so
+it works offline and does not disturb the open chat; a chat holds what this Mac
+has, which can start later than the chat does, and attachments that were never
+downloaded are left out and counted in the notice. Reactions and quotes are not
+written, as in the phone's export.
+
 Settings › Privacy also shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and
 calls. The values live on the phone: they are read each time Settings
@@ -492,7 +503,9 @@ the command as the object): `tree` writes the main window's views and
 safe areas, `resize:<steps>:<points>` times each step of a resize,
 `select:<n>` opens a chat, `top:<n>` loads older pages, `open:search` and
 the like open parts of the window, `shot` captures the window as shown,
-and `action:<selector>` sends an action (`action:terminate:` quits). Answers go to
+`export:<n>[:media]` exports the nth chat to a temporary file and answers with
+the counts (then deletes the file), and `action:<selector>` sends an action
+(`action:terminate:` quits). Answers go to
 `~/Library/Caches/<bundle id>/debug/` and name views and numbers only.
 
 ## Following upstream

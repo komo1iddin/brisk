@@ -14,6 +14,7 @@ struct RootPresenters: View {
     var body: some View {
         Color.clear
             .chatConfirmationAlert(model: model)
+            .chatExportDialog(model: model)
             .groupInviteSheet(model: model)
             .chatThemeSheet(model: model)
             .sheet(isPresented: $model.shortcutsShown) { ShortcutsSheet() }

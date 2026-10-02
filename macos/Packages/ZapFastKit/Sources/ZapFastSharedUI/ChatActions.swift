@@ -89,6 +89,10 @@ public struct ChatActions: View {
             model.setArchived(!chat.archived, chat: chat.id)
         }
 
+        // Reads this Mac's archive only, so it works offline.
+        Button("Export Chat…", systemImage: "arrow.down.doc") { model.requestExport(chat.id) }
+            .disabled(model.exportingChat != nil)
+
         // Both reach the phone first, so they wait for a connection.
         Button("Clear Chat…", systemImage: "eraser") { model.confirmClear(chat.id) }
             .disabled(!model.canClearOrDeleteChats)

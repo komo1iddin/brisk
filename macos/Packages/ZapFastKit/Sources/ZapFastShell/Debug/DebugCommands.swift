@@ -33,6 +33,10 @@ import ZapFastCore
 ///   scroll view with whole numbers, to try AppKit's settings live.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
+/// - `export:<n>[:media]`: exports the sidebar's nth chat to a temporary
+///   file, answers with the counts it wrote and how long it took, and
+///   deletes the file, so the real archive's reader can be checked without
+///   anything of the chat being shown.
 /// - `call:<ringing|calling|active|muted|waiting|video|request|group|groupringing|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
 ///   `shot:call` captures it.
@@ -220,6 +224,27 @@ enum DebugCommands {
                 waiting: shown == "waiting" ? made(2, "998911111111@s.whatsapp.net", .ringing) : nil
             )
             write(name, "\(phase.map { "\($0)" } ?? "none")")
+        case "export":
+            let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            let media = parts.count > 2 && parts[2] == "media"
+            guard model.sidebarOrder.indices.contains(index) else {
+                write(name, "no chat \(index) of \(model.sidebarOrder.count)")
+                return
+            }
+            let file = FileManager.default.temporaryDirectory
+                .appending(path: "zapfast-debug-export-\(UUID().uuidString).\(media ? "zip" : "txt")")
+            let started = Date()
+            model.exportChat(model.sidebarOrder[index], includeMedia: media, to: file) { result in
+                defer { try? FileManager.default.removeItem(at: file) }
+                switch result {
+                case .success(let summary):
+                    let bytes = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    let seconds = Date().timeIntervalSince(started).formatted(.number.precision(.fractionLength(2)))
+                    write(name, "messages=\(summary.messages) attachments=\(summary.attachments) missing=\(summary.missingMedia) bytes=\(bytes) seconds=\(seconds)")
+                case .failure(let error):
+                    write(name, "failed: \(type(of: error))")
+                }
+            }
         case "shot":
             // shot:popover captures the popover over the window instead.
             let target = parts.count > 1 ? parts[1] : ""

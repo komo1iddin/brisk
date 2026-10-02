@@ -13,6 +13,8 @@ final class CallAudio {
     private var engine: AVAudioEngine?
     private var tones: AVAudioPlayerNode?
     private var tone: Tone?
+    private var send: (@Sendable ([Int16]) -> Void)?
+    private var restarts: NSObjectProtocol?
     private let log = Logger(subsystem: "ZapFast", category: "Calls")
 
     var isRunning: Bool { engine != nil }
@@ -34,19 +36,12 @@ final class CallAudio {
             // Without it the call still works, with the echo of a speakerphone.
             log.warning("calls: voice processing is unavailable")
         }
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0,
-              let wire = AVAudioFormat(standardFormatWithSampleRate: CallTones.sampleRate, channels: 1),
-              let converter = AVAudioConverter(from: format, to: wire) else {
+        guard let wire = AVAudioFormat(standardFormatWithSampleRate: CallTones.sampleRate, channels: 1),
+              Self.tap(input, wire: wire, send: send) else {
             log.error("calls: the microphone has no usable format")
             return false
         }
-        converter.downmix = true
-        let frame = Int(callFrameSamples())
-        input.installTap(
-            onBus: 0, bufferSize: 1024, format: format,
-            block: Self.makeTap(converter: converter, wire: wire, frame: frame, send: send)
-        )
+        self.send = send
 
         let speaker = AVAudioSourceNode(format: wire, renderBlock: Self.makeRender(playout))
         engine.attach(speaker)
@@ -67,11 +62,62 @@ final class CallAudio {
         }
         self.engine = engine
         self.tones = tones
+        // Voice processing reconfigures the devices just after the engine
+        // starts, and the engine stops for it; without a restart nothing
+        // is heard either way. The input may come back with other channels.
+        restarts = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restart() }
+        }
+        return true
+    }
+
+    private func restart() {
+        guard let engine, let send,
+              let wire = AVAudioFormat(standardFormatWithSampleRate: CallTones.sampleRate, channels: 1) else { return }
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        guard Self.tap(input, wire: wire, send: send) else {
+            log.error("calls: the microphone has no usable format after a device change")
+            return
+        }
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            let code = (error as NSError).code
+            log.error("calls: the audio engine did not restart (\(code, privacy: .public))")
+            return
+        }
+        let channels = input.outputFormat(forBus: 0).channelCount
+        log.info("calls: audio restarted after a device change (\(channels, privacy: .public) input channels)")
+        // A tone that was playing stopped with the engine.
+        let playing = tone
+        tone = nil
+        setTone(playing)
+    }
+
+    /// Converts the input's first channel to the wire format and hands
+    /// whole frames to `send`. Under voice processing the input has several
+    /// channels: the first is the processed voice, the rest the echo
+    /// canceller's references, and mixing them down gave silence.
+    private static func tap(_ input: AVAudioInputNode, wire: AVAudioFormat, send: @escaping @Sendable ([Int16]) -> Void) -> Bool {
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, let converter = AVAudioConverter(from: format, to: wire) else { return false }
+        converter.channelMap = [0]
+        input.installTap(
+            onBus: 0, bufferSize: 1024, format: format,
+            block: makeTap(converter: converter, wire: wire, frame: Int(callFrameSamples()), send: send)
+        )
         return true
     }
 
     func stop() {
         guard let engine else { return }
+        if let restarts { NotificationCenter.default.removeObserver(restarts) }
+        restarts = nil
+        send = nil
         tones?.stop()
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()

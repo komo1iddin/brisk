@@ -51,6 +51,34 @@ pub(crate) struct Center {
     next_session: AtomicU64,
     /// The call history, once the bridge has opened it.
     log: Mutex<Option<Arc<CallLog>>>,
+    /// Audio frames crossing to and from Swift, for the media log.
+    traffic: Traffic,
+}
+
+/// Counts of audio frames between Swift and the engine. Numbers only: they
+/// say where a silent call loses its sound without saying anything of it.
+#[derive(Default)]
+struct Traffic {
+    microphone: AtomicU64,
+    microphone_dropped: AtomicU64,
+    playout: AtomicU64,
+}
+
+impl Traffic {
+    fn reset(&self) {
+        self.microphone.store(0, Ordering::Relaxed);
+        self.microphone_dropped.store(0, Ordering::Relaxed);
+        self.playout.store(0, Ordering::Relaxed);
+    }
+
+    fn line(&self) -> String {
+        format!(
+            "microphone {} (dropped {}), playout {}",
+            self.microphone.load(Ordering::Relaxed),
+            self.microphone_dropped.load(Ordering::Relaxed),
+            self.playout.load(Ordering::Relaxed),
+        )
+    }
 }
 
 /// The worker's current client and the runtime it lives on.
@@ -105,6 +133,7 @@ impl Center {
             calls: Mutex::new(Vec::new()),
             next_session: AtomicU64::new(1),
             log: Mutex::new(None),
+            traffic: Traffic::default(),
         })
     }
 
@@ -276,6 +305,7 @@ impl Center {
             info
         };
         let id = info.session;
+        self.traffic.reset();
         log::info!("calls: placing a call");
         let video = video.then(|| self.camera_on(id)).flatten();
         self.publish(self.info(id).unwrap_or(info));
@@ -403,6 +433,7 @@ impl Center {
             session.microphone = Some(microphone);
             (session.info.clone(), offer)
         };
+        self.traffic.reset();
         log::info!("calls: answering");
         let video = video.then(|| self.camera_on(id)).flatten();
         self.publish(self.info(id).unwrap_or(info));
@@ -448,13 +479,34 @@ impl Center {
         }
     }
 
-    /// Ends the call when its media does, and logs what the engine reports.
+    /// Ends the call when its media does, and logs what the engine reports,
+    /// with the media counters every ten seconds and at the end.
     fn watch(self: &Arc<Self>, id: u64, handle: &CallHandle) {
         let ended = handle.clone();
         let center = self.clone();
         tokio::spawn(async move {
             ended.wait_ended().await;
+            log::info!(
+                "calls: media at the end: {:?}; {}",
+                ended.media_stats(),
+                center.traffic.line()
+            );
             center.apply(id, Signal::MediaEnded);
+        });
+        let counted = handle.clone();
+        let center = self.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                if center.info(id).is_none() {
+                    break;
+                }
+                log::info!(
+                    "calls: media: {:?}; {}",
+                    counted.media_stats(),
+                    center.traffic.line()
+                );
+            }
         });
         let events = handle.events();
         let center = self.clone();
@@ -504,6 +556,7 @@ impl Center {
     fn play(self: Arc<Self>, playout: async_channel::Receiver<Vec<i16>>) {
         tokio::spawn(async move {
             while let Ok(frame) = playout.recv().await {
+                self.traffic.playout.fetch_add(1, Ordering::Relaxed);
                 let listener = lock(&self.listener).clone();
                 if let Some(listener) = listener {
                     listener.on_playout(frame);
@@ -790,7 +843,12 @@ impl Center {
         if let Some(microphone) = calls.iter().find_map(|s| s.microphone.as_ref()) {
             // A full queue means the engine is not reading yet, or is behind:
             // the newest audio matters more than this frame.
-            let _ = microphone.try_send(samples);
+            self.traffic.microphone.fetch_add(1, Ordering::Relaxed);
+            if microphone.try_send(samples).is_err() {
+                self.traffic
+                    .microphone_dropped
+                    .fetch_add(1, Ordering::Relaxed);
+            }
         }
     }
 

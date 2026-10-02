@@ -1,6 +1,11 @@
-//! The call going now, and its link to whatsapp-rust.
+//! The calls going now, and their link to whatsapp-rust.
 //!
-//! Locks are held only to read or update the session, never across an await
+//! At most two calls are live: the one with media (calling, connecting or
+//! talking) and one more ringing beside it, the waiting call. Answering the
+//! waiting call ends the other first; WhatsApp has no hold. A third offer is
+//! left ringing on the phone.
+//!
+//! Locks are held only to read or update the sessions, never across an await
 //! or a call into Swift. Every task names the session it works for, so one
 //! that finishes after its call ended (or after another began) changes
 //! nothing but what it alone owns, such as a handle to terminate.
@@ -29,11 +34,14 @@ const RING_IN: Duration = Duration::from_secs(90);
 const MIC_QUEUE: usize = 3;
 /// Playout frames that may wait for Swift.
 const PLAYOUT_QUEUE: usize = 64;
+/// Live calls at once: one with media and one waiting.
+const MOST_CALLS: usize = 2;
 
 pub(crate) struct Center {
     link: Mutex<Option<Link>>,
     listener: Mutex<Option<Arc<dyn CallListener>>>,
-    call: Mutex<Option<Session>>,
+    /// Live calls, oldest first. A call leaves once it has ended.
+    calls: Mutex<Vec<Session>>,
     next_session: AtomicU64,
 }
 
@@ -54,8 +62,23 @@ struct Session {
     microphone: Option<async_channel::Sender<Vec<i16>>>,
 }
 
+impl Session {
+    /// The call has (or is getting) media: everything but ringing.
+    fn has_media(&self) -> bool {
+        matches!(
+            self.info.phase,
+            CallPhase::Calling | CallPhase::Connecting | CallPhase::Active
+        )
+    }
+}
+
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// What a session gave up when it ended.
+struct Ended {
+    handle: Option<CallHandle>,
 }
 
 impl Center {
@@ -63,7 +86,7 @@ impl Center {
         Arc::new(Self {
             link: Mutex::new(None),
             listener: Mutex::new(None),
-            call: Mutex::new(None),
+            calls: Mutex::new(Vec::new()),
             next_session: AtomicU64::new(1),
         })
     }
@@ -87,18 +110,15 @@ impl Center {
         *lock(&self.listener) = Some(listener);
     }
 
-    pub fn current(&self) -> Option<CallInfo> {
-        lock(&self.call).as_ref().map(|s| s.info.clone())
+    /// The live calls, oldest first.
+    pub fn current(&self) -> Vec<CallInfo> {
+        lock(&self.calls).iter().map(|s| s.info.clone()).collect()
     }
 
     fn client(&self) -> Option<(Arc<Client>, tokio::runtime::Handle)> {
         let link = lock(&self.link);
         let link = link.as_ref()?;
         Some((link.client.upgrade()?, link.runtime.clone()))
-    }
-
-    fn busy(call: &Option<Session>) -> bool {
-        call.as_ref().is_some_and(|s| !s.info.phase.is_ended())
     }
 
     fn publish(&self, info: CallInfo) {
@@ -125,32 +145,36 @@ impl Center {
         }
     }
 
-    /// Moves session `id` by `signal`. When that ends it, the session gives
-    /// up its handle (returned, for the caller to terminate if it must) and
-    /// its microphone, which closes the engine's source.
-    fn apply(&self, id: u64, signal: Signal) -> Option<CallHandle> {
-        let (info, handle) = {
-            let mut call = lock(&self.call);
-            let session = call.as_mut().filter(|s| s.info.session == id)?;
-            let next = phase::next(&session.info.phase, signal)?;
-            session.info.phase = next;
-            let mut handle = None;
-            if session.info.phase.is_ended() {
-                handle = session.handle.take();
-                session.microphone = None;
-                session.offer = None;
+    /// Moves session `id` by `signal`. A session that ends leaves, giving up
+    /// its handle (for the caller to terminate if it must) and its
+    /// microphone, which closes the engine's source.
+    fn apply(&self, id: u64, signal: Signal) -> Option<Ended> {
+        let (info, ended) = {
+            let mut calls = lock(&self.calls);
+            let index = calls.iter().position(|s| s.info.session == id)?;
+            let next = phase::next(&calls[index].info.phase, signal)?;
+            calls[index].info.phase = next;
+            if calls[index].info.phase.is_ended() {
+                let session = calls.remove(index);
+                (
+                    session.info,
+                    Some(Ended {
+                        handle: session.handle,
+                    }),
+                )
+            } else {
+                (calls[index].info.clone(), None)
             }
-            (session.info.clone(), handle)
         };
         log::info!("calls: {}", describe(&info.phase));
         self.publish(info);
-        handle
+        ended
     }
 
     fn session_for_wa_id(&self, wa_id: &str) -> Option<u64> {
-        lock(&self.call)
-            .as_ref()
-            .filter(|s| s.wa_id.as_deref() == Some(wa_id))
+        lock(&self.calls)
+            .iter()
+            .find(|s| s.wa_id.as_deref() == Some(wa_id))
             .map(|s| s.info.session)
     }
 
@@ -169,14 +193,15 @@ impl Center {
         let (microphone, source) = async_channel::bounded(MIC_QUEUE);
         let (sink, playout) = async_channel::bounded(PLAYOUT_QUEUE);
         let info = {
-            let mut call = lock(&self.call);
-            if Self::busy(&call) {
+            let mut calls = lock(&self.calls);
+            // Calling out while anything rings or talks would only confuse it.
+            if !calls.is_empty() {
                 return false;
             }
             let mut session = self.new_session(chat, false, false, CallPhase::Calling);
             session.microphone = Some(microphone);
             let info = session.info.clone();
-            *call = Some(session);
+            calls.push(session);
             info
         };
         let id = info.session;
@@ -210,7 +235,10 @@ impl Center {
     fn ring_out(self: Arc<Self>, id: u64) {
         tokio::spawn(async move {
             tokio::time::sleep(RING_OUT).await;
-            if let Some(handle) = self.apply(id, Signal::TimedOut) {
+            if let Some(Ended {
+                handle: Some(handle),
+            }) = self.apply(id, Signal::TimedOut)
+            {
                 let _ = handle.terminate().await;
             }
         });
@@ -220,16 +248,17 @@ impl Center {
 
     fn ring(self: &Arc<Self>, offer: IncomingCall, chat: String, video: bool) {
         let info = {
-            let mut call = lock(&self.call);
-            if Self::busy(&call) {
-                log::info!("calls: an offer arrived during a call; leaving it to the phone");
+            let mut calls = lock(&self.calls);
+            let ringing = calls.iter().any(|s| s.info.phase == CallPhase::Ringing);
+            if calls.len() >= MOST_CALLS || ringing {
+                log::info!("calls: an offer arrived during two calls; leaving it to the phone");
                 return;
             }
             let mut session = self.new_session(chat, true, video, CallPhase::Ringing);
             session.wa_id = Some(offer.action.call_id().to_owned());
             session.offer = Some(offer);
             let info = session.info.clone();
-            *call = Some(session);
+            calls.push(session);
             info
         };
         let id = info.session;
@@ -240,22 +269,34 @@ impl Center {
             tokio::time::sleep(RING_IN).await;
             let still_ringing = center
                 .current()
-                .is_some_and(|c| c.session == id && c.phase == CallPhase::Ringing);
+                .iter()
+                .any(|c| c.session == id && c.phase == CallPhase::Ringing);
             if still_ringing {
                 center.apply(id, Signal::PeerTerminated { timeout: true });
             }
         });
     }
 
-    pub fn answer(self: &Arc<Self>) {
+    /// Answers ringing call `id`, ending the call with media first if one goes.
+    pub fn answer(self: &Arc<Self>, id: u64) {
         let Some((client, runtime)) = self.client() else {
             return;
         };
+        let other = lock(&self.calls)
+            .iter()
+            .find(|s| s.info.session != id && s.has_media())
+            .map(|s| s.info.session);
+        if let Some(other) = other {
+            self.end(other);
+        }
         let (microphone, source) = async_channel::bounded(MIC_QUEUE);
         let (sink, playout) = async_channel::bounded(PLAYOUT_QUEUE);
         let (info, offer) = {
-            let mut call = lock(&self.call);
-            let Some(session) = call.as_mut().filter(|s| s.info.phase == CallPhase::Ringing) else {
+            let mut calls = lock(&self.calls);
+            let Some(session) = calls
+                .iter_mut()
+                .find(|s| s.info.session == id && s.info.phase == CallPhase::Ringing)
+            else {
                 return;
             };
             let Some(offer) = session.offer.clone() else {
@@ -265,7 +306,6 @@ impl Center {
             session.microphone = Some(microphone);
             (session.info.clone(), offer)
         };
-        let id = info.session;
         log::info!("calls: answering");
         self.publish(info);
 
@@ -299,11 +339,8 @@ impl Center {
 
     /// Stores the handle of session `id`. `false` if the call ended meanwhile.
     fn attach(&self, id: u64, handle: CallHandle) -> bool {
-        let mut call = lock(&self.call);
-        match call
-            .as_mut()
-            .filter(|s| s.info.session == id && !s.info.phase.is_ended())
-        {
+        let mut calls = lock(&self.calls);
+        match calls.iter_mut().find(|s| s.info.session == id) {
             Some(session) => {
                 session.wa_id = Some(handle.call_id().to_owned());
                 session.handle = Some(handle);
@@ -364,18 +401,18 @@ impl Center {
         });
     }
 
-    pub fn hang_up(self: &Arc<Self>) {
-        let (id, offer) = {
-            let call = lock(&self.call);
-            let Some(session) = call.as_ref().filter(|s| !s.info.phase.is_ended()) else {
+    /// Declines call `id` if it rings, or ends it.
+    pub fn end(self: &Arc<Self>, id: u64) {
+        let offer = {
+            let calls = lock(&self.calls);
+            let Some(session) = calls.iter().find(|s| s.info.session == id) else {
                 return;
             };
-            let offer = (session.info.phase == CallPhase::Ringing)
+            (session.info.phase == CallPhase::Ringing)
                 .then(|| session.offer.clone())
-                .flatten();
-            (session.info.session, offer)
+                .flatten()
         };
-        let handle = self.apply(id, Signal::LocalHangUp);
+        let ended = self.apply(id, Signal::LocalHangUp);
         let Some((client, runtime)) = self.client() else {
             return;
         };
@@ -384,7 +421,10 @@ impl Center {
                 if client.voip().reject(&offer).await.is_err() {
                     log::warn!("calls: could not decline the call");
                 }
-            } else if let Some(handle) = handle {
+            } else if let Some(Ended {
+                handle: Some(handle),
+            }) = ended
+            {
                 let _ = handle.terminate().await;
             }
             // An outgoing call still sending its offer has no handle yet;
@@ -394,8 +434,8 @@ impl Center {
 
     pub fn set_muted(self: &Arc<Self>, muted: bool) {
         let (info, handle) = {
-            let mut call = lock(&self.call);
-            let Some(session) = call.as_mut().filter(|s| !s.info.phase.is_ended()) else {
+            let mut calls = lock(&self.calls);
+            let Some(session) = calls.iter_mut().find(|s| s.has_media()) else {
                 return;
             };
             session.info.muted = muted;
@@ -417,8 +457,8 @@ impl Center {
     }
 
     pub fn push_microphone(&self, samples: Vec<i16>) {
-        let call = lock(&self.call);
-        if let Some(microphone) = call.as_ref().and_then(|s| s.microphone.as_ref()) {
+        let calls = lock(&self.calls);
+        if let Some(microphone) = calls.iter().find_map(|s| s.microphone.as_ref()) {
             // A full queue means the engine is not reading yet, or is behind:
             // the newest audio matters more than this frame.
             let _ = microphone.try_send(samples);
@@ -475,8 +515,8 @@ impl Center {
                     self.apply(id, Signal::PeerAccepted);
                     // Muting while it rang stayed local; say it now.
                     let (muted, handle) = {
-                        let call = lock(&self.call);
-                        let session = call.as_ref().filter(|s| s.info.session == id);
+                        let calls = lock(&self.calls);
+                        let session = calls.iter().find(|s| s.info.session == id);
                         (
                             session.is_some_and(|s| s.info.muted),
                             session.and_then(|s| s.handle.clone()),
@@ -502,8 +542,12 @@ impl Center {
                             timeout: reason == Some("timeout"),
                         },
                     };
-                    if let (Some(handle), Some((_, runtime))) =
-                        (self.apply(id, signal), self.client())
+                    if let (
+                        Some(Ended {
+                            handle: Some(handle),
+                        }),
+                        Some((_, runtime)),
+                    ) = (self.apply(id, signal), self.client())
                     {
                         // The library tears media down on a terminate; this
                         // only releases our side of a call it did not know.

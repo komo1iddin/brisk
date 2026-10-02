@@ -11,8 +11,61 @@ struct CallView: View {
 
     var body: some View {
         if let call = model.calls.call {
-            CallContent(call: call, model: model)
+            VStack(spacing: 0) {
+                if let waiting = model.calls.waiting {
+                    WaitingBanner(call: waiting, model: model)
+                    Divider()
+                }
+                CallContent(call: call, model: model)
+            }
         }
+    }
+}
+
+/// A second call ringing during this one: decline it, or end this call and
+/// take it. WhatsApp has no hold.
+private struct WaitingBanner: View {
+    let call: CallInfo
+    let model: AppModel
+
+    private var hidden: Bool { model.appLock.isLocked }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                if hidden {
+                    AvatarView(url: nil, seed: "call", placeholder: .symbol("phone.fill"), size: 32)
+                } else {
+                    AvatarView(
+                        url: model.avatars.url(for: call.chat),
+                        seed: call.chat,
+                        placeholder: .initials(model.chats.displayName(call.chat)),
+                        size: 32,
+                        version: model.avatars.version(for: call.chat)
+                    )
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(hidden ? String(localized: "WhatsApp Call") : model.chats.displayName(call.chat))
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(String(localized: "Calling you"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                Button(String(localized: "Decline")) { model.calls.declineWaiting() }
+                    .buttonStyle(CapsuleFill(color: .red))
+                Button(String(localized: "End & Accept")) {
+                    Task { await model.calls.answerWaiting() }
+                }
+                .buttonStyle(CapsuleFill(color: .green))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(width: 280)
     }
 }
 
@@ -54,6 +107,21 @@ private struct CallContent: View {
                 version: model.avatars.version(for: call.chat)
             )
         }
+    }
+}
+
+/// A filled capsule in a call's own colour. The panel never becomes the key
+/// window, where system prominent buttons would turn grey.
+private struct CapsuleFill: ButtonStyle {
+    let color: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 28)
+            .background(Capsule().fill(color.opacity(configuration.isPressed ? 0.75 : 1)))
+            .contentShape(Capsule())
     }
 }
 

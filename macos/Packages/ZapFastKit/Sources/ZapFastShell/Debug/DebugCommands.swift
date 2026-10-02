@@ -33,7 +33,7 @@ import ZapFastCore
 ///   scroll view with whole numbers, to try AppKit's settings live.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
-/// - `call:<ringing|calling|active|muted|ended|none>`: shows the call
+/// - `call:<ringing|calling|active|muted|waiting|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
 ///   `shot:call` captures it.
 @MainActor
@@ -192,19 +192,24 @@ enum DebugCommands {
             let scroller = bar.verticalScroller
             write(name, "bar frame \(bar.frame) clip \(bar.contentView.frame) bounds \(bar.contentView.bounds) insets \(bar.contentInsets) doc \(bar.documentView?.frame.size ?? .zero) scroller \(scroller?.frame ?? .zero) knobRect \(scroller?.rect(for: .knob) ?? .zero) slot \(scroller?.rect(for: .knobSlot) ?? .zero) flipped \(scroller?.isFlipped ?? false) knob \(scroller?.knobProportion ?? -1) value \(scroller?.doubleValue ?? -1) style \(bar.scrollerStyle.rawValue)")
         case "call":
-            let phase: CallPhase? = switch parts.count > 1 ? parts[1] : "" {
+            let shown = parts.count > 1 ? parts[1] : ""
+            let phase: CallPhase? = switch shown {
             case "ringing": .ringing
             case "calling": .calling
-            case "active", "muted": .active
+            case "active", "muted", "waiting": .active
             case "ended": .ended(reason: .peerHungUp)
             default: nil
             }
-            model.calls.debugShow(phase.map {
+            let made = { (session: UInt64, chat: String, phase: CallPhase) in
                 CallInfo(
-                    session: 1, chat: "998900000000@s.whatsapp.net", incoming: $0 == .ringing,
-                    videoOffered: false, phase: $0, muted: parts.count > 1 && parts[1] == "muted"
+                    session: session, chat: chat, incoming: phase == .ringing,
+                    videoOffered: false, phase: phase, muted: shown == "muted"
                 )
-            })
+            }
+            model.calls.debugShow(
+                phase.map { made(1, "998900000000@s.whatsapp.net", $0) },
+                waiting: shown == "waiting" ? made(2, "998911111111@s.whatsapp.net", .ringing) : nil
+            )
             write(name, "\(phase.map { "\($0)" } ?? "none")")
         case "shot":
             // shot:popover captures the popover over the window instead.

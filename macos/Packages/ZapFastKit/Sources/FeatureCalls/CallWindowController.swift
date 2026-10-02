@@ -12,7 +12,13 @@ public final class CallWindowController: NSWindowController {
     private let model: AppModel
     private let host: NSHostingView<CallView>
     private var observed = 0
-    private var shownSession: UInt64?
+    /// What the panel was laid out for: its call, and the call waiting.
+    private struct Shown: Equatable {
+        let session: UInt64
+        let waiting: UInt64?
+    }
+
+    private var shown: Shown?
     private var attention: Int?
 
     public init(model: AppModel) {
@@ -63,8 +69,8 @@ public final class CallWindowController: NSWindowController {
         observed += 1
         let round = observed
         let calls = model.calls
-        let call = withObservationTracking {
-            calls.call
+        let (call, waiting) = withObservationTracking {
+            (calls.call, calls.waiting?.session)
         } onChange: { [weak self] in
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
@@ -73,12 +79,12 @@ public final class CallWindowController: NSWindowController {
                 }
             }
         }
-        show(call)
+        show(call, waiting: waiting)
     }
 
-    private func show(_ call: CallInfo?) {
+    private func show(_ call: CallInfo?, waiting: UInt64?) {
         guard let window else { return }
-        if call?.phase == .ringing {
+        if call?.phase == .ringing || waiting != nil {
             if attention == nil { attention = NSApp.requestUserAttention(.criticalRequest) }
         } else if let attention {
             NSApp.cancelUserAttentionRequest(attention)
@@ -86,12 +92,19 @@ public final class CallWindowController: NSWindowController {
         }
         guard let call else {
             window.orderOut(nil)
-            shownSession = nil
+            shown = nil
             return
         }
-        guard shownSession != call.session else { return }
-        shownSession = call.session
-        place(window)
+        let now = Shown(session: call.session, waiting: waiting)
+        guard shown != now else { return }
+        // A new call goes to the corner; a banner coming or going keeps
+        // the panel's top where the person may have dragged it.
+        if shown?.session == call.session {
+            fit(window)
+        } else {
+            place(window)
+        }
+        shown = now
         // Over everything, without taking the keyboard from what has it.
         window.orderFrontRegardless()
     }
@@ -105,5 +118,12 @@ public final class CallWindowController: NSWindowController {
         let size = window.frame.size
         let margin: CGFloat = 16
         window.setFrameOrigin(NSPoint(x: visible.maxX - size.width - margin, y: visible.maxY - size.height - margin))
+    }
+
+    /// Resizes to the content, keeping the top edge.
+    private func fit(_ window: NSWindow) {
+        let top = window.frame.maxY
+        window.setContentSize(host.fittingSize)
+        window.setFrameOrigin(NSPoint(x: window.frame.minX, y: top - window.frame.height))
     }
 }

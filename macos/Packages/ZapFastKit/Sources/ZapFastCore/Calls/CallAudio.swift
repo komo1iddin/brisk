@@ -11,7 +11,8 @@ import ZapFastBridge
 /// from whatever the hardware runs at.
 final class CallAudio {
     private var engine: AVAudioEngine?
-    private var ringback: AVAudioPlayerNode?
+    private var tones: AVAudioPlayerNode?
+    private var tone: Tone?
     private let log = Logger(subsystem: "ZapFast", category: "Calls")
 
     var isRunning: Bool { engine != nil }
@@ -46,9 +47,9 @@ final class CallAudio {
         engine.attach(speaker)
         engine.connect(speaker, to: engine.mainMixerNode, format: wire)
 
-        let ringback = AVAudioPlayerNode()
-        engine.attach(ringback)
-        engine.connect(ringback, to: engine.mainMixerNode, format: wire)
+        let tones = AVAudioPlayerNode()
+        engine.attach(tones)
+        engine.connect(tones, to: engine.mainMixerNode, format: wire)
 
         engine.prepare()
         do {
@@ -59,31 +60,39 @@ final class CallAudio {
             return false
         }
         self.engine = engine
-        self.ringback = ringback
+        self.tones = tones
         return true
     }
 
     func stop() {
         guard let engine else { return }
-        ringback?.stop()
+        tones?.stop()
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         // Lets the hardware leave voice processing, which lowers other apps.
         try? engine.inputNode.setVoiceProcessingEnabled(false)
         self.engine = nil
-        ringback = nil
+        tones = nil
+        tone = nil
     }
 
-    /// Plays the ringback while calling; it goes through the call's own
-    /// engine, so the echo canceller keeps it out of the microphone.
-    func setRingback(_ on: Bool) {
-        guard let ringback else { return }
-        if on, !ringback.isPlaying, let buffer = CallTones.ringback() {
-            ringback.scheduleBuffer(buffer, at: nil, options: .loops)
-            ringback.play()
-        } else if !on, ringback.isPlaying {
-            ringback.stop()
+    enum Tone { case ringback, waiting }
+
+    /// Plays the ringback while calling, or the call-waiting beeps; they go
+    /// through the call's own engine, so the echo canceller keeps them out
+    /// of the microphone.
+    func setTone(_ tone: Tone?) {
+        guard let player = tones, tone != self.tone else { return }
+        player.stop()
+        self.tone = tone
+        let buffer = switch tone {
+        case .ringback: CallTones.ringback()
+        case .waiting: CallTones.waiting()
+        case nil: AVAudioPCMBuffer?.none
         }
+        guard let buffer else { return }
+        player.scheduleBuffer(buffer, at: nil, options: .loops)
+        player.play()
     }
 
     /// Runs on the audio thread: converts each buffer to the wire format and

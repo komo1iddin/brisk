@@ -8,8 +8,9 @@ public protocol CallService: AnyObject {
     /// into `playout` straight from the bridge's thread.
     func connect(playout: PlayoutBuffer, onCall: @escaping @MainActor (CallInfo) -> Void)
     func place(chat: String) -> Bool
-    func answer()
-    func hangUp()
+    func answer(session: UInt64)
+    /// Declines the call if it rings, or ends it.
+    func end(session: UInt64)
     func setMuted(_ muted: Bool)
     /// Where microphone frames go, from the audio thread.
     var microphone: @Sendable ([Int16]) -> Void { get }
@@ -25,8 +26,8 @@ public final class LiveCallService: CallService {
     }
 
     public func place(chat: String) -> Bool { center.place(chat: chat) }
-    public func answer() { center.answer() }
-    public func hangUp() { center.hangUp() }
+    public func answer(session: UInt64) { center.answer(session: session) }
+    public func end(session: UInt64) { center.end(session: session) }
     public func setMuted(_ muted: Bool) { center.setMuted(muted: muted) }
 
     public var microphone: @Sendable ([Int16]) -> Void {
@@ -61,7 +62,7 @@ nonisolated private final class CallRelay: CallListener, Sendable {
 /// it was asked and lets a test play the bridge's part.
 public final class PreviewCallService: CallService {
     public enum Request: Equatable {
-        case place(String), answer, hangUp, muted(Bool)
+        case place(String), answer(UInt64), end(UInt64), muted(Bool)
     }
 
     public private(set) var requests: [Request] = []
@@ -80,8 +81,8 @@ public final class PreviewCallService: CallService {
         return accepts
     }
 
-    public func answer() { requests.append(.answer) }
-    public func hangUp() { requests.append(.hangUp) }
+    public func answer(session: UInt64) { requests.append(.answer(session)) }
+    public func end(session: UInt64) { requests.append(.end(session)) }
     public func setMuted(_ muted: Bool) { requests.append(.muted(muted)) }
     public var microphone: @Sendable ([Int16]) -> Void { { _ in } }
 

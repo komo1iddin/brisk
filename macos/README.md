@@ -365,7 +365,8 @@ in a small panel at the top right of the screen, over other windows and
 Spaces, and bounces the Dock; Return answers, Esc declines. While the app
 lock is closed the panel says only "WhatsApp Call". During a call the
 panel shows the time and has Mute and End; the ringback plays while the
-other side's phone rings.
+other side's phone rings. A second call during one rings as a banner over
+the panel with two beeps: Decline, or End & Accept (WhatsApp has no hold).
 
 Calls are whatsapp-rust's: the bridge turns its `voip` features on (MLOW,
 libopus for peers outside the MLOW rollout, the UDP relay) and receives
@@ -375,8 +376,8 @@ frames of 60 ms; Swift captures and plays them through one `AVAudioEngine`
 with the system's voice processing, which cancels the speaker's echo.
 
 Not yet: video (a video call can be answered with voice only), group
-calls, a second call while one goes (that offer keeps ringing on the
-phone), and a call history in the chat.
+calls, a third call at once (that offer keeps ringing on the phone), and a
+call history in the chat.
 
 ## Build
 

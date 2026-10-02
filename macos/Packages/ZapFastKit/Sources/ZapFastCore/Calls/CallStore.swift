@@ -2,14 +2,18 @@ import Foundation
 import Observation
 import ZapFastBridge
 
-/// The voice call going now: what the call window shows, the intents it
+/// The voice calls going now: what the call window shows, the intents it
 /// calls, and the sound that goes with each phase (the ring, the ringback,
-/// the conversation). The bridge decides the phases; this follows them.
+/// the conversation, the call-waiting beeps). The bridge decides the phases;
+/// this follows them.
 @Observable
 public final class CallStore {
     /// The call, from the first ring to a moment after it ends.
     public private(set) var call: CallInfo?
-    /// When both sides started talking.
+    /// A second call ringing while `call` goes. Answering it ends `call`:
+    /// WhatsApp has no hold.
+    public private(set) var waiting: CallInfo?
+    /// When both sides of `call` started talking.
     public private(set) var connectedAt: Date?
 
     /// Shows a short message in the window's notice banner.
@@ -50,20 +54,36 @@ public final class CallStore {
         }
     }
 
+    /// Answers the ringing call.
     public func answer() async {
-        guard call?.phase == .ringing else { return }
+        guard let call, call.phase == .ringing else { return }
+        await answer(call.session)
+    }
+
+    /// Ends the call that goes and answers the waiting one.
+    public func answerWaiting() async {
+        guard let waiting else { return }
+        await answer(waiting.session)
+    }
+
+    private func answer(_ session: UInt64) async {
         guard await microphoneAllowed() else {
             deniedMicrophone()
-            service.hangUp()
+            service.end(session: session)
             return
         }
-        service.answer()
+        service.answer(session: session)
     }
 
     /// Declines a ringing call or ends the one going.
     public func hangUp() {
-        guard isBusy else { return }
-        service.hangUp()
+        guard let call, isBusy else { return }
+        service.end(session: call.session)
+    }
+
+    public func declineWaiting() {
+        guard let waiting else { return }
+        service.end(session: waiting.session)
     }
 
     public func toggleMute() {
@@ -74,37 +94,66 @@ public final class CallStore {
     // MARK: From the bridge
 
     func update(_ new: CallInfo) {
+        defer { follow() }
+        if new.session == waiting?.session {
+            switch new.phase {
+            case .ringing: waiting = new
+            case .ended: waiting = nil
+            case .calling, .connecting, .active:
+                // Answered: it takes the panel.
+                waiting = nil
+                show(new)
+            }
+            return
+        }
+        if let call, call.session != new.session, !call.phase.isEnded, new.phase == .ringing {
+            waiting = new
+            return
+        }
         // A late report of a call already replaced changes nothing.
         if let call, call.session > new.session { return }
-        if new.phase == .active, call?.phase != .active { connectedAt = .now }
-        call = new
-        follow(new.phase)
-        if new.phase.isEnded {
-            let session = new.session
-            let lingering = lingering
-            Task { [weak self] in
-                try? await Task.sleep(for: lingering)
-                guard let self, self.call?.session == session else { return }
-                self.call = nil
-                self.connectedAt = nil
-            }
+        show(new)
+        guard new.phase.isEnded else { return }
+        if let waiting {
+            // The call waiting rings on in the panel at once.
+            self.waiting = nil
+            show(waiting)
+            return
         }
+        let session = new.session
+        let lingering = lingering
+        Task { [weak self] in
+            try? await Task.sleep(for: lingering)
+            guard let self, self.call?.session == session else { return }
+            self.call = nil
+            self.connectedAt = nil
+        }
+    }
+
+    private func show(_ new: CallInfo) {
+        if call?.session != new.session {
+            connectedAt = nil
+        }
+        if new.phase == .active, connectedAt == nil { connectedAt = .now }
+        call = new
     }
 
     #if DEBUG
     /// Shows `call` as if the bridge had reported it, without sound or the
     /// network, to look at the call window.
-    public func debugShow(_ call: CallInfo?) {
+    public func debugShow(_ call: CallInfo?, waiting: CallInfo? = nil) {
         self.call = call
+        self.waiting = waiting
         connectedAt = call?.phase == .active ? .now.addingTimeInterval(-75) : nil
     }
     #endif
 
-    /// Starts and stops the sound for `phase`.
-    private func follow(_ phase: CallPhase) {
+    /// Starts and stops the sound for what rings and goes now.
+    private func follow() {
         guard live else { return }
-        switch phase {
+        switch call?.phase {
         case .ringing:
+            audio.stop()
             ringer.start()
         case .calling, .connecting, .active:
             ringer.stop()
@@ -112,12 +161,12 @@ public final class CallStore {
                 playout.reset()
                 if !audio.start(playout: playout, send: service.microphone) {
                     onNotice(.error, String(localized: "Could not use the microphone or the speaker for the call."))
-                    service.hangUp()
+                    hangUp()
                     return
                 }
             }
-            audio.setRingback(phase == .calling)
-        case .ended:
+            audio.setTone(waiting != nil ? .waiting : call?.phase == .calling ? .ringback : nil)
+        case .ended, nil:
             ringer.stop()
             audio.stop()
         }

@@ -22,6 +22,11 @@ enum CallTones {
         tone(period: 5.0, bursts: [(0.0, 1.0)], frequencies: [425.0], level: 0.12)
     }
 
+    /// Two short beeps over a call, when another call rings: 4 s.
+    static func waiting() -> AVAudioPCMBuffer? {
+        tone(period: 4.0, bursts: [(0.0, 0.2), (0.4, 0.2)], frequencies: [440.0], level: 0.12)
+    }
+
     /// `bursts` are (start, length) in seconds within `period`; each fades
     /// in and out over 15 ms so it does not click.
     static func tone(

@@ -48,7 +48,7 @@ struct CallTests {
         calls.microphoneAllowed = { false }
         service.report(info(.ringing, incoming: true))
         await calls.answer()
-        #expect(service.requests == [.hangUp])
+        #expect(service.requests == [.end(1)])
     }
 
     @Test func nothingNewStartsWhileACallGoes() async {
@@ -63,9 +63,13 @@ struct CallTests {
         let (calls, service) = store()
         service.report(info(.calling))
         await calls.answer()
+        // Ringing beside a call, it waits: only `answerWaiting` takes it.
         service.report(info(.ringing, session: 2, incoming: true))
         await calls.answer()
-        #expect(service.requests == [.answer])
+        #expect(service.requests.isEmpty)
+        service.report(info(.ended(reason: .hungUp)))
+        await calls.answer()
+        #expect(service.requests == [.answer(2)])
     }
 
     @Test func theTimerStartsWhenBothSidesTalk() {
@@ -102,6 +106,59 @@ struct CallTests {
         service.report(info(.ended(reason: .hungUp), session: 1))
         #expect(calls.call?.session == 2)
         #expect(calls.call?.phase == .ringing)
+    }
+
+    @Test func aSecondCallRingsBesideTheFirst() {
+        let (calls, service) = store()
+        service.report(info(.active))
+        service.report(info(.ringing, session: 2, incoming: true))
+        #expect(calls.call?.session == 1)
+        #expect(calls.waiting?.session == 2)
+        calls.declineWaiting()
+        #expect(service.requests == [.end(2)])
+        service.report(info(.ended(reason: .declined), session: 2, incoming: true))
+        #expect(calls.waiting == nil)
+        #expect(calls.call?.phase == .active)
+    }
+
+    @Test func answeringTheWaitingCallMovesItIntoThePanel() async {
+        let (calls, service) = store()
+        service.report(info(.active))
+        let first = calls.connectedAt
+        service.report(info(.ringing, session: 2, incoming: true))
+        await calls.answerWaiting()
+        #expect(service.requests == [.answer(2)])
+        // The bridge ends the first call, then answers the second.
+        service.report(info(.ended(reason: .hungUp)))
+        #expect(calls.call?.session == 2)
+        #expect(calls.call?.phase == .ringing)
+        #expect(calls.waiting == nil)
+        service.report(info(.connecting, session: 2, incoming: true))
+        service.report(info(.active, session: 2, incoming: true))
+        #expect(calls.call?.session == 2)
+        #expect(calls.connectedAt != nil && calls.connectedAt != first)
+    }
+
+    @Test func whenTheFirstCallEndsTheWaitingOneRingsOn() {
+        let (calls, service) = store()
+        service.report(info(.active))
+        service.report(info(.ringing, session: 2, incoming: true))
+        service.report(info(.ended(reason: .peerHungUp)))
+        #expect(calls.call?.session == 2)
+        #expect(calls.call?.phase == .ringing)
+        #expect(calls.connectedAt == nil)
+        // A late report of the first call does not take the panel back.
+        service.report(info(.ended(reason: .peerHungUp)))
+        #expect(calls.call?.session == 2)
+    }
+
+    @Test func aWaitingCallTheCallerGaveUpOnLeaves() {
+        let (calls, service) = store()
+        service.report(info(.active))
+        service.report(info(.ringing, session: 2, incoming: true))
+        service.report(info(.ended(reason: .missed), session: 2, incoming: true))
+        #expect(calls.waiting == nil)
+        #expect(calls.call?.session == 1)
     }
 
     @Test func anEndedCallStaysAMomentWithItsReason() async throws {

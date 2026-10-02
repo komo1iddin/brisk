@@ -5,14 +5,14 @@
 //! (see `Cargo.toml`) and receives the worker's client through
 //! `zapfast::backend::set_client_hook`. Everything else stays upstream's.
 //!
-//! Swift sees one call at a time as a [`CallInfo`] and drives it through
-//! [`CallCenter`]. Audio crosses as 16 kHz mono `i16` frames of
-//! [`FRAME_SAMPLES`] each way: Swift captures and plays them (the system's
-//! voice processing cancels the echo), the library encodes, encrypts and
-//! carries them.
+//! Swift sees each call as a [`CallInfo`] and drives it through
+//! [`CallCenter`]: one with media, and one more that may ring beside it.
+//! Audio crosses as 16 kHz mono `i16` frames of [`FRAME_SAMPLES`] each way:
+//! Swift captures and plays them (the system's voice processing cancels the
+//! echo), the library encodes, encrypts and carries them.
 //!
-//! Video, group calls and a second call while one is going are not handled:
-//! such an offer is left to ring on the phone.
+//! Video and group calls are not handled, nor a third call: such an offer is
+//! left to ring on the phone.
 
 mod phase;
 mod session;
@@ -85,19 +85,20 @@ impl CallCenter {
     }
 
     /// Calls a person's chat. `false` when it cannot start now: another call
-    /// is going, the link is down, or the chat is not a person's.
+    /// rings or goes, the link is down, or the chat is not a person's.
     pub fn place(&self, chat: String) -> bool {
         self.center.place(chat)
     }
 
-    /// Answers the ringing call, with audio only.
-    pub fn answer(&self) {
-        self.center.answer();
+    /// Answers ringing call `session` with audio only, first ending the call
+    /// that goes, if any: WhatsApp has no hold.
+    pub fn answer(&self, session: u64) {
+        self.center.answer(session);
     }
 
-    /// Declines a ringing call, or ends the call that is going.
-    pub fn hang_up(&self) {
-        self.center.hang_up();
+    /// Declines call `session` if it rings, or ends it.
+    pub fn end(&self, session: u64) {
+        self.center.end(session);
     }
 
     pub fn set_muted(&self, muted: bool) {
@@ -109,8 +110,8 @@ impl CallCenter {
         self.center.push_microphone(samples);
     }
 
-    /// The call going now, if any.
-    pub fn current(&self) -> Option<CallInfo> {
+    /// The live calls, oldest first.
+    pub fn current(&self) -> Vec<CallInfo> {
         self.center.current()
     }
 }

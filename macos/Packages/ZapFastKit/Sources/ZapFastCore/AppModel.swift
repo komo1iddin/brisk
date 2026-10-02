@@ -2052,10 +2052,7 @@ public final class AppModel {
         post(.info, String(localized: "Exporting chat…"))
         let me = session.account?.name.nonEmpty ?? String(localized: "You")
         let chats = chats
-        let summary = chats.chat(chat)
-        let title = summary.map(chats.title(for:)) ?? String(localized: "Chat")
-        // Names are given where a conversation is among several people.
-        let showsAuthors = summary?.kind == .group
+        let title = chats.chat(chat).map(chats.title(for:)) ?? String(localized: "Chat")
         Task {
             do {
                 let reader = try await backend.openChatReader()
@@ -2068,7 +2065,7 @@ public final class AppModel {
                     mentionName: { chats.displayName($0) }
                 )
                 let written = try await ChatExportWriter.write(
-                    entries, title: title, showsAuthors: showsAuthors, includeMedia: includeMedia, into: parent
+                    entries, title: title, includeMedia: includeMedia, into: parent
                 )
                 exportingChat = nil
                 post(.info, Self.exportedText(written))

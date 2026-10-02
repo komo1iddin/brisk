@@ -127,10 +127,10 @@ public enum ChatExport {
             return .media(kind: .photo, source: file(media), name: nil, bytes: media.size, seconds: nil, caption: written(caption))
         case .video(let caption, let media, let seconds, _, _):
             return .media(kind: .video, source: file(media), name: nil, bytes: media.size, seconds: seconds, caption: written(caption))
-        case .audio(let media, let seconds, let voiceNote, _):
+        case .audio(let media, let seconds, let voiceNote, let waveform):
             return .media(
                 kind: voiceNote ? .voice : .audio, source: file(media), name: nil,
-                bytes: media.size, seconds: seconds, caption: ""
+                bytes: media.size, seconds: seconds, caption: "", waveform: [UInt8](waveform)
             )
         case .document(let media, let fileName, let caption, _):
             return .media(kind: .document, source: file(media), name: fileName, bytes: media.size, seconds: nil, caption: written(caption))

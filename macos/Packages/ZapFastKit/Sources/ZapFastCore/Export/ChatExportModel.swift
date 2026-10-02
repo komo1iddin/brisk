@@ -5,10 +5,11 @@ nonisolated enum ChatExportBody: Sendable, Equatable {
     /// Already written as HTML: text, a place, a poll, a note.
     case html(String)
     /// An attachment: written into its folder when it is downloaded and media
-    /// was asked for, and named by a placeholder otherwise. The caption is HTML.
+    /// was asked for, and named by a placeholder otherwise. The caption is HTML;
+    /// a voice message brings the sender's waveform.
     case media(
         kind: ChatExportMediaKind, source: URL?, name: String?,
-        bytes: UInt64, seconds: UInt32?, caption: String
+        bytes: UInt64, seconds: UInt32?, caption: String, waveform: [UInt8] = []
     )
 }
 

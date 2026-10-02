@@ -15,7 +15,6 @@ nonisolated enum ChatExportWriter {
     static func write(
         _ entries: [ChatExportEntry],
         title: String,
-        showsAuthors: Bool,
         includeMedia: Bool,
         into parent: URL,
         locale: Locale = .autoupdatingCurrent,
@@ -36,7 +35,7 @@ nonisolated enum ChatExportWriter {
         placed.reserveCapacity(entries.count)
         for entry in entries {
             try Task.checkCancellation()
-            guard case let .media(kind, source, name, _, _, _) = entry.body, includeMedia else {
+            guard case let .media(kind, source, name, _, _, _, _) = entry.body, includeMedia else {
                 placed.append(.init(entry: entry, file: nil))
                 continue
             }
@@ -61,12 +60,15 @@ nonisolated enum ChatExportWriter {
         let pages = max(1, (placed.count + pageSize - 1) / pageSize)
         let exported = now.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: locale))
         let language = locale.language.languageCode?.identifier ?? "en"
+        // Who is in it: in the order they first wrote.
+        var participants: [String] = []
+        for entry in entries where !participants.contains(entry.author) { participants.append(entry.author) }
         for number in 1...pages {
             try Task.checkCancellation()
             let items = Array(placed[min(placed.count, (number - 1) * pageSize)..<min(placed.count, number * pageSize)])
             let html = ChatExportHTML.render(.init(
-                title: title, showsAuthors: showsAuthors, number: number, pages: pages,
-                messages: placed.count, exported: exported, language: language, items: items
+                title: title, participants: participants, firstDay: entries.first?.day, lastDay: entries.last?.day,
+                number: number, pages: pages, messages: placed.count, exported: exported, language: language, items: items
             ))
             try html.write(to: folder.appending(path: ChatExportHTML.fileName(page: number)), atomically: false, encoding: .utf8)
         }

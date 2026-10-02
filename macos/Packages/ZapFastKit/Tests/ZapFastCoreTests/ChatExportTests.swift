@@ -203,10 +203,12 @@ struct ChatExportTests {
         ), file: file)
     }
 
-    private func render(_ items: [ChatExportHTML.Placed], authors: Bool = true, number: Int = 1, pages: Int = 1) -> String {
+    private func render(
+        _ items: [ChatExportHTML.Placed], participants: [String] = ["Ada", "Me"], number: Int = 1, pages: Int = 1
+    ) -> String {
         ChatExportHTML.render(.init(
-            title: "Ada <&> Bo", showsAuthors: authors, number: number, pages: pages, messages: items.count,
-            exported: "2 October 2026", language: "en", items: items
+            title: "Ada <&> Bo", participants: participants, firstDay: "21 September 2026", lastDay: "22 September 2026",
+            number: number, pages: pages, messages: items.count, exported: "2 October 2026", language: "en", items: items
         ))
     }
 
@@ -218,29 +220,78 @@ struct ChatExportTests {
         ])
         #expect(html.contains("<title>Ada &lt;&amp;&gt; Bo</title>"))
         #expect(html.contains("3 messages, exported 2 October 2026"))
+        #expect(html.contains("<h1 dir=\"auto\">Ada &lt;&amp;&gt; Bo</h1>"))
         // A heading for each day, and the days in order.
         #expect(html.components(separatedBy: "<div class=\"day\">").count - 1 == 2)
         #expect(html.range(of: "21 September 2026")!.lowerBound < html.range(of: "22 September 2026")!.lowerBound)
         // Theirs on the left, ours on the right, in the order they were sent.
-        #expect(html.contains("class=\"msg in\""))
-        #expect(html.contains("class=\"msg out\""))
+        #expect(html.contains("class=\"row in\""))
+        #expect(html.contains("class=\"row out\""))
         #expect(html.range(of: "one")!.lowerBound < html.range(of: "two")!.lowerBound)
         #expect(html.range(of: "two")!.lowerBound < html.range(of: "three")!.lowerBound)
         #expect(html.contains("<meta charset=\"utf-8\">"))
-        #expect(!html.contains("<script"))
+        // One script, the page's own, and a message's text cannot add another.
+        #expect(html.components(separatedBy: "<script").count - 1 == 1)
     }
 
-    @Test func authorsAreNamedInAGroupOnlyAndOnlyWhenTheyChange() {
+    @Test func everyoneIsNamedWithAnAvatarWhenTheWriterChanges() {
         let items = [
             placed(.html("one"), author: "Ada"),
             placed(.html("two"), author: "Ada", at: 1_790_000_010),
-            placed(.html("three"), author: "Bo", at: 1_790_000_020),
+            placed(.html("three"), author: "~Bo Li", at: 1_790_000_020),
             placed(.html("mine"), author: "Me", fromMe: true, at: 1_790_000_030),
+            placed(.html("later"), author: "Me", fromMe: true, at: 1_790_000_600),
         ]
-        let group = render(items, authors: true)
-        #expect(group.components(separatedBy: "class=\"who\"").count - 1 == 2)
-        #expect(group.contains("class=\"msg in cont\""))
-        #expect(!render(items, authors: false).contains("class=\"who\""))
+        let html = render(items)
+        // Theirs and ours alike: a name and a round avatar where a run starts.
+        #expect(html.components(separatedBy: "class=\"who\"").count - 1 == 4)
+        #expect(html.contains(">Me</div>"))
+        #expect(html.contains("class=\"row in cont\""))
+        #expect(html.contains("aria-hidden=\"true\">BL</span>"))
+        #expect(html.contains("aria-hidden=\"true\">A</span>") || html.contains("aria-hidden=\"true\">AD</span>"))
+    }
+
+    @Test func theTopSaysWhoIsInItAndForHowLong() {
+        let html = render([placed(.html("x"))])
+        #expect(html.contains("Ada, Me · 21 September 2026 – 22 September 2026 · 1 messages, exported 2 October 2026"))
+        let crowd = render([placed(.html("x"))], participants: ["A", "B", "C", "D", "E"])
+        #expect(crowd.contains("5 people"))
+        #expect(ChatExportHTML.initials(of: "Ilhomjon Rustamov") == "IR")
+        #expect(ChatExportHTML.initials(of: "~Vida") == "V")
+        #expect(ChatExportHTML.initials(of: "+998 90") == "99")
+        #expect(ChatExportHTML.initials(of: "  ") == "?")
+    }
+
+    @Test func aVoiceMessageHasAPlayerWithTheSendersWaveform() {
+        let body = ChatExportBody.media(kind: .voice, source: nil, name: nil, bytes: 1, seconds: 65, caption: "", waveform: [10, 50, 100, 0])
+        let voice = render([placed(body, file: "voice_messages/v 1.ogg")])
+        #expect(voice.contains("<div class=\"vp\" data-src=\"voice_messages/v%201.ogg\" data-seconds=\"65\">"))
+        #expect(voice.contains("<i style=\"height:100%\"></i>"))
+        #expect(voice.contains("<i style=\"height:50%\"></i>"))
+        // The quietest bar is still seen.
+        #expect(voice.contains("<i style=\"height:10%\"></i>"))
+        #expect(voice.contains("class=\"time\">1:05</span>"))
+        #expect(voice.contains("<noscript><audio controls"))
+        // Audio that is not a voice message has a bar, not a waveform.
+        let song = ChatExportBody.media(kind: .audio, source: nil, name: nil, bytes: 1, seconds: 5, caption: "", waveform: [1, 2])
+        #expect(render([placed(song, file: "audio/a.mp3")]).contains("class=\"wave bar\""))
+    }
+
+    @Test func picturesOpenOverThePageNotOnAPageOfTheirOwn() {
+        let photo = ChatExportBody.media(kind: .photo, source: nil, name: nil, bytes: 1, seconds: nil, caption: "")
+        let html = render([placed(photo, file: "photos/p.jpg")])
+        // The link stays, for a browser without script, and the script knows it.
+        #expect(html.contains("<a class=\"media\" data-photo href=\"photos/p.jpg\">"))
+        #expect(html.contains("a[data-photo]"))
+        #expect(html.contains("\"Escape\""))
+    }
+
+    @Test func aPageReachesNothingBeyondItsOwnFolder() {
+        let html = render([placed(.html("x"))])
+        #expect(!html.contains("<script src"))
+        #expect(!html.contains("<link "))
+        #expect(!html.contains("url(http"))
+        #expect(!html.contains("@import"))
     }
 
     @Test func aMissingAttachmentSaysSoAndAPresentOneIsShownByKind() {
@@ -261,18 +312,19 @@ struct ChatExportTests {
         ])
         #expect(html.contains("<img src=\"photos/photo_1@a%20b.jpg\""))
         #expect(html.contains("class=\"sticker\" src=\"stickers/sticker_1.webp\""))
-        #expect(html.contains("<video class=\"media\" controls preload=\"metadata\" src=\"videos/video_1.mp4\">"))
-        #expect(html.contains("<audio controls preload=\"none\" src=\"voice_messages/voice_1.ogg\">"))
-        #expect(html.contains("<audio controls preload=\"none\" src=\"audio/audio_1.mp3\">"))
+        #expect(html.contains("<video class=\"media\" controls preload=\"metadata\" src=\"videos/video_1.mp4#t=0.1\">"))
+        #expect(html.contains("data-src=\"voice_messages/voice_1.ogg\""))
+        #expect(html.contains("data-src=\"audio/audio_1.mp3\""))
         #expect(html.contains("href=\"files/Report%20%231.pdf\""))
         #expect(html.contains("<b dir=\"auto\">Report #1.pdf</b>"))
+        #expect(html.contains(">PDF</span>"))
         #expect(html.contains("0:41"))
     }
 
     @Test func severalPagesLinkToEachOther() {
         let middle = render([placed(.html("x"))], number: 2, pages: 3)
-        #expect(middle.contains("<a href=\"messages.html\">Earlier</a>"))
-        #expect(middle.contains("<a href=\"messages3.html\">Later</a>"))
+        #expect(middle.contains("<a href=\"messages.html\">← Earlier</a>"))
+        #expect(middle.contains("<a href=\"messages3.html\">Later →</a>"))
         #expect(middle.contains("Page 2 of 3"))
         #expect(!render([placed(.html("x"))]).contains("<nav>"))
         #expect(ChatExportHTML.fileName(page: 1) == "messages.html")
@@ -330,7 +382,7 @@ struct ChatExportTests {
         _ entries: [ChatExportEntry], media: Bool, into parent: URL, pageSize: Int = 1000
     ) async throws -> ChatExportSummary {
         try await ChatExportWriter.write(
-            entries, title: "Ada", showsAuthors: true, includeMedia: media, into: parent,
+            entries, title: "Ada", includeMedia: media, into: parent,
             locale: gb, timeZone: utc, now: Date(timeIntervalSince1970: 1_790_000_000), pageSize: pageSize
         )
     }
@@ -473,7 +525,7 @@ struct ChatExportTests {
         #expect(model.exportingChat == nil)
         #expect(model.notices.last?.text == "Exported 2 messages")
         let html = try String(contentsOf: summary.page, encoding: .utf8)
-        #expect(html.contains(">hi<") && html.contains("class=\"msg out\""))
+        #expect(html.contains(">hi<") && html.contains("class=\"row out\""))
     }
 
     @Test func aBackendWithoutAnArchiveFailsPlainly() async throws {

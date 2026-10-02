@@ -12,8 +12,18 @@ public protocol Backend: AnyObject {
         deliver: @escaping @MainActor ([BridgeEvent]) -> Void
     ) throws
     func send(_ command: BridgeCommand)
+    /// Opens a reader on the archive, for exporting a chat. Unlocking the
+    /// archive takes a moment, so it does not run on the main actor.
+    func openChatReader() async throws -> any ChatReaderProtocol
     /// Flushes and closes everything; blocks briefly.
     func shutdown()
+}
+
+extension Backend {
+    /// Backends without an archive have nothing to export.
+    public func openChatReader() async throws -> any ChatReaderProtocol {
+        throw BridgeError.NotRunning
+    }
 }
 
 public final class LiveBackend: Backend {
@@ -36,6 +46,15 @@ public final class LiveBackend: Backend {
 
     public func send(_ command: BridgeCommand) {
         client.send(command: command)
+    }
+
+    public func openChatReader() async throws -> any ChatReaderProtocol {
+        try await Self.openReader(on: client)
+    }
+
+    @concurrent
+    private static func openReader(on client: BridgeClient) async throws -> any ChatReaderProtocol {
+        try client.openChatReader()
     }
 
     public func shutdown() {

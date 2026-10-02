@@ -159,6 +159,10 @@ public final class AppModel {
 
     /// A chat whose clearing, deleting or locking waits for the person to confirm.
     public var chatConfirmation: ChatConfirmation?
+    /// A chat whose export waits to be told how: with its media or without.
+    public var exportRequest: ChatExportRequest?
+    /// The chat being exported. One export runs at a time.
+    public private(set) var exportingChat: String?
 
     /// The message whose "Message info" sheet is open. A group message's
     /// receipts are followed while it is.
@@ -2024,6 +2028,60 @@ public final class AppModel {
         }
     }
 
+    // MARK: Intents: exporting a chat
+
+    /// Asks how to export: the chat's media goes into a zip beside its text,
+    /// or the text stands alone.
+    public func requestExport(_ chat: String) {
+        guard exportingChat == nil else { return }
+        exportRequest = ChatExportRequest(chat: chat)
+    }
+
+    /// Writes the chat as WhatsApp's own export does (`ChatExport`), from
+    /// what this Mac's archive holds. `finished` hears where it went, or why
+    /// it did not.
+    public func exportChat(
+        _ chat: String,
+        includeMedia: Bool,
+        to destination: URL,
+        finished: @escaping @MainActor (Result<ChatExportSummary, Error>) -> Void = { _ in }
+    ) {
+        exportRequest = nil
+        guard exportingChat == nil else { return }
+        exportingChat = chat
+        post(.info, String(localized: "Exporting chat…"))
+        let me = session.account?.name.nonEmpty ?? String(localized: "You")
+        let chats = chats
+        Task {
+            do {
+                let reader = try await backend.openChatReader()
+                let entries = try await ChatExport.collect(
+                    chat: chat,
+                    reader: reader,
+                    me: me,
+                    name: { chats.personName($0.sender, hint: $0.senderName) },
+                    mentionName: { chats.displayName($0) }
+                )
+                let summary = try await ChatExportWriter.write(entries, includeMedia: includeMedia, to: destination)
+                exportingChat = nil
+                post(.info, Self.exportedText(summary))
+                finished(.success(summary))
+            } catch {
+                exportingChat = nil
+                post(.error, String(localized: "The chat could not be exported: \(error.localizedDescription)"))
+                finished(.failure(error))
+            }
+        }
+    }
+
+    private static func exportedText(_ summary: ChatExportSummary) -> String {
+        let done = summary.messages == 1
+            ? String(localized: "Exported 1 message")
+            : String(localized: "Exported \(summary.messages) messages")
+        guard summary.missingMedia > 0 else { return done }
+        return done + ". " + String(localized: "Attachments that are not downloaded were left out.")
+    }
+
     // MARK: Intents: chat list
 
     public func setPinned(_ pinned: Bool, chat: String) {
@@ -2648,6 +2706,12 @@ public struct ChatConfirmation: Identifiable, Equatable, Sendable {
     public var id: String { chat }
     public let chat: String
     public let action: Action
+}
+
+/// A chat's export, waiting to be told how.
+public struct ChatExportRequest: Identifiable, Equatable, Sendable {
+    public var id: String { chat }
+    public let chat: String
 }
 
 /// A business message's list of choices, open for one of its buttons.

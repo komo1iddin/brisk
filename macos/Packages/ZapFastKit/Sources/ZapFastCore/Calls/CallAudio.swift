@@ -22,6 +22,11 @@ final class CallAudio {
     func start(playout: PlayoutBuffer, send: @escaping @Sendable ([Int16]) -> Void) -> Bool {
         guard engine == nil else { return true }
         let engine = AVAudioEngine()
+        // The output side first: enabling voice processing before the
+        // engine has made it leaves the output with no channels, and the
+        // engine then fails to start (-10875).
+        _ = engine.mainMixerNode
+        _ = engine.outputNode
         let input = engine.inputNode
         do {
             try input.setVoiceProcessingEnabled(true)
@@ -56,7 +61,8 @@ final class CallAudio {
             try engine.start()
         } catch {
             input.removeTap(onBus: 0)
-            log.error("calls: the audio engine did not start")
+            let code = (error as NSError).code
+            log.error("calls: the audio engine did not start (\(code, privacy: .public))")
             return false
         }
         self.engine = engine

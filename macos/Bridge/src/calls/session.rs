@@ -308,7 +308,7 @@ impl Center {
                     }
                 }
                 Err(error) => {
-                    log::warn!("calls: could not place the call");
+                    log::warn!("calls: could not place the call ({})", error_kind(&error));
                     center.apply(id, Signal::Failed(error.to_string()));
                 }
             }
@@ -426,7 +426,7 @@ impl Center {
                     }
                 }
                 Err(error) => {
-                    log::warn!("calls: could not answer the call");
+                    log::warn!("calls: could not answer the call ({})", error_kind(&error));
                     center.apply(id, Signal::Failed(error.to_string()));
                 }
             }
@@ -991,6 +991,29 @@ async fn chat_of(client: &Client, offer: &IncomingCall) -> String {
         return pn.to_non_ad_string();
     }
     canonical(client, call_creator).await
+}
+
+/// What kind of failure a call error is, for the log: its own text can name
+/// people, so only the kind is written, or the library's fixed message.
+fn error_kind(error: &whatsapp_rust::CallError) -> &'static str {
+    use whatsapp_rust::CallError as E;
+    match error {
+        E::Send(_) => "sending failed",
+        E::EmptyCallId => "empty call id",
+        E::NotAnOffer => "not an offer",
+        E::MissingAudio => "no audio",
+        E::AudioFormatNotOffered(_) => "audio rate not offered",
+        E::EncodedAudioCodecNotNegotiated { .. } => "codec not negotiated",
+        E::VideoNotOffered => "video not offered",
+        E::CallEndedDuringSetup => "ended during setup",
+        E::Decrypt(_) => "call key decrypt",
+        E::Setup(_) => "setup",
+        E::Connect(_) => "relay connect",
+        E::Media(message) => message,
+        E::VideoUpgradeExpired => "video upgrade expired",
+        E::NoDevices => "no devices",
+        _ => "other",
+    }
 }
 
 fn describe(phase: &CallPhase) -> String {

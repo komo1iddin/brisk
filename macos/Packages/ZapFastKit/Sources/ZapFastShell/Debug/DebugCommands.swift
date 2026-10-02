@@ -33,7 +33,7 @@ import ZapFastCore
 ///   scroll view with whole numbers, to try AppKit's settings live.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
-/// - `call:<ringing|calling|active|muted|waiting|ended|none>`: shows the call
+/// - `call:<ringing|calling|active|muted|waiting|video|request|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
 ///   `shot:call` captures it.
 @MainActor
@@ -196,14 +196,16 @@ enum DebugCommands {
             let phase: CallPhase? = switch shown {
             case "ringing": .ringing
             case "calling": .calling
-            case "active", "muted", "waiting": .active
+            case "active", "muted", "waiting", "video", "request": .active
             case "ended": .ended(reason: .peerHungUp)
             default: nil
             }
             let made = { (session: UInt64, chat: String, phase: CallPhase) in
                 CallInfo(
                     session: session, chat: chat, incoming: phase == .ringing,
-                    videoOffered: false, phase: phase, muted: shown == "muted"
+                    videoOffered: shown == "video", phase: phase, muted: shown == "muted",
+                    camera: false, peerVideo: shown == "video" && session == 1,
+                    videoRequested: shown == "request" && session == 1
                 )
             }
             model.calls.debugShow(

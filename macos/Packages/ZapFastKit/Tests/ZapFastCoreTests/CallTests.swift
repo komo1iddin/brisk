@@ -1,4 +1,7 @@
+import CoreMedia
+import CoreVideo
 import Foundation
+import Synchronization
 import Testing
 import ZapFastBridge
 @testable import ZapFastCore
@@ -9,8 +12,13 @@ import ZapFastBridge
 struct CallTests {
     private let chat = "998901234567@s.whatsapp.net"
 
-    private func info(_ phase: CallPhase, session: UInt64 = 1, incoming: Bool = false, muted: Bool = false) -> CallInfo {
-        CallInfo(session: session, chat: chat, incoming: incoming, videoOffered: false, phase: phase, muted: muted)
+    private func info(
+        _ phase: CallPhase, session: UInt64 = 1, incoming: Bool = false, muted: Bool = false, camera: Bool = false
+    ) -> CallInfo {
+        CallInfo(
+            session: session, chat: chat, incoming: incoming, videoOffered: false, phase: phase, muted: muted,
+            camera: camera, peerVideo: false, videoRequested: false
+        )
     }
 
     private func store() -> (CallStore, PreviewCallService) {
@@ -21,7 +29,7 @@ struct CallTests {
     @Test func placingAsksTheBridge() async {
         let (calls, service) = store()
         await calls.place(chat: chat)
-        #expect(service.requests == [.place(chat)])
+        #expect(service.requests == [.place(chat, video: false)])
     }
 
     @Test func aRefusedCallSaysSo() async {
@@ -69,7 +77,7 @@ struct CallTests {
         #expect(service.requests.isEmpty)
         service.report(info(.ended(reason: .hungUp)))
         await calls.answer()
-        #expect(service.requests == [.answer(2)])
+        #expect(service.requests == [.answer(2, video: false)])
     }
 
     @Test func theTimerStartsWhenBothSidesTalk() {
@@ -127,7 +135,7 @@ struct CallTests {
         let first = calls.connectedAt
         service.report(info(.ringing, session: 2, incoming: true))
         await calls.answerWaiting()
-        #expect(service.requests == [.answer(2)])
+        #expect(service.requests == [.answer(2, video: false)])
         // The bridge ends the first call, then answers the second.
         service.report(info(.ended(reason: .hungUp)))
         #expect(calls.call?.session == 2)
@@ -159,6 +167,41 @@ struct CallTests {
         service.report(info(.ended(reason: .missed), session: 2, incoming: true))
         #expect(calls.waiting == nil)
         #expect(calls.call?.session == 1)
+    }
+
+    @Test func aVideoCallAsksForTheCamera() async {
+        let (calls, service) = store()
+        await calls.place(chat: chat, video: true)
+        #expect(service.requests == [.place(chat, video: true)])
+    }
+
+    @Test func withoutTheCameraAVideoCallGoesOnWithVoice() async {
+        let (calls, service) = store()
+        calls.cameraAllowed = { false }
+        var notices: [String] = []
+        calls.onNotice = { _, text in notices.append(text) }
+        await calls.place(chat: chat, video: true)
+        #expect(service.requests == [.place(chat, video: false)])
+        #expect(notices.count == 1)
+    }
+
+    @Test func aVideoOfferCanBeAnsweredWithTheCamera() async {
+        let (calls, service) = store()
+        service.report(info(.ringing, incoming: true))
+        await calls.answer(video: true)
+        #expect(service.requests == [.answer(1, video: true)])
+    }
+
+    @Test func theCameraTogglesOnlyDuringACall() async {
+        let (calls, service) = store()
+        service.report(info(.ringing, incoming: true))
+        await calls.toggleCamera()
+        #expect(service.requests.isEmpty)
+        service.report(info(.active, incoming: true))
+        await calls.toggleCamera()
+        service.report(info(.active, incoming: true, camera: true))
+        await calls.toggleCamera()
+        #expect(service.requests == [.camera(true), .camera(false)])
     }
 
     @Test func anEndedCallStaysAMomentWithItsReason() async throws {
@@ -323,5 +366,55 @@ struct CallHistoryTests {
         #expect(CallText.title(talked).hasPrefix("Voice call · 2 min"))
         talked.duration = 40
         #expect(CallText.title(talked).hasPrefix("Voice call · 40 sec"))
+    }
+}
+
+
+/// WhatsApp's video is Annex-B; VideoToolbox's is AVCC. The encoder's units
+/// carry their parameter sets before each keyframe, as WhatsApp's do.
+struct VideoCodingTests {
+    private let sps = Data([0x67, 0x42, 0xE0, 0x1F, 0x8C])
+    private let pps = Data([0x68, 0xCE, 0x3C, 0x80])
+    private let idr = Data([0x65, 0x88, 0x84, 0x00, 0x21])
+
+    @Test func annexBSplitsOnEitherStartCode() {
+        var data = Data([0, 0, 0, 1]) + sps
+        data += Data([0, 0, 1]) + pps
+        data += Data([0, 0, 0, 1]) + idr
+        #expect(H264.units(annexB: data) == [sps, pps, idr])
+        #expect(H264.type(of: idr) == H264.Unit.idr.rawValue)
+    }
+
+    @Test func avccAndAnnexBCarryTheSameUnits() {
+        let units = [sps, pps, idr]
+        #expect(H264.units(avcc: H264.avcc(units)) == units)
+        #expect(H264.units(annexB: H264.annexB(units)) == units)
+    }
+
+    @Test func aTruncatedAVCCStopsAtTheBrokenUnit() {
+        var data = H264.avcc([sps, pps])
+        data += Data([0, 0, 0, 40, 1, 2])
+        #expect(H264.units(avcc: data) == [sps, pps])
+    }
+
+    @Test func theEncoderMakesAKeyframeWithItsParameterSetsFirst() throws {
+        let units = Mutex<[Data]>([])
+        let done = DispatchSemaphore(value: 0)
+        let encoder = try #require(VideoEncoder(width: 320, height: 240, frameRate: 20) { data, _ in
+            units.withLock { $0 = H264.units(annexB: data) }
+            done.signal()
+        })
+        var buffer: CVPixelBuffer?
+        CVPixelBufferCreate(nil, 320, 240, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &buffer)
+        let image = try #require(buffer)
+        encoder.encode(image, at: CMTime(value: 1, timescale: 20))
+        #expect(done.wait(timeout: .now() + 5) == .success)
+        let types = units.withLock { $0.map(H264.type(of:)) }
+        #expect(types.prefix(2) == [H264.Unit.sps.rawValue, H264.Unit.pps.rawValue])
+        #expect(types.contains(H264.Unit.idr.rawValue))
+        // Constrained Baseline, as WhatsApp sends: profile 66, constraint flag 1.
+        let profile = units.withLock { $0.first.map { Array($0.prefix(3)) } }
+        #expect(profile?[1] == 66)
+        #expect((profile?[2] ?? 0) & 0x40 != 0)
     }
 }

@@ -2,10 +2,10 @@ import Foundation
 import Observation
 import ZapFastBridge
 
-/// The voice calls going now: what the call window shows, the intents it
-/// calls, and the sound that goes with each phase (the ring, the ringback,
-/// the conversation, the call-waiting beeps). The bridge decides the phases;
-/// this follows them.
+/// The calls going now: what the call window shows, the intents it calls,
+/// and the sound and picture that go with each phase (the ring, the
+/// ringback, the conversation, the call-waiting beeps, the cameras). The
+/// bridge decides the phases; this follows them.
 @Observable
 public final class CallStore {
     /// The call, from the first ring to a moment after it ends.
@@ -17,11 +17,19 @@ public final class CallStore {
     public private(set) var connectedAt: Date?
     /// Each chat's calls, for its timeline.
     public let history: CallHistory
+    /// The other side's video, for the call window to show.
+    public let remoteVideo: VideoRenderer
+    /// Our camera, while it is on: the window shows its preview.
+    public private(set) var camera: CallCamera?
+    /// The other side's picture's rotation, in quarter turns clockwise.
+    public private(set) var remoteOrientation: UInt8 = 0
 
     /// Shows a short message in the window's notice banner.
     @ObservationIgnored public var onNotice: (Notice.Kind, String) -> Void = { _, _ in }
     /// Asked whether the microphone may be used, asking the person if needed.
     @ObservationIgnored var microphoneAllowed: () async -> Bool
+    /// The same for the camera.
+    @ObservationIgnored var cameraAllowed: () async -> Bool
 
     @ObservationIgnored private let service: CallService
     /// No hardware is touched without it: previews and tests run silent.
@@ -37,12 +45,27 @@ public final class CallStore {
         self.live = live
         history = CallHistory(read: { [service] chat in service.history(chat: chat) })
         microphoneAllowed = live ? { await VoiceRecorder.microphoneAllowed() } : { true }
-        service.connect(
+        cameraAllowed = live ? { await CallCamera.allowed() } : { true }
+        let renderer = VideoRenderer(requestKeyframe: service.requestKeyframe, onOrientation: { _ in })
+        remoteVideo = renderer
+        let keyframes = KeyframeRelay()
+        self.keyframes = keyframes
+        service.connect(CallSinks(
             playout: playout,
             onCall: { [weak self] call in self?.update(call) },
-            onCallLog: { [weak self] entry in self?.history.add(entry) }
-        )
+            onCallLog: { [weak self] entry in self?.history.add(entry) },
+            onVideo: { frame in
+                renderer.enqueue(frame.data, keyframe: frame.keyframe, orientation: frame.orientation)
+            },
+            onKeyframeNeeded: { keyframes.camera?.requestKeyframe() }
+        ))
+        renderer.orientationChanged = { [weak self] turns in
+            MainActor.assumeIsolated { self?.remoteOrientation = turns }
+        }
     }
+
+    /// Hands the camera to the bridge's thread for keyframe requests.
+    @ObservationIgnored private let keyframes: KeyframeRelay
 
     /// A call is ringing or going; a new one cannot start.
     public var isBusy: Bool {
@@ -52,34 +75,47 @@ public final class CallStore {
 
     // MARK: Intents
 
-    /// Calls a person's chat.
-    public func place(chat: String) async {
+    /// Calls a person's chat, with our camera on for a video call.
+    public func place(chat: String, video: Bool = false) async {
         guard !isBusy else { return }
         guard await microphoneAllowed() else { return deniedMicrophone() }
-        if !service.place(chat: chat) {
+        let video = video ? await cameraAllowed() || deniedCamera() : false
+        if !service.place(chat: chat, video: video) {
             onNotice(.error, String(localized: "Could not start the call. Check the connection and try again."))
         }
     }
 
-    /// Answers the ringing call.
-    public func answer() async {
+    /// Answers the ringing call, with our camera on if `video`.
+    public func answer(video: Bool = false) async {
         guard let call, call.phase == .ringing else { return }
-        await answer(call.session)
+        await answer(call.session, video: video)
     }
 
-    /// Ends the call that goes and answers the waiting one.
+    /// Ends the call that goes and answers the waiting one, with voice.
     public func answerWaiting() async {
         guard let waiting else { return }
-        await answer(waiting.session)
+        await answer(waiting.session, video: false)
     }
 
-    private func answer(_ session: UInt64) async {
+    private func answer(_ session: UInt64, video: Bool) async {
         guard await microphoneAllowed() else {
             deniedMicrophone()
             service.end(session: session)
             return
         }
-        service.answer(session: session)
+        let video = video ? await cameraAllowed() || deniedCamera() : false
+        service.answer(session: session, video: video)
+    }
+
+    /// Turns our camera on or off: on a voice call, turning it on asks the
+    /// other side to switch to video, or accepts when they asked.
+    public func toggleCamera() async {
+        guard let call, isBusy, call.phase != .ringing else { return }
+        if !call.camera, !(await cameraAllowed()) {
+            _ = deniedCamera()
+            return
+        }
+        service.setCamera(!call.camera)
     }
 
     /// Declines a ringing call or ends the one going.
@@ -155,8 +191,9 @@ public final class CallStore {
     }
     #endif
 
-    /// Starts and stops the sound for what rings and goes now.
+    /// Starts and stops the sound and the cameras for what rings and goes now.
     private func follow() {
+        followCamera()
         guard live else { return }
         switch call?.phase {
         case .ringing:
@@ -179,6 +216,38 @@ public final class CallStore {
         }
     }
 
+    /// Says why the camera stays off; `false`, for the call to go on with voice.
+    private func deniedCamera() -> Bool {
+        onNotice(.error, String(localized: "ZapFast needs the camera for video calls. Allow it in System Settings › Privacy & Security › Camera."))
+        return false
+    }
+
+    /// Our camera runs while the call with media has it on.
+    private func followCamera() {
+        let wanted: Bool = switch call?.phase {
+        case .calling, .connecting, .active: call?.camera == true
+        default: false
+        }
+        if !wanted, let camera {
+            camera.stop()
+            self.camera = nil
+            keyframes.camera = nil
+        }
+        if call == nil || call?.phase.isEnded == true {
+            remoteVideo.reset()
+            remoteOrientation = 0
+        }
+        guard wanted, camera == nil, live else { return }
+        let started = CallCamera(frameRate: Int(callVideoFrameRate()), send: service.camera)
+        guard started.start() else {
+            onNotice(.error, String(localized: "No camera was found for the video call."))
+            service.setCamera(false)
+            return
+        }
+        camera = started
+        keyframes.camera = started
+    }
+
     private func deniedMicrophone() {
         onNotice(.error, String(localized: "ZapFast needs the microphone for calls. Allow it in System Settings › Privacy & Security › Microphone."))
     }
@@ -187,5 +256,16 @@ public final class CallStore {
 extension CallPhase {
     public var isEnded: Bool {
         if case .ended = self { true } else { false }
+    }
+}
+
+/// The camera, where the bridge's thread can reach it to ask for a keyframe.
+nonisolated final class KeyframeRelay: @unchecked Sendable {
+    private let lock = NSLock()
+    private var current: CallCamera?
+
+    var camera: CallCamera? {
+        get { lock.withLock { current } }
+        set { lock.withLock { current = newValue } }
     }
 }

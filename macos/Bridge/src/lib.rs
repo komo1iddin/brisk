@@ -28,6 +28,7 @@ mod vcard;
 
 pub use calls::{
     CallCenter, CallEndReason, CallInfo, CallListener, CallLogEntry, CallOutcome, CallPhase,
+    VideoFrameInfo,
 };
 pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;

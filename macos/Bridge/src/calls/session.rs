@@ -17,7 +17,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use whatsapp_rust::Client;
 use whatsapp_rust::Jid;
 use whatsapp_rust::async_channel;
-use whatsapp_rust::voip::{CallEvent, CallHandle};
+use whatsapp_rust::voip::{
+    CallEvent, CallHandle, KeyframeUrgency, TimedVideoFrame, VideoFrame, VideoState,
+    VideoUpgradeToken,
+};
 use whatsapp_rust::wacore::types::call::{CallAction, ElsewhereOutcome, IncomingCall};
 use whatsapp_rust::wacore::types::events::{
     CallLogSync, Event, EventHandler, EventInterest, EventKind, Subscription,
@@ -25,6 +28,7 @@ use whatsapp_rust::wacore::types::events::{
 
 use super::history::{self, CallLog, CallLogEntry, Source};
 use super::phase::{self, CallPhase, Signal};
+use super::video::{self, Camera, VideoFrameInfo};
 use super::{CallInfo, CallListener};
 
 /// How long an outgoing call rings before we give up, as the phone does.
@@ -63,6 +67,10 @@ struct Session {
     offer: Option<IncomingCall>,
     handle: Option<CallHandle>,
     microphone: Option<async_channel::Sender<Vec<i16>>>,
+    /// Where Swift's encoded camera frames go, while our camera is on.
+    camera: Option<async_channel::Sender<TimedVideoFrame>>,
+    /// The other side's request to turn this call to video, to answer.
+    upgrade: Option<VideoUpgradeToken>,
     /// When it began ringing or calling, in Unix seconds.
     started: i64,
     /// When both sides started talking.
@@ -177,11 +185,16 @@ impl Center {
                 video_offered: video,
                 phase,
                 muted: false,
+                camera: false,
+                peer_video: false,
+                video_requested: false,
             },
             wa_id: None,
             offer: None,
             handle: None,
             microphone: None,
+            camera: None,
+            upgrade: None,
             started: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs() as i64),
@@ -230,7 +243,7 @@ impl Center {
 
     // Outgoing
 
-    pub fn place(self: &Arc<Self>, chat: String) -> bool {
+    pub fn place(self: &Arc<Self>, chat: String, video: bool) -> bool {
         let Ok(peer) = chat.parse::<Jid>() else {
             return false;
         };
@@ -248,7 +261,7 @@ impl Center {
             if !calls.is_empty() {
                 return false;
             }
-            let mut session = self.new_session(chat, false, false, CallPhase::Calling);
+            let mut session = self.new_session(chat, false, video, CallPhase::Calling);
             session.microphone = Some(microphone);
             let info = session.info.clone();
             calls.push(session);
@@ -256,12 +269,18 @@ impl Center {
         };
         let id = info.session;
         log::info!("calls: placing a call");
-        self.publish(info);
+        let video = video.then(|| self.camera_on(id)).flatten();
+        self.publish(self.info(id).unwrap_or(info));
 
         let center = self.clone();
         runtime.spawn(async move {
             center.clone().play(playout);
-            let started = client.voip().call(&peer).audio(source, sink).start().await;
+            let voip = client.voip();
+            let mut builder = voip.call(&peer).audio(source, sink);
+            if let Some((camera, view)) = video {
+                builder = builder.video(camera, view);
+            }
+            let started = builder.start().await;
             match started {
                 Ok(handle) => {
                     if center.attach(id, handle.clone()) {
@@ -328,7 +347,7 @@ impl Center {
     }
 
     /// Answers ringing call `id`, ending the call with media first if one goes.
-    pub fn answer(self: &Arc<Self>, id: u64) {
+    pub fn answer(self: &Arc<Self>, id: u64, video: bool) {
         let Some((client, runtime)) = self.client() else {
             return;
         };
@@ -357,17 +376,18 @@ impl Center {
             (session.info.clone(), offer)
         };
         log::info!("calls: answering");
-        self.publish(info);
+        let video = video.then(|| self.camera_on(id)).flatten();
+        self.publish(self.info(id).unwrap_or(info));
 
         let center = self.clone();
         runtime.spawn(async move {
             center.clone().play(playout);
-            let started = client
-                .voip()
-                .accept(&offer)
-                .audio(source, sink)
-                .start()
-                .await;
+            let voip = client.voip();
+            let mut builder = voip.accept(&offer).audio(source, sink);
+            if let Some((camera, view)) = video {
+                builder = builder.video(camera, view);
+            }
+            let started = builder.start().await;
             match started {
                 Ok(handle) => {
                     if center.attach(id, handle.clone()) {
@@ -409,9 +429,21 @@ impl Center {
             center.apply(id, Signal::MediaEnded);
         });
         let events = handle.events();
+        let center = self.clone();
         tokio::spawn(async move {
             while let Ok(event) = events.recv().await {
                 match event {
+                    CallEvent::PeerVideoStateChanged {
+                        state,
+                        upgrade_token,
+                        ..
+                    } => center.peer_video_state(id, state, upgrade_token),
+                    CallEvent::VideoKeyframeNeeded => {
+                        let listener = lock(&center.listener).clone();
+                        if let Some(listener) = listener {
+                            listener.on_keyframe_needed();
+                        }
+                    }
                     CallEvent::RelayAllocated => log::info!("calls: media path is up"),
                     CallEvent::RelayAllocateFailed(code) => {
                         log::warn!("calls: the relay refused the media path ({code})")
@@ -504,6 +536,178 @@ impl Center {
                 log::warn!("calls: could not tell the other side about mute");
             }
         });
+    }
+
+    /// The call's current state, as Swift sees it.
+    fn info(&self, id: u64) -> Option<CallInfo> {
+        lock(&self.calls)
+            .iter()
+            .find(|s| s.info.session == id)
+            .map(|s| s.info.clone())
+    }
+
+    /// Changes call `id` as `change` says, and tells Swift if that changed
+    /// what it sees.
+    fn update(&self, id: u64, change: impl FnOnce(&mut Session)) {
+        let info = {
+            let mut calls = lock(&self.calls);
+            let Some(session) = calls.iter_mut().find(|s| s.info.session == id) else {
+                return;
+            };
+            let before = session.info.clone();
+            change(session);
+            (session.info != before).then(|| session.info.clone())
+        };
+        if let Some(info) = info {
+            self.publish(info);
+        }
+    }
+
+    /// Turns our camera on for call `id`: the source the library reads and
+    /// the sink it fills, with Swift's side of each wired up.
+    fn camera_on(self: &Arc<Self>, id: u64) -> Option<(Camera, async_channel::Sender<VideoFrame>)> {
+        let (camera, frames) = Camera::new();
+        let (view, arrived) = async_channel::bounded(video::VIEW_QUEUE);
+        let mut found = false;
+        self.update(id, |session| {
+            session.camera = Some(frames);
+            session.info.camera = true;
+            found = true;
+        });
+        if !found {
+            return None;
+        }
+        self.clone().show(id, arrived);
+        Some((camera, view))
+    }
+
+    /// Hands the other side's video to Swift until the call drops its sink.
+    fn show(self: Arc<Self>, id: u64, arrived: async_channel::Receiver<VideoFrame>) {
+        let Some((_, runtime)) = self.client() else {
+            return;
+        };
+        runtime.spawn(async move {
+            while let Ok(frame) = arrived.recv().await {
+                self.update(id, |session| {
+                    session.info.peer_video = true;
+                    session.info.video_requested = false;
+                });
+                let listener = lock(&self.listener).clone();
+                if let Some(listener) = listener {
+                    listener.on_video(VideoFrameInfo::from(frame));
+                }
+            }
+        });
+    }
+
+    fn peer_video_state(&self, id: u64, state: VideoState, token: Option<VideoUpgradeToken>) {
+        self.update(id, |session| match state {
+            VideoState::UpgradeRequest | VideoState::UpgradeRequestV2 => {
+                if session.info.camera {
+                    return;
+                }
+                session.upgrade = token;
+                session.info.video_requested = token.is_some();
+            }
+            VideoState::Enabled | VideoState::UpgradeAccept => {
+                session.info.peer_video = true;
+                session.info.video_requested = false;
+            }
+            VideoState::Disabled | VideoState::Stopped | VideoState::Paused => {
+                session.info.peer_video = false;
+            }
+            VideoState::UpgradeCancel
+            | VideoState::UpgradeCancelByTimeout
+            | VideoState::UpgradeReject
+            | VideoState::UpgradeRejectByTimeout => {
+                session.upgrade = None;
+                session.info.video_requested = false;
+            }
+            _ => {}
+        });
+    }
+
+    /// Turns our camera on or off in the call with media: answering the
+    /// other side's request when there is one, showing ourselves again in a
+    /// call that is already video, or asking to turn a voice call to video.
+    pub fn set_camera(self: &Arc<Self>, on: bool) {
+        let Some((id, handle, upgrade, peer_video)) = lock(&self.calls)
+            .iter()
+            .find(|s| s.has_media() && s.handle.is_some())
+            .map(|s| {
+                (
+                    s.info.session,
+                    s.handle.clone(),
+                    s.upgrade,
+                    s.info.peer_video,
+                )
+            })
+        else {
+            return;
+        };
+        let (Some(handle), Some((_, runtime))) = (handle, self.client()) else {
+            return;
+        };
+        if !on {
+            self.update(id, |session| {
+                session.camera = None;
+                session.info.camera = false;
+            });
+            runtime.spawn(async move {
+                if handle.stop_video().await.is_err() {
+                    log::warn!("calls: could not stop the camera");
+                }
+            });
+            return;
+        }
+        let Some((camera, view)) = self.camera_on(id) else {
+            return;
+        };
+        self.update(id, |session| {
+            session.upgrade = None;
+            session.info.video_requested = false;
+        });
+        let center = self.clone();
+        runtime.spawn(async move {
+            let started = match upgrade {
+                Some(token) => handle.accept_video(token, camera, view).await.is_ok(),
+                None if peer_video => {
+                    // `resume_video` re-adds us to a call that is video
+                    // already; a call that never was refuses it.
+                    handle.resume_video(camera, view).await.is_ok()
+                        || match center.camera_on(id) {
+                            Some((camera, view)) => handle.start_video(camera, view).await.is_ok(),
+                            None => false,
+                        }
+                }
+                None => handle.start_video(camera, view).await.is_ok(),
+            };
+            if !started {
+                log::warn!("calls: could not turn the camera on");
+                center.update(id, |session| {
+                    session.camera = None;
+                    session.info.camera = false;
+                });
+            }
+        });
+    }
+
+    /// One encoded camera frame, captured at `timestamp` on the 90 kHz clock.
+    pub fn push_video(&self, data: Vec<u8>, timestamp: u32) {
+        let calls = lock(&self.calls);
+        if let Some(camera) = calls.iter().find_map(|s| s.camera.as_ref()) {
+            // A full queue: the engine is behind, and a stale frame is worse
+            // than a dropped one.
+            let _ = camera.try_send(video::timed(data, timestamp));
+        }
+    }
+
+    /// Asks the other side for a keyframe, when Swift's decoder lost one.
+    pub fn request_keyframe(&self) {
+        let calls = lock(&self.calls);
+        if let Some(handle) = calls.iter().find_map(|s| s.handle.as_ref()) {
+            handle.request_peer_keyframe(KeyframeUrgency::Immediate);
+        }
     }
 
     pub fn push_microphone(&self, samples: Vec<i16>) {

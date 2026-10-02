@@ -16,6 +16,7 @@ public final class CallWindowController: NSWindowController {
     private struct Shown: Equatable {
         let session: UInt64
         let waiting: UInt64?
+        let video: Bool
     }
 
     private var shown: Shown?
@@ -95,7 +96,7 @@ public final class CallWindowController: NSWindowController {
             shown = nil
             return
         }
-        let now = Shown(session: call.session, waiting: waiting)
+        let now = Shown(session: call.session, waiting: waiting, video: call.showsVideo)
         guard shown != now else { return }
         // A new call goes to the corner; a banner coming or going keeps
         // the panel's top where the person may have dragged it.

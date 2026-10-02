@@ -27,6 +27,7 @@ public final class ChatDetailViewController: NSViewController {
     public static let searchItem = NSToolbarItem.Identifier("ZapFastChatSearch")
     public static let actionsItem = NSToolbarItem.Identifier("ZapFastChatActions")
     public static let callItem = NSToolbarItem.Identifier("ZapFastChatCall")
+    public static let videoCallItem = NSToolbarItem.Identifier("ZapFastChatVideoCall")
 
     public let model: AppModel
     private let source: Source
@@ -229,6 +230,14 @@ public final class ChatDetailViewController: NSViewController {
             item.isBordered = true
             item.target = self
             item.action = #selector(call)
+        case Self.videoCallItem:
+            item = NSToolbarItem(itemIdentifier: identifier)
+            item.image = NSImage(systemSymbolName: "video", accessibilityDescription: nil)
+            item.label = String(localized: "Video Call")
+            item.toolTip = String(localized: "Video call")
+            item.isBordered = true
+            item.target = self
+            item.action = #selector(videoCall)
         case Self.actionsItem:
             let menuItem = NSMenuToolbarItem(itemIdentifier: identifier)
             menuItem.showsIndicator = true
@@ -270,6 +279,7 @@ public final class ChatDetailViewController: NSViewController {
             item.isHidden = shownChat == nil
         }
         items[Self.callItem]?.isHidden = !Self.canCall(shownChat, model: model)
+        items[Self.videoCallItem]?.isHidden = !Self.canCall(shownChat, model: model)
     }
 
     /// A person's chat, other than our own, can be called.
@@ -282,6 +292,12 @@ public final class ChatDetailViewController: NSViewController {
         guard let chatID else { return }
         let calls = model.calls
         Task { await calls.place(chat: chatID) }
+    }
+
+    @objc private func videoCall() {
+        guard let chatID else { return }
+        let calls = model.calls
+        Task { await calls.place(chat: chatID, video: true) }
     }
 
     @objc private func toggleSearch() {

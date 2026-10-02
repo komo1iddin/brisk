@@ -360,7 +360,7 @@ turns the photos off.
 
 ### Voice calls
 
-A person's chat has a phone button in the toolbar. An incoming call rings
+A person's chat has a phone button and a video button in the toolbar. An incoming call rings
 in a small panel at the top right of the screen, over other windows and
 Spaces, and bounces the Dock; Return answers, Esc declines. While the app
 lock is closed the panel says only "WhatsApp Call". During a call the
@@ -384,8 +384,18 @@ random key in the keychain). The phone sends its whole call history only
 when the device links; a device linked before this version shows the calls
 from now on.
 
-Not yet: video (a video call can be answered with voice only), group
-calls, and a third call at once (that offer keeps ringing on the phone).
+Video calls: a video offer can be answered with voice or video, the camera
+button turns ours on or off at any time (on a voice call it asks the other
+side to switch, and their request shows as Not Now / Switch), and the panel
+then shows them full size with ourselves in a corner. The library carries
+H.264 only: Swift captures with `AVCaptureSession`, encodes with
+VideoToolbox (Constrained Baseline, 720p at 20 fps, 1.5 Mbit/s, the
+parameter sets before each keyframe and a keyframe when the other side
+asks) and shows theirs through `AVSampleBufferDisplayLayer`, asking for a
+keyframe after a loss.
+
+Not yet: group calls, and a third call at once (that offer keeps ringing
+on the phone).
 
 ## Build
 

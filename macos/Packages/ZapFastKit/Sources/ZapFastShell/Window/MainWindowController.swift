@@ -130,6 +130,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         .sidebarTrackingSeparator,
         ChatDetailViewController.headerItem,
         .flexibleSpace,
+        ChatDetailViewController.videoCallItem,
         ChatDetailViewController.callItem,
         ChatDetailViewController.searchItem,
         ChatDetailViewController.actionsItem,

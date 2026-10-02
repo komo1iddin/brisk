@@ -11,17 +11,19 @@
 //! Swift captures and plays them (the system's voice processing cancels the
 //! echo), the library encodes, encrypts and carries them.
 //!
-//! Video and group calls are not handled, nor a third call: such an offer is
-//! left to ring on the phone.
+//! Video crosses as H.264 access units (see [`video`]). Group calls are not
+//! handled, nor a third call: such an offer is left to ring on the phone.
 
 mod history;
 mod phase;
 mod session;
+mod video;
 
 use std::sync::{Arc, OnceLock};
 
 pub use history::{CallLogEntry, CallOutcome};
 pub use phase::{CallEndReason, CallPhase};
+pub use video::VideoFrameInfo;
 
 use session::Center;
 
@@ -36,10 +38,16 @@ pub struct CallInfo {
     /// The other side's chat id.
     pub chat: String,
     pub incoming: bool,
-    /// The caller asked for video; we answer with audio only.
+    /// The call was offered (or placed) as a video call.
     pub video_offered: bool,
     pub phase: CallPhase,
     pub muted: bool,
+    /// Our camera is on: Swift captures and pushes frames.
+    pub camera: bool,
+    /// The other side's video is arriving.
+    pub peer_video: bool,
+    /// The other side asks to turn this voice call to video.
+    pub video_requested: bool,
 }
 
 /// Receives call changes and the other side's audio, on background threads.
@@ -51,6 +59,10 @@ pub trait CallListener: Send + Sync {
     fn on_playout(&self, samples: Vec<i16>);
     /// A call was added to (or changed in) a chat's history.
     fn on_call_log(&self, entry: CallLogEntry);
+    /// One access unit of the other side's video to decode.
+    fn on_video(&self, frame: VideoFrameInfo);
+    /// The camera's encoder should make its next frame a keyframe.
+    fn on_keyframe_needed(&self);
 }
 
 /// Places, answers and ends calls.
@@ -90,14 +102,30 @@ impl CallCenter {
 
     /// Calls a person's chat. `false` when it cannot start now: another call
     /// rings or goes, the link is down, or the chat is not a person's.
-    pub fn place(&self, chat: String) -> bool {
-        self.center.place(chat)
+    pub fn place(&self, chat: String, video: bool) -> bool {
+        self.center.place(chat, video)
     }
 
-    /// Answers ringing call `session` with audio only, first ending the call
-    /// that goes, if any: WhatsApp has no hold.
-    pub fn answer(&self, session: u64) {
-        self.center.answer(session);
+    /// Answers ringing call `session`, with our camera on if `video`, first
+    /// ending the call that goes, if any: WhatsApp has no hold.
+    pub fn answer(&self, session: u64, video: bool) {
+        self.center.answer(session, video);
+    }
+
+    /// Turns our camera on or off in the call that goes.
+    pub fn set_camera(&self, on: bool) {
+        self.center.set_camera(on);
+    }
+
+    /// One encoded camera frame: an Annex-B access unit, captured at
+    /// `timestamp` on the 90 kHz clock.
+    pub fn push_video(&self, data: Vec<u8>, timestamp: u32) {
+        self.center.push_video(data, timestamp);
+    }
+
+    /// Asks the other side for a keyframe after a decoding loss.
+    pub fn request_keyframe(&self) {
+        self.center.request_keyframe();
     }
 
     /// Declines call `session` if it rings, or ends it.
@@ -133,6 +161,12 @@ pub(crate) fn open_log(state: &std::path::Path) {
         Ok(store) => center.center.set_log(Arc::new(store)),
         Err(_) => log::warn!("calls: the call history could not be opened"),
     }
+}
+
+/// Frames per second the camera is encoded at, for Swift.
+#[uniffi::export]
+pub fn call_video_frame_rate() -> u32 {
+    video::FRAME_RATE
 }
 
 /// Samples in one call audio frame, for Swift.

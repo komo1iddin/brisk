@@ -55,6 +55,7 @@ targets:
         LSMultipleInstancesProhibited: true
         NSHumanReadableCopyright: "Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors."
         NSMicrophoneUsageDescription: "ZapFast uses the microphone for voice messages and calls, only when you start one."
+        NSCameraUsageDescription: "ZapFast uses the camera for video calls, only while yours is on."
         # The Share extension hands what was shared to the app this way.
         CFBundleURLTypes:
           - CFBundleURLName: com.komoliddin.ZapFastMac.share
@@ -66,6 +67,8 @@ targets:
         com.apple.security.app-sandbox: false
         # Hardened runtime: recording voice messages and calls.
         com.apple.security.device.audio-input: true
+        # Hardened runtime: the camera in video calls.
+        com.apple.security.device.camera: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.komoliddin.ZapFastMac

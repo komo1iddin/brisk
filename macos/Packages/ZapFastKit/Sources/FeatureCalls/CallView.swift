@@ -16,7 +16,11 @@ struct CallView: View {
                     WaitingBanner(call: waiting, model: model)
                     Divider()
                 }
-                CallContent(call: call, model: model)
+                if call.showsVideo {
+                    VideoCallContent(call: call, model: model)
+                } else {
+                    CallContent(call: call, model: model)
+                }
             }
         }
     }
@@ -69,9 +73,21 @@ private struct WaitingBanner: View {
     }
 }
 
+extension CallInfo {
+    /// The window shows pictures rather than the caller's photo.
+    var showsVideo: Bool {
+        switch phase {
+        case .calling, .connecting, .active: camera || peerVideo
+        case .ringing, .ended: false
+        }
+    }
+}
+
 private struct CallContent: View {
     let call: CallInfo
     let model: AppModel
+    /// The other side's request to switch to video, put aside for now.
+    @State private var setAside = false
 
     private var hidden: Bool { model.appLock.isLocked }
 
@@ -86,6 +102,20 @@ private struct CallContent: View {
                 CallStatus(call: call, connectedAt: model.calls.connectedAt)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+            if call.videoRequested, !setAside {
+                VStack(spacing: 8) {
+                    Text(String(localized: "Asks to switch to video"))
+                        .font(.callout)
+                    HStack(spacing: 8) {
+                        Button(String(localized: "Not Now")) { setAside = true }
+                            .buttonStyle(CapsuleFill(color: .gray))
+                        Button(String(localized: "Switch")) {
+                            Task { await model.calls.toggleCamera() }
+                        }
+                        .buttonStyle(CapsuleFill(color: .green))
+                    }
+                }
             }
             CallButtons(call: call, calls: model.calls)
                 .padding(.top, 6)
@@ -112,7 +142,7 @@ private struct CallContent: View {
 
 /// A filled capsule in a call's own colour. The panel never becomes the key
 /// window, where system prominent buttons would turn grey.
-private struct CapsuleFill: ButtonStyle {
+struct CapsuleFill: ButtonStyle {
     let color: Color
 
     func makeBody(configuration: Configuration) -> some View {
@@ -126,7 +156,7 @@ private struct CapsuleFill: ButtonStyle {
 }
 
 /// "Calling…", the time talked, or why it ended.
-private struct CallStatus: View {
+struct CallStatus: View {
     let call: CallInfo
     let connectedAt: Date?
 
@@ -192,22 +222,22 @@ private struct CallButtons: View {
                     calls.hangUp()
                 }
                 .keyboardShortcut(.cancelAction)
-                RoundButton(symbol: "phone.fill", style: .accept, label: String(localized: "Accept")) {
-                    Task { await calls.answer() }
+                if call.videoOffered {
+                    RoundButton(symbol: "phone.fill", style: .accept, label: String(localized: "Voice")) {
+                        Task { await calls.answer() }
+                    }
+                    RoundButton(symbol: "video.fill", style: .accept, label: String(localized: "Video")) {
+                        Task { await calls.answer(video: true) }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                } else {
+                    RoundButton(symbol: "phone.fill", style: .accept, label: String(localized: "Accept")) {
+                        Task { await calls.answer() }
+                    }
+                    .keyboardShortcut(.defaultAction)
                 }
-                .keyboardShortcut(.defaultAction)
             case .calling, .connecting, .active:
-                RoundButton(
-                    symbol: call.muted ? "mic.slash.fill" : "mic.fill",
-                    style: .toggle(on: call.muted),
-                    label: call.muted ? String(localized: "Unmute") : String(localized: "Mute")
-                ) {
-                    calls.toggleMute()
-                }
-                RoundButton(symbol: "phone.down.fill", style: .end, label: String(localized: "End")) {
-                    calls.hangUp()
-                }
-                .keyboardShortcut(.cancelAction)
+                InCallButtons(call: call, calls: calls)
             case .ended:
                 EmptyView()
             }
@@ -216,8 +246,35 @@ private struct CallButtons: View {
     }
 }
 
+/// Mute, the camera and End, during a call.
+private struct InCallButtons: View {
+    let call: CallInfo
+    let calls: CallStore
+
+    var body: some View {
+        RoundButton(
+            symbol: call.muted ? "mic.slash.fill" : "mic.fill",
+            style: .toggle(on: call.muted),
+            label: call.muted ? String(localized: "Unmute") : String(localized: "Mute")
+        ) {
+            calls.toggleMute()
+        }
+        RoundButton(
+            symbol: call.camera ? "video.fill" : "video.slash.fill",
+            style: .toggle(on: call.camera),
+            label: call.camera ? String(localized: "Camera Off") : String(localized: "Camera")
+        ) {
+            Task { await calls.toggleCamera() }
+        }
+        RoundButton(symbol: "phone.down.fill", style: .end, label: String(localized: "End")) {
+            calls.hangUp()
+        }
+        .keyboardShortcut(.cancelAction)
+    }
+}
+
 /// A round button with its name under it, as the phone's call screen has.
-private struct RoundButton: View {
+struct RoundButton: View {
     enum Style {
         case accept, end
         /// A setting such as mute, filled while on.

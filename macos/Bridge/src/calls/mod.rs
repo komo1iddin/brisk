@@ -11,8 +11,8 @@
 //! Swift captures and plays them (the system's voice processing cancels the
 //! echo), the library encodes, encrypts and carries them.
 //!
-//! Video crosses as H.264 access units (see [`video`]). Group calls are not
-//! handled, nor a third call: such an offer is left to ring on the phone.
+//! Video crosses as H.264 access units (see [`video`]). Group calls are
+//! voice only; a third call is left to ring on the phone.
 
 mod history;
 mod phase;
@@ -48,6 +48,20 @@ pub struct CallInfo {
     pub peer_video: bool,
     /// The other side asks to turn this voice call to video.
     pub video_requested: bool,
+    /// A group's call: `chat` is the group.
+    pub group: bool,
+    /// Who rang us, in a group call.
+    pub caller: Option<String>,
+    /// The group call's other members, in the roster's order.
+    pub participants: Vec<CallParticipant>,
+}
+
+/// A member of a group call.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CallParticipant {
+    pub chat: String,
+    /// In the call, rather than still being rung.
+    pub joined: bool,
 }
 
 /// Receives call changes and the other side's audio, on background threads.

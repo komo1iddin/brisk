@@ -32,27 +32,15 @@ private struct WaitingBanner: View {
     let call: CallInfo
     let model: AppModel
 
-    private var hidden: Bool { model.appLock.isLocked }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                if hidden {
-                    AvatarView(url: nil, seed: "call", placeholder: .symbol("phone.fill"), size: 32)
-                } else {
-                    AvatarView(
-                        url: model.avatars.url(for: call.chat),
-                        seed: call.chat,
-                        placeholder: .initials(model.chats.displayName(call.chat)),
-                        size: 32,
-                        version: model.avatars.version(for: call.chat)
-                    )
-                }
+                CallAvatar(call: call, model: model, size: 32)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(hidden ? String(localized: "WhatsApp Call") : model.chats.displayName(call.chat))
+                    Text(CallFace.name(call, model: model))
                         .font(.headline)
                         .lineLimit(1)
-                    Text(String(localized: "Calling you"))
+                    Text(CallFace.caller(call, model: model) ?? String(localized: "Calling you"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -89,19 +77,30 @@ private struct CallContent: View {
     /// The other side's request to switch to video, put aside for now.
     @State private var setAside = false
 
-    private var hidden: Bool { model.appLock.isLocked }
-
     var body: some View {
         VStack(spacing: 14) {
-            avatar
+            CallAvatar(call: call, model: model, size: 72)
             VStack(spacing: 4) {
-                Text(hidden ? String(localized: "WhatsApp Call") : model.chats.displayName(call.chat))
+                Text(CallFace.name(call, model: model))
                     .font(.title2.weight(.semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                CallStatus(call: call, connectedAt: model.calls.connectedAt)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                if call.phase == .ringing, let caller = CallFace.caller(call, model: model) {
+                    Text(caller)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    CallStatus(call: call, connectedAt: model.calls.connectedAt)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                if call.phase != .ringing, let members = CallFace.participants(call, model: model) {
+                    Text(members)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
             }
             if call.videoRequested, !setAside {
                 VStack(spacing: 8) {
@@ -123,20 +122,6 @@ private struct CallContent: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 22)
         .frame(width: 280)
-    }
-
-    @ViewBuilder private var avatar: some View {
-        if hidden {
-            AvatarView(url: nil, seed: "call", placeholder: .symbol("phone.fill"), size: 72)
-        } else {
-            AvatarView(
-                url: model.avatars.url(for: call.chat),
-                seed: call.chat,
-                placeholder: .initials(model.chats.displayName(call.chat)),
-                size: 72,
-                version: model.avatars.version(for: call.chat)
-            )
-        }
     }
 }
 
@@ -177,9 +162,9 @@ struct CallStatus: View {
     static func describe(_ call: CallInfo) -> String {
         switch call.phase {
         case .ringing:
-            call.videoOffered
-                ? String(localized: "Video call · answer with voice only")
-                : String(localized: "Incoming voice call")
+            call.group
+                ? String(localized: "Group voice call")
+                : call.videoOffered ? String(localized: "Incoming video call") : String(localized: "Incoming voice call")
         case .calling: String(localized: "Calling…")
         case .connecting: String(localized: "Connecting…")
         case .active: ""
@@ -222,7 +207,7 @@ private struct CallButtons: View {
                     calls.hangUp()
                 }
                 .keyboardShortcut(.cancelAction)
-                if call.videoOffered {
+                if call.videoOffered, !call.group {
                     RoundButton(symbol: "phone.fill", style: .accept, label: String(localized: "Voice")) {
                         Task { await calls.answer() }
                     }
@@ -259,12 +244,14 @@ private struct InCallButtons: View {
         ) {
             calls.toggleMute()
         }
-        RoundButton(
-            symbol: call.camera ? "video.fill" : "video.slash.fill",
-            style: .toggle(on: call.camera),
-            label: call.camera ? String(localized: "Camera Off") : String(localized: "Camera")
-        ) {
-            Task { await calls.toggleCamera() }
+        if !call.group {
+            RoundButton(
+                symbol: call.camera ? "video.fill" : "video.slash.fill",
+                style: .toggle(on: call.camera),
+                label: call.camera ? String(localized: "Camera Off") : String(localized: "Camera")
+            ) {
+                Task { await calls.toggleCamera() }
+            }
         }
         RoundButton(symbol: "phone.down.fill", style: .end, label: String(localized: "End")) {
             calls.hangUp()

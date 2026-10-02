@@ -394,8 +394,15 @@ parameter sets before each keyframe and a keyframe when the other side
 asks) and shows theirs through `AVSampleBufferDisplayLayer`, asking for a
 keyframe after a loss.
 
-Not yet: group calls, and a third call at once (that offer keeps ringing
-on the phone).
+Group calls are voice only for now. A group chat has the phone button
+(not the video one) and rings everyone in the group; an incoming group call
+names the group and who is calling. The panel lists who has joined (or who
+is still being rung), the library mixes their voices into one stream, and
+one member leaving or declining ends the call for nobody else. A video
+group call can be joined with voice.
+
+Not yet: video in group calls, and a third call at once (that offer keeps
+ringing on the phone).
 
 ## Build
 

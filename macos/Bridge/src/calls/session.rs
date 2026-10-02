@@ -15,7 +15,6 @@ use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use whatsapp_rust::Client;
-use whatsapp_rust::Jid;
 use whatsapp_rust::async_channel;
 use whatsapp_rust::voip::{
     CallEvent, CallHandle, KeyframeUrgency, TimedVideoFrame, VideoFrame, VideoState,
@@ -25,11 +24,13 @@ use whatsapp_rust::wacore::types::call::{CallAction, ElsewhereOutcome, IncomingC
 use whatsapp_rust::wacore::types::events::{
     CallLogSync, Event, EventHandler, EventInterest, EventKind, Subscription,
 };
+use whatsapp_rust::wacore::types::group_call::GroupCallUpdate;
+use whatsapp_rust::{Jid, Server};
 
 use super::history::{self, CallLog, CallLogEntry, Source};
 use super::phase::{self, CallPhase, Signal};
 use super::video::{self, Camera, VideoFrameInfo};
-use super::{CallInfo, CallListener};
+use super::{CallInfo, CallListener, CallParticipant};
 
 /// How long an outgoing call rings before we give up, as the phone does.
 const RING_OUT: Duration = Duration::from_secs(60);
@@ -188,6 +189,9 @@ impl Center {
                 camera: false,
                 peer_video: false,
                 video_requested: false,
+                group: false,
+                caller: None,
+                participants: Vec::new(),
             },
             wa_id: None,
             offer: None,
@@ -247,9 +251,12 @@ impl Center {
         let Ok(peer) = chat.parse::<Jid>() else {
             return false;
         };
-        if !(peer.is_pn() || peer.is_lid()) {
+        let group = peer.server == Server::Group;
+        if !(peer.is_pn() || peer.is_lid() || group) {
             return false;
         }
+        // Video in group calls is not handled yet.
+        let video = video && !group;
         let Some((client, runtime)) = self.client() else {
             return false;
         };
@@ -263,6 +270,7 @@ impl Center {
             }
             let mut session = self.new_session(chat, false, video, CallPhase::Calling);
             session.microphone = Some(microphone);
+            session.info.group = group;
             let info = session.info.clone();
             calls.push(session);
             info
@@ -276,11 +284,19 @@ impl Center {
         runtime.spawn(async move {
             center.clone().play(playout);
             let voip = client.voip();
-            let mut builder = voip.call(&peer).audio(source, sink);
-            if let Some((camera, view)) = video {
-                builder = builder.video(camera, view);
-            }
-            let started = builder.start().await;
+            let started = if group {
+                // Rings everyone in the group; they join as they answer.
+                voip.group_call_by_id(&peer)
+                    .audio(source, sink)
+                    .start()
+                    .await
+            } else {
+                let mut builder = voip.call(&peer).audio(source, sink);
+                if let Some((camera, view)) = video {
+                    builder = builder.video(camera, view);
+                }
+                builder.start().await
+            };
             match started {
                 Ok(handle) => {
                     if center.attach(id, handle.clone()) {
@@ -315,7 +331,14 @@ impl Center {
 
     // Incoming
 
-    fn ring(self: &Arc<Self>, offer: IncomingCall, chat: String, video: bool) {
+    fn ring(
+        self: &Arc<Self>,
+        offer: IncomingCall,
+        chat: String,
+        video: bool,
+        caller: Option<String>,
+    ) {
+        let roster = offer.group.clone();
         let info = {
             let mut calls = lock(&self.calls);
             let ringing = calls.iter().any(|s| s.info.phase == CallPhase::Ringing);
@@ -326,6 +349,8 @@ impl Center {
             let mut session = self.new_session(chat, true, video, CallPhase::Ringing);
             session.wa_id = Some(offer.action.call_id().to_owned());
             session.offer = Some(offer);
+            session.info.group = caller.is_some();
+            session.info.caller = caller;
             let info = session.info.clone();
             calls.push(session);
             info
@@ -333,6 +358,9 @@ impl Center {
         let id = info.session;
         log::info!("calls: incoming call");
         self.publish(info);
+        if let Some(roster) = roster {
+            self.group_updated(id, *roster);
+        }
         let center = self.clone();
         tokio::spawn(async move {
             tokio::time::sleep(RING_IN).await;
@@ -438,6 +466,7 @@ impl Center {
                         upgrade_token,
                         ..
                     } => center.peer_video_state(id, state, upgrade_token),
+                    CallEvent::GroupUpdated(update) => center.group_updated(id, *update),
                     CallEvent::VideoKeyframeNeeded => {
                         let listener = lock(&center.listener).clone();
                         if let Some(listener) = listener {
@@ -633,7 +662,7 @@ impl Center {
     pub fn set_camera(self: &Arc<Self>, on: bool) {
         let Some((id, handle, upgrade, peer_video)) = lock(&self.calls)
             .iter()
-            .find(|s| s.has_media() && s.handle.is_some())
+            .find(|s| s.has_media() && s.handle.is_some() && !s.info.group)
             .map(|s| {
                 (
                     s.info.session,
@@ -710,6 +739,52 @@ impl Center {
         }
     }
 
+    /// Whether the stanza belongs to one of our group calls.
+    fn is_group(&self, call: &IncomingCall) -> bool {
+        lock(&self.calls)
+            .iter()
+            .any(|s| s.wa_id.as_deref() == Some(call.action.call_id()) && s.info.group)
+    }
+
+    /// Whether the stanza's call already has media here.
+    fn has_media(&self, call: &IncomingCall) -> bool {
+        lock(&self.calls)
+            .iter()
+            .any(|s| s.wa_id.as_deref() == Some(call.action.call_id()) && s.has_media())
+    }
+
+    /// A new roster for group call `id`: who is in, by chat id, without us.
+    /// The first member in makes our outgoing group call live.
+    fn group_updated(self: &Arc<Self>, id: u64, update: GroupCallUpdate) {
+        let Some((client, runtime)) = self.client() else {
+            return;
+        };
+        let center = self.clone();
+        runtime.spawn(async move {
+            let own: Vec<String> = [client.pn(), client.lid()]
+                .into_iter()
+                .flatten()
+                .map(|jid| jid.user_base().to_owned())
+                .collect();
+            let mut participants = Vec::new();
+            for member in update.participants {
+                let jid = member.pn.clone().unwrap_or(member.jid);
+                if own.iter().any(|own| own == jid.user_base()) {
+                    continue;
+                }
+                participants.push(CallParticipant {
+                    chat: canonical(&client, &jid).await,
+                    joined: member.state.as_deref() == Some("connected"),
+                });
+            }
+            let anyone_in = participants.iter().any(|p| p.joined);
+            center.update(id, |session| session.info.participants = participants);
+            if anyone_in {
+                center.apply(id, Signal::PeerAccepted);
+            }
+        });
+    }
+
     pub fn push_microphone(&self, samples: Vec<i16>) {
         let calls = lock(&self.calls);
         if let Some(microphone) = calls.iter().find_map(|s| s.microphone.as_ref()) {
@@ -750,21 +825,25 @@ impl Center {
                 if call.offline {
                     return;
                 }
-                if group_jid.is_some() {
-                    log::info!("calls: group calls are left to the phone");
-                    return;
-                }
                 let Some((client, runtime)) = self.client() else {
                     return;
                 };
                 let center = self.clone();
                 let offer = call.clone();
                 let video = *is_video;
+                let group = group_jid.as_ref().map(Jid::to_non_ad_string);
                 runtime.spawn(async move {
-                    let chat = chat_of(&client, &offer).await;
-                    center.ring(offer, chat, video);
+                    let from = chat_of(&client, &offer).await;
+                    match group {
+                        // A group's call files under the group; who rang is the caller.
+                        Some(group) => center.ring(offer, group, video, Some(from)),
+                        None => center.ring(offer, from, video, None),
+                    }
                 });
             }
+            // In a group, members answer and decline one by one; the roster
+            // says who is in.
+            CallAction::Accept { .. } | CallAction::Reject { .. } if self.is_group(call) => {}
             CallAction::Accept { .. } => {
                 if let Some(id) = by_id(self) {
                     self.apply(id, Signal::PeerAccepted);
@@ -788,6 +867,11 @@ impl Center {
                     self.apply(id, Signal::PeerRejected);
                 }
             }
+            // One member leaving a group call ends it for nobody else.
+            CallAction::Terminate { reason, .. }
+                if self.is_group(call)
+                    && reason.as_deref() != Some("group_call_ended")
+                    && self.has_media(call) => {}
             CallAction::Terminate { reason, .. } => {
                 if let Some(id) = by_id(self) {
                     let signal = match reason.as_deref() {

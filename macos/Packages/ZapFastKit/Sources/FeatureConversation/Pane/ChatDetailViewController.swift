@@ -279,13 +279,18 @@ public final class ChatDetailViewController: NSViewController {
             item.isHidden = shownChat == nil
         }
         items[Self.callItem]?.isHidden = !Self.canCall(shownChat, model: model)
-        items[Self.videoCallItem]?.isHidden = !Self.canCall(shownChat, model: model)
+        items[Self.videoCallItem]?.isHidden = !Self.canCall(shownChat, model: model) || shownChat?.kind != .direct
     }
 
-    /// A person's chat, other than our own, can be called.
+    /// A person's chat, other than our own, can be called, and so can a
+    /// group we are still in (with voice only).
     static func canCall(_ chat: ChatSummary?, model: AppModel) -> Bool {
-        guard let chat, chat.kind == .direct, !chat.isChannel, !chat.readOnly else { return false }
-        return !model.session.isOurs(chat.id)
+        guard let chat, !chat.isChannel else { return false }
+        switch chat.kind {
+        case .direct: return !chat.readOnly && !model.session.isOurs(chat.id)
+        case .group: return !chat.left
+        case .broadcast: return false
+        }
     }
 
     @objc private func call() {

@@ -13,7 +13,6 @@ struct VideoCallContent: View {
     let model: AppModel
 
     static let size = CGSize(width: 360, height: 480)
-    private var hidden: Bool { model.appLock.isLocked }
 
     var body: some View {
         ZStack {
@@ -22,17 +21,7 @@ struct VideoCallContent: View {
                 LayerView(layer: model.calls.remoteVideo.layer, quarterTurns: model.calls.remoteOrientation)
             } else {
                 VStack(spacing: 10) {
-                    if hidden {
-                        AvatarView(url: nil, seed: "call", placeholder: .symbol("phone.fill"), size: 84)
-                    } else {
-                        AvatarView(
-                            url: model.avatars.url(for: call.chat),
-                            seed: call.chat,
-                            placeholder: .initials(model.chats.displayName(call.chat)),
-                            size: 84,
-                            version: model.avatars.version(for: call.chat)
-                        )
-                    }
+                    CallAvatar(call: call, model: model, size: 84)
                     Text(call.phase == .active ? String(localized: "Camera off") : CallStatus.describe(call))
                         .font(.callout)
                         .foregroundStyle(.white.opacity(0.8))
@@ -41,7 +30,7 @@ struct VideoCallContent: View {
             VStack(spacing: 0) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(hidden ? String(localized: "WhatsApp Call") : model.chats.displayName(call.chat))
+                        Text(CallFace.name(call, model: model))
                             .font(.headline)
                             .lineLimit(1)
                         CallStatus(call: call, connectedAt: model.calls.connectedAt)

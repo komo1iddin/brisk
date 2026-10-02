@@ -33,7 +33,7 @@ import ZapFastCore
 ///   scroll view with whole numbers, to try AppKit's settings live.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
-/// - `call:<ringing|calling|active|muted|waiting|video|request|ended|none>`: shows the call
+/// - `call:<ringing|calling|active|muted|waiting|video|request|group|groupringing|ended|none>`: shows the call
 ///   window for a made-up number, with no sound and no network;
 ///   `shot:call` captures it.
 @MainActor
@@ -196,7 +196,8 @@ enum DebugCommands {
             let phase: CallPhase? = switch shown {
             case "ringing": .ringing
             case "calling": .calling
-            case "active", "muted", "waiting", "video", "request": .active
+            case "active", "muted", "waiting", "video", "request", "group": .active
+            case "groupringing": .ringing
             case "ended": .ended(reason: .peerHungUp)
             default: nil
             }
@@ -205,7 +206,13 @@ enum DebugCommands {
                     session: session, chat: chat, incoming: phase == .ringing,
                     videoOffered: shown == "video", phase: phase, muted: shown == "muted",
                     camera: false, peerVideo: shown == "video" && session == 1,
-                    videoRequested: shown == "request" && session == 1
+                    videoRequested: shown == "request" && session == 1,
+                    group: shown.hasPrefix("group"), caller: shown.hasPrefix("group") ? "998922222222@s.whatsapp.net" : nil,
+                    participants: shown == "group" ? [
+                        CallParticipant(chat: "998922222222@s.whatsapp.net", joined: true),
+                        CallParticipant(chat: "998933333333@s.whatsapp.net", joined: true),
+                        CallParticipant(chat: "998944444444@s.whatsapp.net", joined: false),
+                    ] : []
                 )
             }
             model.calls.debugShow(

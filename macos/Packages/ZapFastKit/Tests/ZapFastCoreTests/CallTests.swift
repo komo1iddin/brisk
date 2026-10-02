@@ -17,7 +17,7 @@ struct CallTests {
     ) -> CallInfo {
         CallInfo(
             session: session, chat: chat, incoming: incoming, videoOffered: false, phase: phase, muted: muted,
-            camera: camera, peerVideo: false, videoRequested: false
+            camera: camera, peerVideo: false, videoRequested: false, group: false, caller: nil, participants: []
         )
     }
 

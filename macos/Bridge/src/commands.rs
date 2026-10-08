@@ -429,7 +429,12 @@ impl BridgeCommand {
                 id: message,
                 before: before.into(),
             },
-            Self::FetchOlder { chat } => Command::FetchOlder(chat),
+            // The app tells the reader about a silent phone itself
+            // (`PhoneHistory`), so upstream's one-time warning stays off.
+            Self::FetchOlder { chat } => Command::FetchOlder {
+                chat,
+                explicit: false,
+            },
             Self::MarkRead { chat, receipts } => Command::MarkRead { chat, receipts },
             Self::MarkUnread { chat } => Command::MarkUnread(chat),
             Self::Download {

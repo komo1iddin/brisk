@@ -27,6 +27,9 @@ const SENDER_AVATAR: f32 = 28.0;
 const BODY_SIZE: f32 = 14.5;
 /// Extra space above the first message of a run from one side.
 const RUN_GAP: f32 = 5.0;
+/// The side of a selecting row's check box, and the column that holds it.
+const SELECT_BOX: f32 = 18.0;
+const SELECT_GUTTER: f32 = SELECT_BOX + 14.0;
 /// Footer label on an outgoing message that failed to send.
 const NOT_SENT: &str = "Not sent";
 const NOT_SENT_HINT: &str =
@@ -57,14 +60,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     );
     // The chat list, or its rail of avatars, stands at the header's level
     // beside the conversation: it casts the same shadow across it, from
-    // under the header down.
-    widgets::paint_shadow_beside(
-        ui,
-        &app.palette,
-        header.left(),
-        header.bottom(),
-        ui.max_rect().bottom(),
-    );
+    // under the header down. A narrow window has no list beside it.
+    if !super::narrow(ui.ctx()) {
+        widgets::paint_shadow_beside(
+            ui,
+            &app.palette,
+            header.left(),
+            header.bottom(),
+            ui.max_rect().bottom(),
+        );
+    }
 }
 
 fn empty(app: &mut App, ui: &mut egui::Ui) {
@@ -125,12 +130,19 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
             if theme::macos_chrome(ui.ctx()) {
                 super::titlebar_drag(ui, ui.max_rect());
             }
+            let narrow = super::narrow(ui.ctx());
             let row = ui.horizontal(|ui| {
                 // Give both rows a fixed height so their contents align.
                 ui.set_min_height(HEADER_ROW);
+                // With no chat list beside it, the header clears the traffic
+                // lights itself.
+                if narrow && theme::macos_chrome(ui.ctx()) {
+                    ui.add_space(theme::traffic_light_inset(ui.ctx()));
+                }
                 let picture = app.avatar(&chat.id);
                 let (subtitle, color) = subtitle(app, chat);
-                let right_controls = 72.0;
+                // More and Search, and Back in a narrow window.
+                let right_controls = if narrow { 108.0 } else { 72.0 };
                 // Treat the avatar, name, and subtitle as one info button.
                 let block = ui
                     .scope(|ui| {
@@ -221,6 +233,7 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
                 } else {
                     crate::i18n::gettext(app.locale, "Leave group")
                 };
+                let select_messages_label = crate::i18n::gettext(app.locale, "Select messages");
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let more = theme::icon_button(
                         ui,
@@ -234,6 +247,7 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
                         ui,
                         &[
                             "Info",
+                            select_messages_label.as_ref(),
                             "Pin to top",
                             "Unarchive",
                             "Clear chat",
@@ -255,6 +269,14 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
                             if widgets::menu_item(ui, &palette, Some(Icon::Info), "Info") {
                                 app.actions
                                     .push(Action::ShowDialog(Dialog::ChatInfo(chat.id.clone())));
+                            }
+                            if widgets::menu_item(
+                                ui,
+                                &palette,
+                                Some(Icon::Check),
+                                select_messages_label.as_ref(),
+                            ) {
+                                app.actions.push(Action::StartSelection);
                             }
                             if widgets::menu_item(
                                 ui,
@@ -342,6 +364,24 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
                             Action::OpenChatSearch
                         });
                     }
+                    // A narrow window shows the list or the chat, not both;
+                    // this is the way back to the list.
+                    if narrow {
+                        let back = theme::icon_button(
+                            ui,
+                            Icon::ArrowLeft,
+                            18.0,
+                            palette.secondary,
+                            palette.text,
+                            "Back to chats",
+                        )
+                        .tab_stop(Stop::Back);
+                        ui.ctx()
+                            .data_mut(|data| data.insert_temp(back_button_id(), back.rect));
+                        if back.clicked() {
+                            app.actions.push(Action::CloseChat);
+                        }
+                    }
                 });
             });
             ui.ctx()
@@ -349,6 +389,11 @@ fn header(app: &mut App, ui: &mut egui::Ui, chat: &Chat) -> Rect {
         })
         .response
         .rect
+}
+
+/// Where a narrow window's Back was laid out, for interaction tests.
+pub(crate) fn back_button_id() -> egui::Id {
+    egui::Id::new("conversation-back")
 }
 
 /// Where the conversation header's row was laid out, for layout tests.
@@ -1736,7 +1781,7 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
         locale: app.locale,
         chat,
         me: app.me.as_deref(),
-        auto_download: app.settings.auto_download,
+        auto_download: app.account().settings.auto_download,
         connected: app.link.is_connected(),
         poll_voting: &app.poll_voting,
         interactive_pending: &app.interactive_sending,
@@ -2059,8 +2104,32 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
                             .as_ref()
                             .filter(|jump| jump.message == message.id)
                             .map(|_| (ui.painter().add(egui::Shape::Noop), ui.cursor().top()));
-                        let response =
-                            bubble(ui, &view, message, show_sender, first_in_run, &mut actions);
+                        // While selecting, every row gains a check box in a
+                        // column on the left and a band behind it, as in
+                        // WhatsApp Web, painted under the row once its height
+                        // is known.
+                        let band = selection
+                            .as_ref()
+                            .map(|_| (ui.painter().add(egui::Shape::Noop), ui.cursor().top()));
+                        let response = if selection.is_some() {
+                            ui.horizontal_top(|ui| {
+                                ui.add_space(SELECT_GUTTER);
+                                ui.vertical(|ui| {
+                                    bubble(
+                                        ui,
+                                        &view,
+                                        message,
+                                        show_sender,
+                                        first_in_run,
+                                        &mut actions,
+                                    )
+                                })
+                                .inner
+                            })
+                            .inner
+                        } else {
+                            bubble(ui, &view, message, show_sender, first_in_run, &mut actions)
+                        };
                         if let Some((slot, top)) = flash {
                             if view.anchor == Some(message.id.as_str()) && response.is_some() {
                                 jump_since.set(Some(time));
@@ -2088,38 +2157,112 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
                                 ui.ctx().request_repaint();
                             }
                         }
-                        if let (Some(selected), Some(response)) = (&selection, &response) {
-                            if selected.contains(&message.id) {
-                                ui.painter().rect(
-                                    response.rect.expand(2.0),
-                                    10.0,
-                                    palette.accent.gamma_multiply(0.18),
-                                    Stroke::new(2.0, palette.accent),
-                                    egui::StrokeKind::Outside,
-                                );
-                            }
+                        if let (Some(selected), Some(response), Some((slot, top))) =
+                            (&selection, &response, band)
+                        {
+                            let checked = selected.contains(&message.id);
+                            let selectable = crate::app::can_select(&message.content);
                             // While selecting, a click anywhere on the row picks
-                            // the message: its text, links and media, and the
-                            // strip beside it, not only the bubble's padding
-                            // (#241). Registered after the row, so it takes
-                            // those clicks, and drags, which sweep messages
-                            // rather than text (#246).
+                            // the message: its check box, text, links and media,
+                            // and the strip beside it, from one edge of the view
+                            // to the other (#241). Registered after the row, so
+                            // it takes those clicks, and drags, which sweep
+                            // messages rather than text (#246).
+                            // Half the gap to each neighbour, so the space
+                            // between rows picks one of them too.
                             let row = Rect::from_x_y_ranges(
-                                ui.max_rect().x_range(),
-                                response.rect.y_range(),
-                            );
+                                viewport.x_range(),
+                                top..=ui.min_rect().bottom(),
+                            )
+                            .expand2(vec2(0.0, ui.spacing().item_spacing.y / 2.0));
                             let pick = ui.interact(
                                 row,
                                 bubble_id(&chat.id, &message.id).with("pick"),
-                                Sense::click_and_drag(),
+                                if selectable {
+                                    Sense::click_and_drag()
+                                } else {
+                                    Sense::hover()
+                                },
                             );
+                            let fill = if checked {
+                                palette.accent.gamma_multiply(0.16)
+                            } else if pick.hovered() {
+                                palette.text.gamma_multiply(0.05)
+                            } else {
+                                Color32::TRANSPARENT
+                            };
+                            ui.painter()
+                                .set(slot, egui::Shape::rect_filled(row, 0.0, fill));
+                            // Beside the bubble as drawn this frame: the
+                            // response carries the rect it had the frame before.
+                            let drawn = ui
+                                .ctx()
+                                .data(|data| {
+                                    data.get_temp::<Rect>(
+                                        bubble_id(&chat.id, &message.id).with("rect"),
+                                    )
+                                })
+                                .unwrap_or(response.rect);
+                            let check = Rect::from_center_size(
+                                pos2(ui.max_rect().left() + SELECT_BOX / 2.0, drawn.center().y),
+                                Vec2::splat(SELECT_BOX),
+                            );
+                            // Only forwardable messages get a box.
+                            if selectable {
+                                select_box(ui, &palette, check, checked);
+                                if pick.has_focus()
+                                    && ui.ctx().data(|data| {
+                                        data.get_temp::<bool>(theme::keyboard_focus_id())
+                                            .unwrap_or(false)
+                                    })
+                                {
+                                    keyboard_navigation.set(true);
+                                }
+                                theme::reveal_focus(&pick);
+                                theme::focus_outline(ui, pick.id, check.expand(3.0), 4.0);
+                                pick.widget_info(|| {
+                                    let sender = if message.from_me {
+                                        crate::i18n::gettext(view.locale, "You").into_owned()
+                                    } else {
+                                        (view.names_or)(
+                                            &message.sender,
+                                            message.sender_name.as_deref(),
+                                        )
+                                    };
+                                    let summary: String =
+                                        message.content.summary().chars().take(120).collect();
+                                    let label = crate::i18n::gettext(
+                                        view.locale,
+                                        "Select message from {sender}, {time}: {summary}",
+                                    )
+                                    .replace("{sender}", &sender)
+                                    .replace(
+                                        "{time}",
+                                        &crate::util::moment_stamp(view.locale, message.timestamp),
+                                    )
+                                    .replace("{summary}", &summary);
+                                    egui::WidgetInfo::selected(
+                                        egui::WidgetType::Checkbox,
+                                        pick.enabled(),
+                                        checked,
+                                        label,
+                                    )
+                                });
+                                #[cfg(any(test, feature = "demo"))]
+                                ui.ctx().data_mut(|data| {
+                                    data.insert_temp(
+                                        bubble_id(&chat.id, &message.id).with("check"),
+                                        check,
+                                    );
+                                });
+                            }
                             if pick.drag_started() {
                                 actions.push(Action::SweepMessages {
                                     anchor: message.id.clone(),
                                     to: message.id.clone(),
                                 });
                             }
-                            if response.clicked() || pick.clicked() {
+                            if selectable && (response.clicked() || pick.clicked()) {
                                 let shift = ui.input(|input| input.modifiers.shift);
                                 actions.push(if shift {
                                     Action::SelectRange(message.id.clone())
@@ -2130,6 +2273,7 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
                         } else if let Some(response) = &response
                             && response.clicked()
                             && ui.input(|input| input.modifiers.command)
+                            && crate::app::can_select(&message.content)
                         {
                             // Ctrl-click (Command-click on macOS) starts a selection.
                             actions.push(Action::SelectMessage(message.id.clone()));
@@ -2262,6 +2406,7 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
     let complete = conversation.complete;
     let loading = conversation.loading_older;
     let fetching = conversation.fetching_phone;
+    let fetching_explicit = conversation.phone_explicit;
     let exhausted = conversation.phone_exhausted;
     conversation.rows = rows;
     // Keep the rows on screen where they were when rows above them changed
@@ -2354,8 +2499,18 @@ fn messages(app: &mut App, ui: &mut egui::Ui, chat: &Chat) {
     // request more immediately.
     let fits = output.content_size.y <= output.inner_rect.height() + 1.0;
     let near_top = output.state.offset.y < 80.0;
-    if (near_top || fits) && ((!complete && !loading) || (complete && !fetching && !exhausted)) {
-        actions.push(Action::LoadOlder(chat.id.clone()));
+    // Only a transcript the reader scrolled up through is their ask; a short
+    // chat, or one still on its way to the end, is not.
+    let explicit = near_top && !fits && !scroll_to_bottom;
+    // A reader reaching the top while an automatic request waits claims it.
+    let claim = fetching && explicit && !fetching_explicit;
+    if (near_top || fits)
+        && ((!complete && !loading) || (complete && (!fetching || claim) && !exhausted))
+    {
+        actions.push(Action::LoadOlder {
+            chat: chat.id.clone(),
+            explicit,
+        });
     }
     app.actions.extend(actions);
     if edge_scrolled_up {
@@ -3309,6 +3464,7 @@ fn bubble_frame(
             "Copy message ID",
             &crate::i18n::gettext(view.locale, "Open in system player"),
             &crate::i18n::gettext(view.locale, "Message info"),
+            &crate::i18n::gettext(view.locale, "Reload earlier messages"),
         ],
         true,
     )
@@ -4019,21 +4175,17 @@ fn context_menu(ui: &mut egui::Ui, view: &View<'_>, message: &Message, actions: 
     {
         actions.push(Action::Reply(message.id.clone()));
     }
-    if !matches!(
-        message.content,
-        Content::Revoked
-            | Content::Unsupported { .. }
-            | Content::PhoneOnly { .. }
-            | Content::Poll { .. }
-            | Content::Interactive { .. }
-    ) && widgets::menu_item(ui, &palette, Some(Icon::Forward), "Forward")
+    if crate::app::can_select(&message.content)
+        && widgets::menu_item(ui, &palette, Some(Icon::Forward), "Forward")
     {
         actions.push(Action::ShowDialog(Dialog::Forward {
             chat: chat.clone(),
             messages: vec![message.id.clone()],
         }));
     }
-    if widgets::menu_item(ui, &palette, Some(Icon::Check), "Select") {
+    if crate::app::can_select(&message.content)
+        && widgets::menu_item(ui, &palette, Some(Icon::Check), "Select")
+    {
         actions.push(Action::SelectMessage(message.id.clone()));
     }
     let text = match &message.content {
@@ -4176,6 +4328,18 @@ fn context_menu(ui: &mut egui::Ui, view: &View<'_>, message: &Message, actions: 
             message: message.id.clone(),
         }));
     }
+    if widgets::menu_item_enabled(
+        ui,
+        &palette,
+        Some(Icon::Refresh),
+        &crate::i18n::gettext(view.locale, "Reload earlier messages"),
+        view.connected && !matches!(message.status, Delivery::Pending | Delivery::Failed),
+    ) {
+        actions.push(Action::ReloadHistory {
+            chat: chat.clone(),
+            message: message.id.clone(),
+        });
+    }
     // The id helps when looking a message up for a bug report.
     if widgets::menu_item(ui, &palette, Some(Icon::Copy), "Copy message ID") {
         actions.push(Action::CopyText(message.id.clone()));
@@ -4240,6 +4404,35 @@ struct SharedContact {
     /// parameter WhatsApp adds, or a number written in international form.
     /// A local number without a country code cannot name one.
     account: Option<String>,
+    /// The first name from the card's structured `N` property, middle names
+    /// included, for the contact editor; none when the card has none.
+    first_name: Option<String>,
+}
+
+/// The first name in a vCard `N` value
+/// (`family;given;additional;prefix;suffix`), middle names included.
+/// Components are split at unescaped semicolons only.
+fn vcard_first_name(value: &str) -> Option<String> {
+    let mut parts = vec![String::new()];
+    let mut chars = value.chars();
+    while let Some(character) = chars.next() {
+        match character {
+            '\\' => match chars.next() {
+                Some('n' | 'N') => parts.last_mut()?.push(' '),
+                Some(escaped) => parts.last_mut()?.push(escaped),
+                None => {}
+            },
+            ';' => parts.push(String::new()),
+            _ => parts.last_mut()?.push(character),
+        }
+    }
+    let part = |index: usize| parts.get(index).map_or("", |part| part.trim());
+    let first = [part(1), part(2)]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    (!first.is_empty()).then_some(first)
 }
 
 fn vcard_tel_account(property: &str, value: &str) -> Option<String> {
@@ -4259,6 +4452,7 @@ fn vcard_tel_account(property: &str, value: &str) -> Option<String> {
 
 fn shared_contact_details(vcard: &str, fallback_name: &str) -> Option<SharedContact> {
     let mut name = None;
+    let mut first_name = None;
     let mut first_phone = None;
     let mut preferred_phone: Option<(u8, (String, Option<String>))> = None;
     let mut first_card: Vec<String> = Vec::new();
@@ -4294,6 +4488,8 @@ fn shared_contact_details(vcard: &str, fallback_name: &str) -> Option<SharedCont
         let property_name = raw_name.rsplit('.').next().unwrap_or(raw_name);
         if property_name.eq_ignore_ascii_case("FN") {
             name = Some(value.trim().to_owned());
+        } else if property_name.eq_ignore_ascii_case("N") {
+            first_name = vcard_first_name(value);
         } else if property_name.eq_ignore_ascii_case("TEL") {
             let number = value.trim().to_owned();
             if number.chars().filter(char::is_ascii_digit).count() < 7 {
@@ -4320,6 +4516,7 @@ fn shared_contact_details(vcard: &str, fallback_name: &str) -> Option<SharedCont
         name,
         number,
         account,
+        first_name,
     })
 }
 
@@ -4591,6 +4788,7 @@ fn content(
                     match details.as_ref() {
                         Some(SharedContact {
                             account: Some(account),
+                            first_name,
                             ..
                         }) => {
                             let id = format!("{account}@s.whatsapp.net");
@@ -4617,7 +4815,10 @@ fn content(
                                     )
                                     .clicked()
                                 {
-                                    let (first, last) = crate::util::split_name(name);
+                                    // Split where the card's first name ends, so a
+                                    // first name of several words stays whole.
+                                    let (first, last) =
+                                        crate::util::editor_names(name, first_name.as_deref());
                                     actions.push(Action::NewContact {
                                         phone: account.clone(),
                                         first,
@@ -4959,6 +5160,7 @@ fn carousel_row(message: &Message, index: usize, card: &crate::model::Interactiv
         sender_name: message.sender_name.clone(),
         from_me: message.from_me,
         timestamp: message.timestamp,
+        history_order: message.history_order,
         content: Content::Interactive {
             text: card.body.clone(),
             card: None,
@@ -6942,6 +7144,21 @@ pub(crate) fn recording_wave_id() -> egui::Id {
     egui::Id::new("recording-wave")
 }
 
+/// A selecting row's check box: an outline, or ticked in the accent.
+fn select_box(ui: &egui::Ui, palette: &Palette, rect: Rect, checked: bool) {
+    if checked {
+        ui.painter().rect_filled(rect, 4.0, palette.accent);
+        theme::paint_icon(ui, Icon::Check, rect, 14.0, palette.on_accent);
+    } else {
+        ui.painter().rect_stroke(
+            rect,
+            4.0,
+            Stroke::new(1.5, palette.secondary),
+            egui::StrokeKind::Inside,
+        );
+    }
+}
+
 /// Replaces the composer while messages are selected.
 fn selection_bar(app: &mut App, ui: &mut egui::Ui, chat: &str, selected: &[String]) {
     let palette = app.palette;
@@ -6966,7 +7183,14 @@ fn selection_bar(app: &mut App, ui: &mut egui::Ui, chat: &str, selected: &[Strin
         };
         theme::text(ui, &count, theme::medium(14.5), palette.text);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if theme::pill_button(ui, &palette, "Forward…", true).clicked() {
+            // The selection stays open with nothing in it, as its check
+            // boxes do; there is nothing to forward until one is ticked.
+            let forward = ui
+                .add_enabled_ui(!selected.is_empty(), |ui| {
+                    theme::pill_button(ui, &palette, "Forward…", true)
+                })
+                .inner;
+            if forward.clicked() {
                 app.actions.push(Action::ShowDialog(Dialog::Forward {
                     chat: chat.to_owned(),
                     messages: selected.to_vec(),
@@ -7033,7 +7257,43 @@ mod tests {
             name: name.to_owned(),
             number: number.to_owned(),
             account: account.map(str::to_owned),
+            first_name: None,
         })
+    }
+
+    #[test]
+    fn a_shared_contact_keeps_the_first_name_of_its_card() {
+        let first = |card: &str| {
+            shared_contact_details(card, "Fallback")
+                .expect("a contact")
+                .first_name
+        };
+        // A first name of two words stays whole, as the card has it (#314).
+        assert_eq!(
+            first("BEGIN:VCARD\nN:;My Dih;;;\nFN:My Dih\nTEL:+15550101234\nEND:VCARD").as_deref(),
+            Some("My Dih")
+        );
+        assert_eq!(
+            first("BEGIN:VCARD\nN:Evans;Mary;Ann;;\nTEL:+15550101234\nEND:VCARD").as_deref(),
+            Some("Mary Ann")
+        );
+        assert_eq!(
+            first("BEGIN:VCARD\nN:Smith;Ada\\;Jo;;\nTEL:+15550101234\nEND:VCARD").as_deref(),
+            Some("Ada;Jo")
+        );
+        assert_eq!(
+            first("BEGIN:VCARD\nN:山田;太郎;;;\nTEL:+15550101234\nEND:VCARD").as_deref(),
+            Some("太郎")
+        );
+        // Without a structured first name nothing is known.
+        assert_eq!(
+            first("BEGIN:VCARD\nN:Evans;;;;\nTEL:+15550101234\nEND:VCARD"),
+            None
+        );
+        assert_eq!(
+            first("BEGIN:VCARD\nFN:Ada Lovelace\nTEL:+15550101234\nEND:VCARD"),
+            None
+        );
     }
 
     #[test]
@@ -7254,6 +7514,7 @@ mod tests {
             read_at: None,
             quoted: None,
             reactions: Vec::new(),
+            history_order: None,
             edited: false,
             mentions: Vec::new(),
             forwarded: false,
@@ -7366,6 +7627,7 @@ mod reaction_tests {
             read_at: None,
             quoted: None,
             reactions,
+            history_order: None,
             edited: false,
             mentions: Vec::new(),
             forwarded: false,

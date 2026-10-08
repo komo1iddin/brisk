@@ -96,7 +96,9 @@ impl BridgeClient {
         crate::calls::open_log(&dirs.state);
         let (waker, signal) = crate::pump::waker();
         let archive = dirs.archive_db();
-        let mut backend = Backend::spawn(dirs, waker);
+        // One account, kept where the app has always kept it: upstream's account
+        // folders are for its several-accounts window, which this app has not.
+        let mut backend = Backend::spawn(dirs.as_account(), waker);
         // Upstream waits for its first window frame before touching storage;
         // our window is Swift's, which is already up when it calls start.
         if let Some(startup) = backend.take_startup() {

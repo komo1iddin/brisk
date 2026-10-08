@@ -481,6 +481,8 @@ impl From<Message> for MessageRecord {
             sender_name,
             from_me,
             timestamp,
+            // The archive already pages in the phone's order.
+            history_order: _,
             content,
             status,
             delivered_at,

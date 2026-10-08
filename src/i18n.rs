@@ -30,11 +30,17 @@ pub enum Locale {
     Russian,
     #[serde(rename = "zh-Hans")]
     ChineseSimplified,
+    #[serde(rename = "zh-Hant")]
+    ChineseTraditional,
+    #[serde(rename = "tr")]
+    Turkish,
+    #[serde(rename = "id")]
+    Indonesian,
 }
 
 impl Locale {
     /// Every locale shown in the language picker, in a stable order.
-    pub const ALL: [Locale; 8] = [
+    pub const ALL: [Locale; 11] = [
         Self::English,
         Self::PortugueseBrazil,
         Self::German,
@@ -43,6 +49,9 @@ impl Locale {
         Self::French,
         Self::Russian,
         Self::ChineseSimplified,
+        Self::ChineseTraditional,
+        Self::Turkish,
+        Self::Indonesian,
     ];
 
     /// The language's own name, for the picker.
@@ -56,13 +65,16 @@ impl Locale {
             Self::French => "Français",
             Self::Russian => "Русский",
             Self::ChineseSimplified => "简体中文",
+            Self::ChineseTraditional => "繁體中文",
+            Self::Turkish => "Türkçe",
+            Self::Indonesian => "Bahasa Indonesia",
         }
     }
 
     /// Maps a system language tag (BCP 47 or POSIX) to a supported locale by
     /// its language subtag, so `pt-PT` and `pt_BR` both resolve to Portuguese.
     /// Chinese is the exception: its script decides, so a reader who asked for
-    /// Traditional keeps English instead of getting the wrong characters.
+    /// Traditional does not get Simplified characters and the other way round.
     pub fn from_system(identifier: &str) -> Option<Locale> {
         fastframe_i18n::LanguageTag::parse(identifier).and_then(|tag| Self::from_tag(&tag))
     }
@@ -76,16 +88,18 @@ impl Locale {
             "it" => Self::Italian,
             "fr" => Self::French,
             "ru" => Self::Russian,
+            "tr" => Self::Turkish,
+            "id" => Self::Indonesian,
             "zh" => match (tag.script.as_deref(), tag.region.as_deref()) {
                 // An explicit script decides on its own: a tag that asks for
                 // Simplified and names a region where Traditional is the
                 // default, such as `zh-Hans-HK`, is still Simplified. The
                 // region only speaks for the tags that name no script.
                 (Some("hans"), _) => Self::ChineseSimplified,
-                (Some("hant"), _) => return None,
+                (Some("hant"), _) => Self::ChineseTraditional,
                 // Windows writes the legacy `zh-CHT` region, macOS and Linux
                 // the region subtag.
-                (_, Some("tw" | "hk" | "mo" | "cht")) => return None,
+                (_, Some("tw" | "hk" | "mo" | "cht")) => Self::ChineseTraditional,
                 _ => Self::ChineseSimplified,
             },
             _ => return None,
@@ -103,6 +117,9 @@ impl fastframe_i18n::Locale for Locale {
             Self::Italian => Some(&it::Translator),
             Self::Russian => Some(&ru::Translator),
             Self::ChineseSimplified => Some(&zh_hans::Translator),
+            Self::ChineseTraditional => Some(&zh_hant::Translator),
+            Self::Turkish => Some(&tr::Translator),
+            Self::Indonesian => Some(&id::Translator),
             Self::English => None,
         }
     }
@@ -149,10 +166,8 @@ mod tests {
             Locale::from_system("zh_CN.GB2312"),
             Some(Locale::ChineseSimplified)
         );
-        // Traditional Chinese has no catalog, so it keeps English rather than
-        // showing Simplified characters to a reader who asked for another script.
-        // A script the tag names itself decides, even beside a region whose
-        // own default is the other one.
+        // A script the tag names itself decides, even beside a region whose own
+        // default is the other one.
         assert_eq!(
             Locale::from_system("zh-Hans-TW"),
             Some(Locale::ChineseSimplified)
@@ -165,10 +180,39 @@ mod tests {
             Locale::from_system("zh-Hans-CN"),
             Some(Locale::ChineseSimplified)
         );
-        assert_eq!(Locale::from_system("zh-Hant-CN"), None);
-        assert_eq!(Locale::from_system("zh-TW"), None);
-        assert_eq!(Locale::from_system("zh-Hant"), None);
-        assert_eq!(Locale::from_system("zh-CHT"), None);
+        assert_eq!(
+            Locale::from_system("zh-Hant-CN"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(
+            Locale::from_system("zh-TW"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(
+            Locale::from_system("zh-Hant"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(
+            Locale::from_system("zh-HK"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(
+            Locale::from_system("zh-MO"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(
+            Locale::from_system("zh-CHT"),
+            Some(Locale::ChineseTraditional)
+        );
+        // The POSIX form macOS and Linux report for a Traditional system.
+        assert_eq!(
+            Locale::from_system("zh_TW.UTF-8"),
+            Some(Locale::ChineseTraditional)
+        );
+        assert_eq!(Locale::from_system("tr-TR"), Some(Locale::Turkish));
+        assert_eq!(Locale::from_system("tr"), Some(Locale::Turkish));
+        assert_eq!(Locale::from_system("id-ID"), Some(Locale::Indonesian));
+        assert_eq!(Locale::from_system("id"), Some(Locale::Indonesian));
         assert_eq!(Locale::from_system("en-US"), Some(Locale::English));
         assert_eq!(Locale::from_system("ja-JP"), None);
         assert_eq!(Locale::default(), Locale::English);
@@ -186,6 +230,7 @@ mod tests {
             Locale::from_system("pt_BR.UTF-8"),
             Some(Locale::PortugueseBrazil)
         );
+        assert_eq!(Locale::from_system("tr_TR.UTF-8"), Some(Locale::Turkish));
     }
 
     /// The suite asserts the English source strings, so the language of the
@@ -208,6 +253,21 @@ mod tests {
         let missing = "A string nobody has translated";
         assert_eq!(gettext(Locale::PortugueseBrazil, missing), missing);
         assert_eq!(gettext(Locale::German, missing), missing);
+    }
+
+    #[test]
+    fn message_selection_labels_use_the_portuguese_catalog() {
+        assert_eq!(
+            gettext(Locale::PortugueseBrazil, "Select messages"),
+            "Selecionar mensagens"
+        );
+        assert_eq!(
+            gettext(
+                Locale::PortugueseBrazil,
+                "Select message from {sender}, {time}: {summary}"
+            ),
+            "Selecionar mensagem de {sender} ({time}): {summary}"
+        );
     }
 
     #[test]
@@ -316,8 +376,55 @@ mod tests {
             pgettext(Locale::ChineseSimplified, "privacy", "About"),
             "个人简介"
         );
+        assert_eq!(
+            pgettext(Locale::ChineseSimplified, "profile", "About"),
+            "个人简介"
+        );
         assert_eq!(gettext(Locale::ChineseSimplified, "Groups"), "群组");
         assert_eq!(pgettext(Locale::ChineseSimplified, "sound", "None"), "无");
+    }
+
+    #[test]
+    fn chinese_traditional_catalog_translates() {
+        assert_eq!(gettext(Locale::ChineseTraditional, "Chats"), "對話");
+        assert_eq!(gettext(Locale::ChineseTraditional, "Search"), "搜尋");
+        assert_eq!(gettext(Locale::ChineseTraditional, "Settings"), "設定");
+        assert_eq!(
+            gettext(Locale::ChineseTraditional, "Type a message"),
+            "輸入訊息"
+        );
+        assert_eq!(gettext(Locale::ChineseTraditional, "Monday"), "週一");
+        assert_eq!(gettext(Locale::ChineseTraditional, "Yesterday"), "昨天");
+    }
+
+    /// Chinese has a single plural form, so one text covers every count.
+    #[test]
+    fn traditional_chinese_plural_rules_use_one_form() {
+        for count in [0, 1, 2, 21] {
+            assert_eq!(
+                ngettext(Locale::ChineseTraditional, "{} member", "{} members", count),
+                "{} 位成員"
+            );
+        }
+    }
+
+    /// The same English word with two meanings stays two different strings.
+    #[test]
+    fn traditional_chinese_contexts_stay_separate_from_plain_lookups() {
+        assert_eq!(gettext(Locale::ChineseTraditional, "About"), "關於");
+        assert_eq!(
+            pgettext(Locale::ChineseTraditional, "privacy", "About"),
+            "個人簡介"
+        );
+        assert_eq!(gettext(Locale::ChineseTraditional, "Groups"), "群組");
+        assert_eq!(pgettext(Locale::ChineseTraditional, "sound", "None"), "無");
+        // The wallpaper section's "Theme" is a colour choice, not the
+        // interface theme.
+        assert_eq!(gettext(Locale::ChineseTraditional, "Theme"), "主題");
+        assert_eq!(
+            pgettext(Locale::ChineseTraditional, "wallpaper colour", "Theme"),
+            "桌布主題"
+        );
     }
 
     #[test]
@@ -337,5 +444,57 @@ mod tests {
             ngettext(Locale::English, "{} member", "{} members", 2),
             "{} members"
         );
+    }
+
+    #[test]
+    fn turkish_catalog_translates() {
+        assert_eq!(gettext(Locale::Turkish, "Chats"), "Sohbetler");
+        assert_eq!(gettext(Locale::Turkish, "Search"), "Ara");
+        assert_eq!(gettext(Locale::Turkish, "Settings"), "Ayarlar");
+        assert_eq!(
+            gettext(Locale::Turkish, "Type a message"),
+            "Bir mesaj yazın"
+        );
+        assert_eq!(gettext(Locale::Turkish, "Monday"), "Pazartesi");
+        assert_eq!(gettext(Locale::Turkish, "Yesterday"), "Dün");
+    }
+
+    #[test]
+    fn turkish_plural_rules_cover_singular_and_plural() {
+        for (count, expected) in [(1, "{} üye"), (2, "{} üye"), (5, "{} üye")] {
+            assert_eq!(
+                ngettext(Locale::Turkish, "{} member", "{} members", count),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn indonesian_catalog_translates() {
+        assert_eq!(gettext(Locale::Indonesian, "Chats"), "Pesan");
+        assert_eq!(gettext(Locale::Indonesian, "Search"), "Cari");
+        assert_eq!(gettext(Locale::Indonesian, "Settings"), "Pengaturan");
+        assert_eq!(gettext(Locale::Indonesian, "Type a message"), "Ketik pesan");
+        assert_eq!(gettext(Locale::Indonesian, "Monday"), "Senin");
+        assert_eq!(gettext(Locale::Indonesian, "Yesterday"), "Kemarin");
+    }
+
+    #[test]
+    fn indonesian_plural_rules_cover_singular_and_plural() {
+        for (count, expected) in [(1, "{} anggota"), (2, "{} anggota"), (5, "{} anggota")] {
+            assert_eq!(
+                ngettext(Locale::Indonesian, "{} member", "{} members", count),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn turkish_contexts_stay_separate_from_plain_lookups() {
+        assert_eq!(gettext(Locale::Turkish, "About"), "Hakkımda");
+        assert_eq!(pgettext(Locale::Turkish, "privacy", "About"), "Hakkımda");
+        assert_eq!(gettext(Locale::Turkish, "Groups"), "Gruplar");
+        assert_eq!(pgettext(Locale::Turkish, "sound", "None"), "Yok");
+        assert_eq!(gettext(Locale::Turkish, "None"), "None");
     }
 }

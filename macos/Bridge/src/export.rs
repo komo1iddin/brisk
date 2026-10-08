@@ -182,6 +182,7 @@ mod tests {
             sender_name: None,
             from_me: false,
             timestamp,
+            history_order: None,
             content: Content::Text {
                 text: format!("text of {id}"),
                 preview: None,

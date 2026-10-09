@@ -201,40 +201,102 @@ final class ConversationViewController: NSViewController {
 
 /// The title bar's frosted band over the top of the timeline, with a
 /// hairline under it: what scrolls under the toolbar shows through,
-/// blurred, as in WhatsApp, never sharp over the header.
+/// blurred and veiled, as in WhatsApp's header, never sharp over it.
 ///
 /// AppKit's own edge effect needs a background the scroll view draws
 /// itself; the timeline's is the wallpaper behind it, so AppKit left the
-/// edge clear and the chat ran sharply under the toolbar. The title bar's
-/// material was close to opaque, hiding the wallpaper and the messages;
-/// the thinnest material lets both through, as WhatsApp's header does.
-final class TitleBandView: NSHostingView<TitleBlur> {
-    init() {
-        super.init(rootView: TitleBlur())
-        sizingOptions = []
-    }
+/// edge clear and the chat ran sharply under the toolbar. The system
+/// materials blur so far and tint so much that the band was nearly opaque,
+/// and SwiftUI's thinnest material at times let the messages through
+/// unblurred; a backdrop with a moderate blur under a light veil keeps the
+/// wallpaper's doodles and the messages faintly there. Core Animation's
+/// backdrop is not published: where it is missing, the title bar material
+/// stands in.
+final class TitleBandView: NSView {
+    private let backdrop: CALayer?
+    private let veil = CALayer()
+    private let hairline = CALayer()
+    private var fallback: NSVisualEffectView?
 
-    @available(*, unavailable)
-    required init(rootView: TitleBlur) { fatalError("not used") }
+    /// The blur, in points, and how much of the window's colour veils it.
+    static let blurRadius = 12.0
+    static let veilLight = 0.62
+    static let veilDark = 0.58
+
+    override init(frame: NSRect) {
+        backdrop = Self.makeBackdrop()
+        super.init(frame: frame)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .never
+        if let backdrop {
+            layer?.addSublayer(backdrop)
+            layer?.addSublayer(veil)
+        } else {
+            let material = NSVisualEffectView(frame: bounds)
+            material.material = .titlebar
+            material.blendingMode = .withinWindow
+            material.state = .followsWindowActiveState
+            material.autoresizingMask = [.width, .height]
+            addSubview(material)
+            fallback = material
+        }
+        for sublayer in [veil, hairline] {
+            sublayer.actions = ["frame": NSNull(), "position": NSNull(), "bounds": NSNull(), "backgroundColor": NSNull()]
+        }
+        layer?.addSublayer(hairline)
+    }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    override var isFlipped: Bool { true }
+
+    private static func makeBackdrop() -> CALayer? {
+        guard let backdropClass = NSClassFromString("CABackdropLayer") as? CALayer.Type,
+              let filterClass = NSClassFromString("CAFilter") as? NSObject.Type else { return nil }
+        let make = NSSelectorFromString("filterWithType:")
+        guard filterClass.responds(to: make),
+              let blur = filterClass.perform(make, with: "gaussianBlur")?.takeUnretainedValue() as? NSObject,
+              let saturate = filterClass.perform(make, with: "colorSaturate")?.takeUnretainedValue() as? NSObject else { return nil }
+        blur.setValue(blurRadius, forKey: "inputRadius")
+        blur.setValue(true, forKey: "inputNormalizeEdges")
+        saturate.setValue(1.6, forKey: "inputAmount")
+        let layer = backdropClass.init()
+        layer.filters = [blur, saturate]
+        layer.actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull()]
+        return layer
+    }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        backdrop?.frame = bounds
+        veil.frame = bounds
+        hairline.frame = CGRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
+        CATransaction.commit()
+        updateColors()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateColors()
+    }
+
+    private func updateColors() {
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            veil.backgroundColor = NSColor.windowBackgroundColor
+                .withAlphaComponent(dark ? Self.veilDark : Self.veilLight).cgColor
+            hairline.backgroundColor = NSColor.separatorColor.cgColor
+        }
+        CATransaction.commit()
+    }
+
     /// A picture only: the toolbar above it takes the clicks.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
-struct TitleBlur: View {
-    var body: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(.separator)
-                    .frame(height: 1)
-            }
-            .allowsHitTesting(false)
-    }
 }
 
 /// The soft edge at the foot of the timeline, behind the composer: the

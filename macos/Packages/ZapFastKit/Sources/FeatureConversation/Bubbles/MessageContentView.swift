@@ -57,24 +57,31 @@ struct MessageContentView: View {
             ContactCard(message: message, displayName: displayName, vcard: vcard, model: model)
         case let .poll(question, options, state):
             PollContent(message: message, question: question, options: options, state: state, model: model)
-        case let .stickerPack(name, publisher, count, _):
-            Button { model.viewStickerPack(message) } label: {
-                HStack(spacing: Metrics.s) {
-                    Image(systemName: "face.smiling").font(.title2).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.body.weight(.medium))
-                        Text("\(publisher) · \(count) stickers").font(.caption).opacity(0.8)
+        case let .stickerPack(name, publisher, count, caption):
+            VStack(alignment: .leading, spacing: Metrics.xs) {
+                Button { model.viewStickerPack(message) } label: {
+                    HStack(spacing: Metrics.s) {
+                        Image(systemName: "face.smiling").font(.title2).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(name).font(.body.weight(.medium))
+                            Text("\(publisher) · \(count) stickers").font(.caption).opacity(0.8)
+                        }
+                        Spacer(minLength: Metrics.s)
+                        Text("View").font(.callout.weight(.semibold))
                     }
-                    Spacer(minLength: Metrics.s)
-                    Text("View").font(.callout.weight(.semibold))
+                    .padding(Metrics.s)
+                    .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
+                    .contentShape(.rect)
                 }
-                .padding(Metrics.s)
-                .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
-                .contentShape(.rect)
+                .buttonStyle(.plain)
+                .frame(minWidth: 220)
+                .help("View the stickers")
+                // The words sent with the pack, as upstream shows them.
+                if let caption, !caption.isEmpty {
+                    Text(WhatsAppMarkup.attributed(caption, mentions: message.mentions, name: { model.chats.displayName($0) }))
+                        .textSelection(.enabled)
+                }
             }
-            .buttonStyle(.plain)
-            .frame(minWidth: 220)
-            .help("View the stickers")
         case .revoked:
             Placeholder(symbol: "nosign", text: String(localized: "This message was deleted"))
         case .unsupported(let what):

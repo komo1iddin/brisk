@@ -62,6 +62,13 @@ struct MessageActions: View {
             }
         }
 
+        if case .sticker = message.content, let path = message.content.media?.path {
+            Button(model.stickers.isFavorite(path) ? "Remove from Favorites" : "Add to Favorites",
+                   systemImage: model.stickers.isFavorite(path) ? "star.slash" : "star") {
+                model.toggleFavoriteSticker(path)
+            }
+        }
+
         if model.canShowInfo(message) {
             Button("Info", systemImage: "info.circle") { model.showInfo(message) }
         }
@@ -89,6 +96,12 @@ struct MessageActions: View {
             } else {
                 Button("Download", systemImage: "arrow.down.circle") { model.download(message) }
             }
+        }
+
+        // For a bug report, as upstream offers it.
+        Button("Copy Message ID", systemImage: "number") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(message.id, forType: .string)
         }
 
         Divider()

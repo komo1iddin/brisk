@@ -48,6 +48,16 @@ struct ConversationMergeTests {
         #expect(store.conversation("c").complete)
     }
 
+    @Test func aPhoneAnswerPagesTheArchiveAgain() {
+        let store = ConversationStore()
+        _ = store.applyMessages(chat: "c", messages: [message("a", at: 5)], older: false, complete: true)
+        #expect(store.conversation("c").complete)
+        // An answer that came after the request timed out is in the archive.
+        store.applyOlderFetched(chat: "c", more: true)
+        #expect(!store.conversation("c").complete)
+        #expect(store.conversation("c").oldestKey?.id == "a")
+    }
+
     @Test func timelineInsertsOneSeparatorPerDay() {
         let day: Int64 = 86_400
         let rows = TimelineRow.build([message("a", at: day), message("b", at: day + 60), message("c", at: day * 3)])

@@ -269,6 +269,9 @@ public final class ConversationStore {
         update(chat, messages: false) { conversation in
             conversation.fetchingPhone = false
             conversation.phoneExhausted = !more
+            // Page the archive again, as upstream does: an answer that came
+            // after the request timed out is archived but not yet shown.
+            conversation.complete = false
         }
     }
 

@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import ZapFastCore
 
-/// The phone is asked for older messages once, not at every scroll to the
-/// top or every launch.
+/// A phone that does not answer is not asked again at every scroll to the
+/// top.
 @MainActor
 struct PhoneHistoryTests {
     private func defaults() -> UserDefaults {
@@ -13,22 +13,22 @@ struct PhoneHistoryTests {
         return defaults
     }
 
-    @Test func nothingMoreIsRememberedAcrossLaunches() {
+    @Test func theOldThreeDayMemoryIsForgotten() {
         let store = defaults()
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        store.set(["0123456789abcdef01234567": 1_800_000_000.0], forKey: "phoneHistoryExhausted")
         let history = PhoneHistory(defaults: store)
-        #expect(history.mayAsk("a@s.whatsapp.net", now: now))
-        history.asking("a@s.whatsapp.net", holding: 10)
-        history.answered("a@s.whatsapp.net", more: false, holding: 10, now: now)
-        #expect(!history.mayAsk("a@s.whatsapp.net", now: now))
-        // Kept as a hash, not the number.
-        let saved = store.dictionary(forKey: "phoneHistoryExhausted") ?? [:]
-        #expect(!saved.keys.contains { $0.contains("s.whatsapp.net") })
-        // A later launch.
-        let later = PhoneHistory(defaults: store)
-        #expect(!later.mayAsk("a@s.whatsapp.net", now: now.addingTimeInterval(3600)))
-        #expect(later.mayAsk("a@s.whatsapp.net", now: now.addingTimeInterval(4 * 24 * 3600)))
-        #expect(later.mayAsk("b@s.whatsapp.net", now: now))
+        #expect(store.object(forKey: "phoneHistoryExhausted") == nil)
+        #expect(history.mayAsk("a@s.whatsapp.net"))
+    }
+
+    @Test func nothingMoreIsLeftToTheArchiveAndTheConversation() {
+        let history = PhoneHistory(defaults: defaults())
+        let now = Date()
+        history.asking("a", holding: 10)
+        history.answered("a", more: false, holding: 10, now: now)
+        // The backend answers from `history_start` at once; this session's
+        // conversation keeps `phoneExhausted`.
+        #expect(history.mayAsk("a", now: now))
     }
 
     @Test func anUnansweredRequestWaitsBeforeTheNext() {

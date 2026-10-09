@@ -194,7 +194,7 @@ struct SelectionBar: View {
         ) {
             Button("Delete for Me", role: .destructive) { model.deleteSelectionForMe() }
         } message: {
-            Text("They are removed from ZapFast on this Mac. Your phone and the chat keep them.")
+            Text("They are removed from your phone and linked devices. Other people keep their copies. Connect to WhatsApp to delete them. It can't be undone.")
         }
     }
 }

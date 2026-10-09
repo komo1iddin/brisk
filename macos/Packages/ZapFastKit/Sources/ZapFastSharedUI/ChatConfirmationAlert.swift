@@ -7,6 +7,32 @@ extension View {
     /// reach the phone and cannot be undone.
     public func chatConfirmationAlert(model: AppModel) -> some View {
         modifier(ChatConfirmationAlert(model: model))
+            .modifier(MessageDeletionAlert(model: model))
+    }
+}
+
+/// Asks before deleting one message, in upstream's words. Return does not
+/// confirm: a stray key must not destroy a message.
+private struct MessageDeletionAlert: ViewModifier {
+    @Bindable var model: AppModel
+
+    func body(content: Content) -> some View {
+        let deletion = model.messageDeletion
+        content.alert(
+            deletion?.forEveryone == true ? Text("Delete for everyone?") : Text("Delete for me?"),
+            isPresented: Binding(
+                get: { model.messageDeletion != nil },
+                set: { if !$0 { model.messageDeletion = nil } }
+            ),
+            presenting: deletion
+        ) { deletion in
+            Button("Delete", role: .destructive) { model.performDeletion(deletion) }
+            Button("Cancel", role: .cancel) {}
+        } message: { deletion in
+            Text(deletion.forEveryone
+                ? "Everyone in this chat will see \"This message was deleted\" instead. It can't be undone."
+                : "This removes the message from your phone and linked devices. Other people keep their copy. Connect to WhatsApp to delete it. It can't be undone.")
+        }
     }
 }
 

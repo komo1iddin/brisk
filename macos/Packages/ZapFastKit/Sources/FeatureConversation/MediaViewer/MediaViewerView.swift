@@ -108,6 +108,8 @@ struct MediaViewerView: View {
                     Button("Delete for Everyone", role: .destructive) { model.deleteForEveryone(current) }
                 }
             }
+        } message: {
+            Text("Deleting for you also removes it from your phone and linked devices. It can't be undone.")
         }
     }
 

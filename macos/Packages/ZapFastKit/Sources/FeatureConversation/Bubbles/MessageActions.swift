@@ -93,10 +93,12 @@ struct MessageActions: View {
 
         Divider()
 
-        Button("Delete for Me", systemImage: "trash", role: .destructive) { model.deleteForMe(message) }
+        Button("Delete for Me…", systemImage: "trash", role: .destructive) {
+            model.confirmDelete(message, forEveryone: false)
+        }
         if model.canRevoke(message) {
-            Button("Delete for Everyone", systemImage: "trash", role: .destructive) {
-                model.deleteForEveryone(message)
+            Button("Delete for Everyone…", systemImage: "trash", role: .destructive) {
+                model.confirmDelete(message, forEveryone: true)
             }
         }
     }

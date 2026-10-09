@@ -166,6 +166,9 @@ public final class AppModel {
 
     /// A chat whose clearing, deleting or locking waits for the person to confirm.
     public var chatConfirmation: ChatConfirmation?
+    /// A message whose deleting waits for the person to confirm, as upstream's
+    /// `ConfirmDeleteMessage`: both ways reach the phone and cannot be undone.
+    public var messageDeletion: MessageDeletion?
     /// A chat whose export waits to be told how: with its media or without.
     public var exportRequest: ChatExportRequest?
     /// The chat being exported. One export runs at a time.
@@ -493,6 +496,7 @@ public final class AppModel {
         themeEditorChat = nil
         stickerPackPreview = nil
         chatConfirmation = nil
+        messageDeletion = nil
     }
 
     func unlocked() {
@@ -2051,6 +2055,25 @@ public final class AppModel {
         backend.send(.deleteLocal(chat: message.chat, id: message.id))
     }
 
+    /// Asks before deleting `message` for us, or for everyone.
+    public func confirmDelete(_ message: MessageRecord, forEveryone: Bool) {
+        messageDeletion = MessageDeletion(
+            key: MessageKey(chat: message.chat, message: message.id), forEveryone: forEveryone
+        )
+    }
+
+    /// Deletes the message the person confirmed, if it is still here.
+    public func performDeletion(_ deletion: MessageDeletion) {
+        messageDeletion = nil
+        guard let message = conversations.conversation(deletion.key.chat).message(deletion.key.message) else { return }
+        if deletion.forEveryone {
+            guard canRevoke(message) else { return }
+            deleteForEveryone(message)
+        } else {
+            deleteForMe(message)
+        }
+    }
+
     // MARK: Intents: history repair
 
     /// Upstream's "Reload earlier messages": while linked, for a message
@@ -2927,6 +2950,13 @@ public struct ForwardRequest: Identifiable, Equatable, Sendable {
 }
 
 /// Clearing or deleting a chat, waiting to be confirmed.
+/// A message waiting for the person to confirm its deletion.
+public struct MessageDeletion: Identifiable, Equatable, Sendable {
+    public var id: MessageKey { key }
+    public let key: MessageKey
+    public let forEveryone: Bool
+}
+
 public struct ChatConfirmation: Identifiable, Equatable, Sendable {
     public enum Action: Sendable { case clear, delete, lock }
     public var id: String { chat }

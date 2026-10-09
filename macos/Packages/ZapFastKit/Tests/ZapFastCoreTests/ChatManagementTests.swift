@@ -215,4 +215,21 @@ struct ChatManagementTests {
         #expect(!offline.canReloadHistory(anchor))
     }
 
+
+    @Test func deletingOneMessageWaitsForTheConfirmation() {
+        let (model, backend) = model()
+        let mine = message("m", in: direct, at: Int64(Date.now.timeIntervalSince1970))
+        model.apply([.messages(chat: direct, messages: [mine], older: false, complete: true)])
+        model.confirmDelete(mine, forEveryone: false)
+        #expect(!backend.sent.contains(.deleteLocal(chat: direct, id: "m")), "nothing before the answer")
+        let deletion = try! #require(model.messageDeletion)
+        model.performDeletion(deletion)
+        #expect(backend.sent.last == .deleteLocal(chat: direct, id: "m"))
+        #expect(model.messageDeletion == nil)
+
+        model.confirmDelete(mine, forEveryone: true)
+        model.performDeletion(model.messageDeletion!)
+        #expect(backend.sent.last == .revoke(chat: direct, id: "m"))
+    }
+
 }

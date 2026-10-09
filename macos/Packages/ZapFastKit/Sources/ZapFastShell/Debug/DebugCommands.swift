@@ -31,6 +31,8 @@ import ZapFastSharedUI
 ///   frames of the bubble and of the popover.
 /// - `menu:<n>`: the menu of the nth message from the bottom, with the
 ///   reactions above it; captures every window but the main one and closes it.
+/// - `arrive[:<text>]`, `compose:<text>`: a message arrives in, or is sent
+///   from the composer of, the open chat (benchmark only).
 /// - `preset:<id>`: a theme preset for the open chat (benchmark only).
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
@@ -149,6 +151,21 @@ enum DebugCommands {
             }
             model.themes.set(preset.appearance, for: chat)
             write(name, preset.id)
+        case "arrive", "compose":
+            // arrive[:<text>]: someone writes in the open chat; compose:<text>:
+            // the composer sends it. Benchmark only.
+            guard CommandLine.arguments.contains("--benchmark"), let chat = model.selectedChatID else {
+                write(name, "no")
+                return
+            }
+            let text = parts.count > 1 ? parts.dropFirst().joined(separator: ":") : "Salom! Qalaysiz?"
+            if name == "arrive" {
+                TimelineBenchmark.backend.arrive(in: chat, text: text)
+            } else {
+                model.composerText[chat] = text
+                model.sendText(in: chat)
+            }
+            write(name, "ok")
         case "deselect":
             model.selectedChatID = nil
             write(name, "none")

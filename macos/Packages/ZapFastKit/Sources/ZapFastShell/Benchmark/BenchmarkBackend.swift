@@ -58,12 +58,42 @@ final class BenchmarkBackend: Backend {
             post([.olderFetched(chat: chat, more: false)])
         case let .download(chat, message, card):
             answerDownload(chat: chat, message: message, card: card)
+        case let .sendText(chat, text, _, _):
+            // Echoed a moment later, as the worker files a sent message.
+            let message = SyntheticChats.message(
+                chat: chat, id: "sent-\(UUID().uuidString)", sender: SyntheticChats.ownID, senderName: nil,
+                fromMe: true, timestamp: nextTimestamp(in: chat), text: text
+            )
+            histories[chat, default: []].append(message)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [deliver] in
+                MainActor.assumeIsolated {
+                    deliver?([.messages(chat: chat, messages: [message], older: false, complete: false)])
+                }
+            }
         default:
             break
         }
     }
 
     func shutdown() {}
+
+    /// Someone else writes in `chat` now, as the worker delivers a live
+    /// message (Debug `arrive`).
+    func arrive(in chat: String, text: String) {
+        let message = SyntheticChats.message(
+            chat: chat, id: "arrived-\(UUID().uuidString)", sender: "998900000001@s.whatsapp.net",
+            senderName: "Dilnoza", fromMe: false, timestamp: nextTimestamp(in: chat), text: text
+        )
+        histories[chat, default: []].append(message)
+        deliver?([
+            .messages(chat: chat, messages: [message], older: false, complete: false),
+            .incoming(chat: chat, message: message),
+        ])
+    }
+
+    private func nextTimestamp(in chat: String) -> Int64 {
+        max(Int64(Date().timeIntervalSince1970), (histories[chat]?.last?.timestamp ?? 0) + 1)
+    }
 
     /// A download finishes a quarter of a second later with the made-up
     /// file of the message's kind, as the worker's `Event::Media` does.

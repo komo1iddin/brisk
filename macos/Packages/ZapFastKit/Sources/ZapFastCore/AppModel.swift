@@ -1751,7 +1751,13 @@ public final class AppModel {
 
     private func followSentChat() {
         sentChatFollows &+= 1
+        lastSentHere = Date()
     }
+
+    /// When something was last sent from this window (the composer, a
+    /// sticker, a poll), so the timeline can fly our next message in from
+    /// the composer rather than as one sent from the phone.
+    @ObservationIgnored public private(set) var lastSentHere: Date?
 
     /// Sends one command to this account's backend, for the hub.
     func sendSetting(_ command: BridgeCommand) {

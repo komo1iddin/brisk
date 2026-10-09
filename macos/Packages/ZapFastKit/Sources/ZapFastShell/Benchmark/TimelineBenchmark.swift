@@ -27,7 +27,7 @@ enum TimelineBenchmark {
         ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_MEDIA"] != "0"
     }
 
-    private static let backend = BenchmarkBackend(
+    static let backend = BenchmarkBackend(
         fullCount: messageCount, pagedCount: 5_000, chatCount: 200,
         media: withMedia ? SyntheticMedia(directory: AppPaths.standard().caches.appending(path: "Benchmark/media")) : nil
     )

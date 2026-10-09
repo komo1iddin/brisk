@@ -216,6 +216,7 @@ final class BubbleCell: NSView {
     /// reaction picker closes, and the next `configure` starts afresh.
     func leftScreen() {
         watches.stopAll()
+        stopArrival()
         bubble.pictureView?.setMoving(false)
         if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
         hideHoverActions(animated: false)

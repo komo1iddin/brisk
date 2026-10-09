@@ -398,12 +398,14 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         let follow = followsBottom
         let anchor = follow ? nil : readingAnchor()
         let start = items.count
+        let before = clip.bounds.minY
         plans += resolved
         items += added
         for (offset, item) in added.enumerated() { itemIndex[item.id] = start + offset }
         tableView.insertRows(at: IndexSet(integersIn: start..<items.count), withAnimation: [])
         if follow {
             scrollToBottom()
+            animateArrival(rows: start..<items.count, shift: clip.bounds.minY - before)
         } else {
             if let anchor { restore(anchor) }
             // Counted for the "newest message" button's badge.

@@ -204,6 +204,22 @@ pub(crate) fn open_log(account: &str, state: &std::path::Path) {
     }
 }
 
+/// Moves the call history from the folder of a single-account setup into
+/// account 1's, with its key, and brings back one an earlier build moved
+/// without it. Neither stops the app: calls work without their history.
+pub(crate) fn adopt_history(old_folder: &std::path::Path, account_folder: &std::path::Path) {
+    let from = old_folder.join("calls.db");
+    let to = account_folder.join("calls.db");
+    if let Err(error) = history::move_to(&from, &to) {
+        log::warn!("calls: the call history was not moved: {error:#}");
+    }
+    match history::recover_set_aside(old_folder, &to) {
+        Ok(true) => log::info!("calls: brought back a call history set aside after a move"),
+        Ok(false) => {}
+        Err(error) => log::warn!("calls: a set-aside call history was not brought back: {error:#}"),
+    }
+}
+
 /// Frames per second the camera is encoded at, for Swift.
 #[uniffi::export]
 pub fn call_video_frame_rate() -> u32 {

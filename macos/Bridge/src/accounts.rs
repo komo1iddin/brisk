@@ -13,7 +13,7 @@
 //! The manager is opened once per process and holds the data folder's lock.
 //! Each account's [`BridgeClient`] runs one upstream backend.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use zapfast::model::AccountId;
@@ -164,38 +164,10 @@ fn storage(error: std::io::Error) -> BridgeError {
 fn adopt_single_account(dirs: &AppDirs) -> Result<(), BridgeError> {
     dirs.adopt_single_account().map_err(storage)?;
     let account = dirs.account(&AccountId::first());
-    // Side files first: a database moved without its journal would lose the
-    // calls still in it.
-    for name in [
-        "calls.db-wal",
-        "calls.db-shm",
-        "calls.db-journal",
-        "calls.db",
-    ] {
-        move_if_free(&dirs.state.join(name), &account.state.join(name)).map_err(storage)?;
+    if account.state.is_dir() {
+        crate::calls::adopt_history(&dirs.state, &account.state);
     }
     Ok(())
-}
-
-/// Moves `from` to `to` unless `from` is missing; refuses to overwrite.
-fn move_if_free(from: &Path, to: &Path) -> std::io::Result<()> {
-    if !from.exists() {
-        return Ok(());
-    }
-    if to.exists() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AlreadyExists,
-            format!(
-                "{} is in the way of {}; nothing more was moved",
-                to.display(),
-                from.display()
-            ),
-        ));
-    }
-    if let Some(parent) = to.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::rename(from, to)
 }
 
 /// As upstream's `finish_removed`: the folders go first, and the archive's
@@ -261,6 +233,7 @@ pub(crate) fn app_dirs(config: &BridgeConfig) -> AppDirs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     fn root(name: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!(
@@ -301,38 +274,6 @@ mod tests {
             lock_instance(&dirs).is_ok(),
             "the lock is released with its file"
         );
-        std::fs::remove_dir_all(&root).ok();
-    }
-
-    #[test]
-    fn the_call_history_moves_into_account_one_and_never_over_another() {
-        let root = root("calls");
-        let dirs = dirs_in(&root);
-        dirs.ensure().unwrap();
-        std::fs::write(dirs.state.join("calls.db"), b"calls").unwrap();
-        std::fs::write(dirs.state.join("calls.db-wal"), b"wal").unwrap();
-
-        adopt_single_account(&dirs).unwrap();
-
-        let account = dirs.account(&AccountId::first());
-        assert_eq!(
-            std::fs::read(account.state.join("calls.db")).unwrap(),
-            b"calls"
-        );
-        assert_eq!(
-            std::fs::read(account.state.join("calls.db-wal")).unwrap(),
-            b"wal"
-        );
-        assert!(!dirs.state.join("calls.db").exists());
-
-        // A second old history is left where it is, not written over the first.
-        std::fs::write(dirs.state.join("calls.db"), b"other").unwrap();
-        assert!(adopt_single_account(&dirs).is_err());
-        assert_eq!(
-            std::fs::read(account.state.join("calls.db")).unwrap(),
-            b"calls"
-        );
-        assert!(dirs.state.join("calls.db").exists());
         std::fs::remove_dir_all(&root).ok();
     }
 

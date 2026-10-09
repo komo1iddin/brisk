@@ -98,6 +98,15 @@ impl CallLog {
         Self::open_with_key(path, &key)
     }
 
+    /// Holds no calls at all.
+    fn is_empty(&self) -> bool {
+        self.connection
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .query_row("SELECT count(*) FROM calls", [], |row| row.get::<_, i64>(0))
+            .is_ok_and(|count| count == 0)
+    }
+
     fn open_with_key(path: &Path, key: &[u8; 32]) -> Result<Self> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -261,23 +270,34 @@ pub fn seconds(start: i64) -> i64 {
 // Keyring and file, as upstream's archive does them (src/archive/encryption.rs,
 // which is private to upstream's crate).
 
-fn key_for(path: &Path) -> Result<Zeroizing<[u8; 32]>> {
-    let parent = path.parent().context("The call history has no folder")?;
-    fs::create_dir_all(parent)?;
-    // A digest of the folder, never a user path, keeps profiles apart.
-    let digest = Sha256::digest(parent.canonicalize()?.as_os_str().as_encoded_bytes());
-    let identity = format!(
+const SERVICE: &str = "com.komoliddin.ZapFastMac";
+
+/// The keychain item's name for the history in `folder`: a digest of the
+/// folder, never a user path, keeps profiles apart. It also means a history
+/// moved to another folder needs its key copied (see [`move_to`]).
+fn identity_for(folder: &Path) -> Result<String> {
+    let digest = Sha256::digest(folder.canonicalize()?.as_os_str().as_encoded_bytes());
+    Ok(format!(
         "calls-{}",
         digest
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect::<String>()
-    );
-    let store = apple_native_keyring_store::keychain::Store::new()
+    ))
+}
+
+fn platform_store() -> Result<std::sync::Arc<apple_native_keyring_store::keychain::Store>> {
+    apple_native_keyring_store::keychain::Store::new()
         .map_err(|e| anyhow::anyhow!("{e}"))
-        .context("The keychain is not available")?;
+        .context("The keychain is not available")
+}
+
+fn key_for(path: &Path) -> Result<Zeroizing<[u8; 32]>> {
+    let parent = path.parent().context("The call history has no folder")?;
+    fs::create_dir_all(parent)?;
+    let store = platform_store()?;
     let entry = store
-        .build("com.komoliddin.ZapFastMac", &identity, None)
+        .build(SERVICE, &identity_for(parent)?, None)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
     match entry.get_secret() {
         Ok(secret) => {
@@ -305,6 +325,125 @@ fn key_for(path: &Path) -> Result<Zeroizing<[u8; 32]>> {
 
 fn aside(path: &Path) -> PathBuf {
     path.with_extension("db.unreadable")
+}
+
+/// The 32-byte key the keychain keeps for the history in `folder`, if any.
+fn stored_key(
+    store: &dyn CredentialStoreApi,
+    folder: &Path,
+) -> Result<Option<Zeroizing<[u8; 32]>>> {
+    let entry = store
+        .build(SERVICE, &identity_for(folder)?, None)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    match entry.get_secret() {
+        Ok(secret) => {
+            let secret = Zeroizing::new(secret);
+            ensure!(secret.len() == 32, "The call history key is invalid");
+            let mut key = Zeroizing::new([0; 32]);
+            key.copy_from_slice(&secret);
+            Ok(Some(key))
+        }
+        Err(keyring_core::Error::NoEntry) => Ok(None),
+        Err(error) => {
+            Err(anyhow::anyhow!("{error}")).context("Unlock the keychain and start ZapFast again")
+        }
+    }
+}
+
+/// Stores `key` for the history in `folder` and reads it back, before any
+/// file depends on it.
+fn store_key(store: &dyn CredentialStoreApi, folder: &Path, key: &[u8; 32]) -> Result<()> {
+    let entry = store
+        .build(SERVICE, &identity_for(folder)?, None)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    entry
+        .set_secret(key)
+        .map_err(|e| anyhow::anyhow!("{e}"))
+        .context("Could not save the call history key in the keychain")?;
+    let saved = Zeroizing::new(entry.get_secret().map_err(|e| anyhow::anyhow!("{e}"))?);
+    ensure!(
+        saved.as_slice() == key.as_slice(),
+        "The keychain did not keep the call history key"
+    );
+    Ok(())
+}
+
+/// Moves the call history at `from` to `to`, in another folder, with its
+/// key: the keychain names the key after the folder, so the key is copied
+/// first, as upstream copies the archive's. Side files go before the
+/// database. A history already at `to` is left alone, and so is this one.
+pub(crate) fn move_to(from: &Path, to: &Path) -> Result<()> {
+    move_to_in(&*platform_store()?, from, to)
+}
+
+fn move_to_in(store: &dyn CredentialStoreApi, from: &Path, to: &Path) -> Result<()> {
+    if !from.exists() {
+        return Ok(());
+    }
+    ensure!(
+        !to.exists(),
+        "A call history is already at {}; the old one stays where it is",
+        to.display()
+    );
+    let (Some(old), Some(new)) = (from.parent(), to.parent()) else {
+        anyhow::bail!("The call history has no folder");
+    };
+    fs::create_dir_all(new)?;
+    if let Some(key) = stored_key(store, old)? {
+        store_key(store, new, &key)?;
+    }
+    for suffix in ["-wal", "-shm", "-journal"] {
+        let side = |path: &Path| PathBuf::from(format!("{}{suffix}", path.display()));
+        if side(from).exists() {
+            fs::rename(side(from), side(to))?;
+        }
+    }
+    fs::rename(from, to)?;
+    Ok(())
+}
+
+/// Brings back a call history an earlier build of this app moved out of
+/// `old_folder` without its key: opening it then failed, so it was set aside
+/// as unreadable and an empty one made in its place. The old key is still in
+/// the keychain under the old folder's name. Returns whether it came back;
+/// an empty history made in its place that has calls of its own stays.
+pub(crate) fn recover_set_aside(old_folder: &Path, path: &Path) -> Result<bool> {
+    recover_set_aside_in(&*platform_store()?, old_folder, path)
+}
+
+fn recover_set_aside_in(
+    store: &dyn CredentialStoreApi,
+    old_folder: &Path,
+    path: &Path,
+) -> Result<bool> {
+    let set_aside = aside(path);
+    let Some(folder) = path.parent() else {
+        return Ok(false);
+    };
+    if !set_aside.exists() || !old_folder.exists() {
+        return Ok(false);
+    }
+    let Some(key) = stored_key(store, old_folder)? else {
+        return Ok(false);
+    };
+    // Only the history that key opens is the one that moved.
+    if CallLog::open_with_key(&set_aside, &key).is_err() {
+        return Ok(false);
+    }
+    if path.exists() {
+        let empty = {
+            let made =
+                stored_key(store, folder)?.and_then(|new| CallLog::open_with_key(path, &new).ok());
+            made.is_some_and(|log| log.is_empty())
+        };
+        if !empty {
+            return Ok(false);
+        }
+        fs::rename(path, path.with_extension("db.replaced"))?;
+    }
+    store_key(store, folder, &key)?;
+    fs::rename(&set_aside, path)?;
+    Ok(true)
 }
 
 fn key_literal(key: &[u8; 32]) -> Zeroizing<String> {
@@ -344,12 +483,17 @@ mod tests {
         (CallLog::open_with_key(&path, &[7; 32]).unwrap(), folder)
     }
 
-    fn rand_suffix() -> u64 {
+    /// Unique within the process: tests run at once, and two could read
+    /// the same clock.
+    fn rand_suffix() -> String {
+        use std::sync::atomic::{AtomicU64, Ordering};
         use std::time::{SystemTime, UNIX_EPOCH};
-        SystemTime::now()
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_nanos() as u64
+            .as_nanos();
+        format!("{nanos}-{}", NEXT.fetch_add(1, Ordering::Relaxed))
     }
 
     fn entry(id: &str, chat: &str, at: i64, outcome: CallOutcome) -> CallLogEntry {
@@ -477,5 +621,86 @@ mod tests {
     fn starts_in_milliseconds_become_seconds() {
         assert_eq!(seconds(1_700_000_000), 1_700_000_000);
         assert_eq!(seconds(1_700_000_000_123), 1_700_000_000);
+    }
+
+    fn folders() -> (PathBuf, PathBuf) {
+        let root = std::env::temp_dir().join(format!(
+            "zapfast-call-move-{}-{}",
+            std::process::id(),
+            rand_suffix()
+        ));
+        let old = root.join("State");
+        let new = old.join("accounts").join("1");
+        fs::create_dir_all(&new).unwrap();
+        (old, new)
+    }
+
+    fn with_a_call(path: &Path, key: &[u8; 32]) {
+        let log = CallLog::open_with_key(path, key).unwrap();
+        log.record(&entry("a", "x", 10, CallOutcome::Missed), Source::Here)
+            .unwrap();
+    }
+
+    #[test]
+    fn a_history_moves_to_another_folder_with_its_key() {
+        let store = keyring_core::mock::Store::new().unwrap();
+        let (old, new) = folders();
+        store_key(&*store, &old, &[3; 32]).unwrap();
+        with_a_call(&old.join("calls.db"), &[3; 32]);
+
+        move_to_in(&*store, &old.join("calls.db"), &new.join("calls.db")).unwrap();
+
+        assert!(!old.join("calls.db").exists());
+        let key = stored_key(&*store, &new)
+            .unwrap()
+            .expect("the key came along");
+        assert_eq!(*key, [3; 32]);
+        let log = CallLog::open_with_key(&new.join("calls.db"), &key).unwrap();
+        assert!(!log.is_empty());
+        // Another old history does not go over the moved one.
+        with_a_call(&old.join("calls.db"), &[3; 32]);
+        assert!(move_to_in(&*store, &old.join("calls.db"), &new.join("calls.db")).is_err());
+        assert!(old.join("calls.db").exists());
+        fs::remove_dir_all(old.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn a_history_set_aside_after_a_move_without_its_key_comes_back() {
+        let store = keyring_core::mock::Store::new().unwrap();
+        let (old, new) = folders();
+        let path = new.join("calls.db");
+        // An earlier build moved it without its key: set aside, and an
+        // empty one made with a key of its own.
+        store_key(&*store, &old, &[3; 32]).unwrap();
+        with_a_call(&aside(&path), &[3; 32]);
+        store_key(&*store, &new, &[9; 32]).unwrap();
+        drop(CallLog::open_with_key(&path, &[9; 32]).unwrap());
+
+        assert!(recover_set_aside_in(&*store, &old, &path).unwrap());
+
+        assert!(!aside(&path).exists());
+        assert!(path.with_extension("db.replaced").exists());
+        let key = stored_key(&*store, &new).unwrap().unwrap();
+        assert_eq!(*key, [3; 32]);
+        assert!(!CallLog::open_with_key(&path, &key).unwrap().is_empty());
+        assert!(!recover_set_aside_in(&*store, &old, &path).unwrap(), "once");
+        fs::remove_dir_all(old.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn a_history_made_in_its_place_with_calls_stays() {
+        let store = keyring_core::mock::Store::new().unwrap();
+        let (old, new) = folders();
+        let path = new.join("calls.db");
+        store_key(&*store, &old, &[3; 32]).unwrap();
+        with_a_call(&aside(&path), &[3; 32]);
+        store_key(&*store, &new, &[9; 32]).unwrap();
+        with_a_call(&path, &[9; 32]);
+
+        assert!(!recover_set_aside_in(&*store, &old, &path).unwrap());
+
+        assert!(aside(&path).exists());
+        assert_eq!(*stored_key(&*store, &new).unwrap().unwrap(), [9; 32]);
+        fs::remove_dir_all(old.parent().unwrap()).ok();
     }
 }

@@ -23,13 +23,25 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         super.init()
     }
 
+    /// Opened by the login item rather than by the person: read from the
+    /// launch's Apple event, which is gone once launching has finished.
+    private var launchedAtLogin = false
+
+    public func applicationWillFinishLaunching(_ notification: Notification) {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        launchedAtLogin = event?.eventID == kAEOpenApplication
+            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
+
     public func applicationDidFinishLaunching(_ notification: Notification) {
         // Avatars decode before any timeline is open to say which display.
         if let space = NSScreen.main?.colorSpace?.cgColorSpace { DisplayImage.colorSpace = space }
         if !Self.drawsSnapshotOnly {
             let window = MainWindowController(model: model)
             mainWindow = window
-            window.show()
+            // A start at login stays in the menu bar, as upstream's does,
+            // while there is a menu bar icon to come back by.
+            if !(launchedAtLogin && hub.preferences.menuBarIcon) { window.show() }
         }
         if TimelineBenchmark.isRequested {
             TimelineBenchmark.start(model: model)

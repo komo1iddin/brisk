@@ -6,8 +6,8 @@ import ZapFastSharedUI
 /// A file in a drawn bubble, as `DocumentContent` shows it: the first page
 /// on white when there is one (the sender's preview, or a PDF's cover once
 /// it is here), then the kind's badge as WhatsApp draws it, its name, and
-/// its pages, size and extension; a download arrow or a spinner until it is
-/// here. A click opens it in Quick Look or downloads it.
+/// its pages, size and extension; a download arrow, or an arc turning
+/// while it comes, until it is here. A click opens it in Quick Look or downloads it.
 final class DocumentView: AttachmentView {
     private(set) var documentLayout: BubbleLayout.DocumentLayout?
 
@@ -18,7 +18,7 @@ final class DocumentView: AttachmentView {
     private let icon = CALayer()
     private let texts = PiecesLayer()
     private let arrow = SymbolLayer()
-    private let spinner = NSProgressIndicator()
+    private let spinner = ArcSpinnerLayer()
     private var color = NSColor.labelColor
     private var download: DownloadState?
     private var loads = 0
@@ -37,14 +37,12 @@ final class DocumentView: AttachmentView {
         icon.contentsGravity = .resizeAspect
         // The page inside the card, whose rounded corners clip it.
         card.addSublayer(page)
-        for sublayer in [card, icon, texts, arrow] as [CALayer] { layer?.addSublayer(sublayer) }
+        for sublayer in [card, icon, texts, arrow, spinner] as [CALayer] { layer?.addSublayer(sublayer) }
         for sublayer in [card, page, pageImage, divider, icon, texts, arrow] as [CALayer] {
             sublayer.actions = ["bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull(), "backgroundColor": NSNull()]
         }
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.isDisplayedWhenStopped = false
-        addSubview(spinner)
+        spinner.lineWidth = 1.8
+        spinner.inset = 1.5
     }
 
     func configure(_ layout: BubbleLayout.DocumentLayout, messageID: String, color: NSColor) {
@@ -66,28 +64,30 @@ final class DocumentView: AttachmentView {
         texts.frame = bounds
         texts.pieces = [layout.name, layout.detail]
         arrow.frame = layout.indicator ?? .zero
+        spinner.frame = layout.indicator ?? .zero
         CATransaction.commit()
         texts.setNeedsDisplay()
-        spinner.frame = layout.indicator.map { $0.insetBy(dx: 0.5, dy: 0.5) } ?? .zero
         icon.contents = Self.icon(for: layout.document, scale: window?.backingScaleFactor ?? 2)
         if !same { loadPage(keepingShown: sameMessage) }
-        refreshIndicator()
+        refreshIndicator(animated: false)
         applyAppearance()
     }
 
     func setDownload(_ state: DownloadState?) {
         download = state
-        refreshIndicator()
+        refreshIndicator(animated: window != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
     }
 
-    private func refreshIndicator() {
+    /// The arrow and the arc trade places, each easing out as the other in.
+    private func refreshIndicator(animated: Bool) {
         let waiting = documentLayout?.indicator != nil
         let downloading = waiting && download == .downloading
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        arrow.isHidden = !waiting || downloading
+        arrow.isHidden = !waiting
+        SoftSwap.fade(arrow, to: waiting && !downloading, animated: animated)
         CATransaction.commit()
-        if downloading { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
+        spinner.setSpinning(downloading, animated: animated)
         // A download that failed says so and why, where the arrow was.
         let failure = download?.failure
         toolTip = waiting ? failure?.explanation : nil
@@ -113,6 +113,9 @@ final class DocumentView: AttachmentView {
         }
         texts.appearance = effectiveAppearance
         arrow.appearance = effectiveAppearance
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            spinner.strokeColor = color.cgColor
+        }
         CATransaction.commit()
     }
 

@@ -712,7 +712,7 @@ private final class BubbleView: NSView {
         if let voice = layout.voice {
             let view = install(&voiceView, frame: voice.frame) { VoiceView() }
             view.cell = cell
-            view.configure(voice, messageID: messageID)
+            view.configure(voice, messageID: messageID, bubbleColor: layout.bubbleColor)
         } else {
             remove(&voiceView)
         }

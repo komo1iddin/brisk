@@ -120,10 +120,10 @@ final class PictureView: AttachmentView {
     /// The download's state, while the file is not here.
     func setDownload(_ state: DownloadState?) {
         download = state
-        refreshOverlays()
+        refreshOverlays(animated: window != nil)
     }
 
-    private func refreshOverlays() {
+    private func refreshOverlays(animated: Bool = false) {
         guard let layout = pictureLayout else { return }
         let picture = layout.picture
         let here = picture.path != nil
@@ -142,7 +142,7 @@ final class PictureView: AttachmentView {
         toolTip = here ? nil : download?.failure?.explanation
         badge.isHidden = here || (picture.isSticker && !failed)
         if !badge.isHidden {
-            badge.show(download, bytes: picture.bytes)
+            badge.show(download, bytes: picture.bytes, animated: animated)
             let size = badge.fittingSize
             badge.frame = CGRect(
                 x: ((bounds.width - size.width) / 2).rounded(), y: ((bounds.height - size.height) / 2).rounded(),
@@ -333,13 +333,14 @@ final class PictureView: AttachmentView {
     }
 }
 
-/// The badge over media not downloaded yet: its size and an arrow, a
-/// spinner while it comes, "Retry" after a failure, as `DownloadBadge`.
+/// The badge over media not downloaded yet: its size and an arrow, an arc
+/// turning while it comes, "Retry" after a failure, as `DownloadBadge`.
+/// The capsule springs to its new size while its contents cross-fade.
 final class DownloadBadgeView: NSView {
     private let capsule = CALayer()
     private let icon = SymbolLayer()
     private let text = TextLayer()
-    private let spinner = NSProgressIndicator()
+    private let spinner = ArcSpinnerLayer()
     private var shown: (state: DownloadState?, bytes: UInt64)?
     private var content = CGSize.zero
 
@@ -351,15 +352,13 @@ final class DownloadBadgeView: NSView {
         layer?.addSublayer(capsule)
         layer?.addSublayer(icon)
         layer?.addSublayer(text)
+        layer?.addSublayer(spinner)
         for sublayer in [capsule, icon, text] as [CALayer] {
-            sublayer.actions = ["bounds": NSNull(), "position": NSNull(), "hidden": NSNull(), "contents": NSNull()]
+            sublayer.actions = ["bounds": NSNull(), "position": NSNull(), "hidden": NSNull(), "contents": NSNull(), "opacity": NSNull(), "cornerRadius": NSNull()]
         }
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.isDisplayedWhenStopped = false
         // White on the dark capsule.
-        spinner.appearance = NSAppearance(named: .darkAqua)
-        addSubview(spinner)
+        spinner.strokeColor = NSColor.white.cgColor
+        spinner.inset = 1
     }
 
     @available(*, unavailable)
@@ -370,22 +369,29 @@ final class DownloadBadgeView: NSView {
 
     override var fittingSize: NSSize { content }
 
-    func show(_ state: DownloadState?, bytes: UInt64) {
+    func show(_ state: DownloadState?, bytes: UInt64, animated: Bool = false) {
         if let shown, shown.state == state, shown.bytes == bytes { return }
+        let animated = animated && shown != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         shown = (state, bytes)
+        let old = content
         let padding = CGSize(width: Metrics.s, height: Metrics.xs)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         switch state {
         case .downloading:
-            icon.isHidden = true
-            text.isHidden = true
             let size: CGFloat = 16
             content = CGSize(width: size + padding.width * 2, height: size + padding.height * 2)
+            // The badge is centred on the picture: what fades out stays
+            // where it was as the badge narrows.
+            let shift = CGPoint(x: ((content.width - old.width) / 2).rounded(), y: ((content.height - old.height) / 2).rounded())
+            for layer in [icon, text] as [CALayer] {
+                layer.frame = layer.frame.offsetBy(dx: shift.x, dy: shift.y)
+                SoftSwap.fade(layer, to: false, animated: animated)
+            }
             spinner.frame = CGRect(x: padding.width, y: padding.height, width: size, height: size)
-            spinner.startAnimation(nil)
+            spinner.setSpinning(true, animated: animated)
         case .failed, nil:
-            spinner.stopAnimation(nil)
+            spinner.setSpinning(false, animated: animated)
             let title = if let failure = state?.failure {
                 failure.isFinal ? String(localized: "Unavailable") : String(localized: "Retry")
             } else {
@@ -399,8 +405,8 @@ final class DownloadBadgeView: NSView {
                 width: padding.width * 2 + iconSize.width + spacing + textSize.width,
                 height: padding.height * 2 + textSize.height
             )
-            icon.isHidden = false
-            text.isHidden = false
+            SoftSwap.fade(icon, to: true, animated: animated)
+            SoftSwap.fade(text, to: true, animated: animated)
             icon.configure(
                 symbol: state == nil ? "arrow.down.circle.fill" : state?.failure?.isFinal == true ? "exclamationmark.circle" : "arrow.clockwise",
                 pointSize: TimelineText.captionMedium.pointSize, weight: .medium, palette: [.white]
@@ -410,9 +416,24 @@ final class DownloadBadgeView: NSView {
             text.piece = TextPiece(string: string, rect: CGRect(origin: .zero, size: textSize))
             text.setNeedsDisplay()
         }
+        let from = capsule.presentation()?.bounds.size ?? old
         capsule.frame = CGRect(origin: .zero, size: content)
         capsule.cornerRadius = content.height / 2
         CATransaction.commit()
+        if animated, from != content, from != .zero {
+            let spring = CASpringAnimation(keyPath: "bounds.size")
+            spring.fromValue = NSValue(size: from)
+            spring.toValue = NSValue(size: content)
+            spring.stiffness = 360
+            spring.damping = 26
+            spring.duration = spring.settlingDuration
+            capsule.add(spring, forKey: "resize")
+            let corner = CABasicAnimation(keyPath: "cornerRadius")
+            corner.fromValue = from.height / 2
+            corner.toValue = content.height / 2
+            corner.duration = 0.2
+            capsule.add(corner, forKey: "corner")
+        }
     }
 
     override func viewDidChangeBackingProperties() {

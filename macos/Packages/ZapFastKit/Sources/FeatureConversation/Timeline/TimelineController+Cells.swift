@@ -54,7 +54,7 @@ extension TimelineController: TimelineCellDelegate {
 
     func menu(forMessage id: String, selection: String?) -> NSMenu? {
         guard let model, let message = message(id) else { return nil }
-        let reactsInMenu = message.isRevoked || NSWorkspace.shared.isVoiceOverEnabled || !model.preferences.menuReactions
+        let reactsInMenu = message.isRevoked || NSWorkspace.shared.isVoiceOverEnabled
         let menu = NSHostingMenu(rootView: MessageActions(message: message, model: model, reactsInMenu: reactsInMenu))
         if let selection {
             let copy = NSMenuItem(title: String(localized: "Copy Selection"), action: #selector(copySelection(_:)), keyEquivalent: "")
@@ -69,11 +69,12 @@ extension TimelineController: TimelineCellDelegate {
     }
 
     /// While the menu is open its message is marked, and the quick
-    /// reactions float above it (VoiceOver finds them in the menu instead).
+    /// reactions float above it (VoiceOver finds them in the menu instead),
+    /// unless Settings turned them off.
     private func trackMenu(_ menu: NSMenu, of message: MessageRecord, reactsInMenu: Bool) {
         messageMenu?.end()
         var bar: MenuReactionBar?
-        if let model, !reactsInMenu {
+        if let model, !reactsInMenu, model.preferences.menuReactions {
             bar = MenuReactionBar(
                 emojis: model.quickReactions(for: message),
                 mine: message.reactions.first(where: \.fromMe)?.emoji,

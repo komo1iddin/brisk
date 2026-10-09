@@ -46,9 +46,9 @@ struct MessageActions: View {
         }
 
         // The drawn timeline floats the quick reactions above its menu
-        // (`MenuReactionBar`); VoiceOver, the SwiftUI rows, and anyone who
-        // turned that off in Settings find them here.
-        if isLive, reactsInMenu {
+        // (`MenuReactionBar`); VoiceOver and the SwiftUI rows find them
+        // here. Turned off in Settings, the menu has none.
+        if isLive, reactsInMenu, model.preferences.menuReactions {
             Menu("React", systemImage: "face.smiling") {
                 ForEach(model.quickReactions(for: message), id: \.self) { emoji in
                     Button(emoji) { model.react(emoji, to: message) }

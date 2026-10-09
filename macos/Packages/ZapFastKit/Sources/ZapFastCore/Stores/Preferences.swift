@@ -105,8 +105,8 @@ public final class Preferences {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
     }
 
-    /// The quick reactions float above a message's menu, as in Telegram;
-    /// off, they are a React submenu inside it.
+    /// A message's menu offers the quick reactions, floating above it as in
+    /// Telegram; off, the menu has none at all.
     public var menuReactions: Bool {
         didSet { defaults.set(menuReactions, forKey: Key.menuReactions) }
     }

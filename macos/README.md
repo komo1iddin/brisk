@@ -579,15 +579,21 @@ Five changes live in upstream's files in this fork, to be offered upstream:
   standard one and is no message of its own (`upgrade_to_hd` gives a photo that is not
   downloaded yet the keys of its HD copy, so the better picture is the one fetched; a
   photo already downloaded, or edited, keeps what it has). `lottie_inner`, `album_inner`,
-  `is_hd_copy` and `base_of` in `src/backend/worker.rs` look inside the wrappers, and
+  `is_hd_copy` and `base_of` in `src/backend/worker.rs` look inside the wrappers (also in
+  `parse_conversation`, `quote` and `outgoing_forward`, so an album picture keeps its
+  preview and is quoted and forwarded alone), history keeps a chunk's HD copies
+  (`ParsedChat::hd_copies`) and applies them after its photos, and
   `backfill_wrapped_messages` with `Archive::unsupported_with_raw` reads again the
-  messages already archived as unsupported (once; an HD copy's placeholder is dropped)
+  messages already archived as unsupported (version 2 also fills in the preview,
+  mentions and forwarded mark of album pictures version 1 recovered; an HD copy's
+  placeholder is dropped)
 
 - telling apart why a file could not be fetched (`src/backend/worker/media_failure.rs`,
   three lines in `download_media`): upstream called a phone that did not answer the request
   to upload a file again "no longer available", the same as a file that is gone;
 - naming a direct chat to the phone by its privacy id (`src/backend/worker/phone_address.rs`,
-  one line each in `fetch_older`, `download_media` and the poll history request). The
+  one line each in `request_history`, which serves both `FetchOlder` and `ReloadHistory`,
+  `download_media` and the poll history request). The
   archive files a direct chat under its phone number, but the phone has moved direct chats
   to privacy ids and does not answer a request for older messages that names one by number
   (a group has one name and always answered); with the privacy id the phone answers within

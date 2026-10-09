@@ -87,7 +87,7 @@ private struct DirectReceipts: View {
             Group {
                 if !reached {
                     Text(verbatim: "—")
-                } else if let at {
+                } else if let at = known(at) {
                     Text(DateText.moment(at))
                 } else {
                     Text("Time not recorded")
@@ -169,7 +169,7 @@ private struct GroupReceipts: View {
                     )
                     Text(name).lineLimit(1)
                     Spacer()
-                    if let time = recipient[keyPath: at] {
+                    if let time = known(recipient[keyPath: at]) {
                         Text(DateText.moment(time))
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -179,4 +179,11 @@ private struct GroupReceipts: View {
             }
         }
     }
+}
+
+/// A receipt time of zero or less is unknown, not 1 January 1970: archives
+/// filed before upstream stopped dating receipts from history hold zeros
+/// (upstream's `known_time`).
+func known(_ time: Int64?) -> Int64? {
+    time.flatMap { $0 > 0 ? $0 : nil }
 }

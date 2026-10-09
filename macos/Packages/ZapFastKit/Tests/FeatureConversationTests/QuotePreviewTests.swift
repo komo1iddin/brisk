@@ -21,3 +21,12 @@ struct QuotePreviewTests {
         #expect(QuotePreview.named(quoted, original: nil) { $0 }.summary == "hi @ all")
     }
 }
+
+struct ReceiptTimeTests {
+    @Test func aZeroReceiptTimeIsUnknown() {
+        #expect(known(0) == nil)
+        #expect(known(-5) == nil)
+        #expect(known(nil) == nil)
+        #expect(known(1_800_000_000) == 1_800_000_000)
+    }
+}

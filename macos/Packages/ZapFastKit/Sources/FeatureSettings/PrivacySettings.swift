@@ -68,7 +68,7 @@ struct PrivacySettings: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .settingsPane(height: 520)
+        .settingsPane()
         .onChange(of: preferences.appLockAfter) { model.appLock.noteInput() }
         .sheet(item: $form) { mode in
             PasswordForm(mode: mode, lock: lock)

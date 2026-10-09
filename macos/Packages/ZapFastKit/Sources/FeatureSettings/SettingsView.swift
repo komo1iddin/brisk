@@ -130,7 +130,7 @@ private struct AccountSettings: View {
                 }
             }
         }
-        .settingsPane(height: model.hub == nil ? 400 : 560)
+        .settingsPane()
         .confirmationDialog("Unlink this Mac?", isPresented: $confirmUnlink) {
             Button("Unlink", role: .destructive) { model.unlink() }
         }
@@ -239,7 +239,7 @@ private struct GeneralSettings: View {
                 if case .success(let folder) = result { model.setDownloadFolder(folder) }
             }
         }
-        .settingsPane(height: 420)
+        .settingsPane()
     }
 }
 
@@ -336,7 +336,7 @@ private struct ChatSettings: View {
                     .settingsFootnote()
             }
         }
-        .settingsPane(height: 540)
+        .settingsPane()
     }
 }
 
@@ -364,7 +364,7 @@ private struct NotificationSettings: View {
             }
             .disabled(!accountPreferences.notifications)
         }
-        .settingsPane(height: 320)
+        .settingsPane()
     }
 }
 
@@ -422,7 +422,7 @@ private struct AdvancedSettings: View {
                     .settingsFootnote()
             }
         }
-        .settingsPane(height: 390)
+        .settingsPane()
     }
 
     private func applyProxy() {
@@ -431,10 +431,13 @@ private struct AdvancedSettings: View {
 }
 
 extension View {
-    /// A Settings tab: a grouped form at a set height that scrolls when its
-    /// content is taller, so the window never outgrows the screen.
-    func settingsPane(height: CGFloat) -> some View {
-        formStyle(.grouped).frame(height: height)
+    /// A Settings tab: a grouped form as tall as what it holds, so the
+    /// Settings window takes each tab's own height, as the system's
+    /// Settings windows do, and nothing scrolls.
+    func settingsPane() -> some View {
+        formStyle(.grouped)
+            .scrollDisabled(true)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The small print under a section.

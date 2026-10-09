@@ -10,7 +10,37 @@ struct MessageActions: View {
     /// Whether React is a submenu here.
     var reactsInMenu = true
 
+    /// In groups, most used first, a line between each: answering the
+    /// message, then picking it, then what its content offers, then its
+    /// file, the rare tools in a submenu, and deleting last.
     var body: some View {
+        primary
+        if hasManage {
+            if hasPrimary { Divider() }
+            manage
+        }
+        if hasContent {
+            if hasPrimary || hasManage { Divider() }
+            content
+        }
+        if message.content.media != nil {
+            if hasPrimary || hasManage || hasContent { Divider() }
+            file
+        }
+        if hasPrimary || hasManage || hasContent || message.content.media != nil { Divider() }
+        more
+        Divider()
+        delete
+    }
+
+    // MARK: Groups
+
+    private var hasPrimary: Bool {
+        isLive || copyableText != nil || model.canForward(message) || model.canEdit(message)
+    }
+
+    /// Reply, copy, forward, edit: what a message is opened for.
+    @ViewBuilder private var primary: some View {
         if isLive {
             Button("Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
         }
@@ -30,14 +60,6 @@ struct MessageActions: View {
             }
         }
 
-        if model.canForward(message) {
-            Button("Forward…", systemImage: "arrowshape.turn.up.right") { model.forward(message) }
-        }
-
-        if model.canEdit(message) {
-            Button("Edit", systemImage: "pencil") { model.startEditing(message) }
-        }
-
         if let text = copyableText {
             Button("Copy", systemImage: "doc.on.doc") {
                 NSPasteboard.general.clearContents()
@@ -45,10 +67,39 @@ struct MessageActions: View {
             }
         }
 
+        if model.canForward(message) {
+            Button("Forward…", systemImage: "arrowshape.turn.up.right") { model.forward(message) }
+        }
+
+        if model.canEdit(message) {
+            Button("Edit", systemImage: "pencil") { model.startEditing(message) }
+        }
+    }
+
+    private var hasManage: Bool {
+        model.canSelect(message) || model.canShowInfo(message)
+    }
+
+    @ViewBuilder private var manage: some View {
         if model.canSelect(message) {
             Button("Select", systemImage: "checkmark.circle") { model.select(message) }
         }
+        if model.canShowInfo(message) {
+            Button("Info", systemImage: "info.circle") { model.showInfo(message) }
+        }
+    }
 
+    private var hasContent: Bool {
+        if coordinates != nil { return true }
+        switch message.content {
+        case .contact: return true
+        case .sticker: return message.content.media?.path != nil
+        default: return false
+        }
+    }
+
+    /// What this kind of message offers: a place, a contact, a sticker.
+    @ViewBuilder private var content: some View {
         if let place = coordinates {
             Button("Copy Coordinates", systemImage: "mappin.and.ellipse") {
                 NSPasteboard.general.clearContents()
@@ -74,44 +125,46 @@ struct MessageActions: View {
                 model.toggleFavoriteSticker(path)
             }
         }
+    }
 
-        if model.canShowInfo(message) {
-            Button("Info", systemImage: "info.circle") { model.showInfo(message) }
+    /// The attachment: look at it, open it, keep it; or fetch it first.
+    @ViewBuilder private var file: some View {
+        if let url = message.mediaURL {
+            Button("Quick Look", systemImage: "eye") { QuickLook.shared.show([url]) }
+            Button("Open", systemImage: "arrow.up.forward.app") { NSWorkspace.shared.open(url) }
+            Button("Show in Finder", systemImage: "folder") {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+            Button("Save As…", systemImage: "square.and.arrow.down") {
+                AttachmentSaving.saveCopy(of: url, named: suggestedName(for: url))
+            }
+            if isPicture {
+                Button("Copy Image", systemImage: "photo.on.rectangle") {
+                    AttachmentSaving.copyImage(at: url)
+                }
+            }
+        } else {
+            Button("Download", systemImage: "arrow.down.circle") { model.download(message) }
         }
+    }
 
-        Button("Reload Earlier Messages", systemImage: "arrow.clockwise") {
-            model.reloadHistory(before: message)
-        }
-        .disabled(!model.canReloadHistory(message))
+    /// Seldom needed: repairing history, and the id for a bug report (as
+    /// upstream offers it).
+    private var more: some View {
+        Menu("More", systemImage: "ellipsis.circle") {
+            Button("Reload Earlier Messages", systemImage: "arrow.clockwise") {
+                model.reloadHistory(before: message)
+            }
+            .disabled(!model.canReloadHistory(message))
 
-        if message.content.media != nil {
-            if let url = message.mediaURL {
-                Button("Quick Look", systemImage: "eye") { QuickLook.shared.show([url]) }
-                Button("Open", systemImage: "arrow.up.forward.app") { NSWorkspace.shared.open(url) }
-                Button("Show in Finder", systemImage: "folder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([url])
-                }
-                Button("Save As…", systemImage: "square.and.arrow.down") {
-                    AttachmentSaving.saveCopy(of: url, named: suggestedName(for: url))
-                }
-                if isPicture {
-                    Button("Copy Image", systemImage: "photo.on.rectangle") {
-                        AttachmentSaving.copyImage(at: url)
-                    }
-                }
-            } else {
-                Button("Download", systemImage: "arrow.down.circle") { model.download(message) }
+            Button("Copy Message ID", systemImage: "number") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(message.id, forType: .string)
             }
         }
+    }
 
-        // For a bug report, as upstream offers it.
-        Button("Copy Message ID", systemImage: "number") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(message.id, forType: .string)
-        }
-
-        Divider()
-
+    @ViewBuilder private var delete: some View {
         Button("Delete for Me…", systemImage: "trash", role: .destructive) {
             model.confirmDelete(message, forEveryone: false)
         }

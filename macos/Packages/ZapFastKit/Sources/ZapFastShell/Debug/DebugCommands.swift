@@ -185,6 +185,41 @@ enum DebugCommands {
             // As a hand on the trackpad would, for what shows only then.
             NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: scrollView)
             write(name, "at \(Int(clip.bounds.minY))")
+        case "trace":
+            // trace:<seconds>: every move of the timeline, with the content's
+            // height, and the scroll events that began gestures, then
+            // written out, to see what a hand on the trackpad did.
+            guard let content = mainWindow()?.contentView,
+                  let scrollView = timeline(in: content)?.enclosingScrollView else { return }
+            let seconds = parts.count > 1 ? Double(parts[1]) ?? 3 : 3
+            let clip = scrollView.contentView
+            let start = Date()
+            var lines: [String] = []
+            let observer = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification, object: clip, queue: .main
+            ) { _ in
+                MainActor.assumeIsolated {
+                    let height = scrollView.documentView?.bounds.height ?? 0
+                    let bottom = height - clip.bounds.height + clip.contentInsets.bottom
+                    lines.append(String(
+                        format: "%6.3f y=%8.1f bottom=%8.1f doc=%8.1f", Date().timeIntervalSince(start),
+                        clip.bounds.minY, bottom, height
+                    ))
+                }
+            }
+            let events = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                lines.append(String(
+                    format: "%6.3f   event dy=%6.1f phase=%d momentum=%d precise=%d", Date().timeIntervalSince(start),
+                    event.scrollingDeltaY, Int(event.phase.rawValue), Int(event.momentumPhase.rawValue),
+                    event.hasPreciseScrollingDeltas ? 1 : 0
+                ))
+                return event
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                NotificationCenter.default.removeObserver(observer)
+                if let events { NSEvent.removeMonitor(events) }
+                write(name, lines.joined(separator: "\n"))
+            }
         case "react", "sender":
             // react:<n> / sender:<n>: the picker, or the sender's page, of the
             // nth message from the bottom; answers with where it sits, then

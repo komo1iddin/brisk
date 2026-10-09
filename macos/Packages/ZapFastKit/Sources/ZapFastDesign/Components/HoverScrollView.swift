@@ -65,6 +65,7 @@ public final class HoverScrollView: NSScrollView {
 
     override public init(frame: NSRect) {
         super.init(frame: frame)
+        contentView = FullWidthClipView()
         verticalScroller = SlimScroller()
         // The system's setting may be to always show bars, which would draw
         // a track beside the content; this bar draws itself.
@@ -85,10 +86,10 @@ public final class HoverScrollView: NSScrollView {
         set { super.scrollerStyle = .legacy }
     }
 
-    /// The bar floats over the content instead of narrowing it.
+    /// The bar floats over the content instead of narrowing it: the clip
+    /// view keeps the full width (`FullWidthClipView`).
     override public func tile() {
         super.tile()
-        contentView.frame = bounds
         if let scroller = verticalScroller, subviews.last !== scroller {
             addSubview(scroller, positioned: .above, relativeTo: nil)
         }
@@ -120,4 +121,21 @@ public final class HoverScrollView: NSScrollView {
 
     /// Whether the bar is showing now.
     public var barIsVisible: Bool { hovering }
+}
+
+/// The clip view of a `HoverScrollView`, always as wide as the scroll view.
+/// AppKit tiles a legacy scroll bar's room out of the clip on every frame of
+/// a scroll; narrowing the clip and widening it again each time resized the
+/// document twice, and each resize put the scroll back inside the content:
+/// a reader pulling past the end of a chat was snapped back and thrown out
+/// again, frame after frame.
+private final class FullWidthClipView: NSClipView {
+    override func setFrameOrigin(_ newOrigin: NSPoint) {
+        super.setFrameOrigin(superview is HoverScrollView ? NSPoint(x: 0, y: newOrigin.y) : newOrigin)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        guard let scrollView = superview as? HoverScrollView else { return super.setFrameSize(newSize) }
+        super.setFrameSize(NSSize(width: scrollView.bounds.width, height: newSize.height))
+    }
 }

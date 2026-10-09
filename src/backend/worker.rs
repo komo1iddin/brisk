@@ -1617,14 +1617,24 @@ impl Worker {
     /// Reads again the archived messages that were filed as unsupported
     /// before the wrapper they travelled in was understood: the pictures of
     /// an album, Lottie stickers, and the HD copy of a photo, which is not a
-    /// message of its own and goes. Only content changes; the file is
-    /// fetched like any other.
+    /// message of its own and goes. The file is fetched like any other.
+    ///
+    /// Version 1 rewrote only the content, so album pictures it recovered,
+    /// and those that came in history read from their wrapper, lacked their
+    /// preview, mentions and forwarded mark; version 2 fills those in.
     fn backfill_wrapped_messages(&mut self) {
         const KEY: &str = "wrapped_messages";
-        if self.archive.meta(KEY).ok().flatten().as_deref() == Some("1") {
+        const VERSION: &str = "2";
+        let done = self.archive.meta(KEY).ok().flatten();
+        if done.as_deref() == Some(VERSION) {
             return;
         }
-        let rows = match self.archive.unsupported_with_raw() {
+        let rows = if done.is_some() {
+            self.archive.rows_with_raw()
+        } else {
+            self.archive.unsupported_with_raw()
+        };
+        let rows = match rows {
             Ok(rows) => rows,
             Err(error) => {
                 log::warn!("could not read archived messages: {error}");
@@ -1642,7 +1652,11 @@ impl Worker {
                 }
                 continue;
             }
-            let Some(content) = classify(&message) else {
+            let base = base_of(&message);
+            if done.is_some() && album_inner(message.get_base_message()).is_none() {
+                continue;
+            }
+            let Some(mut content) = classify(&message) else {
                 continue;
             };
             if matches!(content, Content::Unsupported { .. }) {
@@ -1651,15 +1665,32 @@ impl Worker {
             let Ok(Some(existing)) = self.archive.message(&chat, &id) else {
                 continue;
             };
+            if matches!(existing.content, Content::Revoked) {
+                continue;
+            }
+            if existing.edited && !matches!(existing.content, Content::Unsupported { .. }) {
+                // An edited caption is newer than the raw protobuf.
+                content = existing.content.clone();
+            } else {
+                content.keep_local_paths(&existing.content);
+            }
+            let mentions = self.mentions_of(&mentioned_of(base));
             if self
                 .archive
-                .set_content(&chat, &id, &content, existing.edited)
+                .set_derived(
+                    &chat,
+                    &id,
+                    &content,
+                    &mentions,
+                    thumbnail_of(base).as_deref(),
+                    forwarded_of(base),
+                )
                 .is_ok()
             {
                 recovered += 1;
             }
         }
-        let _ = self.archive.set_meta(KEY, "1");
+        let _ = self.archive.set_meta(KEY, VERSION);
         if recovered + removed > 0 {
             log::info!(
                 "recovered {recovered} archived wrapped messages, dropped {removed} HD copies"
@@ -6272,7 +6303,8 @@ impl Worker {
             &sender,
             &jid,
             &jid,
-            &original,
+            // An album's picture is quoted as itself, not in its album wrapper.
+            base_of(&original),
         );
         let shown = Quoted {
             mentions: row.mentions.clone(),
@@ -7949,7 +7981,8 @@ impl Worker {
 // --- free helpers ----------------------------------------------------------
 
 fn outgoing_forward(original: &wa::Message, expiration: Option<u32>) -> (wa::Message, Option<u32>) {
-    let mut message = original.get_base_message().prepare_for_forward();
+    // An album's picture goes alone: the album it belonged to stays behind.
+    let mut message = base_of(original).prepare_for_forward();
     if let Some(mut context) = context_of(&message).cloned() {
         // A forward belongs to the destination chat. The library retains the
         // source timer, including when the destination has no timer at all.
@@ -9420,7 +9453,7 @@ fn parse_conversation(conversation: wa::Conversation) -> ParsedChat {
         });
         let edited = snapshot.is_some() || original.edited_message.is_set();
         diagnostics.edit_snapshots += usize::from(snapshot.is_some());
-        let base = message.get_base_message();
+        let base = base_of(message);
         if let Some(protocol) = base.protocol_message.as_option() {
             if protocol.r#type == Some(wa::message::protocol_message::Type::MESSAGE_EDIT) {
                 diagnostics.invalid_edits += 1;
@@ -11524,6 +11557,46 @@ mod tests {
     }
 
     #[test]
+    fn an_album_picture_from_history_keeps_its_preview() {
+        use wa::message_association::AssociationType::MEDIA_ALBUM;
+        let parsed = parse_conversation(wa::Conversation {
+            id: super::receipt_tests::PEER.into(),
+            messages: vec![super::receipt_tests::history_entry(
+                super::receipt_tests::PEER,
+                "album-photo",
+                false,
+                None,
+                child_of(MEDIA_ALBUM),
+                Vec::new(),
+                None,
+            )],
+            ..Default::default()
+        });
+        let message = &parsed.messages[0];
+        assert_eq!(message.thumbnail.as_deref(), Some(&[1, 2, 3][..]));
+    }
+
+    #[test]
+    fn an_album_picture_is_forwarded_alone() {
+        use wa::message_association::AssociationType::MEDIA_ALBUM;
+        let (forward, _) = outgoing_forward(&child_of(MEDIA_ALBUM), None);
+        assert!(forward.associated_child_message.is_unset());
+        assert!(forward.message_context_info.is_unset());
+        let picture = forward
+            .image_message
+            .as_option()
+            .expect("the picture itself");
+        assert_eq!(picture.caption.as_deref(), Some("from the album"));
+        assert_eq!(
+            picture
+                .context_info
+                .as_option()
+                .and_then(|c| c.is_forwarded),
+            Some(true)
+        );
+    }
+
+    #[test]
     fn a_child_of_another_kind_is_still_shown_as_unsupported() {
         use wa::message_association::AssociationType::{MEDIA_ALBUM, STATUS_POLL};
         let other = child_of(STATUS_POLL);
@@ -11573,6 +11646,60 @@ mod tests {
             Some(Content::Unsupported { what }) => assert_eq!(what, "animated sticker"),
             other => panic!("unexpected {other:?}"),
         }
+    }
+
+    #[test]
+    fn album_pictures_recovered_before_get_their_preview_and_keep_their_file() {
+        use wa::message_association::AssociationType::MEDIA_ALBUM;
+        let (mut worker, _events, _, _) = receipt_tests::worker();
+        let chat = "someone@s.whatsapp.net";
+        worker.archive.ensure_chat(chat, "Someone").unwrap();
+        let album = child_of(MEDIA_ALBUM);
+        let mut content = classify(&album).unwrap();
+        if let Some(media) = content.media_mut() {
+            media.path = Some("/files/album.jpg".into());
+        }
+        // As version 1 left it: the picture, without its preview.
+        let filed = Message {
+            id: "album".into(),
+            chat: chat.into(),
+            sender: chat.into(),
+            sender_name: None,
+            from_me: false,
+            timestamp: 100,
+            content,
+            status: Delivery::Read,
+            delivered_at: None,
+            read_at: None,
+            quoted: None,
+            reactions: Vec::new(),
+            edited: false,
+            mentions: Vec::new(),
+            forwarded: false,
+            history_order: None,
+            thumbnail: None,
+        };
+        worker
+            .archive
+            .insert_message(&filed, Some(&album.encode_to_vec()))
+            .unwrap();
+        worker.archive.set_meta("wrapped_messages", "1").unwrap();
+
+        worker.backfill_wrapped_messages();
+
+        let stored = worker.archive.message(chat, "album").unwrap().unwrap();
+        assert_eq!(stored.thumbnail.as_deref(), Some(&[1, 2, 3][..]));
+        assert_eq!(
+            stored
+                .content
+                .media()
+                .and_then(|media| media.path.as_deref()),
+            Some(std::path::Path::new("/files/album.jpg"))
+        );
+        assert_eq!(
+            worker.archive.meta("wrapped_messages").unwrap().as_deref(),
+            Some("2")
+        );
     }
 
     #[test]
@@ -11637,8 +11764,13 @@ mod tests {
             Content::Unsupported { .. }
         ));
         assert_eq!(
+            stored("album").unwrap().thumbnail.as_deref(),
+            Some(&[1, 2, 3][..]),
+            "with the preview it travelled with"
+        );
+        assert_eq!(
             worker.archive.meta("wrapped_messages").unwrap().as_deref(),
-            Some("1")
+            Some("2")
         );
     }
 
@@ -12923,7 +13055,7 @@ mod receipt_tests {
         assert_eq!(parsed.ephemeral_setting_timestamp, Some(1_700_000_000));
     }
 
-    fn history_entry(
+    pub(super) fn history_entry(
         chat: &str,
         id: &str,
         from_me: bool,

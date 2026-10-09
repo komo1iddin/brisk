@@ -247,6 +247,8 @@ nonisolated final class BubbleLayout: @unchecked Sendable {
     }
 
     struct Pill {
+        /// The reaction it stands for.
+        var value: String
         var rect: CGRect
         var emoji: TextPiece
         var count: TextPiece?

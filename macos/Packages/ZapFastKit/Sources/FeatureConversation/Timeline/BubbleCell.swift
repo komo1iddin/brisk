@@ -15,6 +15,10 @@ protocol TimelineCellDelegate: AnyObject {
     /// The message's context menu, with a Copy for `selection` when some of
     /// its text is selected.
     func menu(forMessage id: String, selection: String?) -> NSMenu?
+    /// Clicking a reaction's pill adds ours, or takes ours away (upstream's).
+    func toggleReaction(_ emoji: String, ofMessage id: String)
+    /// Who chose `emoji`, for its pill's tooltip.
+    func reactionNames(_ emoji: String, ofMessage id: String) -> String
     /// A click on no message, beside one or below them all: the composer
     /// takes the keys again (upstream #283).
     func clickedBesideMessages()
@@ -158,6 +162,7 @@ final class BubbleCell: NSView {
         tail.isHidden = true
         layer?.insertSublayer(tail, below: bubble.layer)
         bubble.cell = self
+        pills.cell = self
         checkbox.isHidden = true
         checkbox.actions = ["position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
         layer?.addSublayer(checkbox)
@@ -1082,9 +1087,12 @@ nonisolated final class SymbolLayer: CALayer {
 
 // MARK: - Reactions
 
-/// The reaction pills under a bubble.
-private final class ReactionPillsView: NSView {
+/// The reaction pills under a bubble: who chose each shows on hover, and a
+/// click adds our reaction or takes it away, as upstream's pills do.
+private final class ReactionPillsView: NSView, NSViewToolTipOwner {
     private let drawing = PillsLayer()
+    weak var cell: BubbleCell?
+    private var pills: [BubbleLayout.Pill] = []
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -1101,7 +1109,38 @@ private final class ReactionPillsView: NSView {
 
     func configure(_ layout: BubbleLayout) {
         drawing.layout = layout
+        pills = layout.pills
+        removeAllToolTips()
+        for (index, pill) in pills.enumerated() {
+            addToolTip(Self.frame(of: pill), owner: self, userData: UnsafeMutableRawPointer(bitPattern: index + 1))
+        }
         needsRedraw()
+    }
+
+    /// The pill's place in this view, two points in for the shadow.
+    private static func frame(of pill: BubbleLayout.Pill) -> CGRect {
+        pill.rect.offsetBy(dx: 2, dy: 2)
+    }
+
+    private func pill(at point: NSPoint) -> BubbleLayout.Pill? {
+        pills.first { Self.frame(of: $0).contains(point) }
+    }
+
+    func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
+        let index = Int(bitPattern: data) - 1
+        guard pills.indices.contains(index), let cell, let id = cell.messageID else { return "" }
+        return cell.delegate?.reactionNames(pills[index].value, ofMessage: id) ?? ""
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let pill = pill(at: convert(event.locationInWindow, from: nil)), let cell, let id = cell.messageID else {
+            return super.mouseDown(with: event)
+        }
+        cell.delegate?.toggleReaction(pill.value, ofMessage: id)
+    }
+
+    override func resetCursorRects() {
+        for pill in pills { addCursorRect(Self.frame(of: pill), cursor: .pointingHand) }
     }
 
     func needsRedraw() {
@@ -1128,7 +1167,11 @@ private final class ReactionPillsView: NSView {
         drawing.setNeedsDisplay()
     }
 
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    /// Only the pills take clicks; between them the bubble's row does.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let superview else { return nil }
+        return pill(at: convert(point, from: superview)) == nil ? nil : self
+    }
 }
 
 nonisolated private final class PillsLayer: CALayer {

@@ -1966,6 +1966,20 @@ public final class AppModel {
 
     /// Sends a reaction; an empty one takes ours back. Each one sent counts
     /// towards the quick reactions, as upstream's `Action::React` does.
+    /// A reaction's pill, clicked: ours goes if we chose it, else we choose it.
+    public func toggleReaction(_ emoji: String, on message: MessageRecord) {
+        let mine = message.reactions.contains { $0.fromMe && $0.emoji == emoji }
+        react(mine ? "" : emoji, to: message)
+    }
+
+    /// Who chose `emoji` on `message`, "You" first if we did.
+    public func reactionNames(_ emoji: String, on message: MessageRecord) -> String {
+        let chose = message.reactions.filter { $0.emoji == emoji }
+        return (chose.filter(\.fromMe).map { _ in String(localized: "You") }
+            + chose.filter { !$0.fromMe }.map { chats.displayName($0.sender) })
+            .joined(separator: ", ")
+    }
+
     public func react(_ emoji: String, to message: MessageRecord) {
         reactionTarget = nil
         backend.send(.react(chat: message.chat, message: message.id, emoji: emoji))

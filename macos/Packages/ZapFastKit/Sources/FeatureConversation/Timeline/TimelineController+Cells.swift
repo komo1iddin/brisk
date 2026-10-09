@@ -12,6 +12,16 @@ extension TimelineController: TimelineCellDelegate {
         model?.focusComposer()
     }
 
+    func toggleReaction(_ emoji: String, ofMessage id: String) {
+        guard let model, let message = message(id) else { return }
+        model.toggleReaction(emoji, on: message)
+    }
+
+    func reactionNames(_ emoji: String, ofMessage id: String) -> String {
+        guard let model, let message = message(id) else { return "" }
+        return model.reactionNames(emoji, on: message)
+    }
+
     func showQuote(ofMessage id: String) {
         guard let model, let message = message(id) else { return }
         model.showQuoted(in: message)

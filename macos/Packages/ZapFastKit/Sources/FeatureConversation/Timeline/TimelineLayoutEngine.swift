@@ -570,6 +570,7 @@ nonisolated enum TimelineLayoutEngine {
             )
             let rect = CGRect(x: x, y: 0, width: inner.width + padding.width * 2, height: inner.height + padding.height * 2)
             pills.append(.init(
+                value: group.emoji,
                 rect: rect,
                 emoji: TextPiece(string: emoji, rect: CGRect(
                     x: rect.minX + padding.width, y: (rect.height - emojiSize.height) / 2,

@@ -242,4 +242,17 @@ struct ChatManagementTests {
         #expect(model.sentChatFollows == before + 1)
     }
 
+
+    @Test func aReactionPillAddsOursOrTakesItAway() {
+        let (model, backend) = model()
+        var message = message("m", in: direct, at: 30, fromMe: false)
+        message.reactions = [ReactionInfo(sender: "x@s.whatsapp.net", fromMe: false, emoji: "👍")]
+        model.toggleReaction("👍", on: message)
+        #expect(backend.sent.last == .react(chat: direct, message: "m", emoji: "👍"))
+        message.reactions.append(ReactionInfo(sender: "me@s.whatsapp.net", fromMe: true, emoji: "👍"))
+        model.toggleReaction("👍", on: message)
+        #expect(backend.sent.last == .react(chat: direct, message: "m", emoji: ""))
+        #expect(model.reactionNames("👍", on: message).hasPrefix("You, "))
+    }
+
 }

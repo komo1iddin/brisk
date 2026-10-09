@@ -56,6 +56,9 @@ impl AppDirs {
             if let Some(old) = Self::of(name) {
                 self.adopt(&old)?;
             }
+            // eframe keeps the window's own state beside these directories,
+            // and only a build with the egui interface ever wrote one.
+            #[cfg(feature = "ui")]
             if let (Some(from), Some(to)) =
                 (eframe::storage_dir(name), eframe::storage_dir("zapfast"))
             {

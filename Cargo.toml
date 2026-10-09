@@ -17,6 +17,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "zapfast"
 path = "src/main.rs"
+required-features = ["ui"]
 
 [dependencies]
 anyhow = "1"
@@ -32,18 +33,21 @@ hkdf = "0.13"
 hmac = "0.13"
 # Reads .wastickers zip archives.
 zip = { version = "5", default-features = false, features = ["deflate"] }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
 directories = "6"
 # UI framework. glow avoids the larger wgpu dependency.
-eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11", "persistence"] }
-egui = "0.36"
-egui_extras = { version = "0.36", features = ["file", "image", "svg", "webp", "gif"] }
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11", "persistence"], optional = true }
+# The palette is serialized into the settings, so the colour type needs
+# serde. eframe used to turn that on for us; without it the engine build
+# would not compile the palette.
+egui = { version = "0.36", features = ["serde"] }
+egui_extras = { version = "0.36", features = ["file", "image", "svg", "webp", "gif"], optional = true }
 # Reads the colour emoji font's bitmaps for the demo tour's GIF fixtures. Keep
 # skrifa aligned with epaint to avoid compiling two versions.
-skrifa = "0.44"
+skrifa = { version = "0.44", optional = true }
 # Decodes JPEG, PNG, WebP, and GIF images.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 # WhatsApp Web protocol: pairing, encryption, history sync, and media. Version
@@ -73,7 +77,7 @@ zeroize = "1"
 rand = "0.10"
 # The updater's HTTP client, with the proxy setting.
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "socks"] }
-qrcode = { version = "0.14", default-features = false }
+qrcode = { version = "0.14", default-features = false, optional = true }
 # Downloads profile pictures. The protocol library already includes this crate
 # and TLS stack.
 ureq = { version = "3", default-features = false, features = ["rustls", "socks-proxy"] }
@@ -83,7 +87,7 @@ unicode-segmentation = "1"
 # Unicode bidi properties; already included through URL/IDNA handling.
 icu_properties = "2.3"
 # Unicode Bidirectional Algorithm for mixed Hebrew, Arabic, and Latin text.
-unicode-bidi = "0.3.18"
+unicode-bidi = { version = "0.3.18", optional = true }
 # Canonical decomposition for accent-insensitive chat/contact search.
 icu_normalizer = { version = "2.3", default-features = false, features = ["compiled_data"] }
 # Opens downloaded attachments in their default desktop apps.
@@ -92,7 +96,7 @@ open = "5"
 # text support is already included through egui-winit, and MIME detection
 # through egui_extras.
 rfd = { version = "0.17", default-features = false, features = ["xdg-portal", "wayland"] }
-arboard = { version = "3", default-features = false, features = ["image-data", "wayland-data-control"] }
+arboard = { version = "3", default-features = false, features = ["image-data", "wayland-data-control"], optional = true }
 mime_guess2 = "2"
 # Emoji names, groups, and shortcodes for picker search.
 emojis = "0.9"
@@ -124,29 +128,29 @@ libwebp-sys2 = { version = "0.2", features = ["1_2"] }
 fastframe-i18n = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 # The icons! table, a loader that survives reduce_texture_memory, and the Lucide
 # icons shared with Spotifast.
-fastframe-icons = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-icons = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # The platform's interface font (Inter where there is none), and installed
 # fonts for other scripts.
-fastframe-fonts = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-fonts = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # Colour emoji in the platform's own style, with the bundled Noto behind
 # them, drawn off the interface thread.
-fastframe-emoji = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-emoji = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # Follows the desktop's hinting and glyph coverage, live through the portal.
-fastframe-text = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", features = ["watch"] }
+fastframe-text = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", features = ["watch"], optional = true }
 # Palette files, the shared presets, and following Omarchy's theme live.
 fastframe-theme = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 # Logs to stderr and a per-run file, and records panics without their payload.
 fastframe-log = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 # The tray item: StatusNotifier on Linux, tray-icon on Windows and macOS.
-fastframe-tray = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-tray = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # Keeps ZapFast running without a window and recovers off-screen windows.
-fastframe-shell = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-shell = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # Centres the macOS traffic lights on ZapFast's own header.
-fastframe-macos = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-macos = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # One running copy per user: the lock, and the channel a second launch uses.
-fastframe-instance = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-instance = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # The wheel step, and on Linux touchpad scale, glide and axis lock.
-fastframe-scroll = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+fastframe-scroll = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", optional = true }
 # Self-update from GitHub releases with signed checksums, a helper and rollback.
 fastframe-update = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1", features = ["reqwest"] }
 
@@ -201,11 +205,11 @@ libc = "0.2"
 apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 # The application menu bar, built with tray-icon's muda at the version
 # fastframe-tray uses.
-tray-icon = { version = "0.25", default-features = false }
+tray-icon = { version = "0.25", default-features = false, optional = true }
 # AppKit calls for the application menus and editing commands, on the main
 # thread.
-objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSText", "NSView", "NSWindow"] }
+objc2 = { version = "0.6", optional = true }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSText", "NSView", "NSWindow"], optional = true }
 # Reads the locale's clock format.
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSDateFormatter", "NSFormatter", "NSLocale", "NSString"] }
 
@@ -240,10 +244,37 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["NSMenu
 [[test]]
 name = "macos_menu"
 harness = false
+required-features = ["ui"]
 
 [features]
+default = ["ui"]
+# The egui interface: the window, every view, and the desktop shell around
+# them. Without it the crate is the client's engine alone (the protocol, the
+# archive, the settings, media decoding), which is what a host drawing its
+# own interface links against. The `zapfast` binary needs it.
+ui = [
+    "dep:arboard",
+    "dep:clap",
+    "dep:eframe",
+    "dep:egui_extras",
+    "dep:fastframe-emoji",
+    "dep:fastframe-fonts",
+    "dep:fastframe-icons",
+    "dep:fastframe-instance",
+    "dep:fastframe-macos",
+    "dep:fastframe-scroll",
+    "dep:fastframe-shell",
+    "dep:fastframe-text",
+    "dep:fastframe-tray",
+    "dep:objc2",
+    "dep:objc2-app-kit",
+    "dep:qrcode",
+    "dep:skrifa",
+    "dep:tray-icon",
+    "dep:unicode-bidi",
+]
 # Sample data, layout tests, and screenshots. Not used in release builds.
-demo = []
+demo = ["ui"]
 
 [profile.release]
 lto = "thin"

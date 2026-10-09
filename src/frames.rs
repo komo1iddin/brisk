@@ -8,28 +8,42 @@
 //! about textures or the drawing library. [`crate::animation`] uploads these
 //! frames as textures; the worker reads a `Poster` off an outgoing video
 //! without drawing anything at all.
+//!
+//! Only the poster is wanted without the `ui` feature: reading whole clips
+//! feeds the animation player, which that build does not have. Those parts
+//! say so; `decode_mp4_from` and `frame_of` serve both.
 
-use std::io::Read;
-use std::path::Path;
-use std::process::{Command, Stdio};
 use std::time::Duration;
+
+// Reading a whole clip from a file is the animation player's half.
+#[cfg(any(test, feature = "ui"))]
+use std::io::Read;
+#[cfg(any(test, feature = "ui"))]
+use std::path::Path;
+#[cfg(any(test, feature = "ui"))]
+use std::process::{Command, Stdio};
 
 /// Maximum frame width uploaded to the GPU.
 pub(crate) const MAX_WIDTH: u32 = 320;
 
 /// Maximum frames kept per animation.
+#[cfg(any(test, feature = "ui"))]
 pub(crate) const MAX_FRAMES: usize = 150;
 
 /// Maximum concurrent decoders.
+#[cfg(any(test, feature = "ui"))]
 const MAX_DECODERS: usize = 2;
 
+#[cfg(any(test, feature = "ui"))]
 static DECODING: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
 /// Guard for one decoder slot; dropping it frees the slot again.
+#[cfg(any(test, feature = "ui"))]
 pub(crate) struct DecodeSlot;
 
 /// Takes a decoder slot, or `None` when both are busy. Decoding is bounded
 /// because each decoder holds a whole clip's frames while it works.
+#[cfg(any(test, feature = "ui"))]
 pub(crate) fn claim_slot() -> Option<DecodeSlot> {
     if DECODING.load(std::sync::atomic::Ordering::Acquire) >= MAX_DECODERS {
         return None;
@@ -38,6 +52,7 @@ pub(crate) fn claim_slot() -> Option<DecodeSlot> {
     Some(DecodeSlot)
 }
 
+#[cfg(any(test, feature = "ui"))]
 impl Drop for DecodeSlot {
     fn drop(&mut self) {
         DECODING.fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
@@ -49,11 +64,13 @@ pub(crate) struct Decoded {
 }
 
 /// MP4 playback is always available because H.264 decodes in-process.
+#[cfg(any(test, feature = "ui"))]
 pub fn can_play_video() -> bool {
     true
 }
 
 /// Whether `ffmpeg` is available for other MP4 codecs.
+#[cfg(any(test, feature = "ui"))]
 fn ffmpeg_present() -> bool {
     static KNOWN: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *KNOWN.get_or_init(|| {
@@ -67,6 +84,7 @@ fn ffmpeg_present() -> bool {
 }
 
 /// Decodes up to `limit` frames.
+#[cfg(any(test, feature = "ui"))]
 pub(crate) fn decode(path: &Path, limit: usize) -> Option<Decoded> {
     let extension = path
         .extension()
@@ -80,6 +98,7 @@ pub(crate) fn decode(path: &Path, limit: usize) -> Option<Decoded> {
 }
 
 /// Decodes animated GIF with the `image` crate.
+#[cfg(any(test, feature = "ui"))]
 fn decode_image(path: &Path, extension: &str, limit: usize) -> Option<Decoded> {
     use image::AnimationDecoder;
     if extension != "gif" {
@@ -103,6 +122,7 @@ fn decode_image(path: &Path, extension: &str, limit: usize) -> Option<Decoded> {
 
 /// Decodes animated WebP with libwebp. It returns complete canvas frames,
 /// unlike the `image` decoder, which did not apply frame disposal correctly.
+#[cfg(any(test, feature = "ui"))]
 fn decode_webp(path: &Path, limit: usize) -> Option<Decoded> {
     let bytes = std::fs::read(path).ok()?;
     let decoder = webp_animation::Decoder::new(&bytes).ok()?;
@@ -126,6 +146,7 @@ fn decode_webp(path: &Path, limit: usize) -> Option<Decoded> {
 
 /// Holds a decoded frame to `MAX_WIDTH`, which is what bounds the memory a
 /// resident animation costs. Decoding scales; drawing does not.
+#[cfg(any(test, feature = "ui"))]
 fn within_budget(image: &image::RgbaImage) -> image::RgbaImage {
     if image.width() <= MAX_WIDTH {
         return image.clone();
@@ -140,12 +161,14 @@ fn within_budget(image: &image::RgbaImage) -> image::RgbaImage {
 }
 
 /// Decodes MP4 to scaled RGBA frames with `ffmpeg`.
+#[cfg(any(test, feature = "ui"))]
 pub(crate) fn decode_video(path: &Path, limit: usize) -> Option<Decoded> {
     // Decode WhatsApp's H.264 MP4s in-process and use ffmpeg for other codecs.
     decode_mp4(path, limit).or_else(|| decode_with_ffmpeg(path, limit))
 }
 
 /// Decodes an MP4 video track in-process.
+#[cfg(any(test, feature = "ui"))]
 fn decode_mp4(path: &Path, limit: usize) -> Option<Decoded> {
     let file = std::fs::File::open(path).ok()?;
     let size = file.metadata().ok()?.len();
@@ -295,6 +318,7 @@ pub(crate) fn avcc_to_annex_b(out: &mut Vec<u8>, sample: &[u8]) {
     }
 }
 
+#[cfg(any(test, feature = "ui"))]
 fn decode_with_ffmpeg(path: &Path, limit: usize) -> Option<Decoded> {
     if !ffmpeg_present() {
         return None;

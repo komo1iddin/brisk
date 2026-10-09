@@ -1,0 +1,1237 @@
+Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 600]
+[Planning deferred tasks]
+[2 / 2]
+[2 / 37] FeatureChatsTests-product
+[4 / 43] ZapFastBridge
+[8 / 47] ZapFastBridge
+[11 / 50] ZapFastCore
+[23 / 63] ZapFastCore
+[24 / 63] ZapFastCore
+[24 / 63] ZapFastBridge
+[25 / 62] ZapFastCore
+[28 / 65] ZapFastSharedUI
+[40 / 78] ZapFastSharedUI
+[41 / 78] ZapFastSharedUI
+[49 / 96] ZapFastSharedUI
+[49 / 96] ZapFastCore
+[51 / 94] FeatureLock
+[56 / 99] ZapFastSharedUI
+[63 / 106] FeatureLock
+[65 / 118] FeatureLock
+[69 / 118] FeatureLock
+[71 / 131] FeatureOnboarding
+[75 / 131] FeatureCalls
+[78 / 131] FeatureConversation
+[80 / 144] ZapFastCoreTests-product
+[83 / 144] FeatureSettings
+[89 / 146] ZapFastCoreTests-product
+[92 / 146] ZapFastCoreTests-product
+[93 / 146] ZapFastCoreTests-product
+[94 / 146] ZapFastCoreTests-product
+[96 / 146] ZapFastCoreTests-product
+[97 / 146] ZapFastCoreTests-product
+[101 / 146] FeatureSettings
+[102 / 146] ZapFastCoreTests-product
+[104 / 146] FeatureConversation
+[105 / 146] FeatureConversation
+[107 / 146] FeatureConversation
+/Users/komoliddinfatxullayev/Developer/Self-projects/zapfast-mac-native/macos/Packages/ZapFastKit/Sources/FeatureConversation/Info/ChatInfoPanel.swift:140:29: [1;33mwarning: [1;39mStoring a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')[0;0m
+[0;36m138 |[0;0m     /// Closes the popover a page is shown in, for what leaves it (opening
+[0;36m139 |[0;0m     /// a chat with the person).
+[0;36m140 |[0;0m     @Entry var dismissInfo: [4;39m@MainActor () -> Void[0;0m = {}
+    [0;36m|[0;0m                             `- [1;33mwarning: [1;39mStoring a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')[0;0m
+[0;36m141 |[0;0m }
+[0;36m142 |[0;0m 
+[109 / 146] FeatureConversation
+[112 / 146] ZapFastCoreTests-product
+[113 / 146] FeatureConversationTests-product
+[114 / 146] FeatureConversationTests-product
+[116 / 146] FeatureChats
+[119 / 146] FeatureChats
+[120 / 146] ZapFastShell
+[122 / 148] FeatureSettings
+[122 / 147] FeatureCalls
+[129 / 159] ZapFastShell
+/Users/komoliddinfatxullayev/Developer/Self-projects/zapfast-mac-native/macos/Packages/ZapFastKit/Sources/FeatureConversation/Info/ChatInfoPanel.swift:140:29: [1;33mwarning: [1;39mStoring a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')[0;0m
+[0;36m138 |[0;0m     /// Closes the popover a page is shown in, for what leaves it (opening
+[0;36m139 |[0;0m     /// a chat with the person).
+[0;36m140 |[0;0m     @Entry var dismissInfo: [4;39m@MainActor () -> Void[0;0m = {}
+    [0;36m|[0;0m                             `- [1;33mwarning: [1;39mStoring a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')[0;0m
+[0;36m141 |[0;0m }
+[0;36m142 |[0;0m 
+[131 / 159] ZapFastShell
+[132 / 159] ZapFastShell
+[134 / 159] ZapFastShell
+[135 / 159] ZapFastShell
+[135 / 159] FeatureConversation
+[137 / 159] FeatureChats
+[138 / 157] ZapFastShell
+/Users/komoliddinfatxullayev/Developer/Self-projects/zapfast-mac-native/macos/Packages/ZapFastKit/Sources/ZapFastShell/Debug/DebugCommands.swift:585:29: [1;33mwarning: [1;39muse '#selector' instead of explicitly constructing a 'Selector'[0;0m
+[0;36m583 |[0;0m             for item in toolbar.items {
+[0;36m584 |[0;0m                 let frame = item.view.map { $0.convert($0.bounds, to: nil) } ?? .zero
+[0;36m585 |[0;0m                 let glass = Selector(("glassBehavior"))
+    [0;36m|[0;0m                             `- [1;33mwarning: [1;39muse '#selector' instead of explicitly constructing a 'Selector'[0;0m
+[0;36m586 |[0;0m                 typealias Getter = @convention(c) (AnyObject, Selector) -> Int
+[0;36m587 |[0;0m                 let behavior = item.responds(to: glass) ? unsafeBitCast(item.method(for: glass), to: Getter.self)(item, glass) : -1
+[140 / 159] ZapFastShell
+[143 / 162] FeatureChatsTests-product
+/Users/komoliddinfatxullayev/Developer/Self-projects/zapfast-mac-native/macos/Packages/ZapFastKit/Sources/ZapFastShell/Debug/DebugCommands.swift:585:29: [1;33mwarning: [1;39muse '#selector' instead of explicitly constructing a 'Selector'[0;0m
+[0;36m583 |[0;0m             for item in toolbar.items {
+[0;36m584 |[0;0m                 let frame = item.view.map { $0.convert($0.bounds, to: nil) } ?? .zero
+[0;36m585 |[0;0m                 let glass = Selector(("glassBehavior"))
+    [0;36m|[0;0m                             `- [1;33mwarning: [1;39muse '#selector' instead of explicitly constructing a 'Selector'[0;0m
+[0;36m586 |[0;0m                 typealias Getter = @convention(c) (AnyObject, Selector) -> Int
+[0;36m587 |[0;0m                 let behavior = item.responds(to: glass) ? unsafeBitCast(item.method(for: glass), to: Getter.self)(item, glass) : -1
+[143 / 162] ZapFastShell
+[144 / 162] FeatureChatsTests-product
+[146 / 162] ZapFastCoreTests-product
+[148 / 162] FeatureConversation
+[148 / 162] FeatureChatsTests-product
+[156 / 168] FeatureChatsTests-product
+[156 / 168] FeatureConversation
+[159 / 165] FeatureConversationTests-product
+[170 / 177] FeatureConversationTests-product
+[171 / 177] FeatureConversationTests-product
+[173 / 177] FeatureConversationTests-product
+[173 / 177] ZapFastShell-product
+[173 / 177] FeatureConversationTests-product
+[175 / 180] FeatureConversationTests-product
+[177 / 180] FeatureConversationTests-product
+Build complete! (26,83 secs)
+Test Suite 'All tests' started at 2026-10-09 23:32:02.754.
+Test Suite 'All tests' passed at 2026-10-09 23:32:02.762.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+Test Suite 'All tests' started at 2026-10-09 23:32:03.681.
+Test Suite 'All tests' passed at 2026-10-09 23:32:03.687.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+Test Suite 'All tests' started at 2026-10-09 23:32:04.412.
+Test Suite 'All tests' passed at 2026-10-09 23:32:04.418.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite KeyboardTests started.
+◇ Suite NamesAndNumbersTests started.
+◇ Suite InteractiveTests started.
+◇ Suite PhoneHistoryTests started.
+◇ Suite OwnStickerTests started.
+◇ Suite MentionTests started.
+◇ Suite StoreObservationTests started.
+◇ Suite SoundTests started.
+◇ Suite PhoneFetchTests started.
+◇ Suite StickerArchiveTests started.
+◇ Suite MediaGalleryTests started.
+◇ Suite SidebarTests started.
+◇ Suite ConversationMergeTests started.
+◇ Suite SearchTests started.
+◇ Suite SelectionTests started.
+◇ Suite EmojiCompletionTests started.
+◇ Suite WasArchiveTests started.
+◇ Suite DocumentTypeTests started.
+◇ Suite MediaExportTests started.
+◇ Suite ProfileTests started.
+◇ Suite CallHistoryTests started.
+◇ Suite ShareTests started.
+◇ Suite SearchCursorTests started.
+◇ Suite StickerTests started.
+◇ Suite ChatWindowTests started.
+◇ Suite VoiceRecorderTests started.
+◇ Suite HoverScrollViewTests started.
+◇ Suite AttachmentTests started.
+◇ Suite MediaEditTests started.
+◇ Suite DownloadAdviceTests started.
+◇ Suite CallTests started.
+◇ Suite ChatInfoTests started.
+◇ Suite DocumentPreviewTests started.
+◇ Suite GoneMediaTests started.
+◇ Suite DownloadFailureTests started.
+◇ Suite VideoTests started.
+◇ Suite StartupTests started.
+◇ Suite UnreadDividerTests started.
+◇ Suite HangMonitorTests started.
+◇ Suite EditingTests started.
+◇ Suite VideoCodingTests started.
+◇ Suite LockedChatsTests started.
+◇ Suite ChatManagementTests started.
+◇ Suite ChatExportTests started.
+◇ Suite FilesAndNetworkTests started.
+◇ Suite ComposerSettingsTests started.
+◇ Suite GroupTests started.
+◇ Suite AccountPreferencesTests started.
+◇ Suite LabelTests started.
+◇ Suite HistoryRunTests started.
+◇ Suite PrivacyTests started.
+◇ Suite ThemeTests started.
+◇ Suite AccountHubTests started.
+◇ Suite DisplayImageTests started.
+◇ Suite MarkupTests started.
+◇ Suite SharedContactTests started.
+◇ Suite ReactionTests started.
+◇ Suite InviteTests started.
+◇ Suite MediaQueueTests started.
+◇ Suite StickerPackTests started.
+◇ Suite LinkRecoveryTests started.
+◇ Suite AppLockTests started.
+◇ Suite PollTests started.
+◇ Suite BubbleTextColorTests started.
+◇ Suite PlayoutBufferTests started.
+◇ Suite ForwardTests started.
+◇ Suite PollCreationTests started.
+◇ Suite CallToneTests started.
+◇ Suite VoiceAvatarTests started.
+◇ Suite TextSizeTests started.
+◇ Suite SendSoundTests started.
+◇ Suite NewChatTests started.
+◇ Test mentionsPickedBeforeAnEditComeBackAfterIt() started.
+◇ Test aMentionOutsideTheMembersIsRefused() started.
+◇ Test aNameEditedAwayIsNotMentioned() started.
+◇ Test pickedNamesGoOutAsTokensWithTheirIDs() started.
+◇ Test daySeparatorsFollowTheCalendar() started.
+◇ Test namesDoNotMatchLongerWords() started.
+◇ Test typedTokensOfMembersStillMention() started.
+◇ Test candidatesAreGroupMembersButUsByNameOrNumber() started.
+◇ Test aReplySendsOnlyIndicesOnceAtATime() started.
+◇ Test upstreamsOrderPicksTheSound() started.
+◇ Test soundsSurviveARestart() started.
+◇ Test aConversationIsNotToldAboutAnother() started.
+◇ Test aChatOnlyLookedAtIsNotLoaded() started.
+◇ Test aListChoiceGoesWithItsButton() started.
+◇ Test tokensDoNotMatchLongerNumbers() started.
+◇ Test downloadingTakesTheChosenKindsNewestFirstAFewAtATime() started.
+◇ Test mentionsAndRepliesToUsAddressUs() started.
+◇ Test carouselImagesDownloadAndLandByCard() started.
+◇ Test upstreamsRulesTurnButtonsOff() started.
+◇ Test aChatSoundGoesToTheArchive() started.
+◇ Test scrollsAndFocusNeedAnOpenChat() started.
+◇ Test noConnectionWaitsAndTheLinkComingBackGoesOn() started.
+◇ Test pagingFlagsLeaveTheMessagesRevisionAlone() started.
+◇ Test aChatIsNotToldAboutAnother() started.
+◇ Test stoppingHistoryIgnoresTheAnswerThatIsStillOnItsWay() started.
+◇ Test aSilentPhoneStopsTheQueueUntilTheyContinue() started.
+◇ Test unreadAndChannelCountsChangeOnlyWithTheirValue() started.
+◇ Test aFileThePhoneLostIsRememberedAndNotAskedForAgain() started.
+◇ Test picturesAreInspected() started.
+◇ Test commandNumbersOpenTheFirstNineChats() started.
+◇ Test typingDraftsAndPresenceAreToldPerChat() started.
+◇ Test chatsStepAsListedAndWrapAround() started.
+◇ Test theCountSaysWhatIsMissingByKind() started.
+◇ Test theSidebarKeepsUpstreamsOrder() started.
+◇ Test theOldThreeDayMemoryIsForgotten() started.
+◇ Test historyWithoutAConnectionDoesNotAsk() started.
+◇ Test aDownloadIsToldOnlyAboutItself() started.
+◇ Test anArchiveIsAskedForInUpstreamsOpenPanel() started.
+◇ Test nothingMoreIsLeftToTheArchiveAndTheConversation() started.
+◇ Test aMadeStickerKeepsTransparencyOnlyWhenThereIsSome() started.
+◇ Test historyAsksAgainWhileMessagesComeAndStopsWhenThePhoneHasNone() started.
+◇ Test blankCaptionsAreNone() started.
+◇ Test onlyPhotosVideosAndGifsAreShown() started.
+◇ Test forgettingEmptiesTheChatForItsReaders() started.
+◇ Test packsAreMadeFilledAndDeleted() started.
+◇ Test aChatOpenedFromTheUnreadListStaysThereOnceRead() started.
+◇ Test everyMemberOfAGroupHasAColourOfTheirOwn() started.
+◇ Test turningNumbersOffKeepsThemOutOfNamesOnly() started.
+◇ Test anUnansweredRequestWaitsBeforeTheNext() started.
+◇ Test aChatsColoursFollowItsMembers() started.
+◇ Test numbersReadAsWhatsAppWritesThem() started.
+◇ Test pinnedChatsAreCountedApart() started.
+◇ Test jumpIntoAChatNotYetOpenWaitsForItsFirstPage() started.
+◇ Test monthsRunNewestFirst() started.
+◇ Test findNextWalksFromNewestToOldestAndStops() started.
+◇ Test jumpToALoadedMessageScrollsAndHighlightsAtOnce() started.
+◇ Test lockedChatsStayOutOfMessageHits() started.
+◇ Test theLastOpenChatOpensAtTheNextStart() started.
+◇ Test aChatWithoutActivityChangesOnlyWithWhatItsMenuShows() started.
+◇ Test mergeKeepsTimeOrder() started.
+◇ Test openingTheViewerStopsTheBubblesVideoAndLeavingTheChatClosesIt() started.
+◇ Test messageHitsForAnEarlierQueryAreIgnored() started.
+◇ Test channelsAreMutedAndUnmutedTogether() started.
+◇ Test aMessageTheArchiveLacksEndsTheJumpWithoutAskingAgain() started.
+◇ Test snippetCutsALongLeadSoTheMatchShows() started.
+◇ Test olderPagesPrependOnlyUnseenMessages() started.
+◇ Test switchingChatsClosesTheChatSearch() started.
+◇ Test openingAnotherChatDropsAPendingJump() started.
+◇ Test aPhoneAnswerPagesTheArchiveAgain() started.
+◇ Test aDayAloneListsThatDaysMessages() started.
+◇ Test safePathsKeepToTheFolder() started.
+◇ Test clickingAQuoteJumpsToTheQuotedMessage() started.
+◇ Test chatHitsApplyOnlyToTheQueryInTheField() started.
+◇ Test timelineInsertsOneSeparatorPerDay() started.
+◇ Test theNameDecidesAsInTheFinder() started.
+◇ Test theAnimationAndItsPicturesAreUnpackedOnceAndKept() started.
+◇ Test aDragFromAMessagePutBackTakesOutWhatItPasses() started.
+◇ Test jumpAboveTheLoadedPageAsksTheArchiveOnceThenScrolls() started.
+◇ Test snippetMarksEveryMatchIgnoringCaseAndAccents() started.
+◇ Test somethingThatIsNotAZipIsSaidSo() started.
+◇ Test shortcodesCompleteAsUpstreams() started.
+◇ Test withoutAKnownExtensionTheMimeTypeDecides() started.
+◇ Test withoutCallsTheRowsAreAsBefore() started.
+◇ Test aDragThatTakesOutTheLastOneEndsSelecting() started.
+◇ Test pixelatingKeepsTheSize() started.
+◇ Test theSameSecondFollowsThePhonesHistoryOrder() started.
+◇ Test steppingThroughTheUnreadListKeepsItStill() started.
+◇ Test clicksKeepChatOrderAndTheLastOneOutEndsSelecting() started.
+◇ Test anArchiveWithoutAnimationLeavesNothingBehind() started.
+◇ Test theSecondaryAnimationIsPreferred() started.
+◇ Test aCallOnItsOwnDayGetsTheDay() started.
+◇ Test anotherNamedAnimationWillDo() started.
+◇ Test copyingOneMessageTakesItsTextAndEndsSelecting() started.
+◇ Test aboutCanBeClearedAndLongTextIsCut() started.
+◇ Test aListFromTheExtensionBecomesARequestAndIsRemoved() started.
+◇ Test onlyWhatChangedIsSent() started.
+◇ Test aQuoteWithoutAnIDGoesNowhere() started.
+◇ Test freshCopyKeepsADownloadedFile() started.
+◇ Test aReplacedPictureBumpsItsVersion() started.
+◇ Test copyingSeveralNamesWhoWroteEachAndWhen() started.
+◇ Test preparedFilesOlderThanADayAreSweptAway() started.
+◇ Test aDragPicksWhatItPassesOverAndLetsGoWhenItReturns() started.
+◇ Test messagesWithoutHistoryOrderKeepTheirArrivalOrder() started.
+◇ Test aNameThatLeadsOutOfTheFolderIsNeverWritten() started.
+◇ Test standardQualityKeepsTheLongerSideTo1600() started.
+◇ Test sharingHandsOnFilesAndTheRestAsText() started.
+◇ Test theCropIsWhatIsSaved() started.
+◇ Test aCallBreaksTheRunAroundIt() started.
+◇ Test aListFromElsewhereOrAnotherLinkIsIgnored() started.
+◇ Test aResultThatLeftTheListIsAsNone() started.
+◇ Test aDragUpwardPicksToo() started.
+◇ Test mirroringSwapsTheSides() started.
+◇ Test aRangeLeavesOutWhatCannotBeActedOn() started.
+◇ Test firstPageDecidesCompleteness() started.
+◇ Test aChatOfOnlyCallsShowsThem() started.
+◇ Test olderCallsWaitForTheirPage() started.
+◇ Test aCallSitsBetweenTheMessagesOfItsTime() started.
+◇ Test enterOpensTheReachedChatElseTheFirst() started.
+◇ Test aChatInItsOwnWindowIsOpenAndRead() started.
+◇ Test downStartsAtTheFirstResultAndStopsAtTheLast() started.
+◇ Test aTurnToTheLeftPutsTheRightSideOnTop() started.
+◇ Test favoriteTogglesBySavingOrForgetting() started.
+◇ Test aStickerRepliesWhenAReplyIsOpen() started.
+◇ Test pickedEmojiComeFirstForABareColon() started.
+◇ Test deletingSendsEachAndOpeningAnotherChatLetsGo() started.
+◇ Test historyReadsOnceAndFollowsTheBridge() started.
+◇ Test aCallReadsAsThePhoneShowsIt() started.
+◇ Test aStrokeWidthIsAShareOfTheLongerSide() started.
+◇ Test upStaysOnNoneAndStopsAtTheFirst() started.
+◇ Test aDownloadTheMessageAskedForExplainsItsFailure() started.
+◇ Test straighteningEnlargesThePictureJustEnoughToCover() started.
+◇ Test deliveringPutsItInTheChosenChatsComposer() started.
+◇ Test theContentKeepsTheFullWidth() started.
+◇ Test aQuarterTurnTakesTheCropAndDrawingsRoundWithIt() started.
+◇ Test nothingPausesOrPlaysBeforeATakeStarts() started.
+◇ Test forwardingTakesWhatCanBeForwarded() started.
+◇ Test turningAMirroredCanvasStillTurnsItLeftAsItLooks() started.
+◇ Test aStrokeIsDrawnIntoThePicture() started.
+◇ Test pastedPicturesBecomeStraightAlpha() started.
+◇ Test aSuccessLeavesNoNoticeAndForgetsTheRequest() started.
+◇ Test gifAnswersToAnEarlierQueryAreIgnored() started.
+◇ Test tilingLeavesTheDocumentAlone() started.
+◇ Test aTranscriptMarksWhatIsNotText() started.
+◇ Test noCallStartsWithoutTheMicrophone() started.
+◇ Test aResizedViewTakesTheNewWidth() started.
+◇ Test removingAndLeavingTheChatDropsThem() started.
+◇ Test aQuietVoiceStillFillsTheBarAndRoomNoiseStaysDown() started.
+◇ Test whenTheFirstCallEndsTheWaitingOneRingsOn() started.
+◇ Test aDocumentsPreviewIsAskedForOnceWhileConnected() started.
+◇ Test mediaGoesOneByOneWithItsOwnCaptionAndTheReplyOnTheFirst() started.
+◇ Test anEndedCallStaysAMomentWithItsReason() started.
+◇ Test twoWindowsOfOneChatBothCount() started.
+◇ Test aRefusedVoiceMessageWaitsToBeSentAgainOrDiscarded() started.
+◇ Test theMemberLineKeepsASavedFirstNameWholeAndOtherwiseTheFirstWord() started.
+◇ Test theTopFollowsALouderVoiceAtOnceAndSinksSlowly() started.
+◇ Test fullPicturesAreAskedForOnceApartFromThumbnails() started.
+◇ Test photosOpenTheEditorAndTakeTheTypedTextAsTheirCaption() started.
+◇ Test refusedAttachmentsComeBackWithTheirCaption() started.
+◇ Test aDownloadThatBeganByItselfFailsQuietly() started.
+◇ Test theColourStripRunsFromWhiteToBlackThenThroughTheHues() started.
+◇ Test straighteningReadsClockwiseOnScreenEitherWayRound() started.
+◇ Test loudnessIsTheBuffersRMSInDecibels() started.
+◇ Test messagingSomeoneWithoutAChatCreatesItFirst() started.
+◇ Test aDragKeepsWhatWasPickedBefore() started.
+◇ Test fourTurnsOrTwoMirrorsChangeNothing() started.
+◇ Test aVideoOfferCanBeAnsweredWithTheCamera() started.
+◇ Test nothingDoneLeavesTheFileAsItIs() started.
+◇ Test aSendersNameOpensTheirPageInTheInfo() started.
+◇ Test stagedFilesWaitForSendAndTakeTheCaptionAndReply() started.
+◇ Test aStateSaysWhyItFailed() started.
+◇ Test aVideoCallAsksForTheCamera() started.
+◇ Test anAspectCropIsAsLargeAsFitsAroundTheCurrentOne() started.
+◇ Test aRingingCallDeclinedForWantOfAMicrophoneIsHungUp() started.
+◇ Test theBackendsWordsAreToldApart() started.
+◇ Test theCameraTogglesOnlyDuringACall() started.
+◇ Test aRefusedCallSaysSo() started.
+◇ Test anythingElseKeepsItsWords() started.
+◇ Test infoOpensOverTheSearchAndSearchingClosesIt() started.
+◇ Test theTimerStartsWhenBothSidesTalk() started.
+◇ Test aSilentPhoneIsNotFinalButAGoneFileIs() started.
+◇ Test hangingUpWhenNothingGoesDoesNothing() started.
+◇ Test muteFlipsWhatTheBridgeReported() started.
+◇ Test withoutTheCameraAVideoCallGoesOnWithVoice() started.
+◇ Test aLateReportOfAnEarlierCallIsIgnored() started.
+◇ Test aWaitingCallTheCallerGaveUpOnLeaves() started.
+◇ Test aSecondCallRingsBesideTheFirst() started.
+◇ Test oneVideoPlaysAtATimeAndStopsWithItsChat() started.
+◇ Test resettingBringsTheDrawingsBackWithThePicture() started.
+◇ Test placingAsksTheBridge() started.
+◇ Test itForgetsTheOldestPastItsLimit() started.
+◇ Test aVideoAskedForPlaysOnceItsDownloadLands() started.
+◇ Test clearingForgetsAll() started.
+◇ Test membersListNamesAlphabeticallyThenNumbersThenUs() started.
+◇ Test aVideoNotHereYetDownloadsInsteadOfPlaying() started.
+◇ Test anExpiredLinkWithNoKeyToAskWithIsGone() started.
+◇ Test aFailedOrAbandonedDownloadStartsNothing() started.
+◇ Test aClickedNotificationLandsOnItsMessage() started.
+◇ Test itKeepsHashesAcrossLaunchesNotIds() started.
+◇ Test theDividerSitsAboveTheFirstUnreadIncomingMessage() started.
+◇ Test nothingNewStartsWhileACallGoes() started.
+◇ Test answeringOnlyAnswersARingingCall() started.
+◇ Test aCountPastTheLoadedPageShowsNone() started.
+◇ Test answeringTheWaitingCallMovesItIntoThePanel() started.
+◇ Test tryAgainRetriesAStartThatFailed() started.
+◇ Test clearingAndDeletingAskFirstThenGoToThePhone() started.
+◇ Test replyingOrLeavingTheChatDropsAnEdit() started.
+◇ Test theCodeTypedInTheSearchRevealsTheFolder() started.
+◇ Test aDeletedChatClosesWithoutSavingADraft() started.
+◇ Test avccAndAnnexBCarryTheSameUnits() started.
+◇ Test aTruncatedAVCCStopsAtTheBrokenUnit() started.
+◇ Test aRunEndsBeforeAnotherSenderAPauseOrANewDay() started.
+◇ Test annexBSplitsOnEitherStartCode() started.
+◇ Test anotherInstanceSaysSoPlainly() started.
+◇ Test deletingOneMessageWaitsForTheConfirmation() started.
+◇ Test lockingTheOpenChatClosesItAndAsksForACodeTheFirstTime() started.
+◇ Test aClearedChatLetsGoOfWhatPointedIntoIt() started.
+◇ Test laterMessagesDoNotMoveIt() started.
+◇ Test anUnchangedEditSendsNothing() started.
+◇ Test infoIsForOurMessagesThatLeft() started.
+◇ Test onlyOwnTextMessagesInsideFifteenMinutesCanBeEdited() started.
+◇ Test sendingAnEditKeepsMentionsStillInTheText() started.
+◇ Test daySeparatorsNameTheWeekdayAndTheYearOnlyWhenNotThisOne() started.
+◇ Test leavingTheFolderLocksItAndClosesItsChat() started.
+◇ Test readsAnotherThreadsStack() started.
+◇ Test openingAnotherChatClosesTheInfo() started.
+◇ Test anotherChatWithoutUnreadClearsIt() started.
+◇ Test leavingFromTheRowMenuAsksFirst() started.
+◇ Test theFolderOpensOnlyWithTheCode() started.
+◇ Test lastSeenNamesTheDayAndTheTimeAsThePhoneDoes() started.
+◇ Test lockedChatsStayOutOfTheListAndCounts() started.
+◇ Test aDirectMessageNeedsNoFollowing() started.
+◇ Test archivedChatsStayArchivedUnlessTurnedOff() started.
+◇ Test escapeInTheComposerClosesTheChatWhenNothingElseTakesIt() started.
+◇ Test downloadsGoWhereChosenOrBackToTheCache() started.
+◇ Test groupInfoIsEditableOnlyWhenWhatsAppAllowsIt() started.
+◇ Test theAppLockLocksTheFolderToo() started.
+◇ Test anEmptyChatExportsNothing() started.
+◇ Test editingTakesTheComposerAndCancellingGivesItBack() started.
+◇ Test earlierMessagesAreAskedForOnceAndNotWhileOffline() started.
+◇ Test aBackendWithoutAnArchiveFailsPlainly() started.
+◇ Test aProxyIsCheckedBeforeItIsUsed() started.
+◇ Test groupPhotosAreACentredSquareAtMost640() started.
+◇ Test pollsListTheirAnswersAndVotesOnceThereAreAny() started.
+◇ Test zapFastStaysInTheMenuBarAndRunningByDefault() started.
+◇ Test aTurnedOffArchiveSettingReachesTheBackendAtStart() started.
+◇ Test leavingFollowsUpstream() started.
+◇ Test picturesOpenOverThePageNotOnAPageOfTheirOwn() started.
+◇ Test attachmentsCarryTheirFileKindAndCaption() started.
+◇ Test momentsReadLikeUpstream() started.
+◇ Test settingUpTheCodeOpensTheFolder() started.
+◇ Test aGroupMessagesReceiptsAreFollowedOnlyWhileItsInfoIsOpen() started.
+◇ Test contactNamesComposeAsUpstreamDoes() started.
+◇ Test stoppingEndsItAndALateAnswerChangesNothing() started.
+◇ Test aReactionPillAddsOursOrTakesItAway() started.
+◇ Test aPageReachesNothingBeyondItsOwnFolder() started.
+◇ Test upArrowEditsTheNewestEditableMessage() started.
+◇ Test typingIsToldOnlyWhenAllowed() started.
+◇ Test togglingALabelReplacesTheChatsWholeList() started.
+◇ Test renamingIgnoresBlankAndUnchangedNamesAndWaitsForTheLastChange() started.
+◇ Test theEncoderMakesAKeyframeWithItsParameterSetsFirst() started.
+◇ Test namesAreUniqueIgnoringCaseAndTheLimitHolds() started.
+◇ Test twoAnswersInARowThatBringNothingMeanTheyAreSilent() started.
+◇ Test aLongChatIsSplitIntoPagesThatLinkToEachOther() started.
+◇ Test anotherAccountHasItsOwnAndForgetsThemWhenRemoved() started.
+◇ Test theFolderIsNamedAfterTheChatAndSafe() started.
+◇ Test theRunGoesOnWhileMessagesComeAndEndsWhenThePhoneHasNoMore() started.
+◇ Test sendingAsksTheChatListToGoToTheTop() started.
+◇ Test aLabelListsItsChatsChannelsIncludedButNotArchived() started.
+◇ Test markupThatCouldRunIsOnlyText() started.
+◇ Test nothingIsWrittenBeforeThePhonesValuesArrive() started.
+◇ Test attachmentsAreNumberedPerKindInTheirOwnFolder() started.
+◇ Test aVoiceMessageHasAPlayerWithTheSendersWaveform() started.
+◇ Test offlineNothingIsOffered() started.
+◇ Test oneEmptyAnswerBetweenGoodOnesIsForgiven() started.
+◇ Test everyPresetNamesARealGradient() started.
+◇ Test theAppPasswordIsForgottenOnlyWhenNoAccountIsLinked() started.
+◇ Test aWriteShowsAtOnceAndARefusalRestoresIt() started.
+◇ Test accountReadReceiptsWinOverTheLocalSwitch() started.
+◇ Test aFailedExportLeavesNoFolderBehind() started.
+◇ Test privateMeansOneToOne() started.
+◇ Test theFirstAccountReadsWhatWasSavedBeforeThereWereSeveral() started.
+◇ Test aMissingAttachmentSaysSoAndAPresentOneIsShownByKind() started.
+◇ Test photosAreScaledCopiesKeptOnlyWhileUsed() started.
+◇ Test aReplyNamesWhoWasQuotedAndReactionsAreCountedPerEmoji() started.
+◇ Test aChatThatFillsItsLastPageExactlyIsReadOnePageMore() started.
+◇ Test aHeldExceptListIsShownButNotOffered() started.
+◇ Test convertsOffTheMainThreadToTheDisplaysLayout() started.
+◇ Test delimitersInsideWordsStayLiteral() started.
+◇ Test looksSurviveARestart() started.
+◇ Test chatsFollowTheDefaultUntilTheyHaveTheirOwn() started.
+◇ Test anAccountBeingAddedShowsLinkingUntilItConnects() started.
+◇ Test upstreamsPalettesBecomeChatThemesAndYourOwnFilesJoinThem() started.
+◇ Test theAppLockLocksEveryAccount() started.
+◇ Test aCardNamesItsPersonNumberAndAccount() started.
+◇ Test theMostUsedReactionsComeFirst() started.
+◇ Test onlyTheAccountOnScreenIsOnline() started.
+◇ Test offlineNothingIsAsked() started.
+◇ Test linksAreDetected() started.
+◇ Test wallpaperColoursComeFromUpstream() started.
+◇ Test withoutMediaThereAreNoFilesAndTheConversationStillReads() started.
+◇ Test severalPagesLinkToEachOther() started.
+◇ Test messageOpensTheAccountsChatAndAddSavesTheSplitName() started.
+◇ Test progressCountsWhatWasRead() started.
+◇ Test boldItalicStrikeAndCode() started.
+◇ Test theDotCountsOtherAccountsUnreadChats() started.
+◇ Test aDocumentNameThatCouldEscapeTheFolderIsNotUsed() started.
+◇ Test aPastedLinkIsLookedUp() started.
+◇ Test joiningOpensTheGroup() started.
+◇ Test aRemovedAccountGoesOnceItsBackendHasStopped() started.
+◇ Test noConnectionPausesAtOnce() started.
+◇ Test failuresStayInTheSheet() started.
+◇ Test theLastAccountIsOnlyUnlinked() started.
+◇ Test pagesAreJoinedOldestFirstWithoutGapsOrRepeats() started.
+◇ Test everyoneIsNamedWithAnAvatarWhenTheWriterChanges() started.
+◇ Test theModelExportsOneChatAtATimeAndReportsWhereItWent() started.
+◇ Test aFileThatFailedForNoClearReasonIsTriedOnceMoreAtTheEnd() started.
+◇ Test ourPacksGoOutAsPackMessages() started.
+◇ Test followUpsComeAtGrowingGapsAndStop() started.
+◇ Test aFolderThatCannotBeMadeIsAnError() started.
+◇ Test anExportNeverReplacesOneThatIsThere() started.
+◇ Test onlyInviteLinksOpenHere() started.
+◇ Test placesAreLinksWithADotWhateverTheLocale() started.
+◇ Test aPackThatWillNotOpenSaysWhy() started.
+◇ Test aRequestAwaitingApprovalSaysSo() started.
+◇ Test fewAreOnTheirWayAtOnceAndInOrder() started.
+◇ Test aLinkThatStayedUpIsLeftAlone() started.
+◇ Test theTopSaysWhoIsInItAndForHowLong() started.
+◇ Test eachPersonKeepsTheirColour() started.
+◇ Test whatIsGoneOrHiddenIsSaidPlainly() started.
+◇ Test aFileOverTheLimitIsLeftOutFromTheStart() started.
+◇ Test aFinishNobodyAskedForChangesNothing() started.
+◇ Test goingOfflineCancelsTheFollowUps() started.
+◇ Test anAnswerFromThePhoneBreaksTheSilence() started.
+◇ Test withMediaTheFolderHoldsThePagesAndEachFileInItsKindsFolder() started.
+◇ Test anAnswerNobodyWaitsForIsIgnored() started.
+◇ Test stoppingStartsNothingMoreButLetsTheRunningOnesLand() started.
+◇ Test anEntryCarriesTheDayTheTimeAndTheAuthor() started.
+◇ Test textKeepsItsStylesLinesLinksAndNamesItsMentions() started.
+◇ Test theFirstSightingOfTheNetworkChangesNothing() started.
+◇ Test aNetworkThatReturnsRedialsALinkThatIsDown() started.
+◇ Test watchRedialsOnceWhenTheNetworkReturns() started.
+◇ Test aSharedPackIsFetchedShownAndAdded() started.
+◇ Test movingToAnotherNetworkRedialsALinkThatIsDown() started.
+◇ Test withoutAPasswordNothingLocks() started.
+◇ Test anUnchangedNetworkDoesNotRedialAgain() started.
+◇ Test aPhoneThatStaysSilentPausesTheQueue() started.
+◇ Test aNoteWhoseForwardsNeverCameGoesToThatComposer() started.
+◇ Test aSetPasswordLocksAtStartAndOpensWithIt() started.
+◇ Test nothingIsMarkedReadBehindTheLock() started.
+◇ Test anEmptyChatStillMakesAPage() started.
+◇ Test fileThatIsGoneAreCountedAndTheQueueGoesOn() started.
+◇ Test darkBubblesTakeWhiteText() started.
+◇ Test repeatedWrongPasswordsMakeTheNextTryWait() started.
+◇ Test midBlueTakesWhiteText() started.
+◇ Test aPollMissingVotesAsksThePhoneOnce() started.
+◇ Test tooMuchQueuedDropsTheOldest() started.
+◇ Test oneVoteAtATimeUntilTheBackendAnswers() started.
+◇ Test itWaitsForEnoughAudioBeforePlaying() started.
+◇ Test aFullMultipleChoiceRefusesAnotherButAnyNumberIsUnlimited() started.
+◇ Test settingsFollowUpstreamsForm() started.
+◇ Test aSentPollClosesTheSheetAndAFailureKeepsIt() started.
+◇ Test theRingIsOneQuietLoop() started.
+◇ Test lightBubblesTakeDarkText() started.
+◇ Test onlyAValidDraftGoesOutAndOnlyOnceAtATime() started.
+◇ Test theRingbackIsQuieterStill() started.
+◇ Test aPageReadsAsAConversationInSequence() started.
+◇ Test unlinkingForgetsThePasswordAndOpens() started.
+◇ Test ourOwnChatIsOfferedFirstAndOnlyThere() started.
+◇ Test eachTickedChatGetsTheForwardInTurn() started.
+◇ Test onlyChatsThatCanReceiveAreOfferedNewestFirst() started.
+◇ Test voiceMessagesShowWhoRecordedThemUntilTurnedOff() started.
+◇ Test revokedAndPollMessagesDoNotForward() started.
+◇ Test textGrowsAndShrinksByTenthsWithinItsRange() started.
+◇ Test aLinkThatCameBackEndsTheFollowUps() started.
+◇ Test pickingAChatSendsTheForward() started.
+◇ Test itPlaysInOrderAndFillsAGapWithSilence() started.
+◇ Test noneMakesNoSound() started.
+◇ Test isAWav() started.
+◇ Test anAddedMessageFollowsOnceTheForwardsHaveLeft() started.
+◇ Test singleAnswerSwapsAndClickingTheChoiceWithdrawsIt() started.
+◇ Test isShortQuietAndStartsAndEndsSilent(_:) started.
+◇ Test anUnknownNumberEndsTheCheck() started.
+◇ Test messageYourselfIsOfferedForItsWords() started.
+◇ Test candidatesAreContactsWithNumbersByNameWithoutUs() started.
+◇ Test theChatListSearchFindsPeopleWithoutAChat() started.
+◇ Test aCheckedNumberOpensItsChat() started.
+◇ Test case passing 1 argument style → .airLanding to isShortQuietAndStartsAndEndsSilent(_:) started.
+◇ Test case passing 1 argument style → .air to isShortQuietAndStartsAndEndsSilent(_:) started.
+◇ Test case passing 1 argument style → .breath to isShortQuietAndStartsAndEndsSilent(_:) started.
+✔ Test standardQualityKeepsTheLongerSideTo1600() passed after 0.125 seconds.
+✔ Test noCallStartsWithoutTheMicrophone() passed after 0.126 seconds.
+✔ Test aVideoCallAsksForTheCamera() passed after 0.154 seconds.
+✔ Test aRingingCallDeclinedForWantOfAMicrophoneIsHungUp() passed after 0.154 seconds.
+✔ Test theCameraTogglesOnlyDuringACall() passed after 0.154 seconds.
+✔ Test withoutTheCameraAVideoCallGoesOnWithVoice() passed after 0.154 seconds.
+✔ Test placingAsksTheBridge() passed after 0.154 seconds.
+✔ Test aVideoOfferCanBeAnsweredWithTheCamera() passed after 0.154 seconds.
+✔ Test nothingNewStartsWhileACallGoes() passed after 0.155 seconds.
+✔ Test answeringOnlyAnswersARingingCall() passed after 0.155 seconds.
+✔ Test answeringTheWaitingCallMovesItIntoThePanel() passed after 0.155 seconds.
+✔ Test aRefusedCallSaysSo() passed after 0.155 seconds.
+✔ Test withoutAPasswordNothingLocks() passed after 0.305 seconds.
+✔ Test unlinkingForgetsThePasswordAndOpens() passed after 0.575 seconds.
+✔ Test theSecondaryAnimationIsPreferred() passed after 0.718 seconds.
+✔ Test preparedFilesOlderThanADayAreSweptAway() passed after 0.719 seconds.
+✔ Test aNameThatLeadsOutOfTheFolderIsNeverWritten() passed after 0.720 seconds.
+✔ Test anotherNamedAnimationWillDo() passed after 0.721 seconds.
+✔ Test theCropIsWhatIsSaved() passed after 0.814 seconds.
+✔ Test mirroringSwapsTheSides() passed after 0.814 seconds.
+✔ Test aTurnToTheLeftPutsTheRightSideOnTop() passed after 0.814 seconds.
+✔ Test aStrokeIsDrawnIntoThePicture() passed after 0.814 seconds.
+✔ Test aDayAloneListsThatDaysMessages() passed after 1.002 seconds.
+✔ Test leavingTheFolderLocksItAndClosesItsChat() passed after 1.017 seconds.
+✔ Test anEmptyChatExportsNothing() passed after 1.096 seconds.
+✔ Test convertsOffTheMainThreadToTheDisplaysLayout() passed after 1.324 seconds.
+✔ Suite DisplayImageTests passed after 1.327 seconds.
+✔ Test upstreamsPalettesBecomeChatThemesAndYourOwnFilesJoinThem() passed after 1.343 seconds.
+✔ Test photosAreScaledCopiesKeptOnlyWhileUsed() passed after 1.345 seconds.
+✔ Test withoutMediaThereAreNoFilesAndTheConversationStillReads() passed after 1.367 seconds.
+✔ Test aLongChatIsSplitIntoPagesThatLinkToEachOther() passed after 1.369 seconds.
+✔ Test theAppLockLocksTheFolderToo() passed after 1.370 seconds.
+✔ Test anEmptyChatStillMakesAPage() passed after 1.373 seconds.
+✔ Test aMentionOutsideTheMembersIsRefused() passed after 1.384 seconds.
+✔ Test mentionsPickedBeforeAnEditComeBackAfterIt() passed after 1.384 seconds.
+✔ Test aNameEditedAwayIsNotMentioned() passed after 1.384 seconds.
+✔ Test daySeparatorsFollowTheCalendar() passed after 1.386 seconds.
+✔ Test typedTokensOfMembersStillMention() passed after 1.386 seconds.
+✔ Test candidatesAreGroupMembersButUsByNameOrNumber() passed after 1.397 seconds.
+✔ Test nothingIsMarkedReadBehindTheLock() passed after 1.395 seconds.
+✔ Test aReplySendsOnlyIndicesOnceAtATime() passed after 1.401 seconds.
+✔ Test soundsSurviveARestart() passed after 1.401 seconds.
+✔ Test upstreamsOrderPicksTheSound() passed after 1.401 seconds.
+✔ Test namesDoNotMatchLongerWords() passed after 1.403 seconds.
+✔ Test carouselImagesDownloadAndLandByCard() passed after 1.403 seconds.
+✔ Test aChatOnlyLookedAtIsNotLoaded() passed after 1.404 seconds.
+✔ Test upstreamsRulesTurnButtonsOff() passed after 1.404 seconds.
+✔ Test aConversationIsNotToldAboutAnother() passed after 1.404 seconds.
+✔ Test aChatSoundGoesToTheArchive() passed after 1.404 seconds.
+✔ Test scrollsAndFocusNeedAnOpenChat() passed after 1.404 seconds.
+✔ Test withMediaTheFolderHoldsThePagesAndEachFileInItsKindsFolder() passed after 1.417 seconds.
+✔ Test aListChoiceGoesWithItsButton() passed after 1.443 seconds.
+✔ Suite InteractiveTests passed after 1.444 seconds.
+✔ Test pickedNamesGoOutAsTokensWithTheirIDs() passed after 1.443 seconds.
+✔ Test unreadAndChannelCountsChangeOnlyWithTheirValue() passed after 1.443 seconds.
+✔ Test commandNumbersOpenTheFirstNineChats() passed after 1.443 seconds.
+✔ Test mentionsAndRepliesToUsAddressUs() passed after 1.443 seconds.
+✔ Test typingDraftsAndPresenceAreToldPerChat() passed after 1.443 seconds.
+✔ Suite SoundTests passed after 1.444 seconds.
+✔ Test theOldThreeDayMemoryIsForgotten() passed after 1.443 seconds.
+✔ Test aDownloadIsToldOnlyAboutItself() passed after 1.443 seconds.
+✔ Test chatsStepAsListedAndWrapAround() passed after 1.443 seconds.
+✔ Test theSidebarKeepsUpstreamsOrder() passed after 1.443 seconds.
+✔ Suite KeyboardTests passed after 1.445 seconds.
+✔ Test anArchiveIsAskedForInUpstreamsOpenPanel() passed after 1.443 seconds.
+✔ Suite StickerArchiveTests passed after 1.445 seconds.
+✔ Test aMadeStickerKeepsTransparencyOnlyWhenThereIsSome() passed after 1.443 seconds.
+✔ Test forgettingEmptiesTheChatForItsReaders() passed after 1.443 seconds.
+✔ Test pagingFlagsLeaveTheMessagesRevisionAlone() passed after 1.443 seconds.
+✔ Test aChatOpenedFromTheUnreadListStaysThereOnceRead() passed after 1.443 seconds.
+✔ Test turningNumbersOffKeepsThemOutOfNamesOnly() passed after 1.443 seconds.
+✔ Test noConnectionWaitsAndTheLinkComingBackGoesOn() passed after 1.444 seconds.
+✔ Test aSilentPhoneStopsTheQueueUntilTheyContinue() passed after 1.444 seconds.
+✔ Test stoppingHistoryIgnoresTheAnswerThatIsStillOnItsWay() passed after 1.444 seconds.
+✔ Test historyWithoutAConnectionDoesNotAsk() passed after 1.444 seconds.
+✔ Test packsAreMadeFilledAndDeleted() passed after 1.444 seconds.
+✔ Test anUnansweredRequestWaitsBeforeTheNext() passed after 1.444 seconds.
+✔ Test pinnedChatsAreCountedApart() passed after 1.444 seconds.
+✔ Test blankCaptionsAreNone() passed after 1.444 seconds.
+✔ Test onlyPhotosVideosAndGifsAreShown() passed after 1.444 seconds.
+✔ Test jumpIntoAChatNotYetOpenWaitsForItsFirstPage() passed after 1.444 seconds.
+✔ Test tokensDoNotMatchLongerNumbers() passed after 1.445 seconds.
+✔ Suite MentionTests passed after 1.446 seconds.
+✔ Test findNextWalksFromNewestToOldestAndStops() passed after 1.444 seconds.
+✔ Test monthsRunNewestFirst() passed after 1.444 seconds.
+✔ Test jumpToALoadedMessageScrollsAndHighlightsAtOnce() passed after 1.445 seconds.
+✔ Test numbersReadAsWhatsAppWritesThem() passed after 1.445 seconds.
+✔ Test openingTheViewerStopsTheBubblesVideoAndLeavingTheChatClosesIt() passed after 1.445 seconds.
+✔ Suite MediaGalleryTests passed after 1.446 seconds.
+✔ Test messageHitsForAnEarlierQueryAreIgnored() passed after 1.445 seconds.
+✔ Test aChatsColoursFollowItsMembers() passed after 1.445 seconds.
+✔ Test theLastOpenChatOpensAtTheNextStart() passed after 1.445 seconds.
+✔ Test snippetCutsALongLeadSoTheMatchShows() passed after 1.445 seconds.
+✔ Test olderPagesPrependOnlyUnseenMessages() passed after 1.445 seconds.
+✔ Test switchingChatsClosesTheChatSearch() passed after 1.445 seconds.
+✔ Test aPhoneAnswerPagesTheArchiveAgain() passed after 1.445 seconds.
+✔ Test aMessageTheArchiveLacksEndsTheJumpWithoutAskingAgain() passed after 1.445 seconds.
+✔ Test picturesAreInspected() passed after 1.445 seconds.
+✔ Suite OwnStickerTests passed after 1.447 seconds.
+✔ Test aChatIsNotToldAboutAnother() passed after 1.446 seconds.
+✔ Test lockedChatsStayOutOfMessageHits() passed after 1.445 seconds.
+✔ Test clickingAQuoteJumpsToTheQuotedMessage() passed after 1.445 seconds.
+✔ Test chatHitsApplyOnlyToTheQueryInTheField() passed after 1.445 seconds.
+✔ Test safePathsKeepToTheFolder() passed after 1.445 seconds.
+✔ Test everyMemberOfAGroupHasAColourOfTheirOwn() passed after 1.446 seconds.
+✔ Test theNameDecidesAsInTheFinder() passed after 1.445 seconds.
+✔ Test aChatWithoutActivityChangesOnlyWithWhatItsMenuShows() passed after 1.445 seconds.
+✔ Suite NamesAndNumbersTests passed after 1.447 seconds.
+✔ Test nothingMoreIsLeftToTheArchiveAndTheConversation() passed after 1.446 seconds.
+✔ Suite PhoneHistoryTests passed after 1.447 seconds.
+✔ Test downloadingTakesTheChosenKindsNewestFirstAFewAtATime() passed after 1.446 seconds.
+✔ Test theCountSaysWhatIsMissingByKind() passed after 1.446 seconds.
+✔ Test aDragFromAMessagePutBackTakesOutWhatItPasses() passed after 1.446 seconds.
+✔ Test withoutAKnownExtensionTheMimeTypeDecides() passed after 1.446 seconds.
+✔ Test mergeKeepsTimeOrder() passed after 1.446 seconds.
+✔ Test withoutCallsTheRowsAreAsBefore() passed after 1.446 seconds.
+✔ Test timelineInsertsOneSeparatorPerDay() passed after 1.446 seconds.
+✔ Suite DocumentTypeTests passed after 1.447 seconds.
+✔ Suite StoreObservationTests passed after 1.447 seconds.
+✔ Test jumpAboveTheLoadedPageAsksTheArchiveOnceThenScrolls() passed after 1.446 seconds.
+✔ Test aDragThatTakesOutTheLastOneEndsSelecting() passed after 1.446 seconds.
+✔ Test historyAsksAgainWhileMessagesComeAndStopsWhenThePhoneHasNone() passed after 1.446 seconds.
+✔ Test pixelatingKeepsTheSize() passed after 1.446 seconds.
+✔ Test theSameSecondFollowsThePhonesHistoryOrder() passed after 1.446 seconds.
+✔ Suite MediaExportTests passed after 1.447 seconds.
+✔ Test steppingThroughTheUnreadListKeepsItStill() passed after 1.446 seconds.
+✔ Test shortcodesCompleteAsUpstreams() passed after 1.446 seconds.
+✔ Test snippetMarksEveryMatchIgnoringCaseAndAccents() passed after 1.446 seconds.
+✔ Test anArchiveWithoutAnimationLeavesNothingBehind() passed after 1.446 seconds.
+✔ Test somethingThatIsNotAZipIsSaidSo() passed after 1.447 seconds.
+✔ Test aListFromTheExtensionBecomesARequestAndIsRemoved() passed after 1.447 seconds.
+✔ Test aboutCanBeClearedAndLongTextIsCut() passed after 1.447 seconds.
+✔ Test freshCopyKeepsADownloadedFile() passed after 1.447 seconds.
+✔ Test channelsAreMutedAndUnmutedTogether() passed after 1.447 seconds.
+✔ Suite SidebarTests passed after 1.448 seconds.
+✔ Test aQuoteWithoutAnIDGoesNowhere() passed after 1.447 seconds.
+✔ Test theAnimationAndItsPicturesAreUnpackedOnceAndKept() passed after 1.448 seconds.
+✔ Suite WasArchiveTests passed after 1.449 seconds.
+✔ Test onlyWhatChangedIsSent() passed after 1.448 seconds.
+✔ Test messagesWithoutHistoryOrderKeepTheirArrivalOrder() passed after 1.448 seconds.
+✔ Test aCallBreaksTheRunAroundIt() passed after 1.448 seconds.
+✔ Test sharingHandsOnFilesAndTheRestAsText() passed after 1.448 seconds.
+✔ Test aDragUpwardPicksToo() passed after 1.448 seconds.
+✔ Test openingAnotherChatDropsAPendingJump() passed after 1.448 seconds.
+✔ Suite SearchTests passed after 1.450 seconds.
+✔ Test aReplacedPictureBumpsItsVersion() passed after 1.448 seconds.
+✔ Suite ProfileTests passed after 1.450 seconds.
+✔ Test aRangeLeavesOutWhatCannotBeActedOn() passed after 1.448 seconds.
+✔ Test copyingOneMessageTakesItsTextAndEndsSelecting() passed after 1.448 seconds.
+✔ Test aChatOfOnlyCallsShowsThem() passed after 1.448 seconds.
+✔ Test aCallSitsBetweenTheMessagesOfItsTime() passed after 1.448 seconds.
+✔ Test aChatInItsOwnWindowIsOpenAndRead() passed after 1.448 seconds.
+✔ Test downStartsAtTheFirstResultAndStopsAtTheLast() passed after 1.448 seconds.
+✔ Test enterOpensTheReachedChatElseTheFirst() passed after 1.448 seconds.
+✔ Test aResultThatLeftTheListIsAsNone() passed after 1.448 seconds.
+✔ Test pickedEmojiComeFirstForABareColon() passed after 1.449 seconds.
+✔ Suite EmojiCompletionTests passed after 1.450 seconds.
+✔ Test historyReadsOnceAndFollowsTheBridge() passed after 1.449 seconds.
+✔ Test aCallReadsAsThePhoneShowsIt() passed after 1.449 seconds.
+✔ Test firstPageDecidesCompleteness() passed after 1.449 seconds.
+✔ Suite ConversationMergeTests passed after 1.450 seconds.
+✔ Test aStickerRepliesWhenAReplyIsOpen() passed after 1.449 seconds.
+✔ Test aDragPicksWhatItPassesOverAndLetsGoWhenItReturns() passed after 1.449 seconds.
+✔ Test upStaysOnNoneAndStopsAtTheFirst() passed after 1.449 seconds.
+✔ Test aDownloadTheMessageAskedForExplainsItsFailure() passed after 1.449 seconds.
+✔ Test theContentKeepsTheFullWidth() passed after 1.449 seconds.
+✔ Test aQuarterTurnTakesTheCropAndDrawingsRoundWithIt() passed after 1.449 seconds.
+✔ Suite SearchCursorTests passed after 1.451 seconds.
+✔ Test aStrokeWidthIsAShareOfTheLongerSide() passed after 1.449 seconds.
+✔ Test deliveringPutsItInTheChosenChatsComposer() passed after 1.449 seconds.
+✔ Test olderCallsWaitForTheirPage() passed after 1.449 seconds.
+✔ Test favoriteTogglesBySavingOrForgetting() passed after 1.449 seconds.
+✔ Test straighteningEnlargesThePictureJustEnoughToCover() passed after 1.449 seconds.
+✔ Test gifAnswersToAnEarlierQueryAreIgnored() passed after 1.449 seconds.
+✔ Test aResizedViewTakesTheNewWidth() passed after 1.449 seconds.
+✔ Test tilingLeavesTheDocumentAlone() passed after 1.449 seconds.
+✔ Test aTranscriptMarksWhatIsNotText() passed after 1.449 seconds.
+✔ Test nothingPausesOrPlaysBeforeATakeStarts() passed after 1.449 seconds.
+✔ Suite StickerTests passed after 1.451 seconds.
+✔ Test forwardingTakesWhatCanBeForwarded() passed after 1.449 seconds.
+✔ Test aQuietVoiceStillFillsTheBarAndRoomNoiseStaysDown() passed after 1.449 seconds.
+✔ Suite HoverScrollViewTests passed after 1.451 seconds.
+✔ Test whenTheFirstCallEndsTheWaitingOneRingsOn() passed after 1.449 seconds.
+✔ Test aSuccessLeavesNoNoticeAndForgetsTheRequest() passed after 1.449 seconds.
+✔ Test pastedPicturesBecomeStraightAlpha() passed after 1.449 seconds.
+✔ Test removingAndLeavingTheChatDropsThem() passed after 1.449 seconds.
+✔ Test theTopFollowsALouderVoiceAtOnceAndSinksSlowly() passed after 1.449 seconds.
+✔ Test fullPicturesAreAskedForOnceApartFromThumbnails() passed after 1.449 seconds.
+✔ Test turningAMirroredCanvasStillTurnsItLeftAsItLooks() passed after 1.449 seconds.
+✔ Test theMemberLineKeepsASavedFirstNameWholeAndOtherwiseTheFirstWord() passed after 1.449 seconds.
+✔ Test aDownloadThatBeganByItselfFailsQuietly() passed after 1.449 seconds.
+✔ Suite DownloadAdviceTests passed after 1.451 seconds.
+✔ Test aRefusedVoiceMessageWaitsToBeSentAgainOrDiscarded() passed after 1.449 seconds.
+✔ Test theColourStripRunsFromWhiteToBlackThenThroughTheHues() passed after 1.449 seconds.
+✔ Test aCallOnItsOwnDayGetsTheDay() passed after 1.450 seconds.
+✔ Suite CallHistoryTests passed after 1.451 seconds.
+✔ Test loudnessIsTheBuffersRMSInDecibels() passed after 1.449 seconds.
+✔ Suite VoiceRecorderTests passed after 1.451 seconds.
+✔ Test messagingSomeoneWithoutAChatCreatesItFirst() passed after 1.449 seconds.
+✔ Test aDocumentsPreviewIsAskedForOnceWhileConnected() passed after 1.450 seconds.
+✔ Suite DocumentPreviewTests passed after 1.452 seconds.
+✔ Test twoWindowsOfOneChatBothCount() passed after 1.450 seconds.
+✔ Test nothingDoneLeavesTheFileAsItIs() passed after 1.450 seconds.
+✔ Suite ChatWindowTests passed after 1.452 seconds.
+✔ Test refusedAttachmentsComeBackWithTheirCaption() passed after 1.450 seconds.
+✔ Test clicksKeepChatOrderAndTheLastOneOutEndsSelecting() passed after 1.450 seconds.
+✔ Test straighteningReadsClockwiseOnScreenEitherWayRound() passed after 1.450 seconds.
+✔ Test aDragKeepsWhatWasPickedBefore() passed after 1.450 seconds.
+✔ Test theBackendsWordsAreToldApart() passed after 1.450 seconds.
+✔ Test photosOpenTheEditorAndTakeTheTypedTextAsTheirCaption() passed after 1.450 seconds.
+✔ Test infoOpensOverTheSearchAndSearchingClosesIt() passed after 1.450 seconds.
+✔ Test fourTurnsOrTwoMirrorsChangeNothing() passed after 1.450 seconds.
+✔ Test anAspectCropIsAsLargeAsFitsAroundTheCurrentOne() passed after 1.450 seconds.
+✔ Test aSilentPhoneIsNotFinalButAGoneFileIs() passed after 1.450 seconds.
+✔ Test theTimerStartsWhenBothSidesTalk() passed after 1.450 seconds.
+✔ Test hangingUpWhenNothingGoesDoesNothing() passed after 1.450 seconds.
+✔ Test aListFromElsewhereOrAnotherLinkIsIgnored() passed after 1.451 seconds.
+✔ Suite ShareTests passed after 1.452 seconds.
+✔ Test aStateSaysWhyItFailed() passed after 1.450 seconds.
+✔ Test aLateReportOfAnEarlierCallIsIgnored() passed after 1.450 seconds.
+✔ Test stagedFilesWaitForSendAndTakeTheCaptionAndReply() passed after 1.451 seconds.
+✔ Test aSecondCallRingsBesideTheFirst() passed after 1.451 seconds.
+✔ Test oneVideoPlaysAtATimeAndStopsWithItsChat() passed after 1.451 seconds.
+✔ Test aVideoAskedForPlaysOnceItsDownloadLands() passed after 1.451 seconds.
+✔ Test clearingForgetsAll() passed after 1.451 seconds.
+✔ Test muteFlipsWhatTheBridgeReported() passed after 1.451 seconds.
+✔ Test membersListNamesAlphabeticallyThenNumbersThenUs() passed after 1.451 seconds.
+✔ Test anExpiredLinkWithNoKeyToAskWithIsGone() passed after 1.451 seconds.
+✔ Test aClickedNotificationLandsOnItsMessage() passed after 1.451 seconds.
+✔ Test aSendersNameOpensTheirPageInTheInfo() passed after 1.451 seconds.
+✔ Suite ChatInfoTests passed after 1.453 seconds.
+✔ Test resettingBringsTheDrawingsBackWithThePicture() passed after 1.451 seconds.
+✔ Suite MediaEditTests passed after 1.453 seconds.
+✔ Test aWaitingCallTheCallerGaveUpOnLeaves() passed after 1.451 seconds.
+✔ Test aFailedOrAbandonedDownloadStartsNothing() passed after 1.451 seconds.
+✔ Test itKeepsHashesAcrossLaunchesNotIds() passed after 1.451 seconds.
+✔ Test anythingElseKeepsItsWords() passed after 1.451 seconds.
+✔ Test aVideoNotHereYetDownloadsInsteadOfPlaying() passed after 1.451 seconds.
+✔ Suite DownloadFailureTests passed after 1.453 seconds.
+✔ Suite VideoTests passed after 1.453 seconds.
+✔ Test replyingOrLeavingTheChatDropsAnEdit() passed after 1.451 seconds.
+✔ Test aDeletedChatClosesWithoutSavingADraft() passed after 1.451 seconds.
+✔ Test clearingAndDeletingAskFirstThenGoToThePhone() passed after 1.452 seconds.
+✔ Test aCountPastTheLoadedPageShowsNone() passed after 1.452 seconds.
+✔ Test theDividerSitsAboveTheFirstUnreadIncomingMessage() passed after 1.452 seconds.
+✔ Test avccAndAnnexBCarryTheSameUnits() passed after 1.452 seconds.
+✔ Test annexBSplitsOnEitherStartCode() passed after 1.452 seconds.
+✔ Test aTruncatedAVCCStopsAtTheBrokenUnit() passed after 1.452 seconds.
+✔ Test deletingOneMessageWaitsForTheConfirmation() passed after 1.452 seconds.
+✔ Test aRunEndsBeforeAnotherSenderAPauseOrANewDay() passed after 1.452 seconds.
+✔ Test laterMessagesDoNotMoveIt() passed after 1.452 seconds.
+✔ Test anUnchangedEditSendsNothing() passed after 1.452 seconds.
+✔ Test anotherInstanceSaysSoPlainly() passed after 1.452 seconds.
+✔ Test daySeparatorsNameTheWeekdayAndTheYearOnlyWhenNotThisOne() passed after 1.453 seconds.
+✔ Test itForgetsTheOldestPastItsLimit() passed after 1.453 seconds.
+✔ Suite GoneMediaTests passed after 1.456 seconds.
+✔ Test copyingSeveralNamesWhoWroteEachAndWhen() passed after 1.454 seconds.
+✔ Test onlyOwnTextMessagesInsideFifteenMinutesCanBeEdited() passed after 1.453 seconds.
+✔ Test aClearedChatLetsGoOfWhatPointedIntoIt() passed after 1.454 seconds.
+✔ Test sendingAnEditKeepsMentionsStillInTheText() passed after 1.454 seconds.
+✔ Test infoIsForOurMessagesThatLeft() passed after 1.454 seconds.
+✔ Test lockedChatsStayOutOfTheListAndCounts() passed after 1.454 seconds.
+✔ Test anotherChatWithoutUnreadClearsIt() passed after 1.454 seconds.
+✔ Suite UnreadDividerTests passed after 1.456 seconds.
+✔ Test archivedChatsStayArchivedUnlessTurnedOff() passed after 1.454 seconds.
+✔ Test escapeInTheComposerClosesTheChatWhenNothingElseTakesIt() passed after 1.454 seconds.
+✔ Test editingTakesTheComposerAndCancellingGivesItBack() passed after 1.454 seconds.
+✔ Test openingAnotherChatClosesTheInfo() passed after 1.454 seconds.
+✔ Test groupInfoIsEditableOnlyWhenWhatsAppAllowsIt() passed after 1.454 seconds.
+✔ Test theFolderOpensOnlyWithTheCode() passed after 1.454 seconds.
+✔ Test anEndedCallStaysAMomentWithItsReason() passed after 1.455 seconds.
+✔ Test readsAnotherThreadsStack() passed after 1.455 seconds.
+✔ Suite HangMonitorTests passed after 1.457 seconds.
+✔ Suite CallTests passed after 1.457 seconds.
+✔ Test earlierMessagesAreAskedForOnceAndNotWhileOffline() passed after 1.455 seconds.
+✔ Test leavingFromTheRowMenuAsksFirst() passed after 1.455 seconds.
+✔ Test deletingSendsEachAndOpeningAnotherChatLetsGo() passed after 1.455 seconds.
+✔ Suite SelectionTests passed after 1.457 seconds.
+✔ Test downloadsGoWhereChosenOrBackToTheCache() passed after 1.455 seconds.
+✔ Test aProxyIsCheckedBeforeItIsUsed() passed after 1.455 seconds.
+✔ Test lastSeenNamesTheDayAndTheTimeAsThePhoneDoes() passed after 1.455 seconds.
+✔ Test picturesOpenOverThePageNotOnAPageOfTheirOwn() passed after 1.455 seconds.
+✔ Test leavingFollowsUpstream() passed after 1.455 seconds.
+✔ Test lockingTheOpenChatClosesItAndAsksForACodeTheFirstTime() passed after 1.455 seconds.
+✔ Test momentsReadLikeUpstream() passed after 1.455 seconds.
+✔ Test attachmentsCarryTheirFileKindAndCaption() passed after 1.455 seconds.
+✔ Test aBackendWithoutAnArchiveFailsPlainly() passed after 1.455 seconds.
+✔ Test pollsListTheirAnswersAndVotesOnceThereAreAny() passed after 1.455 seconds.
+✔ Test aPageReachesNothingBeyondItsOwnFolder() passed after 1.455 seconds.
+✔ Test upArrowEditsTheNewestEditableMessage() passed after 1.455 seconds.
+✔ Suite EditingTests passed after 1.458 seconds.
+✔ Test typingIsToldOnlyWhenAllowed() passed after 1.455 seconds.
+✔ Suite ComposerSettingsTests passed after 1.458 seconds.
+✔ Test togglingALabelReplacesTheChatsWholeList() passed after 1.455 seconds.
+✔ Test aTurnedOffArchiveSettingReachesTheBackendAtStart() passed after 1.455 seconds.
+✔ Test renamingIgnoresBlankAndUnchangedNamesAndWaitsForTheLastChange() passed after 1.455 seconds.
+✔ Test namesAreUniqueIgnoringCaseAndTheLimitHolds() passed after 1.455 seconds.
+✔ Test aDirectMessageNeedsNoFollowing() passed after 1.456 seconds.
+✔ Test aReactionPillAddsOursOrTakesItAway() passed after 1.456 seconds.
+✔ Test stoppingEndsItAndALateAnswerChangesNothing() passed after 1.456 seconds.
+✔ Test theFolderIsNamedAfterTheChatAndSafe() passed after 1.456 seconds.
+✔ Test theEncoderMakesAKeyframeWithItsParameterSetsFirst() passed after 1.456 seconds.
+✔ Test markupThatCouldRunIsOnlyText() passed after 1.456 seconds.
+✔ Test groupPhotosAreACentredSquareAtMost640() passed after 1.456 seconds.
+✔ Suite VideoCodingTests passed after 1.458 seconds.
+✔ Test zapFastStaysInTheMenuBarAndRunningByDefault() passed after 1.456 seconds.
+✔ Test aLabelListsItsChatsChannelsIncludedButNotArchived() passed after 1.456 seconds.
+✔ Test theRunGoesOnWhileMessagesComeAndEndsWhenThePhoneHasNoMore() passed after 1.456 seconds.
+✔ Suite FilesAndNetworkTests passed after 1.458 seconds.
+✔ Test oneEmptyAnswerBetweenGoodOnesIsForgiven() passed after 1.456 seconds.
+✔ Test anotherAccountHasItsOwnAndForgetsThemWhenRemoved() passed after 1.456 seconds.
+✔ Test aVoiceMessageHasAPlayerWithTheSendersWaveform() passed after 1.456 seconds.
+✔ Test everyPresetNamesARealGradient() passed after 1.456 seconds.
+✔ Test theAppPasswordIsForgottenOnlyWhenNoAccountIsLinked() passed after 1.456 seconds.
+✔ Test accountReadReceiptsWinOverTheLocalSwitch() passed after 1.456 seconds.
+✔ Test privateMeansOneToOne() passed after 1.456 seconds.
+✔ Suite LabelTests passed after 1.458 seconds.
+✔ Test tryAgainRetriesAStartThatFailed() passed after 1.456 seconds.
+✔ Suite StartupTests passed after 1.459 seconds.
+✔ Test aWriteShowsAtOnceAndARefusalRestoresIt() passed after 1.456 seconds.
+✔ Test aReplyNamesWhoWasQuotedAndReactionsAreCountedPerEmoji() passed after 1.456 seconds.
+✔ Test aHeldExceptListIsShownButNotOffered() passed after 1.456 seconds.
+✔ Test twoAnswersInARowThatBringNothingMeanTheyAreSilent() passed after 1.456 seconds.
+✔ Test looksSurviveARestart() passed after 1.456 seconds.
+✔ Suite HistoryRunTests passed after 1.459 seconds.
+✔ Test delimitersInsideWordsStayLiteral() passed after 1.456 seconds.
+✔ Test aMissingAttachmentSaysSoAndAPresentOneIsShownByKind() passed after 1.456 seconds.
+✔ Test chatsFollowTheDefaultUntilTheyHaveTheirOwn() passed after 1.456 seconds.
+✔ Test theAppLockLocksEveryAccount() passed after 1.456 seconds.
+✔ Test offlineNothingIsOffered() passed after 1.456 seconds.
+✔ Test offlineNothingIsAsked() passed after 1.456 seconds.
+✔ Test nothingIsWrittenBeforeThePhonesValuesArrive() passed after 1.456 seconds.
+✔ Suite PrivacyTests passed after 1.459 seconds.
+✔ Test sendingAsksTheChatListToGoToTheTop() passed after 1.457 seconds.
+✔ Test aGroupMessagesReceiptsAreFollowedOnlyWhileItsInfoIsOpen() passed after 1.457 seconds.
+✔ Test wallpaperColoursComeFromUpstream() passed after 1.456 seconds.
+✔ Suite ThemeTests passed after 1.459 seconds.
+✔ Suite ChatManagementTests passed after 1.459 seconds.
+✔ Test messageOpensTheAccountsChatAndAddSavesTheSplitName() passed after 1.456 seconds.
+✔ Test severalPagesLinkToEachOther() passed after 1.456 seconds.
+✔ Test contactNamesComposeAsUpstreamDoes() passed after 1.457 seconds.
+✔ Suite GroupTests passed after 1.459 seconds.
+✔ Test aDocumentNameThatCouldEscapeTheFolderIsNotUsed() passed after 1.457 seconds.
+✔ Test joiningOpensTheGroup() passed after 1.457 seconds.
+✔ Test boldItalicStrikeAndCode() passed after 1.457 seconds.
+✔ Test linksAreDetected() passed after 1.457 seconds.
+✔ Suite MarkupTests passed after 1.459 seconds.
+✔ Test aRemovedAccountGoesOnceItsBackendHasStopped() passed after 1.457 seconds.
+✔ Test theDotCountsOtherAccountsUnreadChats() passed after 1.457 seconds.
+✔ Test failuresStayInTheSheet() passed after 1.457 seconds.
+✔ Test aFileThatFailedForNoClearReasonIsTriedOnceMoreAtTheEnd() passed after 1.457 seconds.
+✔ Test theLastAccountIsOnlyUnlinked() passed after 1.457 seconds.
+✔ Test noConnectionPausesAtOnce() passed after 1.457 seconds.
+✔ Test followUpsComeAtGrowingGapsAndStop() passed after 1.457 seconds.
+✔ Test onlyTheAccountOnScreenIsOnline() passed after 1.457 seconds.
+✔ Test attachmentsAreNumberedPerKindInTheirOwnFolder() passed after 1.458 seconds.
+✔ Test everyoneIsNamedWithAnAvatarWhenTheWriterChanges() passed after 1.457 seconds.
+✔ Test theMostUsedReactionsComeFirst() passed after 1.457 seconds.
+✔ Suite ReactionTests passed after 1.460 seconds.
+✔ Test aCardNamesItsPersonNumberAndAccount() passed after 1.458 seconds.
+✔ Suite SharedContactTests passed after 1.460 seconds.
+✔ Test aPastedLinkIsLookedUp() passed after 1.458 seconds.
+✔ Test aRequestAwaitingApprovalSaysSo() passed after 1.457 seconds.
+✔ Test anAccountBeingAddedShowsLinkingUntilItConnects() passed after 1.458 seconds.
+✔ Suite AccountHubTests passed after 1.460 seconds.
+✔ Test aPackThatWillNotOpenSaysWhy() passed after 1.458 seconds.
+✔ Test whatIsGoneOrHiddenIsSaidPlainly() passed after 1.458 seconds.
+✔ Test onlyInviteLinksOpenHere() passed after 1.458 seconds.
+✔ Test aFinishNobodyAskedForChangesNothing() passed after 1.458 seconds.
+✔ Test goingOfflineCancelsTheFollowUps() passed after 1.458 seconds.
+✔ Test theFirstAccountReadsWhatWasSavedBeforeThereWereSeveral() passed after 1.458 seconds.
+✔ Test aFileOverTheLimitIsLeftOutFromTheStart() passed after 1.458 seconds.
+✔ Test eachPersonKeepsTheirColour() passed after 1.458 seconds.
+✔ Test theTopSaysWhoIsInItAndForHowLong() passed after 1.458 seconds.
+✔ Test anEntryCarriesTheDayTheTimeAndTheAuthor() passed after 1.458 seconds.
+✔ Test aNetworkThatReturnsRedialsALinkThatIsDown() passed after 1.458 seconds.
+✔ Suite AccountPreferencesTests passed after 1.461 seconds.
+✔ Suite InviteTests passed after 1.460 seconds.
+✔ Test anAnswerNobodyWaitsForIsIgnored() passed after 1.458 seconds.
+✔ Test watchRedialsOnceWhenTheNetworkReturns() passed after 1.458 seconds.
+✔ Test anUnchangedNetworkDoesNotRedialAgain() passed after 1.458 seconds.
+✔ Test aPhoneThatStaysSilentPausesTheQueue() passed after 1.458 seconds.
+✔ Test aNoteWhoseForwardsNeverCameGoesToThatComposer() passed after 1.458 seconds.
+✔ Test aLinkThatStayedUpIsLeftAlone() passed after 1.458 seconds.
+✔ Test fewAreOnTheirWayAtOnceAndInOrder() passed after 1.458 seconds.
+✔ Test stoppingStartsNothingMoreButLetsTheRunningOnesLand() passed after 1.458 seconds.
+✔ Test aFolderThatCannotBeMadeIsAnError() passed after 1.458 seconds.
+✔ Test darkBubblesTakeWhiteText() passed after 1.458 seconds.
+✔ Test ourPacksGoOutAsPackMessages() passed after 1.458 seconds.
+✔ Test midBlueTakesWhiteText() passed after 1.458 seconds.
+✔ Test fileThatIsGoneAreCountedAndTheQueueGoesOn() passed after 1.458 seconds.
+✔ Test theFirstSightingOfTheNetworkChangesNothing() passed after 1.458 seconds.
+✔ Test aFullMultipleChoiceRefusesAnotherButAnyNumberIsUnlimited() passed after 1.458 seconds.
+✔ Test oneVoteAtATimeUntilTheBackendAnswers() passed after 1.458 seconds.
+✔ Test itWaitsForEnoughAudioBeforePlaying() passed after 1.458 seconds.
+✔ Test lightBubblesTakeDarkText() passed after 1.458 seconds.
+✔ Test aPollMissingVotesAsksThePhoneOnce() passed after 1.458 seconds.
+✔ Suite BubbleTextColorTests passed after 1.461 seconds.
+✔ Test aSentPollClosesTheSheetAndAFailureKeepsIt() passed after 1.458 seconds.
+✔ Test onlyAValidDraftGoesOutAndOnlyOnceAtATime() passed after 1.458 seconds.
+✔ Test tooMuchQueuedDropsTheOldest() passed after 1.458 seconds.
+✔ Suite PollCreationTests passed after 1.461 seconds.
+✔ Test aPageReadsAsAConversationInSequence() passed after 1.458 seconds.
+✔ Test ourOwnChatIsOfferedFirstAndOnlyThere() passed after 1.458 seconds.
+✔ Test eachTickedChatGetsTheForwardInTurn() passed after 1.458 seconds.
+✔ Test movingToAnotherNetworkRedialsALinkThatIsDown() passed after 1.458 seconds.
+✔ Test theRingbackIsQuieterStill() passed after 1.458 seconds.
+✔ Test voiceMessagesShowWhoRecordedThemUntilTurnedOff() passed after 1.458 seconds.
+✔ Suite VoiceAvatarTests passed after 1.461 seconds.
+✔ Test textGrowsAndShrinksByTenthsWithinItsRange() passed after 1.458 seconds.
+✔ Suite TextSizeTests passed after 1.461 seconds.
+✔ Test pickingAChatSendsTheForward() passed after 1.458 seconds.
+✔ Test textKeepsItsStylesLinesLinksAndNamesItsMentions() passed after 1.459 seconds.
+✔ Test itPlaysInOrderAndFillsAGapWithSilence() passed after 1.458 seconds.
+✔ Test noneMakesNoSound() passed after 1.458 seconds.
+✔ Test anAnswerFromThePhoneBreaksTheSilence() passed after 1.459 seconds.
+✔ Test isAWav() passed after 1.458 seconds.
+✔ Suite PlayoutBufferTests passed after 1.461 seconds.
+✔ Test singleAnswerSwapsAndClickingTheChoiceWithdrawsIt() passed after 1.458 seconds.
+✔ Test anUnknownNumberEndsTheCheck() passed after 1.458 seconds.
+✔ Suite MediaQueueTests passed after 1.461 seconds.
+✔ Suite PollTests passed after 1.461 seconds.
+✔ Test anAddedMessageFollowsOnceTheForwardsHaveLeft() passed after 1.459 seconds.
+✔ Test messageYourselfIsOfferedForItsWords() passed after 1.458 seconds.
+✔ Test candidatesAreContactsWithNumbersByNameWithoutUs() passed after 1.458 seconds.
+✔ Test theChatListSearchFindsPeopleWithoutAChat() passed after 1.458 seconds.
+✔ Test revokedAndPollMessagesDoNotForward() passed after 1.459 seconds.
+✔ Test aLinkThatCameBackEndsTheFollowUps() passed after 1.459 seconds.
+✔ Test aCheckedNumberOpensItsChat() passed after 1.459 seconds.
+✔ Suite LinkRecoveryTests passed after 1.462 seconds.
+✔ Test placesAreLinksWithADotWhateverTheLocale() passed after 1.459 seconds.
+✔ Suite NewChatTests passed after 1.462 seconds.
+✔ Test onlyChatsThatCanReceiveAreOfferedNewestFirst() passed after 1.459 seconds.
+✔ Suite ForwardTests passed after 1.462 seconds.
+✔ Test aSharedPackIsFetchedShownAndAdded() passed after 1.459 seconds.
+✔ Suite StickerPackTests passed after 1.462 seconds.
+✔ Test theRingIsOneQuietLoop() passed after 1.459 seconds.
+✔ Test aSetPasswordLocksAtStartAndOpensWithIt() passed after 1.459 seconds.
+✔ Test isShortQuietAndStartsAndEndsSilent(_:) with 3 test cases passed after 1.459 seconds.
+✔ Suite CallToneTests passed after 1.462 seconds.
+✔ Suite SendSoundTests passed after 1.462 seconds.
+✔ Test aChatThatFillsItsLastPageExactlyIsReadOnePageMore() passed after 1.462 seconds.
+✔ Test progressCountsWhatWasRead() passed after 1.462 seconds.
+✔ Test pagesAreJoinedOldestFirstWithoutGapsOrRepeats() passed after 1.462 seconds.
+✔ Test anExportNeverReplacesOneThatIsThere() passed after 1.463 seconds.
+✔ Test aFailedExportLeavesNoFolderBehind() passed after 1.464 seconds.
+✔ Test theModelExportsOneChatAtATimeAndReportsWhereItWent() passed after 1.464 seconds.
+✔ Suite ChatExportTests passed after 1.467 seconds.
+✔ Test aFileThePhoneLostIsRememberedAndNotAskedForAgain() passed after 1.468 seconds.
+✔ Suite PhoneFetchTests passed after 1.469 seconds.
+✔ Test mediaGoesOneByOneWithItsOwnCaptionAndTheReplyOnTheFirst() passed after 1.477 seconds.
+✔ Suite AttachmentTests passed after 1.478 seconds.
+✔ Test settingUpTheCodeOpensTheFolder() passed after 1.478 seconds.
+✔ Test settingsFollowUpstreamsForm() passed after 1.515 seconds.
+✔ Test repeatedWrongPasswordsMakeTheNextTryWait() passed after 1.526 seconds.
+✔ Suite AppLockTests passed after 1.529 seconds.
+✔ Test theCodeTypedInTheSearchRevealsTheFolder() passed after 2.650 seconds.
+✔ Suite LockedChatsTests passed after 2.653 seconds.
+✔ Test run with 386 tests in 72 suites passed after 2.653 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite VoiceBubbleTests started.
+◇ Suite BubbleLayoutTests started.
+◇ Suite CallButtonTests started.
+◇ Suite QuotePreviewTests started.
+◇ Suite ThemeKeyTests started.
+◇ Suite PictureBubbleTests started.
+◇ Suite PhoneOnlyTextTests started.
+◇ Suite MapSnapshotTests started.
+◇ Suite ReceiptTimeTests started.
+◇ Suite GroupRunTests started.
+◇ Suite TimelineCellTests started.
+◇ Suite PlayButtonTests started.
+◇ Suite DocumentAndLinkBubbleTests started.
+◇ Suite ReactionBarTests started.
+◇ Suite TimelineRefreshTests started.
+◇ Suite BubbleSourceTests started.
+◇ Suite SweepTests started.
+◇ Suite LottieStickerTests started.
+◇ Suite TimelineDiffTests started.
+◇ Test withoutPhotosTheSideShowsOnlyWhilePlaying() started.
+◇ Test theRecordersPhotoSitsBesideAVoiceMessage() started.
+◇ Test thePlayerKeepsTheTimeBesideItsLength() started.
+◇ Test reactionsAddTheirOverlapToTheRow() started.
+◇ Test aViewOnceMessageSaysWhatItHolds() started.
+◇ Test laysOutOffTheMainThread() started.
+◇ Test wideTimelinesShareOneLayout() started.
+◇ Test leftGroupsChannelsAndListsCannot() started.
+◇ Test bubblesStayWithinTheirLimitAndHoldTheFooter() started.
+◇ Test aShortMessageIsAsWideAsItsText() started.
+◇ Test emojiAloneFloatWithTheTimeInACapsule() started.
+◇ Test aPlaceNotOnEarthAsksNobody() started.
+◇ Test theSelectableTextLaysOutAsDrawn(textScale:) started.
+◇ Test peopleAndGroupsCanBeCalled() started.
+◇ Test aPhotoSetsItsBubblesWidthAndItsCaptionWrapsInIt() started.
+◇ Test stickersAndRoundVideosFloatWithoutABubble() started.
+◇ Test aZeroReceiptTimeIsUnknown() started.
+◇ Test aQuoteNamesTheMentionedPeople() started.
+◇ Test aQuoteWithoutMentionsIsAsItCame() started.
+◇ Test eachKindOfPictureIsDrawn() started.
+◇ Test biggerTextMakesTallerBubbles() started.
+◇ Test manyMessagesLayOutInParallelAsOneByOne() started.
+◇ Test theSameLookAlwaysHasTheSameKey() started.
+◇ Test pathsHaveTheSameElementsSoTheyMorph() started.
+◇ Test theDownloadArrowPointsDown() started.
+◇ Test onlyARunsLastBubbleHasATailReachingOutOnItsSendersSide() started.
+◇ Test picturesKeepTheirShapeWithinTheirBounds() started.
+◇ Test aCellReplacedInItsRowLetsGoOfItsMessage() started.
+◇ Test pickingIsReadOutAndThenTheDownloadAgain() started.
+◇ Test glyphsStayInsideTheDisc() started.
+◇ Test aMessageContinuingTheRunTakesThePhotoFromTheOneBefore() started.
+◇ Test aPreviewThatArrivesReachesTheQuotesOfItsDocument() started.
+◇ Test aDocumentIsACardOfItsIconNameAndDetail() started.
+◇ Test aFileWithoutAPageIsAsWideAsItsTextsAndItsCaptionWrapsToIt() started.
+◇ Test aQuoteOfALoadedFileNamesItWithItsKindAndPicture() started.
+◇ Test everyGlyphIsTwoFourPointOutlines() started.
+◇ Test otherPhoneOnlyMessagesKeepTheirOwnLines() started.
+◇ Test eachEmojiHasASlotAndThePlusComesLast() started.
+◇ Test eachAppearanceAndSizeIsItsOwnPicture() started.
+◇ Test aPictureWiderThanTheTimelineShrinksInShape() started.
+◇ Test aMessageChangedInPlaceRemakesOnlyItsRow() started.
+◇ Test aDocumentHereHasNoArrowAndAPDFShowsItsPage() started.
+◇ Test aMissingFileIsNotReady() started.
+◇ Test aStickerIsLottieByItsMimetype() started.
+◇ Test theRunsLastMessageHasThePhotoAndEveryIncomingBubbleItsRoom() started.
+◇ Test aStickerLoadsAndIsReadyToMove() started.
+◇ Test someoneNotSavedHasTheirNumberBesideTheirName() started.
+◇ Test emptyOrLargeChangesReload() started.
+◇ Test rowsThatStayPairUpAcrossRemovals() started.
+◇ Test aLinkPreviewFollowsTheTextWithTheTimeUnderIt() started.
+◇ Test onlyTheBubbleIsMarkedNotTheRow() started.
+◇ Test aDragDownTheSpaceBesideTheBubblesPicksEveryMessageItPasses() started.
+◇ Test anOlderPageOfTheSameDayIsAPatchAboveTheReader() started.
+◇ Test aQuoteRunsAlmostToTheBubblesSidesWithItsBarOnItsEdge() started.
+◇ Test case passing 1 argument textScale → 1.6 to theSelectableTextLaysOutAsDrawn(textScale:) started.
+◇ Test case passing 1 argument textScale → 1.0 to theSelectableTextLaysOutAsDrawn(textScale:) started.
+◇ Test aPlaceholderHasItsTimeOnALineOfItsOwn() started.
+◇ Test kindsWithoutADrawnBubbleStaySwiftUIRows() started.
+◇ Test aFileThatIsNotAnimationJSONIsNotReady() started.
+◇ Test sameRowsReportOnlyWhatChanged() started.
+◇ Test aFileWithoutAnAnimationIsNotReady() started.
+◇ Test fadedColoursFollowLightAndDark() started.
+◇ Test case passing 1 argument textScale → 0.8 to theSelectableTextLaysOutAsDrawn(textScale:) started.
+◇ Test deletedAndUnshownMessagesAreDrawnAsPlaceholders() started.
+✔ Test aPlaceNotOnEarthAsksNobody() passed after 0.004 seconds.
+✔ Test aMessageContinuingTheRunTakesThePhotoFromTheOneBefore() passed after 0.142 seconds.
+✔ Test aPreviewThatArrivesReachesTheQuotesOfItsDocument() passed after 0.171 seconds.
+✔ Test laysOutOffTheMainThread() passed after 0.467 seconds.
+✔ Test reactionsAddTheirOverlapToTheRow() passed after 0.469 seconds.
+✔ Test wideTimelinesShareOneLayout() passed after 0.469 seconds.
+✔ Test aViewOnceMessageSaysWhatItHolds() passed after 0.469 seconds.
+✔ Test aCellReplacedInItsRowLetsGoOfItsMessage() passed after 0.478 seconds.
+✔ Test aMissingFileIsNotReady() passed after 0.490 seconds.
+✔ Test emojiAloneFloatWithTheTimeInACapsule() passed after 0.491 seconds.
+✔ Test aFileWithoutAnAnimationIsNotReady() passed after 0.491 seconds.
+✔ Test aShortMessageIsAsWideAsItsText() passed after 0.491 seconds.
+✔ Test peopleAndGroupsCanBeCalled() passed after 0.491 seconds.
+✔ Test bubblesStayWithinTheirLimitAndHoldTheFooter() passed after 0.491 seconds.
+✔ Test aZeroReceiptTimeIsUnknown() passed after 0.491 seconds.
+✔ Suite ReceiptTimeTests passed after 0.492 seconds.
+✔ Test leftGroupsChannelsAndListsCannot() passed after 0.492 seconds.
+✔ Test aQuoteNamesTheMentionedPeople() passed after 0.492 seconds.
+✔ Suite CallButtonTests passed after 0.492 seconds.
+✔ Test theSameLookAlwaysHasTheSameKey() passed after 0.492 seconds.
+✔ Suite ThemeKeyTests passed after 0.492 seconds.
+✔ Test aQuoteWithoutMentionsIsAsItCame() passed after 0.492 seconds.
+✔ Test manyMessagesLayOutInParallelAsOneByOne() passed after 0.492 seconds.
+✔ Test pathsHaveTheSameElementsSoTheyMorph() passed after 0.492 seconds.
+✔ Test theRecordersPhotoSitsBesideAVoiceMessage() passed after 0.492 seconds.
+✔ Suite QuotePreviewTests passed after 0.493 seconds.
+✔ Test glyphsStayInsideTheDisc() passed after 0.492 seconds.
+✔ Test thePlayerKeepsTheTimeBesideItsLength() passed after 0.492 seconds.
+✔ Test eachAppearanceAndSizeIsItsOwnPicture() passed after 0.494 seconds.
+✔ Suite MapSnapshotTests passed after 0.494 seconds.
+✔ Test theSelectableTextLaysOutAsDrawn(textScale:) with 3 test cases passed after 0.494 seconds.
+✔ Test aStickerIsLottieByItsMimetype() passed after 0.496 seconds.
+✔ Test theRunsLastMessageHasThePhotoAndEveryIncomingBubbleItsRoom() passed after 0.496 seconds.
+✔ Test emptyOrLargeChangesReload() passed after 0.496 seconds.
+✔ Test rowsThatStayPairUpAcrossRemovals() passed after 0.496 seconds.
+✔ Test onlyARunsLastBubbleHasATailReachingOutOnItsSendersSide() passed after 0.496 seconds.
+✔ Suite GroupRunTests passed after 0.497 seconds.
+✔ Test anOlderPageOfTheSameDayIsAPatchAboveTheReader() passed after 0.512 seconds.
+✔ Test onlyTheBubbleIsMarkedNotTheRow() passed after 0.513 seconds.
+✔ Test aStickerLoadsAndIsReadyToMove() passed after 0.515 seconds.
+✔ Test sameRowsReportOnlyWhatChanged() passed after 0.516 seconds.
+✔ Test everyGlyphIsTwoFourPointOutlines() passed after 0.517 seconds.
+✔ Suite TimelineDiffTests passed after 0.517 seconds.
+✔ Test aFileThatIsNotAnimationJSONIsNotReady() passed after 0.517 seconds.
+✔ Suite LottieStickerTests passed after 0.518 seconds.
+✔ Test theDownloadArrowPointsDown() passed after 0.519 seconds.
+✔ Test eachEmojiHasASlotAndThePlusComesLast() passed after 0.519 seconds.
+✔ Suite PlayButtonTests passed after 0.519 seconds.
+✔ Suite ReactionBarTests passed after 0.519 seconds.
+✔ Test biggerTextMakesTallerBubbles() passed after 0.522 seconds.
+✔ Test otherPhoneOnlyMessagesKeepTheirOwnLines() passed after 0.522 seconds.
+✔ Suite BubbleLayoutTests passed after 0.523 seconds.
+✔ Suite PhoneOnlyTextTests passed after 0.523 seconds.
+✔ Test withoutPhotosTheSideShowsOnlyWhilePlaying() passed after 0.533 seconds.
+✔ Test stickersAndRoundVideosFloatWithoutABubble() passed after 0.532 seconds.
+✔ Test aPhotoSetsItsBubblesWidthAndItsCaptionWrapsInIt() passed after 0.532 seconds.
+✔ Suite VoiceBubbleTests passed after 0.533 seconds.
+✔ Test aPictureWiderThanTheTimelineShrinksInShape() passed after 0.532 seconds.
+✔ Test eachKindOfPictureIsDrawn() passed after 0.532 seconds.
+✔ Test aDocumentIsACardOfItsIconNameAndDetail() passed after 0.532 seconds.
+✔ Test aDocumentHereHasNoArrowAndAPDFShowsItsPage() passed after 0.532 seconds.
+✔ Test aFileWithoutAPageIsAsWideAsItsTextsAndItsCaptionWrapsToIt() passed after 0.532 seconds.
+✔ Test aQuoteRunsAlmostToTheBubblesSidesWithItsBarOnItsEdge() passed after 0.532 seconds.
+✔ Test aPlaceholderHasItsTimeOnALineOfItsOwn() passed after 0.532 seconds.
+✔ Test picturesKeepTheirShapeWithinTheirBounds() passed after 0.533 seconds.
+✔ Test aLinkPreviewFollowsTheTextWithTheTimeUnderIt() passed after 0.532 seconds.
+✔ Test kindsWithoutADrawnBubbleStaySwiftUIRows() passed after 0.532 seconds.
+✔ Test someoneNotSavedHasTheirNumberBesideTheirName() passed after 0.532 seconds.
+✔ Suite PictureBubbleTests passed after 0.533 seconds.
+✔ Test aQuoteOfALoadedFileNamesItWithItsKindAndPicture() passed after 0.533 seconds.
+✔ Test deletedAndUnshownMessagesAreDrawnAsPlaceholders() passed after 0.532 seconds.
+✔ Test fadedColoursFollowLightAndDark() passed after 0.532 seconds.
+✔ Suite DocumentAndLinkBubbleTests passed after 0.533 seconds.
+✔ Suite BubbleSourceTests passed after 0.533 seconds.
+✔ Test pickingIsReadOutAndThenTheDownloadAgain() passed after 0.535 seconds.
+✔ Suite TimelineCellTests passed after 0.536 seconds.
+✔ Test aDragDownTheSpaceBesideTheBubblesPicksEveryMessageItPasses() passed after 0.571 seconds.
+◇ Test aDragBackUpLetsGoOfWhatItLeft() started.
+✔ Test aMessageChangedInPlaceRemakesOnlyItsRow() passed after 0.576 seconds.
+✔ Suite TimelineRefreshTests passed after 0.577 seconds.
+✔ Test aDragBackUpLetsGoOfWhatItLeft() passed after 0.118 seconds.
+◇ Test aPressThatNeverMovesStaysAClickAndItsReleaseIsPutBack() started.
+✔ Test aPressThatNeverMovesStaysAClickAndItsReleaseIsPutBack() passed after 0.115 seconds.
+◇ Test whilePickingADragFromAnywhereOnARowSweeps() started.
+✔ Test whilePickingADragFromAnywhereOnARowSweeps() passed after 0.117 seconds.
+◇ Test aDragFromAMessageTakenOutTakesOutWhatItPasses() started.
+✔ Test aDragFromAMessageTakenOutTakesOutWhatItPasses() passed after 0.118 seconds.
+◇ Test theTimelineScrollsWhileThePointerIsHeldAtItsTop() started.
+✔ Test theTimelineScrollsWhileThePointerIsHeldAtItsTop() passed after 0.118 seconds.
+✔ Suite SweepTests passed after 1.160 seconds.
+✔ Test run with 66 tests in 19 suites passed after 1.161 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite ChatRowContentTests started.
+◇ Suite ChatTableTests started.
+◇ Suite SidebarRowViewTests started.
+◇ Test aCellWaitingForReuseStopsFollowingTheModel() started.
+◇ Test theSelectedRowKeepsItsCellsColours() started.
+◇ Test unreadMutedAndPinnedChatsAreMarked() started.
+◇ Test typingComesBeforeADraftAndADraftBeforeTheLastMessage() started.
+◇ Test aChatThatChangedIsShownAgainInTheSameCell() started.
+◇ Test placeholdersAreInitialsForPeopleAndSymbolsForGroupsAndChannels() started.
+◇ Test aClickOnAFolderOpensItAndAChatsRowHasItsMessageForATooltip() started.
+◇ Test aGroupsLastMessageNamesItsSenderAndOwnMessagesCarryTicks() started.
+✔ Test typingComesBeforeADraftAndADraftBeforeTheLastMessage() passed after 0.112 seconds.
+✔ Test theSelectedRowKeepsItsCellsColours() passed after 0.114 seconds.
+✔ Suite SidebarRowViewTests passed after 0.114 seconds.
+✔ Test unreadMutedAndPinnedChatsAreMarked() passed after 0.120 seconds.
+✔ Test placeholdersAreInitialsForPeopleAndSymbolsForGroupsAndChannels() passed after 0.121 seconds.
+✔ Test aClickOnAFolderOpensItAndAChatsRowHasItsMessageForATooltip() passed after 0.121 seconds.
+✔ Test aGroupsLastMessageNamesItsSenderAndOwnMessagesCarryTicks() passed after 0.121 seconds.
+✔ Suite ChatRowContentTests passed after 0.121 seconds.
+✔ Test aCellWaitingForReuseStopsFollowingTheModel() passed after 0.144 seconds.
+✔ Test aChatThatChangedIsShownAgainInTheSameCell() passed after 0.145 seconds.
+✔ Suite ChatTableTests passed after 0.145 seconds.
+✔ Test run with 8 tests in 3 suites passed after 0.145 seconds.

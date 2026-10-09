@@ -615,6 +615,7 @@ impl Settings {
         self.wallpaper_color_for(palette.dark).color32(palette)
     }
 
+    #[cfg(any(test, feature = "ui"))]
     pub(crate) fn cached_palette(&self) -> Option<crate::theme::Palette> {
         let theme = if self.custom_theme.is_some() {
             self.custom_theme_cache.as_ref()

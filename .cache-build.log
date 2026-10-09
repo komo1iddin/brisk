@@ -1,0 +1,36 @@
+/Applications/Xcode-beta.app/Contents/Developer/usr/bin/make build CONFIG=Release
+./Scripts/build-bridge.sh Release
+▸ cargo build (release, aarch64-apple-darwin)
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_FORMAT
+Warning: unknown environment variable SWIFT_DEBUG_INFORMATION_VERSION
+    Finished `release` profile [optimized] target(s) in 1.12s
+▸ uniffi-bindgen (Swift)
+▸ xcframework
+✓ bridge ready (release)
+xcodegen generate --quiet
+xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath Build/DerivedData ARCHS=arm64 -configuration Release build -quiet
+error: the following command failed with exit code 0 but produced no further output
+SwiftCompile normal arm64 (in target 'FeatureConversation' from project 'ZapFastKit')
+/Users/komoliddinfatxullayev/Developer/Self-projects/zapfast-mac-native/macos/Packages/ZapFastKit/Sources/FeatureConversation/Info/ChatInfoPanel.swift:140:29: warning: Storing a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')
+138 |     /// Closes the popover a page is shown in, for what leaves it (opening
+139 |     /// a chat with the person).
+140 |     @Entry var dismissInfo: @MainActor () -> Void = {}
+    |                             `- warning: Storing a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')
+141 | }
+142 | 

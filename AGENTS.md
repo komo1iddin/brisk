@@ -35,6 +35,18 @@ protocol. These notes are for coding agents and new contributors.
 
 ## Architecture
 
+- The `ui` feature, on by default, is the egui interface: `ui`, `app`,
+  `demo`, `account`, `animation`, `video`, `window`, `markup`, `bidi`,
+  `emoji`, `qr`, `transcript`, `media_pause`, `image_cache`,
+  `image_preview`, `autostart`, `single_instance`, `macos`, the styling
+  half of `theme`, and the `zapfast` binary. Without it the crate is the
+  engine alone: the protocol, the archive, the settings, the palettes and
+  media decoding, which is what a host drawing its own interface links
+  (`default-features = false`). Nothing in the engine may reach into a
+  gated module, and `cargo clippy --locked --no-default-features --lib --
+  -D warnings` is how that is checked. Prefer moving the shared piece
+  into the engine over gating a function: `PAGE` belongs to the archive,
+  `Geometry` to the settings, decoding to `frames`.
 - `src/ui/` draws views and pushes `model::Action`s; `src/app.rs` applies
   them after the frame. Never mutate application state from inside a view
   beyond the view's own fields (composer text, search text, flags).
@@ -149,7 +161,11 @@ protocol. These notes are for coding agents and new contributors.
   `omarchy_previous_templates`, so untouched installed copies are upgraded. Native packages ship optional hooks and templates, preserving
   existing per-user files. `reload-themes` uses the single-instance channel
   without opening a window.
-- `src/theme.rs` owns colours, fonts, and icons; `src/ui/widgets.rs` the
+- `src/theme.rs` owns the palette: plain colour data, the theme files, and
+  the colour maths (`blend`, `contrast`, `readable_on`), with no egui
+  styling, so a host drawing its own interface reads the same themes.
+  `src/theme/style.rs`, behind `ui` and re-exported from `theme`, owns the
+  fonts, icons, metrics and shared egui controls; `src/ui/widgets.rs` the
   shared controls. New icons go in `assets/icons/` as 24px Lucide-style SVGs
   and in the `fastframe_icons::icons!` table; an icon fastframe-icons already
   ships is named there as `lucide "name"` instead of copied.

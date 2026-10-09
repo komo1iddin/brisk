@@ -15,7 +15,7 @@ public enum TimelineGallery {
     /// left, SwiftUI on the right. Calls `done` when both are written.
     public static func render(model: AppModel, to path: String, done: @escaping () -> Void) {
         // Undownloaded media show their size, as with downloads off.
-        model.preferences.autoDownload = false
+        model.accountPreferences.autoDownload = false
         let messages = messages
         // `ZAPFAST_SNAPSHOT_SELECTING=1`: picking messages, the second picked.
         if ProcessInfo.processInfo.environment["ZAPFAST_SNAPSHOT_SELECTING"] != nil {

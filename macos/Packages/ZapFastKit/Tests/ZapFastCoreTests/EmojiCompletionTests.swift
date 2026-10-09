@@ -39,16 +39,16 @@ struct ComposerSettingsTests {
         let root = FileManager.default.temporaryDirectory.appending(path: "zapfast-typing-\(UUID().uuidString)")
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let model = AppModel(backend: backend, paths: AppPaths(data: root, caches: root), preferences: Preferences(defaults: defaults))
-        #expect(model.preferences.enterSends && model.preferences.sendTyping)
+        #expect(model.preferences.enterSends && model.accountPreferences.sendTyping)
 
-        model.preferences.sendTyping = false
+        model.accountPreferences.sendTyping = false
         model.composerEdited(in: "a@s.whatsapp.net")
         #expect(!backend.sent.contains { if case .composing = $0 { true } else { false } })
 
-        model.preferences.sendTyping = true
+        model.accountPreferences.sendTyping = true
         model.composerEdited(in: "a@s.whatsapp.net")
         #expect(backend.sent.last == .composing(chat: "a@s.whatsapp.net", composing: true))
-        #expect(Preferences(defaults: defaults).sendTyping, "kept for the next launch")
+        #expect(AccountPreferences(defaults: defaults).sendTyping, "kept for the next launch")
     }
 }
 

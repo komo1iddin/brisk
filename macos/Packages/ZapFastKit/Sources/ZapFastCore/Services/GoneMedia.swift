@@ -10,14 +10,16 @@ import Foundation
 @MainActor
 final class GoneMedia {
     private let defaults: UserDefaults
-    private let key = "goneMedia"
+    private let key: String
     static let limit = 10_000
     private var order: [String]
     private var known: Set<String>
     private var saving: Task<Void, Never>?
 
-    init(defaults: UserDefaults) {
+    /// Account 1 keeps the key used before there were several accounts.
+    init(defaults: UserDefaults, account: String = "1") {
         self.defaults = defaults
+        key = account == "1" ? "goneMedia" : "account.\(account).goneMedia"
         order = defaults.stringArray(forKey: key) ?? []
         known = Set(order)
     }

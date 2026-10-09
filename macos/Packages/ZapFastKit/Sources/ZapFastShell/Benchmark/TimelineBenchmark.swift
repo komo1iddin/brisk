@@ -37,13 +37,16 @@ enum TimelineBenchmark {
     static func makeModel() -> AppModel {
         let suite = "ZapFastBenchmark"
         UserDefaults.standard.removePersistentDomain(forName: suite)
-        let preferences = Preferences(defaults: UserDefaults(suiteName: suite) ?? .standard)
-        preferences.notifications = false
+        let defaults = UserDefaults(suiteName: suite) ?? .standard
+        let preferences = Preferences(defaults: defaults)
+        let accountPreferences = AccountPreferences(defaults: defaults)
+        accountPreferences.notifications = false
         let caches = AppPaths.standard().caches.appending(path: "Benchmark", directoryHint: .isDirectory)
         return AppModel(
             backend: backend,
             paths: AppPaths(data: caches.appending(path: "data"), caches: caches.appending(path: "cache")),
-            preferences: preferences
+            preferences: preferences,
+            accountPreferences: accountPreferences
         )
     }
 

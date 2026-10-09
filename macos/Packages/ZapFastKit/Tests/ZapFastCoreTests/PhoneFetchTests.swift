@@ -353,6 +353,8 @@ struct GoneMediaTests {
         let saved = defaults.stringArray(forKey: "goneMedia") ?? []
         #expect(saved.count == 1 && !saved[0].contains("3EB0"))
         #expect(GoneMedia(defaults: defaults).contains(chat: "a@s.whatsapp.net", message: "3EB0AAAA"))
+        #expect(!GoneMedia(defaults: defaults, account: "2").contains(chat: "a@s.whatsapp.net", message: "3EB0AAAA"),
+                "another account's files are its own")
     }
 
     @Test func itForgetsTheOldestPastItsLimit() {

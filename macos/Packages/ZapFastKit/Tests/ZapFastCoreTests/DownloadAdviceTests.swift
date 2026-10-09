@@ -33,7 +33,7 @@ struct DownloadAdviceTests {
 
     @Test func aDownloadThatBeganByItselfFailsQuietly() {
         let (model, _) = model()
-        model.preferences.autoDownload = true
+        model.accountPreferences.autoDownload = true
         let file = Records.document("a")
         model.autoDownload(file)
         model.apply([failed(file, "No longer available on WhatsApp's servers")])
@@ -48,7 +48,7 @@ struct DownloadAdviceTests {
         model.apply([.media(chat: file.chat, message: file.id, card: nil, path: "/tmp/a.pdf", error: nil)])
         #expect(model.notices.isEmpty)
         // A later failure of an automatic retry is not blamed on that click.
-        model.preferences.autoDownload = true
+        model.accountPreferences.autoDownload = true
         model.autoDownload(file)
         model.apply([failed(file, "Download timed out")])
         #expect(model.notices.isEmpty)

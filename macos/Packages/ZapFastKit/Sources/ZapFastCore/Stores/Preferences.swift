@@ -2,41 +2,21 @@ import Foundation
 import Observation
 import ZapFastBridge
 
-/// Interface preferences kept in `UserDefaults`. Settings that change what
-/// the backend does live with the backend instead.
+/// Interface preferences kept in `UserDefaults`, the same for every account.
+/// Those upstream keeps per account are `AccountPreferences`. Settings that
+/// change what the backend does live with the backend instead.
 @Observable
 public final class Preferences {
     @ObservationIgnored let defaults: UserDefaults
-
-    /// Visible photos, videos, voice messages and documents download by
-    /// themselves, as upstream does by default. Stickers always do.
-    public var autoDownload: Bool {
-        didSet { defaults.set(autoDownload, forKey: Key.autoDownload) }
-    }
 
     /// Voice message playback speed: 1, 1.5, or 2.
     public var voiceSpeed: Float {
         didSet { defaults.set(voiceSpeed, forKey: Key.voiceSpeed) }
     }
 
-    /// Send read receipts (and played receipts for voice messages).
-    public var sendReadReceipts: Bool {
-        didSet { defaults.set(sendReadReceipts, forKey: Key.sendReadReceipts) }
-    }
-
-    /// Desktop notifications for new messages.
-    public var notifications: Bool {
-        didSet { defaults.set(notifications, forKey: Key.notifications) }
-    }
-
     /// Show who wrote and what in notifications; off shows "New message".
     public var notificationPreviews: Bool {
         didSet { defaults.set(notificationPreviews, forKey: Key.notificationPreviews) }
-    }
-
-    /// Contacts saved here also go to the phone's address book.
-    public var saveContactsToPhone: Bool {
-        didSet { defaults.set(saveContactsToPhone, forKey: Key.saveContactsToPhone) }
     }
 
     /// Our own GIPHY key for GIF search; blank uses one built in, if any.
@@ -108,20 +88,9 @@ public final class Preferences {
         didSet { defaults.set(proxy, forKey: Key.proxy) }
     }
 
-    /// The chat open when ZapFast last ran, opened again at start
-    /// (upstream's `last_chat`).
-    public internal(set) var lastChat: String? {
-        didSet { defaults.set(lastChat, forKey: Key.lastChat) }
-    }
-
     /// Return sends; off, Return starts a new line and ⌘Return sends.
     public var enterSends: Bool {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
-    }
-
-    /// Tell the chat we are typing while the composer changes.
-    public var sendTyping: Bool {
-        didSet { defaults.set(sendTyping, forKey: Key.sendTyping) }
     }
 
     /// Voice messages show who recorded them, as on the phone.
@@ -165,12 +134,8 @@ public final class Preferences {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
-            Key.autoDownload: true,
             Key.voiceSpeed: Float(1),
-            Key.sendReadReceipts: true,
-            Key.notifications: true,
             Key.notificationPreviews: true,
-            Key.saveContactsToPhone: true,
             Key.appLockAfter: AutoLock.fifteenMinutes.rawValue,
             Key.messageSound: NotificationSoundInfo.receive.storageValue,
             Key.mentionSound: NotificationSoundInfo.alert.storageValue,
@@ -182,15 +147,10 @@ public final class Preferences {
             Key.textScale: 1.0,
             Key.keepRunning: true,
             Key.keepChatsArchived: true,
-            Key.sendTyping: true,
             Key.unlockWithTouchID: true,
         ])
-        autoDownload = defaults.bool(forKey: Key.autoDownload)
         voiceSpeed = defaults.float(forKey: Key.voiceSpeed)
-        sendReadReceipts = defaults.bool(forKey: Key.sendReadReceipts)
-        notifications = defaults.bool(forKey: Key.notifications)
         notificationPreviews = defaults.bool(forKey: Key.notificationPreviews)
-        saveContactsToPhone = defaults.bool(forKey: Key.saveContactsToPhone)
         giphyKey = defaults.string(forKey: Key.giphyKey) ?? ""
         messageSound = defaults.string(forKey: Key.messageSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .receive
         mentionSound = defaults.string(forKey: Key.mentionSound).flatMap(NotificationSoundInfo.init(storage:)) ?? .alert
@@ -199,7 +159,6 @@ public final class Preferences {
         senderPhones = defaults.bool(forKey: Key.senderPhones)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
-        lastChat = defaults.string(forKey: Key.lastChat)
         downloadFolder = defaults.string(forKey: Key.downloadFolder)
         menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
         textScale = defaults.double(forKey: Key.textScale)
@@ -208,7 +167,6 @@ public final class Preferences {
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
-        sendTyping = defaults.bool(forKey: Key.sendTyping)
         appLockVerifier = defaults.string(forKey: Key.appLockVerifier)
         appLockAfter = AutoLock(rawValue: defaults.integer(forKey: Key.appLockAfter)) ?? .fifteenMinutes
         unlockWithTouchID = defaults.bool(forKey: Key.unlockWithTouchID)
@@ -217,12 +175,8 @@ public final class Preferences {
     }
 
     private enum Key {
-        static let autoDownload = "autoDownload"
         static let voiceSpeed = "voiceSpeed"
-        static let sendReadReceipts = "sendReadReceipts"
-        static let notifications = "notifications"
         static let notificationPreviews = "notificationPreviews"
-        static let saveContactsToPhone = "saveContactsToPhone"
         static let giphyKey = "giphyKey"
         static let messageSound = "messageSound"
         static let mentionSound = "mentionSound"
@@ -231,7 +185,6 @@ public final class Preferences {
         static let senderPhones = "senderPhones"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
-        static let lastChat = "lastChat"
         static let downloadFolder = "downloadFolder"
         static let menuBarIcon = "menuBarIcon"
         static let textScale = "textScale"
@@ -239,7 +192,6 @@ public final class Preferences {
         static let keepChatsArchived = "keepChatsArchived"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
-        static let sendTyping = "sendTyping"
         static let appLockVerifier = "appLockVerifier"
         static let appLockAfter = "appLockAfter"
         static let unlockWithTouchID = "unlockWithTouchID"

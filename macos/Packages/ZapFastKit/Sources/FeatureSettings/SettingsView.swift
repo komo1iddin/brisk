@@ -32,10 +32,10 @@ public struct SettingsView: View {
                         AccountSettings(model: model)
                     }
                     Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
-                        ChatSettings(model: model, preferences: model.preferences)
+                        ChatSettings(model: model, preferences: model.preferences, accountPreferences: model.accountPreferences)
                     }
                     Tab("Notifications", systemImage: "bell.badge") {
-                        NotificationSettings(preferences: model.preferences)
+                        NotificationSettings(preferences: model.preferences, accountPreferences: model.accountPreferences)
                     }
                     Tab("Appearance", systemImage: "paintpalette") {
                         ChatThemeEditor(chat: nil, model: model)
@@ -151,6 +151,7 @@ private struct GeneralSettings: View {
 
     var body: some View {
         @Bindable var preferences = model.preferences
+        @Bindable var accountPreferences = model.accountPreferences
         Form {
             Section {
                 Toggle("Open at login", isOn: Binding(
@@ -181,7 +182,7 @@ private struct GeneralSettings: View {
             .onAppear { loginItem = LoginItem.state }
 
             Section {
-                Toggle("Download media automatically", isOn: $preferences.autoDownload)
+                Toggle("Download media automatically", isOn: $accountPreferences.autoDownload)
                 LabeledContent("Download to") {
                     DownloadFolderControl(model: model, choosing: $choosingFolder)
                 }
@@ -242,6 +243,7 @@ private struct DownloadFolderControl: View {
 private struct ChatSettings: View {
     let model: AppModel
     @Bindable var preferences: Preferences
+    @Bindable var accountPreferences: AccountPreferences
 
     var body: some View {
         Form {
@@ -283,7 +285,7 @@ private struct ChatSettings: View {
                     .settingsFootnote()
             }
             Section {
-                Toggle("Save contacts to the phone too", isOn: $preferences.saveContactsToPhone)
+                Toggle("Save contacts to the phone too", isOn: $accountPreferences.saveContactsToPhone)
             } header: {
                 Text("Contacts")
             } footer: {
@@ -298,13 +300,14 @@ private struct ChatSettings: View {
 /// What announces a new message.
 private struct NotificationSettings: View {
     @Bindable var preferences: Preferences
+    @Bindable var accountPreferences: AccountPreferences
 
     var body: some View {
         Form {
             Section {
-                Toggle("Show notifications for new messages", isOn: $preferences.notifications)
+                Toggle("Show notifications for new messages", isOn: $accountPreferences.notifications)
                 Toggle("Show sender and message", isOn: $preferences.notificationPreviews)
-                    .disabled(!preferences.notifications)
+                    .disabled(!accountPreferences.notifications)
             }
             Section {
                 SoundPicker(title: "New message", sound: $preferences.messageSound)
@@ -316,7 +319,7 @@ private struct NotificationSettings: View {
                 Text("A chat can have its own sound, from its menu. Mentions of you sound even in quiet groups.")
                     .settingsFootnote()
             }
-            .disabled(!preferences.notifications)
+            .disabled(!accountPreferences.notifications)
         }
         .settingsPane(height: 320)
     }
@@ -445,8 +448,8 @@ public enum SettingsDebug {
     public static func panes(model: AppModel) -> [(name: String, view: AnyView)] {
         [
             ("general", AnyView(GeneralSettings(model: model))),
-            ("chats", AnyView(ChatSettings(model: model, preferences: model.preferences))),
-            ("notifications", AnyView(NotificationSettings(preferences: model.preferences))),
+            ("chats", AnyView(ChatSettings(model: model, preferences: model.preferences, accountPreferences: model.accountPreferences))),
+            ("notifications", AnyView(NotificationSettings(preferences: model.preferences, accountPreferences: model.accountPreferences))),
             ("privacy", AnyView(PrivacySettings(model: model))),
             ("advanced", AnyView(AdvancedSettings(model: model))),
         ]

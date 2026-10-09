@@ -99,7 +99,7 @@ private struct ContactNameSheet: View {
             } header: {
                 Text(PhoneFormat.display(id: id) ?? model.chats.displayName(id))
             } footer: {
-                Text(model.preferences.saveContactsToPhone
+                Text(model.accountPreferences.saveContactsToPhone
                      ? "The name is also saved to your phone's contacts."
                      : "The name is saved for WhatsApp only.")
                     .font(.caption)

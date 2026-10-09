@@ -16,6 +16,8 @@ public final class AppModel {
     public let conversations: ConversationStore
     public let avatars: AvatarStore
     public let preferences: Preferences
+    /// This account's own preferences (upstream's `AccountSettings`).
+    public let accountPreferences: AccountPreferences
     public let search = SearchStore()
     public let stickers = StickerStore()
     public let privacy = PrivacyStore()
@@ -55,7 +57,7 @@ public final class AppModel {
             }
             if let selectedChatID { opened(selectedChatID) }
             // What is open now opens at the next start; a locked chat never does.
-            preferences.lastChat = selectedChatID.flatMap { chats.chat($0)?.locked == true ? nil : $0 }
+            accountPreferences.lastChat = selectedChatID.flatMap { chats.chat($0)?.locked == true ? nil : $0 }
         }
     }
 
@@ -233,7 +235,7 @@ public final class AppModel {
     @ObservationIgnored private let eventStats = EventStats()
     @ObservationIgnored lazy var phoneHistory = PhoneHistory(defaults: preferences.defaults)
     /// Files the phone no longer has, so fetching a chat does not ask twice.
-    @ObservationIgnored lazy var goneMedia = GoneMedia(defaults: preferences.defaults)
+    @ObservationIgnored lazy var goneMedia = GoneMedia(defaults: preferences.defaults, account: accountID)
     /// Brings the link back when the network does, created on start.
     @ObservationIgnored private var networkWatch: NetworkWatch?
     @ObservationIgnored private var verbose = false
@@ -280,10 +282,13 @@ public final class AppModel {
         backend: Backend? = nil,
         paths: AppPaths = .standard(),
         preferences: Preferences = Preferences(),
+        accountPreferences: AccountPreferences? = nil,
         calls: CallService? = nil
     ) {
         let backend = backend ?? LiveBackend(account: accountID)
         self.accountID = accountID
+        self.accountPreferences = accountPreferences
+            ?? AccountPreferences(account: accountID, defaults: preferences.defaults)
         self.preferences = preferences
         let session = SessionStore()
         self.session = session
@@ -628,7 +633,7 @@ public final class AppModel {
         newContactPending = true
         backend.send(.newContact(
             phone: digits, fullName: name?.full, firstName: name?.short,
-            toPhone: preferences.saveContactsToPhone
+            toPhone: accountPreferences.saveContactsToPhone
         ))
     }
 
@@ -985,7 +990,7 @@ public final class AppModel {
     public func saveContact(_ id: String, first: String, last: String) {
         guard let name = ContactName.compose(first: first, last: last) else { return }
         backend.send(.saveContact(
-            id: id, fullName: name.full, firstName: name.short, toPhone: preferences.saveContactsToPhone
+            id: id, fullName: name.full, firstName: name.short, toPhone: accountPreferences.saveContactsToPhone
         ))
     }
 
@@ -1652,11 +1657,11 @@ public final class AppModel {
     private func restoreLastChat() {
         guard !lastChatRestored else { return }
         lastChatRestored = true
-        guard selectedChatID == nil, let id = preferences.lastChat else { return }
+        guard selectedChatID == nil, let id = accountPreferences.lastChat else { return }
         if let chat = chats.chat(id), !chat.locked {
             selectedChatID = id
         } else {
-            preferences.lastChat = nil
+            accountPreferences.lastChat = nil
         }
     }
 
@@ -1668,7 +1673,7 @@ public final class AppModel {
     }
 
     public func composerEdited(in chat: String) {
-        guard preferences.sendTyping else { return }
+        guard accountPreferences.sendTyping else { return }
         if composingIn[chat] == nil {
             backend.send(.composing(chat: chat, composing: true))
         }
@@ -1716,7 +1721,7 @@ public final class AppModel {
                 chat: message.chat,
                 message: message.id,
                 sender: message.sender,
-                receipts: preferences.sendReadReceipts
+                receipts: accountPreferences.sendReadReceipts
             ))
         }
     }
@@ -1836,7 +1841,7 @@ public final class AppModel {
     public func autoDownload(_ message: MessageRecord) {
         guard let media = message.content.media, media.path == nil, media.size <= Self.downloadLimit else { return }
         let isSticker = if case .sticker = message.content { true } else { false }
-        guard isSticker || preferences.autoDownload else { return }
+        guard isSticker || accountPreferences.autoDownload else { return }
         guard conversations.download(MessageKey(chat: message.chat, message: message.id)) == nil else { return }
         download(message, automatic: true)
     }
@@ -2229,7 +2234,7 @@ public final class AppModel {
     }
 
     public func markRead(_ chat: String) {
-        backend.send(.markRead(chat: chat, receipts: preferences.sendReadReceipts))
+        backend.send(.markRead(chat: chat, receipts: accountPreferences.sendReadReceipts))
     }
 
     public func markUnread(_ chat: String) {
@@ -2739,7 +2744,7 @@ public final class AppModel {
     // MARK: Notifications (upstream's `maybe_notify`)
 
     private func maybeNotify(chat id: String, message: MessageRecord) {
-        guard preferences.notifications, !message.fromMe, let chat = chats.chat(id) else { return }
+        guard accountPreferences.notifications, !message.fromMe, let chat = chats.chat(id) else { return }
         let now = Int64(Date.now.timeIntervalSince1970)
         guard !chat.archived, chat.unread > 0, !chats.isMuted(chat), !chat.locked,
               now - message.timestamp <= 60 else { return }

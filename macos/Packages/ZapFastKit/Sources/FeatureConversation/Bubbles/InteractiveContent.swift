@@ -192,7 +192,7 @@ private struct CardImage: View {
             } else if let thumbnail {
                 image = await Thumbnails.load(thumbnail, key: "card-\(message.id)-\(card ?? -1)", points: 280)
             }
-            if media.path == nil, model.preferences.autoDownload, state == nil { download() }
+            if media.path == nil, model.accountPreferences.autoDownload, state == nil { download() }
         }
     }
 

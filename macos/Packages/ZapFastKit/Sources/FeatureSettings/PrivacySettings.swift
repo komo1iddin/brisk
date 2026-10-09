@@ -12,12 +12,13 @@ struct PrivacySettings: View {
 
     var body: some View {
         @Bindable var preferences = model.preferences
+        @Bindable var accountPreferences = model.accountPreferences
         let lock = model.appLock
         Form {
             AccountPrivacySection(model: model)
             Section {
-                Toggle("Send read receipts", isOn: $preferences.sendReadReceipts)
-                Toggle("Show when you are typing", isOn: $preferences.sendTyping)
+                Toggle("Send read receipts", isOn: $accountPreferences.sendReadReceipts)
+                Toggle("Show when you are typing", isOn: $accountPreferences.sendTyping)
             } header: {
                 Text("This Mac")
             } footer: {

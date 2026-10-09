@@ -768,7 +768,7 @@ struct TimelineCellTests {
     private func show(_ messages: [MessageRecord]) async throws -> (TimelineController, AppModel, NSWindow) {
         let folder = FileManager.default.temporaryDirectory.appending(path: "zapfast-cell-test-\(UUID().uuidString)")
         let model = AppModel(backend: PreviewBackend(), paths: AppPaths(data: folder, caches: folder))
-        model.preferences.autoDownload = false
+        model.accountPreferences.autoDownload = false
         let controller = TimelineController()
         let window = NSWindow(
             contentRect: NSRect(x: -4000, y: 0, width: 600, height: 2000), styleMask: [.borderless], backing: .buffered, defer: false

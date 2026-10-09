@@ -108,6 +108,6 @@ struct SidebarTests {
         let third = launch()
         third.apply([.chats(chats: [chat("unread", unread: 1)])])
         #expect(third.selectedChatID == nil, "a chat gone since is forgotten")
-        #expect(third.preferences.lastChat == nil)
+        #expect(third.accountPreferences.lastChat == nil)
     }
 }

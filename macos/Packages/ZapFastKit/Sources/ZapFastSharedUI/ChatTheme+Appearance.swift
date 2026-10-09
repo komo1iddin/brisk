@@ -4,12 +4,21 @@ import ZapFastCore
 import ZapFastDesign
 
 extension ChatTheme {
+    /// Sorted keys: JSONEncoder's order otherwise changes from one call to
+    /// the next, so the same look got another key each time and the open
+    /// chat rebuilt every row for each message that came in.
+    private static let keyEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
+
     /// Resolves a stored look into colours: text and ticks chosen for
     /// contrast with the bubble, WhatsApp's incoming and chip colours over
     /// a wallpaper, upstream's doodle ink for the wallpaper colour.
     public init(_ appearance: ChatAppearance, photos: ThemeStore) {
         let plain = appearance.wallpaper == .none
-        let key = (try? JSONEncoder().encode(appearance)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        let key = (try? Self.keyEncoder.encode(appearance)).map { String(decoding: $0, as: UTF8.self) } ?? ""
         guard let bubble = appearance.bubble else {
             // The system accent colour: white text and ticks, as in Messages.
             self.init(

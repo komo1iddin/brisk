@@ -109,4 +109,17 @@ struct AccountHubTests {
         #expect(hub.preferences.appLockVerifier == nil)
     }
 
+
+    @Test func anAccountBeingAddedShowsLinkingUntilItConnects() {
+        let (hub, _) = hub(["1", "2"])
+        hub.beginAdding("2", before: "1")
+        let added = hub.model("2")!
+        // Its backend says it is connecting before it finds no session.
+        added.apply([.link(state: .connecting)])
+        #expect(!added.isLinked)
+        added.apply([.link(state: .connected)])
+        #expect(added.isLinked)
+        #expect(hub.adding == nil, "linked, it stays")
+    }
+
 }

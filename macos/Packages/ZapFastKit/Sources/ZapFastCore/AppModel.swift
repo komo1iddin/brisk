@@ -404,8 +404,12 @@ public final class AppModel {
     }
 
     /// Linked data exists, even while offline; upstream's `App::is_linked`.
+    /// An account being added is not, until it first connects: its backend
+    /// says it is connecting before it finds it has no session, and the
+    /// window would show its empty chats for that moment.
     public var isLinked: Bool {
-        session.linkSaysLinked || (!chats.chats.isEmpty && !session.isLoggedOut)
+        if hub?.adding?.new == accountID { return session.isConnected }
+        return session.linkSaysLinked || (!chats.chats.isEmpty && !session.isLoggedOut)
     }
 
     public var logFile: URL { paths.logFile }
@@ -2813,7 +2817,10 @@ public final class AppModel {
             break
         }
         session.link = state
-        if case .connected = state { phoneFetch?.linkConnected() }
+        if case .connected = state {
+            phoneFetch?.linkConnected()
+            hub?.linked(accountID)
+        }
     }
 
     // MARK: Notifications (upstream's `maybe_notify`)

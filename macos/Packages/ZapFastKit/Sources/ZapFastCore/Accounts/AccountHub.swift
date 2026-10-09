@@ -175,15 +175,26 @@ public final class AccountHub {
         guard live, let manager = LiveAccounts.shared.current else { return }
         do {
             let id = try manager.add()
+            // Known as being added before anything shows it, so the window
+            // goes straight to linking.
+            adding = (new: id, before: active.accountID)
             let model = makeModel(id)
             models.append(model)
             model.start(verbose: verbose)
-            let before = active.accountID
             show(model)
-            adding = (new: id, before: before)
         } catch {
             active.report(error: String(localized: "Could not add an account: \(String(describing: error))"))
         }
+    }
+
+    /// Marks `id` as being added, for tests that have no account manager.
+    func beginAdding(_ id: String, before: String) {
+        adding = (new: id, before: before)
+    }
+
+    /// The account being added linked: it stays when the person leaves it.
+    func linked(_ id: String) {
+        if adding?.new == id { adding = nil }
     }
 
     /// Goes back to the account that was on screen before adding one.

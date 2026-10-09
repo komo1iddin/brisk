@@ -8,6 +8,10 @@ import ZapFastSharedUI
 // MARK: - Cell actions
 
 extension TimelineController: TimelineCellDelegate {
+    func clickedBesideMessages() {
+        model?.focusComposer()
+    }
+
     func showQuote(ofMessage id: String) {
         guard let model, let message = message(id) else { return }
         model.showQuoted(in: message)

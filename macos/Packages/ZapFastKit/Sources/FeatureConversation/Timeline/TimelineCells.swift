@@ -217,6 +217,15 @@ final class TimelineTableView: NSTableView {
         pointer(at: convert(event.locationInWindow, from: nil))
     }
 
+    /// A click on no message (below the last, or on a day's or a call's
+    /// row) puts the cursor back in the composer, as upstream's does.
+    override func mouseDown(with event: NSEvent) {
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        let onMessage = row >= 0 && view(atColumn: 0, row: row, makeIfNecessary: false) is BubbleCell
+        super.mouseDown(with: event)
+        if !onMessage { (delegate as? TimelineCellDelegate)?.clickedBesideMessages() }
+    }
+
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
         pointer(at: nil)

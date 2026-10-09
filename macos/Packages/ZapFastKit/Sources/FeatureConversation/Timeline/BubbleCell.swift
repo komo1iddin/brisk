@@ -15,6 +15,9 @@ protocol TimelineCellDelegate: AnyObject {
     /// The message's context menu, with a Copy for `selection` when some of
     /// its text is selected.
     func menu(forMessage id: String, selection: String?) -> NSMenu?
+    /// A click on no message, beside one or below them all: the composer
+    /// takes the keys again (upstream #283).
+    func clickedBesideMessages()
     func open(_ url: URL)
     /// The pointer is over a message's text: it becomes selectable.
     func bodyHovered(in cell: BubbleCell)
@@ -449,9 +452,10 @@ final class BubbleCell: NSView {
         return frame.contains(point) ? self : nil
     }
 
-    /// The message's menu, from anywhere on the row while picking.
+    /// The message's menu, from anywhere on its row: the bubble and the
+    /// space beside it (upstream #240).
     override func menu(for event: NSEvent) -> NSMenu? {
-        guard selection.selecting, let id = messageID else { return super.menu(for: event) }
+        guard let id = messageID else { return super.menu(for: event) }
         return delegate?.menu(forMessage: id, selection: nil)
     }
 
@@ -584,8 +588,12 @@ final class BubbleCell: NSView {
             return
         }
         // A drag down the space beside the bubble starts picking messages
-        // (over the text it selects text instead); a click there is the table's.
-        if let id = messageID, isBesideBubble(event), delegate?.sweep(fromMessage: id, event: event) == true {
+        // (over the text it selects text instead); a click there is the
+        // table's, and puts the cursor back in the composer.
+        if let id = messageID, isBesideBubble(event) {
+            if delegate?.sweep(fromMessage: id, event: event) == true { return }
+            super.mouseDown(with: event)
+            delegate?.clickedBesideMessages()
             return
         }
         super.mouseDown(with: event)

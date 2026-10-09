@@ -105,6 +105,11 @@ public final class Preferences {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
     }
 
+    /// A soft whoosh as a message we send leaves, as in Telegram.
+    public var sendSound: Bool {
+        didSet { defaults.set(sendSound, forKey: Key.sendSound) }
+    }
+
     /// Voice messages show who recorded them, as on the phone.
     public var voiceAvatars: Bool {
         didSet { defaults.set(voiceAvatars, forKey: Key.voiceAvatars) }
@@ -155,6 +160,7 @@ public final class Preferences {
             Key.voiceAvatars: true,
             Key.senderPhones: true,
             Key.enterSends: true,
+            Key.sendSound: true,
             Key.menuBarIcon: true,
             Key.textScale: 1.0,
             Key.keepRunning: true,
@@ -171,6 +177,7 @@ public final class Preferences {
         senderPhones = defaults.bool(forKey: Key.senderPhones)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
+        sendSound = defaults.bool(forKey: Key.sendSound)
         downloadFolder = defaults.string(forKey: Key.downloadFolder)
         menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
         textScale = defaults.double(forKey: Key.textScale)
@@ -199,6 +206,7 @@ public final class Preferences {
         static let senderPhones = "senderPhones"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
+        static let sendSound = "sendSound"
         static let downloadFolder = "downloadFolder"
         static let menuBarIcon = "menuBarIcon"
         static let textScale = "textScale"

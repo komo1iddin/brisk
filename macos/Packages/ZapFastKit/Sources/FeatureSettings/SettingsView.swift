@@ -308,6 +308,7 @@ private struct ChatSettings: View {
             }
             Section {
                 Toggle("Return sends", isOn: $preferences.enterSends)
+                Toggle("Play a sound when sending", isOn: $preferences.sendSound)
             } header: {
                 Text("Writing")
             } footer: {

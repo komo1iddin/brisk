@@ -32,8 +32,9 @@ public struct Conversation: Equatable, Sendable {
 
     /// Upstream's `Conversation::merge`: older pages prepend unseen messages;
     /// newer ones replace by id, keeping a downloaded file the fresh copy
-    /// lacks. Messages stay ascending by timestamp; the array is sorted only
-    /// when a merge breaks that, not on every live message.
+    /// lacks. Messages stay ascending by timestamp, ties in the phone's history
+    /// order; the array is sorted only when a merge breaks that, not on every
+    /// live message.
     mutating func merge(_ incoming: [MessageRecord], older: Bool) {
         guard !incoming.isEmpty else { return }
         if older {
@@ -62,12 +63,18 @@ public struct Conversation: Equatable, Sendable {
             }
         }
         if !isAscending {
-            messages.sort { $0.timestamp < $1.timestamp }
+            // Stable, as upstream's `sort_by_key`: equal keys keep their order.
+            messages = messages.enumerated()
+                .sorted {
+                    let (a, b) = ($0.element.order, $1.element.order)
+                    return a != b ? a < b : $0.offset < $1.offset
+                }
+                .map(\.element)
         }
     }
 
     private var isAscending: Bool {
-        zip(messages, messages.dropFirst()).allSatisfy { $0.timestamp <= $1.timestamp }
+        zip(messages, messages.dropFirst()).allSatisfy { $0.order <= $1.order }
     }
 }
 
@@ -341,5 +348,22 @@ extension Conversation {
         self.init()
         self.revision = revision
         self.messagesRevision = messagesRevision
+    }
+}
+
+extension MessageRecord {
+    /// Upstream's message order: by time, then the phone's history order, with
+    /// messages that have none (live ones) after those that do.
+    var order: MessageOrder {
+        MessageOrder(timestamp: timestamp, history: historyOrder ?? .max)
+    }
+}
+
+struct MessageOrder: Comparable {
+    let timestamp: Int64
+    let history: Int64
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        (lhs.timestamp, lhs.history) < (rhs.timestamp, rhs.history)
     }
 }

@@ -469,6 +469,10 @@ pub struct MessageRecord {
     pub thumbnail: Option<Vec<u8>>,
     /// One-line summary for chat rows and quotes.
     pub summary: String,
+    /// The phone's order within a history conversation, which breaks
+    /// timestamp ties. Live messages and older archives have none.
+    #[uniffi(default = None)]
+    pub history_order: Option<i64>,
 }
 
 impl From<Message> for MessageRecord {
@@ -481,8 +485,7 @@ impl From<Message> for MessageRecord {
             sender_name,
             from_me,
             timestamp,
-            // The archive already pages in the phone's order.
-            history_order: _,
+            history_order,
             content,
             status,
             delivered_at,
@@ -512,6 +515,7 @@ impl From<Message> for MessageRecord {
             forwarded,
             thumbnail,
             summary,
+            history_order,
         }
     }
 }

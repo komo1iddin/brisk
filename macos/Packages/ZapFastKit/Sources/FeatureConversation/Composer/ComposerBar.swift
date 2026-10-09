@@ -132,7 +132,7 @@ struct ComposerBar: View {
     /// Glass on macOS 26, bordered before it.
     private var editor: some View {
         GlassGroup(spacing: Metrics.s) {
-            HStack(alignment: .bottom, spacing: Metrics.s) {
+            HStack(alignment: .composerLine, spacing: Metrics.s) {
                 Button {
                     attaching.toggle()
                 } label: {
@@ -197,11 +197,14 @@ struct ComposerBar: View {
         }
     }
 
-    /// The side buttons' size, matching the one-line field.
-    fileprivate static let control: CGFloat = 22
-    /// The field's inside height for one line: with its padding, as tall
-    /// as the round buttons beside it.
-    fileprivate static let fieldLine: CGFloat = 30
+    /// The side buttons' label size: with the round button's padding, as
+    /// tall as the one-line field (`fieldHeight`).
+    fileprivate static let control: CGFloat = 24
+    /// The field's inside height for one line.
+    nonisolated fileprivate static let fieldLine: CGFloat = 30
+    /// The field's outside height for one line, with its padding.
+    nonisolated fileprivate static let fieldHeight: CGFloat = fieldLine + 2 * fieldPadding
+    nonisolated fileprivate static let fieldPadding: CGFloat = Metrics.xxs + 1
 
     private func sendButton(title: LocalizedStringKey, systemImage: String) -> some View {
         Button {
@@ -277,8 +280,9 @@ struct ComposerBar: View {
         }
         .padding(.leading, Metrics.m)
         .padding(.trailing, Metrics.xs)
-        .padding(.vertical, Metrics.xxs + 1)
+        .padding(.vertical, Self.fieldPadding)
         .modifier(ComposerFieldSurface())
+        .composerFieldLine()
     }
 
     private var text: String {
@@ -360,7 +364,26 @@ private struct ComposerFieldSurface: ViewModifier {
     }
 }
 
+/// The middle of the field's last line, which the round buttons beside it
+/// centre on: equal heights are not enough, as a glass button and the
+/// field's glass do not measure alike, and the field grows upwards.
+private extension VerticalAlignment {
+    enum ComposerLine: AlignmentID {
+        /// A button is centred on the line.
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+
+    static let composerLine = VerticalAlignment(ComposerLine.self)
+}
+
 private extension View {
+    /// The field's last line is what the buttons centre on.
+    func composerFieldLine() -> some View {
+        alignmentGuide(.composerLine) { $0[.bottom] - ComposerBar.fieldHeight / 2 }
+    }
+
     /// A round system button beside the field; `prominent` for Send.
     @ViewBuilder
     func composerButton(prominent: Bool = false) -> some View {
@@ -394,7 +417,7 @@ private struct RecordingBar: View {
 
     var body: some View {
         GlassGroup(spacing: Metrics.s) {
-            HStack(alignment: .bottom, spacing: Metrics.s) {
+            HStack(alignment: .composerLine, spacing: Metrics.s) {
                 Button {
                     if recorder.elapsed() >= AppModel.discardAskAfter {
                         confirmingDiscard = true
@@ -483,8 +506,9 @@ private struct RecordingBar: View {
         .frame(height: ComposerBar.fieldLine)
         .padding(.leading, Metrics.m)
         .padding(.trailing, Metrics.m)
-        .padding(.vertical, Metrics.xxs + 1)
+        .padding(.vertical, ComposerBar.fieldPadding)
         .modifier(ComposerFieldSurface())
+        .composerFieldLine()
     }
 
     /// The length recorded, or while listening back, how far it has played.

@@ -27,6 +27,7 @@ mod helpers;
 mod link;
 mod logging;
 mod pump;
+mod themes;
 pub mod types;
 mod vcard;
 
@@ -39,3 +40,4 @@ pub use client::{BridgeClient, BridgeConfig, BridgeError, EventListener};
 pub use commands::BridgeCommand;
 pub use events::BridgeEvent;
 pub use export::{ChatCensus, ChatMedia, ChatMediaKind, ChatReader};
+pub use themes::{PaletteTheme, palette_presets, palette_themes_in};

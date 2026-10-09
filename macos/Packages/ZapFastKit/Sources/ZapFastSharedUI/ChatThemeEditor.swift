@@ -14,6 +14,7 @@ public struct ChatThemeEditor: View {
     private let model: AppModel
     @Environment(\.colorScheme) private var scheme
     @State private var importing = false
+    @State private var showingPalettes = false
 
     public init(chat: String?, model: AppModel) {
         self.chat = chat
@@ -31,15 +32,22 @@ public struct ChatThemeEditor: View {
             }
 
             Section("Theme") {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: Metrics.m) {
-                        ForEach(ThemePresets.all) { preset in
-                            themeThumbnail(preset, selected: preset.appearance == appearance)
+                HStack(alignment: .top, spacing: Metrics.s) {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .top, spacing: Metrics.m) {
+                            ForEach(ThemePresets.all) { preset in
+                                themeThumbnail(preset, selected: preset.appearance == appearance)
+                            }
                         }
+                        .padding(.vertical, Metrics.xs)
                     }
-                    .padding(.vertical, Metrics.xs)
+                    .scrollIndicators(.never)
+                    // Upstream's palettes stay behind one button at the row's
+                    // end, so the row does not grow with them.
+                    Divider()
+                    moreThemes(appearance)
+                        .padding(.vertical, Metrics.xs)
                 }
-                .scrollIndicators(.never)
             }
 
             Section {
@@ -103,6 +111,49 @@ public struct ChatThemeEditor: View {
         .buttonStyle(.plain)
         .accessibilityLabel(preset.name)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// "More": the palette in use, if one is, else a button for the list.
+    private func moreThemes(_ appearance: ChatAppearance) -> some View {
+        let chosen = model.themes.palette(of: appearance)
+        return Button { showingPalettes = true } label: {
+            VStack(spacing: Metrics.xs) {
+                Group {
+                    if let chosen {
+                        ThemePreview(theme: ChatTheme(ChatAppearance(palette: chosen), photos: model.themes), detailed: false)
+                    } else {
+                        Image(systemName: "ellipsis")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.fill.tertiary)
+                    }
+                }
+                .frame(width: 68, height: 46)
+                .clipShape(.rect(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+                .padding(3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(chosen != nil ? Color.accentColor : .clear, lineWidth: 3)
+                )
+                Text(chosen?.name ?? String(localized: "More"))
+                    .font(.caption)
+                    .foregroundStyle(chosen != nil ? .primary : .secondary)
+                    .lineLimit(1)
+            }
+            .frame(width: 74)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .help("Themes from palettes, as ZapFast and Spotifast use them")
+        .popover(isPresented: $showingPalettes, arrowEdge: .bottom) {
+            PaletteThemes(model: model, current: appearance) { palette in
+                apply(ChatAppearance(palette: palette))
+                showingPalettes = false
+            }
+        }
+        .task { await model.themes.loadPalettes() }
     }
 
     // MARK: Bubble colour
@@ -357,5 +408,80 @@ private struct ChatThemeSheet: View {
         }
         .frame(width: 520, height: 620)
         .navigationTitle(model.chats.chat(chat).map(model.chats.title(for:)) ?? "")
+    }
+}
+
+/// Upstream's palettes, those it ships and the person's own files, each as
+/// the chat theme it makes; and the folder the files go in.
+private struct PaletteThemes: View {
+    let model: AppModel
+    let current: ChatAppearance
+    let choose: (PaletteTheme) -> Void
+
+    var body: some View {
+        let palettes = model.themes.palettes
+        VStack(alignment: .leading, spacing: Metrics.m) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Metrics.m) {
+                    group("Palettes", palettes.shipped)
+                    if !palettes.own.isEmpty {
+                        group("Your Palettes", palettes.own)
+                    }
+                }
+                .padding(Metrics.m)
+            }
+            .frame(maxHeight: 360)
+            Divider()
+            HStack {
+                Text("Add .json palettes from ZapFast or Spotifast to the themes folder.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: Metrics.s)
+                Button("Open Folder") {
+                    let folder = model.themes.themesFolder
+                    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(folder)
+                }
+                Button("Reload") { Task { await model.themes.loadPalettes() } }
+            }
+            .padding([.horizontal, .bottom], Metrics.m)
+        }
+        .frame(width: 420)
+        .task { await model.themes.loadPalettes() }
+    }
+
+    private func group(_ title: LocalizedStringKey, _ palettes: [PaletteTheme]) -> some View {
+        VStack(alignment: .leading, spacing: Metrics.s) {
+            Text(title).font(.headline)
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(80), spacing: Metrics.m), count: 4), alignment: .leading,
+                      spacing: Metrics.m) {
+                ForEach(palettes, id: \.name) { palette in
+                    let appearance = ChatAppearance(palette: palette)
+                    let selected = appearance == current
+                    Button { choose(palette) } label: {
+                        VStack(spacing: Metrics.xs) {
+                            ThemePreview(theme: ChatTheme(appearance, photos: model.themes), detailed: false)
+                                .frame(width: 68, height: 46)
+                                .clipShape(.rect(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+                                .padding(3)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 3)
+                                )
+                            Text(palette.name)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .foregroundStyle(selected ? .primary : .secondary)
+                        }
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(palette.name)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
     }
 }

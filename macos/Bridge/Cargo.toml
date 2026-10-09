@@ -23,6 +23,8 @@ log = "0.4"
 egui = "0.36"
 # The same logger upstream uses, with its protocol redaction.
 fastframe-log = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
+# Reads the JSON palettes upstream and Spotifast share, as upstream does.
+fastframe-theme = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 # Upstream's emoji data, for its `:shortcode` completion.
 emojis = "0.9"
 # Calls. Upstream links whatsapp-rust without its VoIP stack; naming the same

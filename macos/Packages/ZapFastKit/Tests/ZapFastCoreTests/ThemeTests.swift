@@ -12,6 +12,25 @@ struct ThemeTests {
         return (ThemeStore(defaults: defaults, wallpapersFolder: folder), folder)
     }
 
+    @Test func upstreamsPalettesBecomeChatThemesAndYourOwnFilesJoinThem() async throws {
+        let (themes, folder) = store()
+        try FileManager.default.createDirectory(at: themes.themesFolder, withIntermediateDirectories: true)
+        try Data(##"{"base":"dark","colors":{"window":"#101010","accent":"#33cc99"}}"##.utf8)
+            .write(to: themes.themesFolder.appending(path: "Mine.json"))
+        await themes.loadPalettes()
+        #expect(themes.palettes.shipped.contains { $0.name == "Nord" })
+        let mine = try #require(themes.palettes.own.first)
+        #expect(mine.name == "Mine")
+
+        let appearance = ChatAppearance(palette: mine)
+        #expect(appearance.wallpaper == .color(ThemeColor("#101010"), doodles: false))
+        #expect(appearance.bubble == ThemeColor(mine.bubbleOut))
+        themes.set(appearance, for: nil)
+        #expect(themes.palette(of: themes.appearance(for: nil))?.name == "Mine")
+        #expect(themes.palette(of: ThemePresets.system) == nil)
+        try? FileManager.default.removeItem(at: folder.deletingLastPathComponent().appending(path: "Themes"))
+    }
+
     @Test func chatsFollowTheDefaultUntilTheyHaveTheirOwn() {
         let (themes, _) = store()
         #expect(themes.appearance(for: nil) == ThemePresets.system, "the Mac's own look to start with")

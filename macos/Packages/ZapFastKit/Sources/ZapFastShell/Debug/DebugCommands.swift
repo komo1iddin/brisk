@@ -117,6 +117,25 @@ enum DebugCommands {
         case "compact":
             model.preferences.compactSidebar = parts.count > 1 && parts[1] == "on"
             write(name, "\(model.preferences.compactSidebar)")
+        case "clickother":
+            // clickother:x:y clicks the other titled window (a sheet, say)
+            // at points from its top left, as a real click would arrive.
+            guard parts.count > 2, let x = Double(parts[1]), let y = Double(parts[2]),
+                  let window = NSApp.windows.last(where: {
+                      $0.isVisible && $0.styleMask.contains(.titled) && (500...700).contains($0.frame.width)
+                  }) else { return }
+            let point = NSPoint(x: x, y: window.frame.height - y)
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                if let event = NSEvent.mouseEvent(
+                    with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+                ) { window.sendEvent(event) }
+            }
+            write(name, "clicked")
+        case "theme":
+            // The open chat's theme sheet, to capture with shot:other.
+            model.themeEditorChat = model.selectedChatID
+            write(name, model.selectedChatID == nil ? "no chat" : "open")
         case "deselect":
             model.selectedChatID = nil
             write(name, "none")

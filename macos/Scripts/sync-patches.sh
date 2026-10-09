@@ -29,12 +29,12 @@ BLOCK="$block" awk '
 ' "$bridge" > "$tmp"
 mv "$tmp" "$bridge"
 
-# The bridge logs through the same fastframe-log as upstream. A different tag
-# would put two copies of the crate in the build.
+# The bridge uses the same fastframe crates as upstream (log, theme). A
+# different tag would put two copies of a crate in the build.
 tag="$(sed -n 's/^fastframe-log = .*tag = "\([^"]*\)".*/\1/p' "$upstream" | head -n 1)"
 if [[ -n "$tag" ]]; then
-  perl -pi -e 's|^(fastframe-log = \{ git = "[^"]*", tag = ")[^"]*(")|${1}'"$tag"'${2}|' "$bridge"
-  echo "Aligned the bridge's fastframe-log with upstream's $tag."
+  perl -pi -e 's|^(fastframe-[a-z]+ = \{ git = "[^"]*", tag = ")[^"]*(")|${1}'"$tag"'${2}|' "$bridge"
+  echo "Aligned the bridge's fastframe crates with upstream's $tag."
 fi
 
 # The bridge names whatsapp-rust only to turn on its VoIP features. Another

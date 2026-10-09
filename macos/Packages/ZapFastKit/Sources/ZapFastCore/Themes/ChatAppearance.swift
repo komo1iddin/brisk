@@ -1,4 +1,5 @@
 import Foundation
+import ZapFastBridge
 
 /// A colour for light and for dark appearance, `#rrggbb` each.
 public struct ThemeColor: Codable, Hashable, Sendable {
@@ -39,6 +40,15 @@ public struct ChatAppearance: Codable, Hashable, Sendable {
     public init(bubble: ThemeColor?, wallpaper: WallpaperStyle) {
         self.bubble = bubble
         self.wallpaper = wallpaper
+    }
+}
+
+extension ChatAppearance {
+    /// One of upstream's palettes as a chat theme: its chat colour behind the
+    /// messages and its outgoing bubble for ours, in both appearances (the
+    /// bubbles' text follows each colour's contrast).
+    public init(palette: PaletteTheme) {
+        self.init(bubble: ThemeColor(palette.bubbleOut), wallpaper: .color(ThemeColor(palette.chat), doodles: false))
     }
 }
 

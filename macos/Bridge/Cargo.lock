@@ -8603,6 +8603,7 @@ dependencies = [
  "egui",
  "emojis",
  "fastframe-log",
+ "fastframe-theme",
  "getrandom 0.4.3",
  "keyring-core",
  "log",

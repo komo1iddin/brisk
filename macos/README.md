@@ -214,8 +214,12 @@ among them), a bubble colour (the system accent, a preset, or any from
 the colour panel), and a wallpaper: none, the doodles or a plain colour
 (WhatsApp's colours for light and dark), a soft gradient, or a photo of
 yours, dimmed in dark appearance. A chat's menu gives it its own theme
-(Chat Theme…), and Use Default Theme returns it to the default. Themes
-stay on this Mac. The doodles are upstream's `assets/wallpaper.svg`,
+(Chat Theme…), and Use Default Theme returns it to the default. More, at
+the end of the theme row, lists upstream's palettes (those it shares with
+Spotifast, and any `.json` palette put in `<Application Support>/Themes`,
+read by upstream's own parser) as chat themes: the palette's chat colour
+behind the messages and its outgoing bubble for ours. Themes stay on this
+Mac. The doodles are upstream's `assets/wallpaper.svg`,
 drawn from Lucide icons (ISC).
 
 Videos play inside their message, one at a time, with the system's

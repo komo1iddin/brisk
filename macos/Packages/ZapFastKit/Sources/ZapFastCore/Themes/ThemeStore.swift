@@ -12,8 +12,17 @@ public final class ThemeStore {
     public private(set) var defaultAppearance: ChatAppearance
     public private(set) var chatAppearances: [String: ChatAppearance]
 
+    /// Upstream's palettes: those it ships, then the person's own `.json`
+    /// files from `themesFolder`, read by `loadPalettes()`.
+    public private(set) var palettes: (shipped: [PaletteTheme], own: [PaletteTheme]) = ([], [])
+
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored public let wallpapersFolder: URL
+
+    /// Where palette files from Spotifast or upstream ZapFast go.
+    public var themesFolder: URL {
+        wallpapersFolder.deletingLastPathComponent().appending(path: "Themes", directoryHint: .isDirectory)
+    }
 
     /// Upstream's `wallpaper::MAX_SIDE`.
     nonisolated static let maximumSide = 2560
@@ -26,6 +35,23 @@ public final class ThemeStore {
             .flatMap { try? decoder.decode(ChatAppearance.self, from: $0) } ?? ThemePresets.system
         chatAppearances = defaults.data(forKey: Key.chatAppearances)
             .flatMap { try? decoder.decode([String: ChatAppearance].self, from: $0) } ?? [:]
+    }
+
+    /// Reads the palettes again, off the main actor: the folder may have new
+    /// files.
+    public func loadPalettes() async {
+        let folder = themesFolder.path(percentEncoded: false)
+        palettes = await Self.readPalettes(folder: folder)
+    }
+
+    @concurrent
+    private static func readPalettes(folder: String) async -> (shipped: [PaletteTheme], own: [PaletteTheme]) {
+        (palettePresets(), paletteThemesIn(folder: folder))
+    }
+
+    /// The palette `appearance` was made from, if one was.
+    public func palette(of appearance: ChatAppearance) -> PaletteTheme? {
+        (palettes.own + palettes.shipped).first { ChatAppearance(palette: $0) == appearance }
     }
 
     /// A chat's look: its own, else the default.

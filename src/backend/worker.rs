@@ -1801,7 +1801,7 @@ impl Worker {
         match bot {
             Ok(bot) => {
                 let handle = bot.spawn();
-                super::client_hook::client_made(&handle.client());
+                super::client_hook::client_made(&self.dirs.id, &handle.client());
                 self.client = Some(handle.client());
                 self.handle = Some(handle);
                 self.set_status(LinkStatus::Connecting);

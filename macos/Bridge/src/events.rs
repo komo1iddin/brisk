@@ -277,6 +277,9 @@ pub enum BridgeEvent {
     Error {
         message: String,
     },
+    /// After `RemoveAccount`: the backend unlinked and stopped, and the
+    /// account's files may go.
+    AccountRemoved,
     /// An upstream event the macOS app does not handle yet.
     NotBridged {
         name: String,
@@ -557,8 +560,7 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
         Event::WallpaperImagePicked(_) => not_bridged("WallpaperImagePicked"),
         Event::NotificationSoundPicked { .. } => not_bridged("NotificationSoundPicked"),
         Event::ClipboardImage(_) => not_bridged("ClipboardImage"),
-        // Only after RemoveAccount, which the app never sends.
-        Event::AccountRemoved => not_bridged("AccountRemoved"),
+        Event::AccountRemoved => Some(B::AccountRemoved),
         // Upstream's self-updater targets its own binary, never this app.
         Event::UpdateAvailable { .. }
         | Event::UpdateSupport(_)

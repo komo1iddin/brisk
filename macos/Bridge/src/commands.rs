@@ -27,6 +27,9 @@ pub enum BridgeCommand {
     Reconnect,
     /// Unlink this device here and on the phone.
     Unlink,
+    /// Unlinks this account and stops its backend, which then reports
+    /// `AccountRemoved`; the account manager deletes its files after that.
+    RemoveAccount,
     /// Set aside an unreadable archive and start over with a new link.
     StartOverArchive,
     /// Whether the person is looking at the app.
@@ -420,6 +423,7 @@ impl BridgeCommand {
             Self::PairWithPhone { phone } => Command::PairWithPhone(phone),
             Self::Reconnect => Command::Reconnect,
             Self::Unlink => Command::Unlink,
+            Self::RemoveAccount => Command::RemoveAccount,
             Self::StartOverArchive => Command::StartOverArchive,
             Self::SetOnline { online } => Command::SetOnline(online),
             Self::SetProxy { proxy } => Command::SetProxy(proxy),

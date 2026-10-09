@@ -11,9 +11,10 @@
 //! at once with no backoff owed. Swift knows when the network returned, so it
 //! asks through [`skip_wait`].
 //!
-//! The worker hands each new client to the single hook upstream allows (the
-//! call center installs it), which passes it on to [`made`].
+//! Each account's worker hands its new clients to the single hook upstream
+//! allows (the call centers install it), which passes them on to [`made`].
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 use whatsapp_rust::Client;
@@ -24,33 +25,37 @@ struct Current {
     runtime: tokio::runtime::Handle,
 }
 
-static CURRENT: Mutex<Option<Current>> = Mutex::new(None);
+/// Each account's current client, by account id.
+static CURRENT: Mutex<Option<HashMap<String, Current>>> = Mutex::new(None);
 
-fn current() -> MutexGuard<'static, Option<Current>> {
+fn current() -> MutexGuard<'static, Option<HashMap<String, Current>>> {
     CURRENT.lock().unwrap_or_else(|p| p.into_inner())
 }
 
-/// Remembers the worker's new client. Called on the worker's runtime.
-pub(crate) fn made(client: &Arc<Client>) {
+/// Remembers an account's new client. Called on the worker's runtime.
+pub(crate) fn made(account: &str, client: &Arc<Client>) {
     let Ok(runtime) = tokio::runtime::Handle::try_current() else {
         log::warn!("link: the client arrived outside its runtime; reconnecting on request is off");
         return;
     };
-    *current() = Some(Current {
-        client: Arc::downgrade(client),
-        runtime,
-    });
+    current().get_or_insert_with(HashMap::new).insert(
+        account.to_owned(),
+        Current {
+            client: Arc::downgrade(client),
+            runtime,
+        },
+    );
 }
 
-/// Reconnects now instead of at the end of the library's wait, if there is a
-/// client. Returns whether one was asked to.
+/// Reconnects `account` now instead of at the end of the library's wait, if
+/// it has a client. Returns whether one was asked to.
 ///
 /// Meant for a link that is down: on a healthy one it only costs a quick
 /// reconnect, since the connection is torn down and made again.
-pub(crate) fn skip_wait() -> bool {
+pub(crate) fn skip_wait(account: &str) -> bool {
     let (client, runtime) = {
         let current = current();
-        let Some(current) = current.as_ref() else {
+        let Some(current) = current.as_ref().and_then(|clients| clients.get(account)) else {
             return false;
         };
         let Some(client) = current.client.upgrade() else {

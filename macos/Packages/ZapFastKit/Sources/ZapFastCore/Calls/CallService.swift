@@ -33,9 +33,12 @@ public protocol CallService: AnyObject {
 }
 
 public final class LiveCallService: CallService {
-    private let center = CallCenter.shared()
+    private let center: CallCenter
 
-    public init() {}
+    /// The calls of account `account`.
+    public init(account: String) {
+        center = CallCenter.forAccount(account: account)
+    }
 
     public func connect(_ sinks: CallSinks) {
         center.setListener(listener: CallRelay(sinks))

@@ -15,7 +15,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var callWindow: CallWindowController?
 
     override public init() {
-        model = TimelineBenchmark.isRequested ? TimelineBenchmark.makeModel() : AppModel()
+        model = TimelineBenchmark.isRequested
+            ? TimelineBenchmark.makeModel()
+            : AppModel(accountID: LiveAccounts.activeAccount(paths: .standard()))
         super.init()
     }
 

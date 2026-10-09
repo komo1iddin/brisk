@@ -63,6 +63,9 @@ public final class AppModel {
     @ObservationIgnored public var bringToFront: () -> Void = {}
     /// Opens `chat` in a window of its own; set by the app's shell.
     @ObservationIgnored public var openChatWindow: (String) -> Void = { _ in }
+    /// The backend unlinked this account and stopped after `removeAccount`;
+    /// its files may go. Set by whoever keeps the accounts.
+    @ObservationIgnored public var onAccountRemoved: () -> Void = {}
 
     /// Transient messages for the notice banner, oldest first.
     public private(set) var notices: [Notice] = []
@@ -221,6 +224,8 @@ public final class AppModel {
     /// Bumped to put the cursor in the open chat's search field.
     public private(set) var chatSearchFocusRequests = 0
 
+    /// The WhatsApp account this model shows, as the bridge's roster names it.
+    public let accountID: String
     @ObservationIgnored private let backend: Backend
     @ObservationIgnored private let paths: AppPaths
     @ObservationIgnored private var started = false
@@ -271,11 +276,14 @@ public final class AppModel {
     @ObservationIgnored private var receiptsWatch: MessageKey?
 
     public init(
-        backend: Backend = LiveBackend(),
+        accountID: String = "1",
+        backend: Backend? = nil,
         paths: AppPaths = .standard(),
         preferences: Preferences = Preferences(),
         calls: CallService? = nil
     ) {
+        let backend = backend ?? LiveBackend(account: accountID)
+        self.accountID = accountID
         self.preferences = preferences
         let session = SessionStore()
         self.session = session
@@ -290,7 +298,7 @@ public final class AppModel {
         // Only the live backend's process has a WhatsApp client to call with.
         let live = backend is LiveBackend
         self.calls = CallStore(
-            service: calls ?? (live ? LiveCallService() : PreviewCallService()),
+            service: calls ?? (live ? LiveCallService(account: accountID) : PreviewCallService()),
             live: live
         )
         self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }
@@ -1606,7 +1614,9 @@ public final class AppModel {
 
     /// Where downloads go now: the chosen folder, or the media cache.
     public var downloadFolderInUse: URL {
-        preferences.downloadFolder.map { URL(filePath: $0) } ?? paths.caches.appending(path: "media")
+        preferences.downloadFolder.map { URL(filePath: $0) }
+            ?? (backend as? LiveBackend)?.mediaFolder
+            ?? paths.caches.appending(path: "accounts/\(accountID)/media")
     }
 
     /// New downloads go to `folder`, or back to the media cache with nil.
@@ -2620,6 +2630,8 @@ public final class AppModel {
             // A number WhatsApp does not know ends its check with an error.
             newContactPending = false
             post(.error, message)
+        case .accountRemoved:
+            onAccountRemoved()
         case .notBridged(let name):
             log.debug("event not bridged yet: \(name, privacy: .public)")
         }

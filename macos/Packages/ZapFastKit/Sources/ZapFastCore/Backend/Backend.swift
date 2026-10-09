@@ -33,35 +33,82 @@ extension Backend {
     }
 }
 
-public final class LiveBackend: Backend {
-    private let client = BridgeClient()
+/// The bridge's account manager, opened once per process: it holds the data
+/// folder's lock, moves a single-account setup into account 1, and keeps
+/// the roster of accounts.
+@MainActor
+public final class LiveAccounts {
+    public static let shared = LiveAccounts()
+    private var opened: Result<AccountManager, any Error>?
 
-    public init() {}
+    /// The manager, opening it on first use. A failure is kept and thrown
+    /// again until `retry` forgets it.
+    public func manager(paths: AppPaths, verbose: Bool) throws -> AccountManager {
+        if case let .success(manager) = opened { return manager }
+        do {
+            let manager = try AccountManager.open(config: BridgeConfig(
+                dataDir: paths.data.path(percentEncoded: false),
+                cacheDir: paths.caches.path(percentEncoded: false),
+                verbose: verbose
+            ))
+            opened = .success(manager)
+            return manager
+        } catch {
+            opened = nil
+            throw error
+        }
+    }
+
+    /// The manager if it is open.
+    public var current: AccountManager? {
+        if case let .success(manager) = opened { manager } else { nil }
+    }
+
+    /// The account the roster puts on screen, read without opening anything.
+    public static func activeAccount(paths: AppPaths) -> String {
+        peekActiveAccount(config: BridgeConfig(
+            dataDir: paths.data.path(percentEncoded: false),
+            cacheDir: paths.caches.path(percentEncoded: false),
+            verbose: false
+        ))
+    }
+}
+
+public final class LiveBackend: Backend {
+    /// The account this backend runs.
+    public let account: String
+    private var client: BridgeClient?
+    /// Where the account keeps downloads by default, known once started.
+    public private(set) var mediaFolder: URL?
+
+    public init(account: String) {
+        self.account = account
+    }
 
     public func start(
         paths: AppPaths,
         verbose: Bool,
         deliver: @escaping @MainActor ([BridgeEvent]) -> Void
     ) throws {
-        let config = BridgeConfig(
-            dataDir: paths.data.path(percentEncoded: false),
-            cacheDir: paths.caches.path(percentEncoded: false),
-            verbose: verbose
-        )
-        try client.start(config: config, listener: EventRelay(deliver: deliver))
+        let manager = try LiveAccounts.shared.manager(paths: paths, verbose: verbose)
+        let client = try manager.client(id: account)
+        try client.start(listener: EventRelay(deliver: deliver))
+        self.client = client
+        mediaFolder = (try? manager.mediaFolder(id: account)).map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 
     public func send(_ command: BridgeCommand) {
-        client.send(command: command)
+        client?.send(command: command)
     }
 
     @discardableResult
     public func reconnectNow() -> Bool {
-        client.reconnectNow()
+        client?.reconnectNow() ?? false
     }
 
     public func openChatReader() async throws -> any ChatReaderProtocol {
-        try await Self.openReader(on: client)
+        guard let client else { throw BridgeError.NotRunning }
+        return try await Self.openReader(on: client)
     }
 
     @concurrent
@@ -70,7 +117,7 @@ public final class LiveBackend: Backend {
     }
 
     public func shutdown() {
-        client.shutdown()
+        client?.shutdown()
     }
 }
 

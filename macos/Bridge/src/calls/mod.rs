@@ -2,8 +2,11 @@
 //!
 //! Upstream's interface has no calls, so its worker neither places nor
 //! answers them. whatsapp-rust does both; the bridge turns its VoIP features on
-//! (see `Cargo.toml`) and receives the worker's client through
+//! (see `Cargo.toml`) and receives each worker's client through
 //! `zapfast::backend::set_client_hook`. Everything else stays upstream's.
+//!
+//! Each account has a call center of its own, with its own client and call
+//! history: a call rings for, and is placed from, one account.
 //!
 //! Swift sees each call as a [`CallInfo`] and drives it through
 //! [`CallCenter`]: one with media, and one more that may ring beside it.
@@ -19,7 +22,8 @@ mod phase;
 mod session;
 mod video;
 
-use std::sync::{Arc, OnceLock};
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex, Once};
 
 pub use history::{CallLogEntry, CallOutcome};
 pub use phase::{CallEndReason, CallPhase};
@@ -85,33 +89,52 @@ pub struct CallCenter {
     center: Arc<Center>,
 }
 
-static SHARED: OnceLock<Arc<CallCenter>> = OnceLock::new();
+/// Each account's call center, by account id.
+static CENTERS: LazyLock<Mutex<HashMap<String, Arc<CallCenter>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// Makes the call center and hands it the worker's clients. Runs before the
-/// backend starts, so the first client is not missed.
-pub(crate) fn install() -> Arc<CallCenter> {
-    SHARED
-        .get_or_init(|| {
-            let center = Center::new();
-            let hooked = center.clone();
-            if !zapfast::backend::set_client_hook(Box::new(move |client| {
-                // The one hook upstream allows: the link module shares the client.
-                crate::link::made(&client);
-                hooked.link(client);
-            })) {
-                log::warn!("calls: another client hook is installed; calls are off");
-            }
-            Arc::new(CallCenter { center })
+fn centers() -> std::sync::MutexGuard<'static, HashMap<String, Arc<CallCenter>>> {
+    CENTERS.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// Hands the workers' clients to their accounts' call centers. Runs before
+/// the first backend starts, so no client is missed.
+pub(crate) fn install() {
+    static INSTALL: Once = Once::new();
+    INSTALL.call_once(|| {
+        if !zapfast::backend::set_client_hook(Box::new(|account, client| {
+            // The one hook upstream allows: the link module shares the client.
+            crate::link::made(account.as_str(), &client);
+            center_for(account.as_str()).center.link(client);
+        })) {
+            log::warn!("calls: another client hook is installed; calls are off");
+        }
+    });
+}
+
+/// The call center of `account`, made the first time it is asked for.
+pub(crate) fn center_for(account: &str) -> Arc<CallCenter> {
+    centers()
+        .entry(account.to_owned())
+        .or_insert_with(|| {
+            Arc::new(CallCenter {
+                center: Center::new(),
+            })
         })
         .clone()
 }
 
+/// Lets go of a removed account's call center.
+pub(crate) fn forget(account: &str) {
+    centers().remove(account);
+}
+
 #[uniffi::export]
 impl CallCenter {
-    /// The process's call center.
+    /// The call center of account `account`.
     #[uniffi::constructor]
-    pub fn shared() -> Arc<Self> {
-        install()
+    pub fn for_account(account: String) -> Arc<Self> {
+        center_for(&account)
     }
 
     pub fn set_listener(&self, listener: Arc<dyn CallListener>) {
@@ -171,10 +194,10 @@ impl CallCenter {
     }
 }
 
-/// Opens the call history in the app's state folder. Without it calls still
-/// work; they are only not remembered.
-pub(crate) fn open_log(state: &std::path::Path) {
-    let center = install();
+/// Opens an account's call history in its state folder. Without it calls
+/// still work; they are only not remembered.
+pub(crate) fn open_log(account: &str, state: &std::path::Path) {
+    let center = center_for(account);
     match history::CallLog::open(&state.join("calls.db")) {
         Ok(store) => center.center.set_log(Arc::new(store)),
         Err(_) => log::warn!("calls: the call history could not be opened"),

@@ -200,49 +200,41 @@ final class ConversationViewController: NSViewController {
 }
 
 /// The title bar's frosted band over the top of the timeline, with a
-/// hairline under it, as SwiftUI's window drew it: what scrolls under the
-/// toolbar shows through blurred, never sharp over the header.
+/// hairline under it: what scrolls under the toolbar shows through,
+/// blurred, as in WhatsApp, never sharp over the header.
 ///
 /// AppKit's own edge effect needs a background the scroll view draws
 /// itself; the timeline's is the wallpaper behind it, so AppKit left the
-/// edge clear and the chat ran sharply under the toolbar.
-final class TitleBandView: NSVisualEffectView {
-    private let hairline = CALayer()
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        material = .titlebar
-        blendingMode = .withinWindow
-        state = .followsWindowActiveState
-        wantsLayer = true
-        hairline.actions = ["frame": NSNull(), "position": NSNull(), "bounds": NSNull(), "backgroundColor": NSNull()]
-        layer?.addSublayer(hairline)
+/// edge clear and the chat ran sharply under the toolbar. The title bar's
+/// material was close to opaque, hiding the wallpaper and the messages;
+/// the thinnest material lets both through, as WhatsApp's header does.
+final class TitleBandView: NSHostingView<TitleBlur> {
+    init() {
+        super.init(rootView: TitleBlur())
+        sizingOptions = []
     }
+
+    @available(*, unavailable)
+    required init(rootView: TitleBlur) { fatalError("not used") }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    override var isFlipped: Bool { true }
-
-    override func layout() {
-        super.layout()
-        hairline.frame = CGRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
-        updateHairline()
-    }
-
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        updateHairline()
-    }
-
-    private func updateHairline() {
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            hairline.backgroundColor = NSColor.separatorColor.cgColor
-        }
-    }
-
     /// A picture only: the toolbar above it takes the clicks.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+struct TitleBlur: View {
+    var body: some View {
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(.separator)
+                    .frame(height: 1)
+            }
+            .allowsHitTesting(false)
+    }
 }
 
 /// The soft edge at the foot of the timeline, behind the composer: the

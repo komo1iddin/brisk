@@ -59,13 +59,39 @@ enum DebugCommands {
     private static var observer: NSObjectProtocol?
     private static var fetchWindow: NSWindow?
 
-    static func start(model: AppModel) {
+    static func start(hub: AccountHub) {
         observer = DistributedNotificationCenter.default().addObserver(
             forName: Notification.Name("com.komoliddin.ZapFastMac.debug"), object: nil, queue: .main
         ) { notification in
             let command = notification.object as? String ?? ""
-            MainActor.assumeIsolated { run(command, model: model) }
+            MainActor.assumeIsolated {
+                if !runAccounts(command, hub: hub) { run(command, model: hub.active) }
+            }
         }
+    }
+
+    /// `accounts` lists them (ids, which is on screen, which are linked);
+    /// `addaccount`, `cancelaccount` and `switchaccount:<id>` act as the
+    /// switcher does. Never names or numbers.
+    private static func runAccounts(_ command: String, hub: AccountHub) -> Bool {
+        let parts = command.split(separator: ":").map(String.init)
+        switch parts.first {
+        case "accounts":
+            let list = hub.models.map { "\($0.accountID)\($0 === hub.active ? "*" : "")\($0.isLinked ? "" : "?")" }
+            write("accounts", list.joined(separator: " ") + (hub.adding.map { " adding=\($0.new)" } ?? ""))
+        case "addaccount":
+            hub.addAccount()
+            write("accounts", "added")
+        case "cancelaccount":
+            hub.cancelAdding()
+            write("accounts", "cancelled")
+        case "switchaccount" where parts.count > 1:
+            hub.switchTo(parts[1])
+            write("accounts", "switched")
+        default:
+            return false
+        }
+        return true
     }
 
     private static func run(_ command: String, model: AppModel) {

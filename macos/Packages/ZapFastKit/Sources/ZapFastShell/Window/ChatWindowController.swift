@@ -11,7 +11,7 @@ import ZapFastSharedUI
 @MainActor
 final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
     let chatID: String
-    private let model: AppModel
+    let model: AppModel
     private let detail: ChatDetailViewController
     private let split = NSSplitViewController()
     private let inspectorItem: NSSplitViewItem

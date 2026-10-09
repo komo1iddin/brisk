@@ -30,6 +30,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     public static let filterItem = NSToolbarItem.Identifier("ZapFastSidebarFilter")
     public static let newChatItem = NSToolbarItem.Identifier("ZapFastSidebarNewChat")
     public static let backItem = NSToolbarItem.Identifier("ZapFastSidebarBack")
+    public static let accountsItem = NSToolbarItem.Identifier("ZapFastSidebarAccounts")
 
     public let model: AppModel
     private let state = SidebarState()
@@ -42,6 +43,8 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private let sync = NSHostingView(rootView: AnyView(EmptyView()))
     private let presenters = PassiveHostingView(rootView: AnyView(EmptyView()))
     private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
+    private lazy var accountsMenu = model.hub.map { AccountsMenu(hub: $0) }
+    private var accountsObserved = 0
     private var observed = 0
     private var searchRequests = 0
     private var wasLocked = false
@@ -346,6 +349,19 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
             item.isBordered = true
             item.target = self
             item.action = #selector(newChat)
+        case Self.accountsItem:
+            guard let accountsMenu else { return nil }
+            let menuItem = NSMenuToolbarItem(itemIdentifier: identifier)
+            let menu = NSMenu()
+            menu.delegate = accountsMenu
+            menuItem.menu = menu
+            menuItem.showsIndicator = false
+            menuItem.label = String(localized: "Accounts")
+            menuItem.toolTip = String(localized: "Switch or add a WhatsApp account")
+            item = menuItem
+            items[identifier] = item
+            observeAccountsItem()
+            return item
         case Self.backItem:
             item = NSToolbarItem(itemIdentifier: identifier)
             item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: nil)
@@ -391,6 +407,28 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private var itemsState: ItemsState?
     /// Items made since the state was last applied are set up too.
     private var itemsStateCount = 0
+
+    /// Our picture, with a dot while another account has unread chats.
+    private func observeAccountsItem() {
+        guard let hub = model.hub, let item = items[Self.accountsItem] else { return }
+        accountsObserved += 1
+        let round = accountsObserved
+        let model = model
+        let shown = withObservationTracking {
+            (picture: model.accountPicture,
+             version: model.session.account.map { model.avatars.version(for: $0.id) } ?? 0,
+             elsewhere: hub.unreadElsewhere > 0 && !model.appLock.isLocked)
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self, self.accountsObserved == round else { return }
+                    self.observeAccountsItem()
+                }
+            }
+        }
+        item.image = AccountPicture.image(url: shown.picture, size: 22, dot: shown.elsewhere)
+        _ = shown.version
+    }
 
     @objc private func newChat() {
         model.newChatShown = true

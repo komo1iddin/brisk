@@ -57,6 +57,7 @@ public struct SettingsView: View {
 private struct AccountSettings: View {
     let model: AppModel
     @State private var confirmUnlink = false
+    @State private var removing: AppModel?
     @State private var name = ""
     @State private var about = ""
     @State private var choosingPicture = false
@@ -103,10 +104,44 @@ private struct AccountSettings: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let hub = model.hub {
+                Section {
+                    ForEach(hub.models, id: \.accountID) { account in
+                        LabeledContent {
+                            if hub.models.count > 1 {
+                                Button("Remove…") { removing = account }
+                            }
+                        } label: {
+                            HStack {
+                                Text(account.accountTitle)
+                                if account === hub.active {
+                                    Image(systemName: "checkmark").foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    Button("Add Account…") { hub.addAccount() }
+                } header: {
+                    Text("Accounts on This Mac")
+                } footer: {
+                    Text("Switch accounts with your picture at the top of the chat list. Removing an account unlinks it and deletes its messages and files from this Mac.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
-        .settingsPane(height: 400)
+        .settingsPane(height: model.hub == nil ? 400 : 560)
         .confirmationDialog("Unlink this Mac?", isPresented: $confirmUnlink) {
             Button("Unlink", role: .destructive) { model.unlink() }
+        }
+        .confirmationDialog(
+            "Remove \(removing?.accountTitle ?? "")?",
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            presenting: removing
+        ) { account in
+            Button("Remove Account", role: .destructive) { model.hub?.remove(account.accountID) }
+        } message: { _ in
+            Text("This Mac is unlinked from that account, and its messages, files and settings here are deleted. The phone keeps its chats.")
         }
         .fileImporter(isPresented: $choosingPicture, allowedContentTypes: [.image]) { result in
             if case .success(let url) = result { model.setProfilePicture(from: url) }

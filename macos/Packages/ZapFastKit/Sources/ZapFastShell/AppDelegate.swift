@@ -8,16 +8,18 @@ import ZapFastDesign
 /// App lifecycle: starts the backend, reports whether the person is looking,
 /// keeps the Dock badge current, and shuts down cleanly on quit.
 public final class AppDelegate: NSObject, NSApplicationDelegate {
-    public let model: AppModel
+    /// The linked accounts; the window shows the active one.
+    public let hub: AccountHub
+    /// The account in the window.
+    public var model: AppModel { hub.active }
     private var menuBarIcon: MenuBarIcon?
     private var mainWindow: MainWindowController?
     private var chatWindows: [ChatWindowController] = []
-    private var callWindow: CallWindowController?
+    /// Each account's calls ring in a panel of its own.
+    private var callWindows: [String: CallWindowController] = [:]
 
     override public init() {
-        model = TimelineBenchmark.isRequested
-            ? TimelineBenchmark.makeModel()
-            : AppModel(accountID: LiveAccounts.activeAccount(paths: .standard()))
+        hub = TimelineBenchmark.isRequested ? AccountHub(model: TimelineBenchmark.makeModel()) : AccountHub()
         super.init()
     }
 
@@ -66,13 +68,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         let verbose = ProcessInfo.processInfo.environment["ZAPFAST_VERBOSE"] != nil
-        model.bringToFront = { [weak self] in
-            NSApp.activate()
-            self?.mainWindow?.show()
-        }
-        model.openChatWindow = { [weak self] chat in self?.openChatWindow(chat) }
-        callWindow = CallWindowController(model: model)
-        model.start(verbose: verbose)
+        prepare(model)
+        hub.onModelAdded = { [weak self] model in self?.prepare(model) }
+        hub.onModelRemoved = { [weak self] model in self?.forget(model) }
+        hub.onActiveChanged = { [weak self] model in self?.mainWindow?.show(model: model) }
+        hub.start(verbose: verbose)
         HangMonitor.start()
         // Copies handed to drags and to Contacts last time are done with.
         for leftover in ["ZapFast Drags", "ZapFast Contacts"] {
@@ -80,22 +80,44 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeBadge()
         watchInput()
-        let icon = MenuBarIcon(model: model)
+        let icon = MenuBarIcon(hub: hub)
         icon.openMainWindow = { [weak self] in self?.mainWindow?.show() }
         menuBarIcon = icon
         if let rounds = LiveStress.rounds { LiveStress.start(model: model, rounds: rounds) }
         #if DEBUG
         DebugSnapshot.scheduleIfRequested(model: model)
-        DebugCommands.start(model: model)
+        DebugCommands.start(hub: hub)
         #endif
     }
 
     public func applicationDidBecomeActive(_ notification: Notification) {
-        model.setActive(true)
+        hub.setActive(true)
     }
 
     public func applicationDidResignActive(_ notification: Notification) {
-        model.setActive(false)
+        hub.setActive(false)
+    }
+
+    /// What the shell gives each account's model: the window to come
+    /// forward in, chats' own windows, and a panel for its calls.
+    private func prepare(_ model: AppModel) {
+        model.bringToFront = { [weak self] in
+            NSApp.activate()
+            self?.mainWindow?.show()
+        }
+        let account = model.accountID
+        model.openChatWindow = { [weak self, weak model] chat in
+            guard let model else { return }
+            self?.openChatWindow(chat, of: model)
+        }
+        callWindows[account] = CallWindowController(model: model)
+    }
+
+    /// A removed account's windows close.
+    private func forget(_ model: AppModel) {
+        callWindows.removeValue(forKey: model.accountID)?.close()
+        for window in chatWindows where window.model === model { window.close() }
+        chatWindows.removeAll { $0.model === model }
     }
 
     /// Closing the window keeps ZapFast linked unless that is turned off.
@@ -126,8 +148,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// A chat in a window of its own; one already open comes forward.
-    private func openChatWindow(_ chat: String) {
-        if let open = chatWindows.first(where: { $0.chatID == chat }) {
+    private func openChatWindow(_ chat: String, of model: AppModel) {
+        if let open = chatWindows.first(where: { $0.chatID == chat && $0.model === model }) {
             open.show()
             return
         }
@@ -140,7 +162,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
-        model.shutdown()
+        hub.shutdown()
     }
 
     /// Input in any of the app's windows keeps the app lock's idle time
@@ -151,7 +173,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             .scrollWheel, .leftMouseDragged, .mouseMoved,
         ]
         NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
-            self?.model.appLock.noteInput()
+            self?.hub.shared.appLock.noteInput()
             return event
         }
     }
@@ -159,7 +181,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Unread chats on the Dock icon, re-evaluated whenever they change.
     private func observeBadge() {
         withObservationTracking {
-            let count = model.chats.unreadChatCount
+            let count = hub.unreadEverywhere
             NSApp.dockTile.badgeLabel = count > 0 ? "\(count)" : nil
         } onChange: { [weak self] in
             DispatchQueue.main.async { self?.observeBadge() }

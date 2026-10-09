@@ -6,6 +6,6 @@ struct ZapFastApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        ZapFastScenes(model: delegate.model)
+        ZapFastScenes(hub: delegate.hub)
     }
 }

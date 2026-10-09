@@ -24,6 +24,7 @@ public struct LinkingView: View {
                 header
                 content
                     .frame(maxWidth: 420)
+                otherAccounts
             }
             .padding(Metrics.xl * 2)
             .frame(maxWidth: .infinity)
@@ -37,6 +38,23 @@ public struct LinkingView: View {
             Button("Start Over", role: .destructive) { model.startOverArchive() }
         } message: {
             Text("The unreadable archive is set aside, not deleted, and this Mac links again from scratch.")
+        }
+    }
+
+    /// While another account is linked here: back to it, or to another.
+    @ViewBuilder private var otherAccounts: some View {
+        if let hub = model.hub, hub.models.count > 1 {
+            HStack(spacing: Metrics.m) {
+                if hub.adding?.new == model.accountID {
+                    Button("Cancel") { hub.cancelAdding() }
+                }
+                Menu("Other Accounts") {
+                    ForEach(hub.models.filter { $0 !== model }, id: \.accountID) { other in
+                        Button(other.accountTitle) { hub.switchTo(other.accountID) }
+                    }
+                }
+                .fixedSize()
+            }
         }
     }
 

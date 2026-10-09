@@ -68,6 +68,8 @@ public final class AppModel {
     /// The backend unlinked this account and stopped after `removeAccount`;
     /// its files may go. Set by whoever keeps the accounts.
     @ObservationIgnored public var onAccountRemoved: () -> Void = {}
+    /// The accounts this one is among, when there is a hub.
+    @ObservationIgnored public internal(set) weak var hub: AccountHub?
 
     /// Transient messages for the notice banner, oldest first.
     public private(set) var notices: [Notice] = []
@@ -248,7 +250,7 @@ public final class AppModel {
     /// Voice messages we already sent a played receipt for.
     @ObservationIgnored private var playedTold: Set<String> = []
     /// Created on start: Notification Center needs a real app bundle.
-    @ObservationIgnored private var notifier: Notifier?
+    @ObservationIgnored private var notifier: AccountNotifier?
     /// The app is in front (the lock may still hide it).
     @ObservationIgnored private var isActive = true
     /// A clicked notification's chat, opened once the app lock lifts.
@@ -283,7 +285,8 @@ public final class AppModel {
         paths: AppPaths = .standard(),
         preferences: Preferences = Preferences(),
         accountPreferences: AccountPreferences? = nil,
-        calls: CallService? = nil
+        calls: CallService? = nil,
+        shared: SharedServices? = nil
     ) {
         let backend = backend ?? LiveBackend(account: accountID)
         self.accountID = accountID
@@ -297,8 +300,10 @@ public final class AppModel {
         self.backend = backend
         self.paths = paths
         self.avatars = AvatarStore(send: backend.send)
-        self.appLock = AppLock(preferences: preferences)
-        self.themes = ThemeStore(defaults: preferences.defaults, wallpapersFolder: paths.data.appending(path: "Wallpapers"))
+        self.appLock = shared?.appLock ?? AppLock(preferences: preferences)
+        self.themes = shared?.themes
+            ?? ThemeStore(defaults: preferences.defaults, wallpapersFolder: paths.data.appending(path: "Wallpapers"))
+        self.notifier = shared.flatMap { $0.notifier }.map { AccountNotifier(notifier: $0, account: accountID) }
         self.lockedChats = LockedChats(preferences: preferences)
         // Only the live backend's process has a WhatsApp client to call with.
         let live = backend is LiveBackend
@@ -308,13 +313,16 @@ public final class AppModel {
         )
         self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
-        appLock.onLock = { [weak self] in self?.locked() }
-        appLock.onUnlock = { [weak self] in self?.unlocked() }
+        // A shared lock is for every account; whoever shares it tells them.
+        if shared == nil {
+            appLock.onLock = { [weak self] in self?.locked() }
+            appLock.onUnlock = { [weak self] in self?.unlocked() }
+        }
     }
 
-    /// The person is looking at the app, and the lock does not hide it.
+    /// The person is looking at this account, and the lock does not hide it.
     private var isReading: Bool {
-        isActive && !appLock.isLocked
+        isActive && isOnScreen && !appLock.isLocked
     }
 
     // MARK: Lifecycle
@@ -326,9 +334,9 @@ public final class AppModel {
         // backend runs in.
         if notifier == nil, backend is LiveBackend {
             let notifier = Notifier()
-            notifier.onResponse = { [weak self] response in self?.handle(response) }
+            notifier.onResponse = { [weak self] _, response in self?.handle(response) }
             notifier.requestAuthorization()
-            self.notifier = notifier
+            self.notifier = AccountNotifier(notifier: notifier, account: accountID)
         }
         self.verbose = verbose
         if networkWatch == nil, backend is LiveBackend {
@@ -380,6 +388,21 @@ public final class AppModel {
         started = false
     }
 
+    /// How the account switcher names this account: our name, else our
+    /// number.
+    public var accountTitle: String {
+        if let account = session.account {
+            if let name = account.name, !name.isEmpty { return name }
+            if let number = PhoneFormat.display(id: account.id) { return number }
+        }
+        return isLinked ? String(localized: "WhatsApp Account") : String(localized: "New Account")
+    }
+
+    /// Our own picture, small, for the account switcher.
+    public var accountPicture: URL? {
+        session.account.flatMap { avatars.url(for: $0.id) }
+    }
+
     /// Linked data exists, even while offline; upstream's `App::is_linked`.
     public var isLinked: Bool {
         session.linkSaysLinked || (!chats.chats.isEmpty && !session.isLoggedOut)
@@ -412,16 +435,44 @@ public final class AppModel {
     /// notifications while they are not.
     public func setActive(_ active: Bool) {
         isActive = active
-        guard started, !appLock.isLocked else { return }
+        guard started, !appLock.isLocked, isOnScreen else { return }
         backend.send(.setOnline(online: active))
         if active, let selectedChatID { notifier?.clear(chat: selectedChatID) }
+    }
+
+    /// Whether this account is the one in the window. Another account's
+    /// events still arrive, but nobody reads it: it sends no receipts, is
+    /// not online, and plays nothing (upstream's `events_hidden`).
+    public private(set) var isOnScreen = true
+
+    func setOnScreen(_ shown: Bool) {
+        guard shown != isOnScreen else { return }
+        isOnScreen = shown
+        if shown {
+            guard started, !appLock.isLocked else { return }
+            backend.send(.setOnline(online: isActive))
+            if isActive, let selectedChatID {
+                notifier?.clear(chat: selectedChatID)
+                if chats.chat(selectedChatID)?.looksUnread == true { markRead(selectedChatID) }
+            }
+        } else {
+            leaveScreen()
+            if started { backend.send(.setOnline(online: false)) }
+        }
     }
 
     // MARK: App lock
 
     /// While locked nothing plays or records, and the phone keeps its
     /// notifications, as nobody is reading.
-    private func locked() {
+    func locked() {
+        leaveScreen()
+        if started { backend.send(.setOnline(online: false)) }
+    }
+
+    /// What nobody looks at stops: playback, recording, the locked chats,
+    /// and the sheets over the window (upstream's `clear_account_ui`).
+    private func leaveScreen() {
         closeLockedChats()
         lockedChatsPrompt = false
         voice.stop()
@@ -438,15 +489,14 @@ public final class AppModel {
         themeEditorChat = nil
         stickerPackPreview = nil
         chatConfirmation = nil
-        if started { backend.send(.setOnline(online: false)) }
     }
 
-    private func unlocked() {
+    func unlocked() {
         if let key = openAfterUnlock {
             openAfterUnlock = nil
             open(notified: key)
         }
-        guard started else { return }
+        guard started, isOnScreen else { return }
         backend.send(.setOnline(online: isActive))
         if isActive, let selectedChatID {
             notifier?.clear(chat: selectedChatID)
@@ -459,7 +509,8 @@ public final class AppModel {
     public func unlinkToForgetPassword() {
         guard appLock.isLocked else { return }
         appLock.startUnlinking()
-        unlink()
+        // Every account linked here goes: the lock guards them all.
+        for model in hub?.models ?? [self] { model.unlink() }
     }
 
     // MARK: Intents: conversation
@@ -1630,14 +1681,14 @@ public final class AppModel {
         let path = folder?.path(percentEncoded: false)
         guard path != preferences.downloadFolder else { return }
         preferences.downloadFolder = path
-        backend.send(.setDownloadFolder(path: path))
+        sendToEveryAccount(.setDownloadFolder(path: path))
     }
 
     /// Whether archived chats stay archived when a message arrives or is sent.
     public func setKeepChatsArchived(_ keep: Bool) {
         guard keep != preferences.keepChatsArchived else { return }
         preferences.keepChatsArchived = keep
-        backend.send(.setKeepChatsArchived(keep: keep))
+        sendToEveryAccount(.setKeepChatsArchived(keep: keep))
     }
 
     /// Uses a new proxy and reconnects through it, as upstream's SetProxy;
@@ -1648,8 +1699,31 @@ public final class AppModel {
         guard value != preferences.proxy else { return nil }
         if let problem = proxyProblem(value: value) { return problem }
         preferences.proxy = value
-        backend.send(.setProxy(proxy: value))
+        sendToEveryAccount(.setProxy(proxy: value))
         return nil
+    }
+
+    /// A setting of the whole app goes to every account's backend, as
+    /// upstream sends the download folder and proxy to each.
+    private func sendToEveryAccount(_ command: BridgeCommand) {
+        for model in hub?.models ?? [self] { model.backend.send(command) }
+    }
+
+    /// Sends one command to this account's backend, for the hub.
+    func sendSetting(_ command: BridgeCommand) {
+        backend.send(command)
+    }
+
+    /// Shows an error in this account's window.
+    func report(error: String) {
+        post(.error, error)
+    }
+
+    /// Forgets what is kept about a removed account outside its folders.
+    func forgetAccount() {
+        accountPreferences.forget()
+        goneMedia.clear()
+        notifier?.clearAll()
     }
 
     /// Opens the chat that was open when ZapFast last ran, once, when the
@@ -2729,8 +2803,9 @@ public final class AppModel {
             selectedChatID = nil
             openAfterUnlock = nil
             closeLockedChats()
-            // Unlinking is how a forgotten app-lock password is recovered.
-            appLock.forget()
+            // Unlinking is how a forgotten app-lock password is recovered,
+            // once no account here is linked: the lock guards them all.
+            if !(hub?.models.contains { $0 !== self && $0.isLinked } ?? false) { appLock.forget() }
             post(.error, String(localized: "This device was unlinked from your phone"))
         case .failed(let message):
             post(.error, message)
@@ -2798,7 +2873,7 @@ public final class AppModel {
         }
     }
 
-    private func handle(_ response: Notifier.Response) {
+    func handle(_ response: Notifier.Response) {
         switch response {
         case let .open(chat, message):
             let key = MessageKey(chat: chat, message: message)

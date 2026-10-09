@@ -17,16 +17,10 @@ import ZapFastSharedUI
 /// own size changes.
 @MainActor
 final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
-    private let model: AppModel
-    private let root = RootViewController()
+    private var model: AppModel
+    private var root = RootViewController()
     private lazy var split = MainSplitViewController(model: model)
-    private lazy var toolbar: NSToolbar = {
-        let toolbar = NSToolbar(identifier: "ZapFastMain")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = false
-        return toolbar
-    }()
+    private lazy var toolbar = makeToolbar()
     private var observed = 0
     private var mode: RootViewController.Mode?
     private var appeared = false
@@ -60,6 +54,33 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     required init?(coder: NSCoder) { fatalError("not used") }
 
     private static let frameName = "ZapFastMainWindow"
+
+    private func makeToolbar() -> NSToolbar {
+        let toolbar = NSToolbar(identifier: "ZapFastMain")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        return toolbar
+    }
+
+    /// Shows another account in the same window, where it was: its own
+    /// chats, toolbar, lock or linking screen.
+    func show(model next: AppModel) {
+        guard next !== model else { return show() }
+        let frame = window?.frame
+        model = next
+        let root = RootViewController()
+        root.model = next
+        self.root = root
+        split = MainSplitViewController(model: next)
+        toolbar = makeToolbar()
+        window?.toolbar = nil
+        window?.contentViewController = root
+        if let frame { window?.setFrame(frame, display: true) }
+        mode = nil
+        observe()
+        show()
+    }
 
     /// Brings the window forward, made again if it was closed.
     func show() {
@@ -119,9 +140,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     // MARK: Toolbar
 
-    /// As SwiftUI laid them out: the sidebar's buttons at its trailing
-    /// edge, then the chat's header, and its search and menu at the far end.
+    /// As SwiftUI laid them out: the account switcher first, the sidebar's
+    /// buttons at its trailing edge, then the chat's header, and its search
+    /// and menu at the far end.
     private static let items: [NSToolbarItem.Identifier] = [
+        SidebarViewController.accountsItem,
         .flexibleSpace,
         SidebarViewController.backItem,
         SidebarViewController.filterItem,

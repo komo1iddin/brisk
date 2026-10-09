@@ -34,6 +34,8 @@ import ZapFastSharedUI
 ///   reactions above it; captures every window but the main one and closes it.
 /// - `arrive[:<text>]`, `compose:<text>`: a message arrives in, or is sent
 ///   from the composer of, the open chat (benchmark only).
+/// - `presencecheck:<n>`: opens up to n direct chats with nothing unread
+///   and answers, by index only, which got a presence.
 /// - `preset:<id>`: a theme preset for the open chat (benchmark only).
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
@@ -170,6 +172,35 @@ enum DebugCommands {
         case "deselect":
             model.selectedChatID = nil
             write(name, "none")
+        case "presencenow":
+            // The open chat's presence, yes/no only.
+            let id = model.selectedChatID ?? ""
+            let presence = model.conversations.presence(of: id)
+            write(name, presence == nil ? "none" : presence!.online ? "online" : presence!.lastSeen == nil ? "offline, no time" : "last seen")
+        case "presencecheck":
+            // presencecheck:<n>: opens up to n direct chats with nothing
+            // unread (so nothing is marked read), one every 4 s, and
+            // answers which got a presence (online or last seen). Indexes
+            // and yes/no only, never names or numbers.
+            let wanted = parts.count > 1 ? Int(parts[1]) ?? 10 : 10
+            let chats = model.sidebarOrder.enumerated().filter { _, id in
+                guard let chat = model.chats.chat(id) else { return false }
+                return chat.kind == .direct && !chat.looksUnread && !chat.locked && !model.session.isOurs(id)
+            }.prefix(wanted)
+            let previous = model.selectedChatID
+            Task {
+                var lines: [String] = []
+                for (index, id) in chats {
+                    model.selectedChatID = id
+                    try? await Task.sleep(for: .seconds(4))
+                    let presence = model.conversations.presence(of: id)
+                    let kind = id.hasSuffix("@lid") ? "lid" : "pn"
+                    lines.append("chat \(index) \(kind): \(presence == nil ? "none" : presence!.online ? "online" : presence!.lastSeen == nil ? "offline, no time" : "last seen")")
+                }
+                model.selectedChatID = previous
+                let got = lines.count { !$0.hasSuffix("none") }
+                write(name, "\(got) of \(lines.count) have presence\n" + lines.joined(separator: "\n"))
+            }
         case "select":
             let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
             if model.sidebarOrder.indices.contains(index) { model.selectedChatID = model.sidebarOrder[index] }

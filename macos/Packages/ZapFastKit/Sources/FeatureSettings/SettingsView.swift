@@ -32,7 +32,7 @@ public struct SettingsView: View {
                         AccountSettings(model: model)
                     }
                     Tab("Chats", systemImage: "bubble.left.and.bubble.right") {
-                        ChatSettings(preferences: model.preferences)
+                        ChatSettings(model: model, preferences: model.preferences)
                     }
                     Tab("Notifications", systemImage: "bell.badge") {
                         NotificationSettings(preferences: model.preferences)
@@ -240,6 +240,7 @@ private struct DownloadFolderControl: View {
 
 /// Reading and writing messages.
 private struct ChatSettings: View {
+    let model: AppModel
     @Bindable var preferences: Preferences
 
     var body: some View {
@@ -271,6 +272,17 @@ private struct ChatSettings: View {
                     .settingsFootnote()
             }
             Section {
+                Toggle("Keep chats archived", isOn: Binding(
+                    get: { preferences.keepChatsArchived },
+                    set: { model.setKeepChatsArchived($0) }
+                ))
+            } header: {
+                Text("Archive")
+            } footer: {
+                Text("When off, a new message brings an archived chat back to the list.")
+                    .settingsFootnote()
+            }
+            Section {
                 Toggle("Save contacts to the phone too", isOn: $preferences.saveContactsToPhone)
             } header: {
                 Text("Contacts")
@@ -279,7 +291,7 @@ private struct ChatSettings: View {
                     .settingsFootnote()
             }
         }
-        .settingsPane(height: 450)
+        .settingsPane(height: 540)
     }
 }
 
@@ -433,7 +445,7 @@ public enum SettingsDebug {
     public static func panes(model: AppModel) -> [(name: String, view: AnyView)] {
         [
             ("general", AnyView(GeneralSettings(model: model))),
-            ("chats", AnyView(ChatSettings(preferences: model.preferences))),
+            ("chats", AnyView(ChatSettings(model: model, preferences: model.preferences))),
             ("notifications", AnyView(NotificationSettings(preferences: model.preferences))),
             ("privacy", AnyView(PrivacySettings(model: model))),
             ("advanced", AnyView(AdvancedSettings(model: model))),

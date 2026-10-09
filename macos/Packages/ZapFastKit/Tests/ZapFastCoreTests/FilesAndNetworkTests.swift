@@ -42,6 +42,30 @@ struct FilesAndNetworkTests {
         #expect(backend.sent.last == .setProxy(proxy: ""))
     }
 
+    @Test func archivedChatsStayArchivedUnlessTurnedOff() {
+        let (model, backend) = model()
+        #expect(model.preferences.keepChatsArchived)
+        model.setKeepChatsArchived(true)
+        #expect(backend.sent.isEmpty, "unchanged, nothing sent")
+        model.setKeepChatsArchived(false)
+        #expect(backend.sent.last == .setKeepChatsArchived(keep: false))
+        #expect(!model.preferences.keepChatsArchived)
+    }
+
+    @Test func aTurnedOffArchiveSettingReachesTheBackendAtStart() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        Preferences(defaults: defaults).keepChatsArchived = false
+        let backend = PreviewBackend()
+        let root = FileManager.default.temporaryDirectory.appending(path: "zapfast-files-\(UUID().uuidString)")
+        let model = AppModel(
+            backend: backend,
+            paths: AppPaths(data: root, caches: root),
+            preferences: Preferences(defaults: defaults)
+        )
+        model.start()
+        #expect(backend.sent.contains(.setKeepChatsArchived(keep: false)))
+    }
+
     @Test func zapFastStaysInTheMenuBarAndRunningByDefault() {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let preferences = Preferences(defaults: defaults)

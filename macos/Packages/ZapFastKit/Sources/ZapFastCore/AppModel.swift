@@ -341,6 +341,7 @@ public final class AppModel {
             launch.step("backend started")
             session.link = .starting
             if let folder = preferences.downloadFolder { backend.send(.setDownloadFolder(path: folder)) }
+            if !preferences.keepChatsArchived { backend.send(.setKeepChatsArchived(keep: false)) }
         } catch BridgeError.AnotherInstance {
             session.link = .failed(message: String(localized: "ZapFast is already running."))
         } catch BridgeError.Storage(let message) {
@@ -1615,6 +1616,13 @@ public final class AppModel {
         guard path != preferences.downloadFolder else { return }
         preferences.downloadFolder = path
         backend.send(.setDownloadFolder(path: path))
+    }
+
+    /// Whether archived chats stay archived when a message arrives or is sent.
+    public func setKeepChatsArchived(_ keep: Bool) {
+        guard keep != preferences.keepChatsArchived else { return }
+        preferences.keepChatsArchived = keep
+        backend.send(.setKeepChatsArchived(keep: keep))
     }
 
     /// Uses a new proxy and reconnects through it, as upstream's SetProxy;

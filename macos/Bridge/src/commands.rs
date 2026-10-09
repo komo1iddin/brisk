@@ -42,6 +42,11 @@ pub enum BridgeCommand {
     SetDownloadFolder {
         path: Option<String>,
     },
+    /// Whether archived chats stay archived when a message arrives or is
+    /// sent; when not, a new message brings the chat back to the list.
+    SetKeepChatsArchived {
+        keep: bool,
+    },
 
     // Reading
     /// Archived messages before `before`, or the newest page.
@@ -412,6 +417,7 @@ impl BridgeCommand {
             Self::StartOverArchive => Command::StartOverArchive,
             Self::SetOnline { online } => Command::SetOnline(online),
             Self::SetProxy { proxy } => Command::SetProxy(proxy),
+            Self::SetKeepChatsArchived { keep } => Command::SetKeepChatsArchived(keep),
             Self::SetDownloadFolder { path } => {
                 Command::SetDownloadFolder(path.map(std::path::PathBuf::from))
             }

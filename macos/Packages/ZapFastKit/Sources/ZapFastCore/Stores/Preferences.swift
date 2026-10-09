@@ -88,6 +88,13 @@ public final class Preferences {
         didSet { defaults.set(keepRunning, forKey: Key.keepRunning) }
     }
 
+    /// Archived chats stay archived when a message arrives or is sent
+    /// (upstream's `keep_chats_archived`); off, a new message brings the chat
+    /// back to the list.
+    public internal(set) var keepChatsArchived: Bool {
+        didSet { defaults.set(keepChatsArchived, forKey: Key.keepChatsArchived) }
+    }
+
     /// Where new downloads go (upstream's `download_folder`); nil keeps
     /// them in ZapFast's media cache.
     public internal(set) var downloadFolder: String? {
@@ -174,6 +181,7 @@ public final class Preferences {
             Key.menuBarIcon: true,
             Key.textScale: 1.0,
             Key.keepRunning: true,
+            Key.keepChatsArchived: true,
             Key.sendTyping: true,
             Key.unlockWithTouchID: true,
         ])
@@ -196,6 +204,7 @@ public final class Preferences {
         menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
         textScale = defaults.double(forKey: Key.textScale)
         keepRunning = defaults.bool(forKey: Key.keepRunning)
+        keepChatsArchived = defaults.bool(forKey: Key.keepChatsArchived)
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
@@ -227,6 +236,7 @@ public final class Preferences {
         static let menuBarIcon = "menuBarIcon"
         static let textScale = "textScale"
         static let keepRunning = "keepRunning"
+        static let keepChatsArchived = "keepChatsArchived"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
         static let sendTyping = "sendTyping"

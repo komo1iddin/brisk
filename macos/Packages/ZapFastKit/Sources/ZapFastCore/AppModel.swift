@@ -1958,6 +1958,31 @@ public final class AppModel {
         backend.send(.deleteLocal(chat: message.chat, id: message.id))
     }
 
+    // MARK: Intents: history repair
+
+    /// Upstream's "Reload earlier messages": while linked, for a message
+    /// WhatsApp has.
+    public func canReloadHistory(_ message: MessageRecord) -> Bool {
+        session.isConnected && message.status != .pending && message.status != .failed
+    }
+
+    /// Asks the phone again for the messages just before `message`, which
+    /// fills a gap or fixes the order inside history already here. It is
+    /// asked even when the phone said the chat has nothing older.
+    public func reloadHistory(before message: MessageRecord) {
+        guard canReloadHistory(message) else { return }
+        let conversation = conversations.conversation(message.chat)
+        guard conversation.message(message.id) != nil else { return }
+        guard !conversation.fetchingPhone else {
+            post(.info, String(localized: "History is already being requested for this chat"))
+            return
+        }
+        conversations.markFetchingPhone(message.chat)
+        phoneHistory.asking(message.chat, holding: conversation.messages.count)
+        backend.send(.reloadHistory(chat: message.chat, message: message.id))
+        post(.info, String(localized: "Requesting earlier messages from your phone"))
+    }
+
     // MARK: Intents: message info
 
     /// Upstream offers "Message info" for our own messages that left this

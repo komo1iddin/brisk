@@ -196,4 +196,23 @@ struct ChatManagementTests {
         let old = seen(daysAgo: 7)
         #expect(old.hasPrefix("last seen ") && !old.contains(" at "), "\(old)")
     }
+
+    @Test func earlierMessagesAreAskedForOnceAndNotWhileOffline() {
+        let (model, backend) = model()
+        let anchor = message("b", in: direct, at: 30)
+        model.apply([.messages(chat: direct, messages: [anchor], older: false, complete: true)])
+        model.apply([.olderFetched(chat: direct, more: false)])
+        #expect(model.canReloadHistory(anchor))
+        model.reloadHistory(before: anchor)
+        // Asked even though the phone said the chat has nothing older.
+        #expect(backend.sent.last == .reloadHistory(chat: direct, message: "b"))
+        let count = backend.sent.count
+        model.reloadHistory(before: anchor)
+        #expect(backend.sent.count == count, "one request at a time")
+        #expect(!model.canReloadHistory(message("p", in: direct, at: 40, status: .pending)))
+
+        let (offline, _) = self.model(connected: false)
+        #expect(!offline.canReloadHistory(anchor))
+    }
+
 }

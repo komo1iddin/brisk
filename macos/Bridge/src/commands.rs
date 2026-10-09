@@ -65,6 +65,12 @@ pub enum BridgeCommand {
     FetchOlder {
         chat: String,
     },
+    /// Ask the phone again for the history just before an archived
+    /// message, to fill gaps or fix the order inside a loaded chat.
+    ReloadHistory {
+        chat: String,
+        message: String,
+    },
     MarkRead {
         chat: String,
         receipts: bool,
@@ -437,6 +443,7 @@ impl BridgeCommand {
             },
             // The app tells the reader about a silent phone itself
             // (`PhoneHistory`), so upstream's one-time warning stays off.
+            Self::ReloadHistory { chat, message } => Command::ReloadHistory { chat, message },
             Self::FetchOlder { chat } => Command::FetchOlder {
                 chat,
                 explicit: false,

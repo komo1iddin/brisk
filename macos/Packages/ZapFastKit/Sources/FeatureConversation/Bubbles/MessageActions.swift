@@ -66,6 +66,11 @@ struct MessageActions: View {
             Button("Info", systemImage: "info.circle") { model.showInfo(message) }
         }
 
+        Button("Reload Earlier Messages", systemImage: "arrow.clockwise") {
+            model.reloadHistory(before: message)
+        }
+        .disabled(!model.canReloadHistory(message))
+
         if message.content.media != nil {
             if let url = message.mediaURL {
                 Button("Quick Look", systemImage: "eye") { QuickLook.shared.show([url]) }

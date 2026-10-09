@@ -68,6 +68,12 @@ public final class Preferences {
         didSet { defaults.set(keepRunning, forKey: Key.keepRunning) }
     }
 
+    /// Light, dark, or as macOS is (upstream's theme mode; its default is
+    /// dark, a Mac's is to follow the system).
+    public var appearance: AppAppearance {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+    }
+
     /// Archived chats stay archived when a message arrives or is sent
     /// (upstream's `keep_chats_archived`); off, a new message brings the chat
     /// back to the list.
@@ -164,6 +170,7 @@ public final class Preferences {
         textScale = defaults.double(forKey: Key.textScale)
         keepRunning = defaults.bool(forKey: Key.keepRunning)
         keepChatsArchived = defaults.bool(forKey: Key.keepChatsArchived)
+        appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init(rawValue:)) ?? .system
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
             .flatMap { try? JSONDecoder().decode([ReactionUse].self, from: $0) } ?? []
@@ -190,6 +197,7 @@ public final class Preferences {
         static let textScale = "textScale"
         static let keepRunning = "keepRunning"
         static let keepChatsArchived = "keepChatsArchived"
+        static let appearance = "appearance"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
         static let appLockVerifier = "appLockVerifier"
@@ -215,4 +223,11 @@ public enum AutoLock: Int, CaseIterable, Identifiable, Sendable {
 public struct ReactionUse: Codable, Equatable, Sendable {
     public var emoji: String
     public var count: UInt32
+}
+
+/// The app's appearance, whatever macOS's is.
+public enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
+    case system, light, dark
+
+    public var id: String { rawValue }
 }

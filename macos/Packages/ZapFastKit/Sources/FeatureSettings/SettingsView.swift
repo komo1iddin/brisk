@@ -189,6 +189,14 @@ private struct GeneralSettings: View {
         @Bindable var accountPreferences = model.accountPreferences
         Form {
             Section {
+                Picker("Appearance", selection: $preferences.appearance) {
+                    Text("System").tag(AppAppearance.system)
+                    Text("Light").tag(AppAppearance.light)
+                    Text("Dark").tag(AppAppearance.dark)
+                }
+                .pickerStyle(.segmented)
+            }
+            Section {
                 Toggle("Open at login", isOn: Binding(
                     get: { loginItem != .off },
                     set: { on in
@@ -231,7 +239,7 @@ private struct GeneralSettings: View {
                 if case .success(let folder) = result { model.setDownloadFolder(folder) }
             }
         }
-        .settingsPane(height: 360)
+        .settingsPane(height: 420)
     }
 }
 
@@ -397,6 +405,11 @@ private struct AdvancedSettings: View {
                     .settingsFootnote()
             }
             Section {
+                LabeledContent("Message archive") {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([model.archiveFile])
+                    }
+                }
                 LabeledContent("Log file") {
                     Button("Show in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([model.logFile])
@@ -409,7 +422,7 @@ private struct AdvancedSettings: View {
                     .settingsFootnote()
             }
         }
-        .settingsPane(height: 350)
+        .settingsPane(height: 390)
     }
 
     private func applyProxy() {

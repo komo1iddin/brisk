@@ -420,6 +420,11 @@ public final class AppModel {
 
     public var logFile: URL { paths.logFile }
 
+    /// This account's message archive, in upstream's account folder.
+    public var archiveFile: URL {
+        paths.data.appending(path: "State/accounts/\(accountID)/archive.db")
+    }
+
     // MARK: Intents: link
 
     public func pair(phone: String) {

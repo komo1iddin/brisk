@@ -22,7 +22,9 @@ struct PrivacySettings: View {
             } header: {
                 Text("This Mac")
             } footer: {
-                Text("With read receipts off, people don't see blue ticks or played voice messages from this Mac.")
+                Text(model.session.receiptsDisabled
+                    ? "Read receipts are off for your account, so only groups get them."
+                    : "With read receipts off, people don't see blue ticks or played voice messages from this Mac.")
                     .settingsFootnote()
             }
             Section {

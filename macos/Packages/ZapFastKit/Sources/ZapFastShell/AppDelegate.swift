@@ -91,6 +91,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appending(path: leftover))
         }
         observeBadge()
+        observeAppearance()
         watchInput()
         watchShortcuts()
         let icon = MenuBarIcon(hub: hub)
@@ -212,6 +213,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
             return nil
+        }
+    }
+
+    /// Light, dark, or as macOS is, from Settings.
+    private func observeAppearance() {
+        withObservationTracking {
+            NSApp.appearance = switch hub.preferences.appearance {
+            case .system: nil
+            case .light: NSAppearance(named: .aqua)
+            case .dark: NSAppearance(named: .darkAqua)
+            }
+        } onChange: { [weak self] in
+            DispatchQueue.main.async { self?.observeAppearance() }
         }
     }
 

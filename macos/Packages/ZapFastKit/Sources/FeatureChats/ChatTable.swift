@@ -183,6 +183,11 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         scrollView.contentView.bounds.minY <= -scrollView.contentInsets.top + 1
     }
 
+    /// Scrolls the list to its top, for a chat that moves there.
+    func revealTop() {
+        scrollToTop()
+    }
+
     private func scrollToTop() {
         guard !isAtTop else { return }
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: -scrollView.contentInsets.top))

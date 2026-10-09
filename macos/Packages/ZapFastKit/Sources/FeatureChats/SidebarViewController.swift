@@ -47,6 +47,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private var accountsObserved = 0
     private var observed = 0
     private var searchRequests = 0
+    private lazy var sentFollows = model.sentChatFollows
     private var wasLocked = false
     /// The chats the list shows, in order, for the arrow keys to walk.
     private var shownIDs: [String] = []
@@ -145,6 +146,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 inLocked: inLocked,
                 labels: model.chats.labels.map(\.id),
                 searchRequests: model.sidebarSearchRequests,
+                sentFollows: model.sentChatFollows,
                 syncing: model.session.isSyncing || model.session.link.isDisconnected
             )
         } onChange: { [weak self] in
@@ -183,6 +185,14 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         if cursor != revealedCursor {
             revealedCursor = cursor
             if let cursor { table.reveal(cursor) }
+        }
+        // A sent message brings its chat to the top, so the list goes there,
+        // except where favorites keep the phone's order (upstream's rule).
+        if shown.sentFollows != sentFollows {
+            sentFollows = shown.sentFollows
+            let favoritesOrder = state.filter == .favorites && state.label == nil && !state.showingArchived
+                && state.query.trimmingCharacters(in: .whitespaces).isEmpty && !shown.inLocked
+            if !favoritesOrder { table.revealTop() }
         }
         let searching = !shown.hits.isEmpty
         tableScroll.isHidden = searching

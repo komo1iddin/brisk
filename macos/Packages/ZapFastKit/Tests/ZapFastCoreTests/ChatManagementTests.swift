@@ -232,4 +232,14 @@ struct ChatManagementTests {
         #expect(backend.sent.last == .revoke(chat: direct, id: "m"))
     }
 
+
+    @Test func sendingAsksTheChatListToGoToTheTop() {
+        let (model, backend) = model()
+        let before = model.sentChatFollows
+        model.composerText[direct] = "hello"
+        model.sendText(in: direct)
+        #expect(backend.sent.contains { if case .sendText = $0 { true } else { false } })
+        #expect(model.sentChatFollows == before + 1)
+    }
+
 }

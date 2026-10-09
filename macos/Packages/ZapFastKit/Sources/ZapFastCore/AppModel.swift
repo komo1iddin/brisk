@@ -228,6 +228,9 @@ public final class AppModel {
     public private(set) var unreadDivider: UnreadDivider?
     /// Bumped to put the cursor in the sidebar's search field.
     public private(set) var sidebarSearchRequests = 0
+    /// Bumped by each message the person sends: the chat list goes to the
+    /// top, where the chat moves (upstream's `follow_sent_chat`).
+    public private(set) var sentChatFollows = 0
     /// Bumped to put the cursor in the open chat's search field.
     public private(set) var chatSearchFocusRequests = 0
 
@@ -561,6 +564,7 @@ public final class AppModel {
         backend.send(.saveDraft(chat: chat, text: ""))
         stopComposing(in: chat)
         backend.send(.sendText(chat: chat, text: encoded, quoting: quoting, mentions: mentions))
+        followSentChat()
     }
 
     // MARK: Intents: mentions
@@ -851,6 +855,7 @@ public final class AppModel {
     public func sendSticker(_ path: String, in chat: String) {
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         backend.send(.sendSticker(chat: chat, path: path, quoting: quoting))
+        followSentChat()
     }
 
     /// Fetches a pack shared in a chat and shows it.
@@ -917,6 +922,7 @@ public final class AppModel {
     public func sendStickerPack(_ pack: StickerPackInfo, in chat: String) {
         guard session.isConnected else { return }
         backend.send(.sendStickerPack(chat: chat, dir: pack.dir))
+        followSentChat()
     }
 
     public func toggleFavoriteSticker(_ path: String) {
@@ -949,6 +955,7 @@ public final class AppModel {
     public func sendGif(_ gif: GifInfo, in chat: String) {
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         backend.send(.sendGif(chat: chat, gif: gif, quoting: quoting))
+        followSentChat()
     }
 
     // MARK: Intents: our profile
@@ -1060,6 +1067,7 @@ public final class AppModel {
         guard pollDraftProblem(draft: draft) == nil, session.isConnected, !pollCreating else { return }
         pollCreating = true
         backend.send(.createPoll(chat: chat, draft: draft))
+        followSentChat()
     }
 
     /// Votes by clicking an option, while connected and with no vote of
@@ -1117,6 +1125,7 @@ public final class AppModel {
         backend.send(.replyInteractive(
             chat: message.chat, message: message.id, button: UInt32(button), choice: choice.map(UInt32.init)
         ))
+        followSentChat()
     }
 
     public func showChoices(_ message: MessageRecord, button: Int) {
@@ -1159,6 +1168,7 @@ public final class AppModel {
         let since = Int64(Date.now.timeIntervalSince1970) - Self.forwardClockSlack
         for chat in targets {
             backend.send(.forward(fromChat: request.chat, messages: request.messages, toChat: chat))
+            followSentChat()
             if !note.isEmpty {
                 let pending = ForwardNote(chat: chat, text: note, expected: request.messages.count, since: since)
                 forwardNotes.append(pending)
@@ -1228,6 +1238,7 @@ public final class AppModel {
 
     private func sendForwardNote(_ note: ForwardNote) {
         backend.send(.sendText(chat: note.chat, text: note.text, quoting: nil, mentions: []))
+        followSentChat()
     }
 
     public func cancelForward() {
@@ -1562,6 +1573,7 @@ public final class AppModel {
                     chat: chat, paths: [path], caption: encoded.isEmpty ? nil : encoded,
                     mentions: mentions, quoting: quoting
                 ))
+                followSentChat()
                 quoting = nil
             }
         }
@@ -1636,6 +1648,7 @@ public final class AppModel {
                     chat: chat, width: image.width, height: image.height, rgba: image.rgba,
                     caption: caption, mentions: mentions, quoting: quoting
                 ))
+                followSentChat()
                 caption = nil
                 mentions = []
                 quoting = nil
@@ -1645,6 +1658,7 @@ public final class AppModel {
         }
         if !files.isEmpty {
             backend.send(.sendFiles(chat: chat, paths: files, caption: caption, mentions: mentions, quoting: quoting))
+            followSentChat()
         }
     }
 
@@ -1715,6 +1729,10 @@ public final class AppModel {
     /// upstream sends the download folder and proxy to each.
     private func sendToEveryAccount(_ command: BridgeCommand) {
         for model in hub?.models ?? [self] { model.backend.send(command) }
+    }
+
+    private func followSentChat() {
+        sentChatFollows &+= 1
     }
 
     /// Sends one command to this account's backend, for the hub.
@@ -1834,6 +1852,7 @@ public final class AppModel {
         guard samples.count >= Int(voiceSampleRate()) / 2 else { return }
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         backend.send(.sendVoice(chat: chat, samples: samples, quoting: quoting))
+        followSentChat()
     }
 
     public func cancelRecording() {
@@ -1866,6 +1885,7 @@ public final class AppModel {
         unsentVoice = nil
         let quoting = replyingTo.removeValue(forKey: chat)?.id
         backend.send(.sendVoice(chat: chat, samples: unsent.samples, quoting: quoting))
+        followSentChat()
     }
 
     public func discardUnsentVoice() {
@@ -2919,6 +2939,7 @@ public final class AppModel {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
             backend.send(.sendText(chat: chat, text: trimmed, quoting: message, mentions: []))
+            followSentChat()
             markRead(chat)
         case .markRead(let chat):
             guard !appLock.isLocked else { return }

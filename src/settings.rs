@@ -559,6 +559,48 @@ pub const BUILT_IN_GIPHY_KEY: Option<&str> = match option_env!("ZAPFAST_GIPHY_KE
     _ => option_env!("FASTSAPP_GIPHY_KEY"),
 };
 
+/// The window's geometry as remembered in [`Settings`]. A window reads it
+/// at startup and writes it back; nothing here draws, so it lives with the
+/// settings rather than with the window.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Geometry {
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    pub maximized: bool,
+}
+
+impl Geometry {
+    /// Whether `value` is a usable window dimension.
+    fn sane_size(value: f32) -> bool {
+        value.is_finite() && value > 0.0 && value <= 16_384.0
+    }
+
+    /// Whether `value` is a usable window coordinate.
+    fn sane_position(value: f32) -> bool {
+        value.is_finite() && value.abs() <= 32_768.0
+    }
+
+    /// The remembered inner size, if both dimensions are usable.
+    pub fn size(self) -> Option<[f32; 2]> {
+        match (self.width, self.height) {
+            (Some(width), Some(height)) if Self::sane_size(width) && Self::sane_size(height) => {
+                Some([width, height])
+            }
+            _ => None,
+        }
+    }
+
+    /// The remembered position, if both coordinates are usable.
+    pub fn position(self) -> Option<[f32; 2]> {
+        match (self.x, self.y) {
+            (Some(x), Some(y)) if Self::sane_position(x) && Self::sane_position(y) => Some([x, y]),
+            _ => None,
+        }
+    }
+}
+
 impl Settings {
     pub fn wallpaper_color_for(&self, dark: bool) -> WallpaperColor {
         if dark {
@@ -597,8 +639,8 @@ impl Settings {
     }
 
     /// The remembered window geometry for the next window.
-    pub fn window_geometry(&self) -> crate::window::Geometry {
-        crate::window::Geometry {
+    pub fn window_geometry(&self) -> Geometry {
+        Geometry {
             width: self.window_width,
             height: self.window_height,
             x: self.window_x,
@@ -858,6 +900,77 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_window_geometry_defaults_to_unset_and_round_trips() {
+        assert_eq!(Settings::default().window_geometry(), Geometry::default());
+        assert_eq!(Geometry::default().size(), None);
+        assert_eq!(Geometry::default().position(), None);
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let remembered = Settings {
+            zoom: 1.25,
+            window_width: Some(1280.0),
+            window_height: Some(800.0),
+            window_x: Some(100.0),
+            window_y: Some(50.0),
+            window_maximized: true,
+            ..Settings::default()
+        };
+        remembered.save(&path).unwrap();
+        assert_eq!(Settings::load(&path), remembered);
+        let geometry = remembered.window_geometry();
+        assert_eq!(geometry.size(), Some([1280.0, 800.0]));
+        assert_eq!(geometry.position(), Some([100.0, 50.0]));
+        assert!(geometry.maximized);
+    }
+
+    #[test]
+    fn unusable_window_geometry_is_ignored() {
+        for geometry in [
+            Geometry {
+                width: Some(f32::NAN),
+                height: Some(800.0),
+                ..Geometry::default()
+            },
+            Geometry {
+                width: Some(0.0),
+                height: Some(800.0),
+                ..Geometry::default()
+            },
+            Geometry {
+                width: Some(1280.0),
+                height: Some(f32::INFINITY),
+                ..Geometry::default()
+            },
+            Geometry {
+                width: Some(1280.0),
+                height: None,
+                ..Geometry::default()
+            },
+        ] {
+            assert_eq!(geometry.size(), None);
+        }
+        for geometry in [
+            Geometry {
+                x: Some(f32::NAN),
+                y: Some(50.0),
+                ..Geometry::default()
+            },
+            Geometry {
+                x: Some(100.0),
+                y: None,
+                ..Geometry::default()
+            },
+        ] {
+            assert_eq!(geometry.position(), None);
+        }
+        // Files written before the window was remembered open with the
+        // default size.
+        let older: Settings = serde_json::from_str(r#"{"zoom":1.25}"#).unwrap();
+        assert_eq!(older.window_geometry(), Geometry::default());
+    }
+
+    #[test]
     fn earlier_bundled_sound_names_still_load() {
         let settings: Settings =
             serde_json::from_str(r#"{"message_sound":"chime","mention_sound":"ripple"}"#).unwrap();
@@ -911,12 +1024,9 @@ mod tests {
         // Files written before the window was remembered open with the
         // default size; the full round-trip lives in `window::tests`.
         let settings = Settings::default();
-        assert_eq!(
-            settings.window_geometry(),
-            crate::window::Geometry::default()
-        );
+        assert_eq!(settings.window_geometry(), Geometry::default());
         let older: Settings = serde_json::from_str(r#"{"zoom":1.25}"#).unwrap();
-        assert_eq!(older.window_geometry(), crate::window::Geometry::default());
+        assert_eq!(older.window_geometry(), Geometry::default());
     }
 
     fn load_from(contents: &str) -> (Settings, serde_json::Value) {

@@ -289,7 +289,7 @@ fn run() -> eframe::Result<()> {
             // what the last one remembered, not what the process started
             // with. Demo runs keep their fixed screenshot size.
             let geometry = if demo_persistence.is_some() {
-                zapfast::window::Geometry::default()
+                zapfast::settings::Geometry::default()
             } else {
                 lease.peek(|app: &app::App| app.settings.window_geometry())
             };
@@ -426,7 +426,7 @@ fn tour_script(name: &str) -> zapfast::demo::tour::Script {
 
 fn native_options(
     demo_persistence: Option<std::path::PathBuf>,
-    geometry: zapfast::window::Geometry,
+    geometry: zapfast::settings::Geometry,
 ) -> eframe::NativeOptions {
     let default_size = demo_size_arg().unwrap_or([1180.0, 780.0]);
     let demo = demo_persistence.is_some();

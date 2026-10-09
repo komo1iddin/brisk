@@ -298,6 +298,7 @@ private struct ChatSettings: View {
                 } maximumValueLabel: {
                     Text(verbatim: "A").font(.title3)
                 }
+                Toggle("Show quick reactions above a message's menu", isOn: $preferences.menuReactions)
                 Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
                 Toggle("Show the numbers of people not in your contacts in groups", isOn: $preferences.senderPhones)
             } header: {

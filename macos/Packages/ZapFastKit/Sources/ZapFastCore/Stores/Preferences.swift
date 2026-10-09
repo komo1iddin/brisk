@@ -105,6 +105,12 @@ public final class Preferences {
         didSet { defaults.set(enterSends, forKey: Key.enterSends) }
     }
 
+    /// The quick reactions float above a message's menu, as in Telegram;
+    /// off, they are a React submenu inside it.
+    public var menuReactions: Bool {
+        didSet { defaults.set(menuReactions, forKey: Key.menuReactions) }
+    }
+
     /// The sound a message we send makes as it leaves, as in Telegram.
     public var sendSound: SendSoundStyle {
         didSet { defaults.set(sendSound.rawValue, forKey: Key.sendSoundStyle) }
@@ -160,6 +166,7 @@ public final class Preferences {
             Key.voiceAvatars: true,
             Key.senderPhones: true,
             Key.enterSends: true,
+            Key.menuReactions: true,
             Key.menuBarIcon: true,
             Key.textScale: 1.0,
             Key.keepRunning: true,
@@ -176,6 +183,7 @@ public final class Preferences {
         senderPhones = defaults.bool(forKey: Key.senderPhones)
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
+        menuReactions = defaults.bool(forKey: Key.menuReactions)
         // The first builds kept an on/off switch; off stays silent.
         let wasOff = defaults.object(forKey: Key.sendSound) as? Bool == false
         sendSound = defaults.string(forKey: Key.sendSoundStyle).flatMap(SendSoundStyle.init(rawValue:))
@@ -209,6 +217,7 @@ public final class Preferences {
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
         static let sendSound = "sendSound"
+        static let menuReactions = "menuReactions"
         static let sendSoundStyle = "sendSoundStyle"
         static let downloadFolder = "downloadFolder"
         static let menuBarIcon = "menuBarIcon"

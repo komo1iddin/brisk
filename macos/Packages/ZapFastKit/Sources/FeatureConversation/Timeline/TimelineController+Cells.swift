@@ -54,7 +54,7 @@ extension TimelineController: TimelineCellDelegate {
 
     func menu(forMessage id: String, selection: String?) -> NSMenu? {
         guard let model, let message = message(id) else { return nil }
-        let reactsInMenu = message.isRevoked || NSWorkspace.shared.isVoiceOverEnabled
+        let reactsInMenu = message.isRevoked || NSWorkspace.shared.isVoiceOverEnabled || !model.preferences.menuReactions
         let menu = NSHostingMenu(rootView: MessageActions(message: message, model: model, reactsInMenu: reactsInMenu))
         if let selection {
             let copy = NSMenuItem(title: String(localized: "Copy Selection"), action: #selector(copySelection(_:)), keyEquivalent: "")

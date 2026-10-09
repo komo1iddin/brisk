@@ -49,6 +49,7 @@ mod media_failure;
 mod phone_address;
 mod poll_history;
 mod polls;
+mod presence_subscribe;
 mod sticker_pace;
 mod stickers;
 
@@ -519,6 +520,7 @@ pub async fn run(
         group_info_tries: HashMap::new(),
         group_info_retry: Vec::new(),
         presence_subscribed: HashSet::new(),
+        presence_waiting: HashSet::new(),
         download_folder: None,
         keep_chats_archived: true,
         online_wanted: false,
@@ -821,6 +823,8 @@ struct Worker {
     /// Next retry time for failed group metadata requests.
     group_info_retry: Vec<(Instant, String)>,
     presence_subscribed: HashSet<String>,
+    /// Direct chats opened while the link was down, subscribed once it is up.
+    presence_waiting: HashSet<String>,
     /// Chosen folder for new downloads, when not the cache.
     download_folder: Option<PathBuf>,
     /// Settings' "Keep chats archived". Off, a new message unarchives its
@@ -2534,6 +2538,7 @@ impl Worker {
                 self.recover_first_names();
                 let _ = self.archive.retry_poll_votes();
                 self.pump_poll_votes();
+                self.subscribe_waiting_presence();
                 if let Some(client) = self.client.clone() {
                     let me = self.me_pn.clone().and_then(|pn| Self::jid_of(&pn));
                     let commands = self.commands.clone();
@@ -2921,6 +2926,7 @@ impl Worker {
         self.group_info_tries.clear();
         self.group_info_retry.clear();
         self.presence_subscribed.clear();
+        self.presence_waiting.clear();
         self.read_sync = ReadSync::default();
         self.favorite_chats = Default::default();
         self.poll_sending.clear();
@@ -6725,17 +6731,8 @@ impl Worker {
             // Force group metadata when opening a group.
             self.request_group_info(&chat, false);
         }
-        if before.is_none()
-            && ChatKind::from_id(&chat) == ChatKind::Direct
-            && chat != self.me()
-            && self.presence_subscribed.insert(chat.clone())
-            && let (Some(client), Some(jid)) = (self.client.clone(), Self::jid_of(&chat))
-        {
-            tokio::spawn(async move {
-                if let Err(error) = client.presence().subscribe(jid).await {
-                    log::debug!("presence not subscribed: {error}");
-                }
-            });
+        if before.is_none() && ChatKind::from_id(&chat) == ChatKind::Direct && chat != self.me() {
+            self.subscribe_presence(chat);
         }
     }
 
@@ -12711,6 +12708,7 @@ mod receipt_tests {
             group_info_tries: HashMap::new(),
             group_info_retry: Vec::new(),
             presence_subscribed: HashSet::new(),
+            presence_waiting: HashSet::new(),
             download_folder: None,
             keep_chats_archived: true,
             online_wanted: false,

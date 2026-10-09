@@ -436,9 +436,19 @@ extension View {
     /// Settings window takes each tab's own height, as the system's
     /// Settings windows do, and nothing scrolls. On a screen too short for
     /// it the tab stops at the screen's height and the form scrolls.
+    ///
+    /// The two are separate forms: a form allowed to scroll measured a few
+    /// points short in the Settings window and showed a scroll bar with
+    /// room to spare, so one that fits cannot scroll at all.
     func settingsPane() -> some View {
-        SettingsPaneHeight(limit: SettingsPaneHeight.screenLimit) {
-            formStyle(.grouped)
+        let form = formStyle(.grouped)
+        return SettingsPaneHeight(limit: SettingsScreen.paneLimit) {
+            ViewThatFits(in: .vertical) {
+                form
+                    .scrollDisabled(true)
+                    .fixedSize(horizontal: false, vertical: true)
+                form
+            }
         }
     }
 
@@ -448,15 +458,29 @@ extension View {
     }
 }
 
-/// Its content's own height, up to `limit`: measured with no height
-/// proposed (a form answers with all its rows), then offered at most the
-/// limit, where a form scrolls.
+/// Offers its content the screen's limit, never an open height: asked
+/// with none, `ViewThatFits` takes its last choice, and a scrolling form's
+/// own height is next to nothing. Within the limit the form that fits is
+/// as tall as its rows; past it the scrolling one fills the limit.
 struct SettingsPaneHeight: Layout {
     let limit: CGFloat
 
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        let size = content.sizeThatFits(ProposedViewSize(width: proposal.width, height: limit))
+        return CGSize(width: proposal.width ?? size.width, height: min(size.height, limit))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
+/// How tall a Settings tab may be on this screen.
+enum SettingsScreen {
     /// The screen's height left under the menu bar, less the Settings
     /// window's title bar and tab bar and a margin.
-    static var screenLimit: CGFloat {
+    static var paneLimit: CGFloat {
         #if DEBUG
         // `ZAPFAST_SETTINGS_SCREEN=<points>` stands in for a short screen.
         let override = ProcessInfo.processInfo.environment["ZAPFAST_SETTINGS_SCREEN"].flatMap(Double.init)
@@ -465,16 +489,6 @@ struct SettingsPaneHeight: Layout {
         let screen = NSScreen.main?.visibleFrame.height ?? 900
         #endif
         return max(320, screen - 120)
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard let content = subviews.first else { return .zero }
-        let ideal = content.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
-        return CGSize(width: proposal.width ?? ideal.width, height: min(ideal.height, limit))
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
     }
 }
 

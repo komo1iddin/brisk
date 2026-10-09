@@ -24,9 +24,12 @@ extension TimelineController {
         scrollView.frame = frame
         if reinset {
             scrollView.contentInsets = insets
-            // The bar runs between the title bar and the composer, never
-            // under either.
-            scrollView.scrollerInsets = insets
+            // The bar starts below the title bar and runs down beside the
+            // composer to the window's foot. It once stopped above the
+            // composer to keep clear of the "newest message" button, but
+            // that button only shows away from the bottom, where the knob
+            // is not.
+            scrollView.scrollerInsets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
         }
         if follow {
             scrollToBottom()

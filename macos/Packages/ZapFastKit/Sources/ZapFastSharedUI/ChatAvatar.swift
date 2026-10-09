@@ -28,6 +28,13 @@ public struct ChatAvatar: View {
             size: size,
             version: model.avatars.version(for: chat.id)
         )
+        .overlay(alignment: .bottomTrailing) {
+            // Disappearing messages are on, as upstream's timer badge says.
+            if (chat.ephemeralExpiration ?? 0) > 0 {
+                DisappearingBadge(size: min(max(size * 0.38, 13), 18))
+                    .offset(x: size * 0.06, y: size * 0.06)
+            }
+        }
     }
 
     private var placeholder: AvatarView.Placeholder {
@@ -36,5 +43,23 @@ public struct ChatAvatar: View {
         case .broadcast: .symbol("megaphone.fill")
         case .direct: .initials(title ?? model.chats.title(for: chat))
         }
+    }
+}
+
+/// The timer on the avatar of a chat whose messages disappear.
+public struct DisappearingBadge: View {
+    let size: CGFloat
+
+    public init(size: CGFloat) {
+        self.size = size
+    }
+
+    public var body: some View {
+        Image(systemName: "timer")
+            .font(.system(size: size * 0.62, weight: .bold))
+            .foregroundStyle(.tint)
+            .frame(width: size, height: size)
+            .background(Circle().fill(.background))
+            .accessibilityLabel(Text("Disappearing messages"))
     }
 }

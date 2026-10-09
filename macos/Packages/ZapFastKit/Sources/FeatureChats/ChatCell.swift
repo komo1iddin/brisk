@@ -36,6 +36,8 @@ struct ChatRowContent: Equatable {
     var muted: Bool
     var pinned: Bool
     var badge: Badge?
+    /// Messages disappear: a timer on the avatar.
+    var disappearing: Bool
     var avatar: URL?
     var avatarVersion: Int
     var seed: String
@@ -51,6 +53,7 @@ struct ChatRowContent: Equatable {
         timeAccented = chat.unread > 0 && !muted
         pinned = chat.pinned
         badge = chat.looksUnread ? (chat.unread > 0 ? .count(chat.unread) : .dot) : nil
+        disappearing = (chat.ephemeralExpiration ?? 0) > 0
         avatar = model.avatars.url(for: chat.id)
         avatarVersion = model.avatars.version(for: chat.id)
         seed = chat.id
@@ -93,6 +96,7 @@ struct ChatRowContent: Equatable {
         case .nothing: break
         }
         if muted { parts.append(String(localized: "Muted")) }
+        if disappearing { parts.append(String(localized: "Disappearing messages")) }
         if pinned { parts.append(String(localized: "Pinned")) }
         switch badge {
         case .count(let count): parts.append(String(localized: "\(count) unread"))
@@ -130,6 +134,7 @@ final class ChatCell: NSTableCellView {
     private let vibrant = RowLayerView(vibrant: true)
     private let plain = RowLayerView(vibrant: false)
     private let avatarLayer = AvatarLayer()
+    private let timer = CALayer()
     private let vibrantText = ChatRowLayer(pass: .vibrant)
     private let plainText = ChatRowLayer(pass: .plain)
     private(set) var chat: ChatSummary?
@@ -149,6 +154,9 @@ final class ChatCell: NSTableCellView {
         vibrant.layer?.addSublayer(vibrantText)
         plain.layer?.addSublayer(avatarLayer)
         plain.layer?.addSublayer(plainText)
+        timer.isHidden = true
+        timer.actions = ["contents": NSNull(), "hidden": NSNull(), "position": NSNull(), "bounds": NSNull()]
+        plain.layer?.addSublayer(timer)
         setAccessibilityElement(true)
         setAccessibilityRole(.cell)
     }
@@ -204,6 +212,10 @@ final class ChatCell: NSTableCellView {
             avatarLayer.setColor(seed: content.seed, appearance: effectiveAppearance)
         }
         showPhoto(url: content.avatar, version: content.avatarVersion)
+        if old?.disappearing != content.disappearing {
+            timer.isHidden = !content.disappearing
+            if content.disappearing { drawTimer() }
+        }
         setAccessibilityLabel(content.accessibilityLabel)
     }
 
@@ -249,6 +261,10 @@ final class ChatCell: NSTableCellView {
         CATransaction.setDisableActions(true)
         let size = ChatCellMetrics.avatar
         avatarLayer.frame = CGRect(x: 0, y: ((newSize.height - size) / 2).rounded(), width: size, height: size)
+        let badge = Self.timerSize
+        timer.frame = CGRect(
+            x: avatarLayer.frame.maxX - badge * 0.8, y: avatarLayer.frame.maxY - badge * 0.8, width: badge, height: badge
+        )
         vibrantText.frame = bounds
         plainText.frame = bounds
         CATransaction.commit()
@@ -261,6 +277,37 @@ final class ChatCell: NSTableCellView {
             layer.setNeedsDisplay()
         }
         if let content { avatarLayer.setColor(seed: content.seed, appearance: effectiveAppearance) }
+        if content?.disappearing == true { drawTimer() }
+    }
+
+    private static let timerSize: CGFloat = 16
+
+    /// The timer badge, in this appearance's colours: the accent on a disc
+    /// of the window's background.
+    private func drawTimer() {
+        let size = Self.timerSize
+        let scale = window?.backingScaleFactor ?? 2
+        var image: NSImage?
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+                NSColor.windowBackgroundColor.setFill()
+                NSBezierPath(ovalIn: rect).fill()
+                if let symbol = NSImage(systemSymbolName: "timer", accessibilityDescription: nil)?
+                    .withSymbolConfiguration(
+                        NSImage.SymbolConfiguration(pointSize: size * 0.6, weight: .bold)
+                            .applying(NSImage.SymbolConfiguration(paletteColors: [.controlAccentColor]))
+                    ) {
+                    symbol.draw(in: NSRect(
+                        x: (size - symbol.size.width) / 2, y: (size - symbol.size.height) / 2,
+                        width: symbol.size.width, height: symbol.size.height
+                    ))
+                }
+                return true
+            }
+            // Drawn here, while this appearance's colours are current.
+            timer.contents = image?.layerContents(forContentsScale: scale)
+        }
+        timer.contentsScale = scale
     }
 
     override func viewDidChangeBackingProperties() {

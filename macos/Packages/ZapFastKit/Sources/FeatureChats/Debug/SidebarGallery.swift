@@ -142,7 +142,7 @@ public enum SidebarGallery {
             chat("998901000006", "Otabek", activity: now - 3 * day, last: preview("Men hozir yo'ldaman", fromMe: true, status: .pending)),
             chat("998901000007", "Sardor", activity: now - 4 * day, last: preview("Let me check", fromMe: true, status: .failed)),
             chat("998901000008", "Nodira", activity: now - 5 * day, marked: true, last: preview("Rahmat! 🙏", fromMe: true, status: .sent)),
-            chat("998901000010", "Kamola", activity: now - 9 * day, last: preview("Salom!")),
+            chat("998901000010", "Kamola", activity: now - 9 * day, disappearing: true, last: preview("Salom!")),
             chat("120363000000000011", "Ishxona", kind: .group, activity: now - 10 * day, last: preview("Bugungi reja", sender: own, fromMe: true, status: .read)),
             chat("998901000012", "Rustam", activity: now - 20 * day, last: preview("Haha 😂😂")),
             chat("120363000000000013", "Yangiliklar", kind: .broadcast, activity: now - 30 * day, muted: true, pinned: true,
@@ -173,7 +173,8 @@ public enum SidebarGallery {
 
     private static func chat(
         _ number: String, _ name: String, kind: ChatKind = .direct, activity: Int64, unread: UInt32 = 0,
-        marked: Bool = false, muted: Bool = false, pinned: Bool = false, last: ChatPreview?
+        marked: Bool = false, muted: Bool = false, pinned: Bool = false, disappearing: Bool = false,
+        last: ChatPreview?
     ) -> ChatSummary {
         let id = kind == .direct ? "\(number)@s.whatsapp.net" : "\(number)@g.us"
         var last = last
@@ -185,7 +186,8 @@ public enum SidebarGallery {
             id: id, name: name, groupSubjectKnown: true, kind: kind, lastActivity: activity,
             unread: unread, markedUnread: marked, archived: false, pinned: pinned, pinnedAt: pinned ? activity : 0,
             mutedUntil: muted ? 0 : nil, last: last, favorite: false, favoritePosition: 0, participants: [],
-            readOnly: false, left: false, infoLocked: false, admin: false, locked: false, ephemeralExpiration: nil,
+            readOnly: false, left: false, infoLocked: false, admin: false, locked: false,
+            ephemeralExpiration: disappearing ? 604_800 : nil,
             labels: [], hasCustomSound: false, isChannel: kind == .broadcast, looksUnread: unread > 0 || marked, phone: nil
         )
     }

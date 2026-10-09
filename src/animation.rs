@@ -37,7 +37,7 @@ impl Drop for DecodeSlot {
 }
 
 struct Decoded {
-    frames: Vec<(ColorImage, Duration)>,
+    frames: Vec<(image::RgbaImage, Duration)>,
 }
 
 struct Playing {
@@ -147,7 +147,10 @@ pub fn frame(ui: &egui::Ui, path: &Path, rect: egui::Rect, animate: bool) -> Fra
                     .map(|(index, (image, delay))| {
                         total += delay;
                         let name = format!("{}#{index}", arrived_path.display());
-                        (ctx.load_texture(name, image, TextureOptions::LINEAR), delay)
+                        (
+                            ctx.load_texture(name, to_color_image(&image), TextureOptions::LINEAR),
+                            delay,
+                        )
                     })
                     .collect();
                 Entry::Ready(Playing {
@@ -367,7 +370,7 @@ fn decode_image(path: &Path, extension: &str, limit: usize) -> Option<Decoded> {
         let (numerator, denominator) = frame.delay().numer_denom_ms();
         let delay = Duration::from_millis(u64::from(numerator / denominator.max(1)).max(20));
         let image = frame.into_buffer();
-        decoded.push((to_color_image(&image), delay));
+        decoded.push((within_budget(&image), delay));
     }
     Some(Decoded { frames: decoded })
 }
@@ -385,7 +388,7 @@ fn decode_webp(path: &Path, limit: usize) -> Option<Decoded> {
         let image = image::RgbaImage::from_raw(width, height, frame.data().to_vec())?;
         let delay = (i64::from(frame.timestamp()) - previous).max(20) as u64;
         previous = i64::from(frame.timestamp());
-        decoded.push((to_color_image(&image), Duration::from_millis(delay)));
+        decoded.push((within_budget(&image), Duration::from_millis(delay)));
     }
     // Single-frame files use the static-image path.
     if decoded.len() < 2 {
@@ -395,18 +398,23 @@ fn decode_webp(path: &Path, limit: usize) -> Option<Decoded> {
     Some(Decoded { frames: decoded })
 }
 
+/// Holds a decoded frame to `MAX_WIDTH`, which is what bounds the memory a
+/// resident animation costs. Decoding scales; drawing does not.
+fn within_budget(image: &image::RgbaImage) -> image::RgbaImage {
+    if image.width() <= MAX_WIDTH {
+        return image.clone();
+    }
+    let height = (image.height() * MAX_WIDTH / image.width()).max(1);
+    image::imageops::resize(
+        image,
+        MAX_WIDTH,
+        height,
+        image::imageops::FilterType::Triangle,
+    )
+}
+
+/// The one place a decoded frame becomes something egui can upload.
 fn to_color_image(image: &image::RgbaImage) -> ColorImage {
-    let image = if image.width() > MAX_WIDTH {
-        let height = (image.height() * MAX_WIDTH / image.width()).max(1);
-        image::imageops::resize(
-            image,
-            MAX_WIDTH,
-            height,
-            image::imageops::FilterType::Triangle,
-        )
-    } else {
-        image.clone()
-    };
     ColorImage::from_rgba_unmultiplied(
         [image.width() as usize, image.height() as usize],
         image.as_raw(),
@@ -447,7 +455,7 @@ fn decode_mp4_from<R: std::io::Read + std::io::Seek>(
         )
     };
     let mut decoder = openh264::decoder::Decoder::new().ok()?;
-    let mut frames: Vec<(ColorImage, Duration)> = Vec::new();
+    let mut frames: Vec<(image::RgbaImage, Duration)> = Vec::new();
     let mut delays: std::collections::VecDeque<Duration> = std::collections::VecDeque::new();
     // Send parameter sets and samples to the decoder in Annex B format.
     let mut parameters = Vec::new();
@@ -512,18 +520,7 @@ pub(crate) fn poster(bytes: &[u8]) -> Option<Poster> {
     let frames = (track.frame_rate().round() as usize).clamp(1, 60);
     let picture = decode_mp4_from(std::io::Cursor::new(bytes), size, frames)
         .and_then(|decoded| decoded.frames.into_iter().last())
-        .and_then(|(frame, _)| {
-            let [frame_width, frame_height] = frame.size;
-            let rgb = frame
-                .pixels
-                .iter()
-                .flat_map(|pixel| {
-                    let [r, g, b, _] = pixel.to_srgba_unmultiplied();
-                    [r, g, b]
-                })
-                .collect();
-            image::RgbImage::from_raw(frame_width as u32, frame_height as u32, rgb)
-        });
+        .map(|(frame, _)| image::DynamicImage::ImageRgba8(frame).into_rgb8());
     (width > 0 && height > 0).then_some(Poster {
         picture,
         width,
@@ -538,7 +535,7 @@ pub(crate) fn video_frame(path: &Path, index: usize) -> Option<ColorImage> {
     decode_video(path, index + 1)?
         .frames
         .pop()
-        .map(|(image, _)| image)
+        .map(|(image, _)| to_color_image(&image))
 }
 
 /// Trims animations until the resident frames fit the budget, sparing the
@@ -597,7 +594,7 @@ fn enforce_budget(animations: &mut Animations, path: &Path, now: Instant) {
 fn frame_of(
     yuv: &openh264::decoder::DecodedYUV<'_>,
     delay: Duration,
-) -> Option<(ColorImage, Duration)> {
+) -> Option<(image::RgbaImage, Duration)> {
     use openh264::formats::YUVSource;
 
     let (width, height) = yuv.dimensions();
@@ -619,7 +616,7 @@ fn frame_of(
             image::imageops::FilterType::Triangle,
         )
     };
-    Some((to_color_image(&scaled), delay))
+    Some((scaled, delay))
 }
 
 pub(crate) fn push_annex_b(out: &mut Vec<u8>, nal: &[u8]) {
@@ -697,10 +694,10 @@ fn decode_with_ffmpeg(path: &Path, limit: usize) -> Option<Decoded> {
         if stdout.read_exact(&mut buffer).is_err() {
             break;
         }
-        frames.push((
-            ColorImage::from_rgba_unmultiplied([out_width as usize, out_height as usize], &buffer),
-            delay,
-        ));
+        let Some(frame) = image::RgbaImage::from_raw(out_width, out_height, buffer.clone()) else {
+            break;
+        };
+        frames.push((frame, delay));
     }
     let _ = child.kill();
     let _ = child.wait();
@@ -790,10 +787,10 @@ mod tests {
         let decoded = decode(&path, MAX_FRAMES).expect("decodes");
         assert_eq!(decoded.frames.len(), 2);
         let second = &decoded.frames[1].0;
-        let old = second.pixels[8 * second.width() + 8];
-        assert_eq!(old.a(), 0, "the first frame's square is gone: {old:?}");
-        let new = second.pixels[48 * second.width() + 48];
-        assert!(new.a() > 200, "the second frame's square shows: {new:?}");
+        let old = second.get_pixel(8, 8);
+        assert_eq!(old[3], 0, "the first frame's square is gone: {old:?}");
+        let new = second.get_pixel(48, 48);
+        assert!(new[3] > 200, "the second frame's square shows: {new:?}");
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -855,7 +852,7 @@ mod tests {
         // Five frames at 10 fps. The in-process path preserves their timing.
         assert_eq!(decoded.frames.len(), 5);
         assert_eq!(decoded.frames[0].1, Duration::from_millis(100));
-        assert_eq!(decoded.frames[0].0.size, [64, 48]);
+        assert_eq!(decoded.frames[0].0.dimensions(), (64, 48));
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -1177,7 +1174,7 @@ mod tests {
                 frames: (0..count)
                     .map(|_| {
                         (
-                            ColorImage::new([1, 1], vec![egui::Color32::BLACK]),
+                            image::RgbaImage::from_pixel(1, 1, image::Rgba([0, 0, 0, 255])),
                             Duration::from_millis(50),
                         )
                     })
@@ -1450,7 +1447,7 @@ mod probe {
         eprintln!(
             "{} frames of {:?}, first delay {:?}, in {:?}",
             decoded.frames.len(),
-            decoded.frames[0].0.size,
+            decoded.frames[0].0.dimensions(),
             decoded.frames[0].1,
             started.elapsed()
         );

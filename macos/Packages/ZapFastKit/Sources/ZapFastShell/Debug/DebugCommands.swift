@@ -31,6 +31,7 @@ import ZapFastSharedUI
 ///   frames of the bubble and of the popover.
 /// - `menu:<n>`: the menu of the nth message from the bottom, with the
 ///   reactions above it; captures every window but the main one and closes it.
+/// - `preset:<id>`: a theme preset for the open chat (benchmark only).
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
 ///   scroll view with whole numbers, to try AppKit's settings live.
@@ -138,6 +139,16 @@ enum DebugCommands {
             // The open chat's theme sheet, to capture with shot:other.
             model.themeEditorChat = model.selectedChatID
             write(name, model.selectedChatID == nil ? "no chat" : "open")
+        case "preset":
+            // preset:<id>: a theme preset for the open chat, in the
+            // benchmark only (its preferences are its own).
+            guard CommandLine.arguments.contains("--benchmark"), let chat = model.selectedChatID,
+                  let preset = ThemePresets.all.first(where: { $0.id == (parts.count > 1 ? parts[1] : "") }) else {
+                write(name, "no")
+                return
+            }
+            model.themes.set(preset.appearance, for: chat)
+            write(name, preset.id)
         case "deselect":
             model.selectedChatID = nil
             write(name, "none")

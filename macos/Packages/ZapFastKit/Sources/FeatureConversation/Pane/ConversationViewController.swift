@@ -42,6 +42,8 @@ final class ConversationViewController: NSViewController {
     private let titleBand = TitleBandView()
     private let bottomBand = BottomBandView()
     private var observed = 0
+    /// The theme the title band was veiled for.
+    private var titleBandTheme: String?
 
     init(chatID: String, model: AppModel, onInfoRequest: @escaping (InfoRequest) -> Void) {
         self.chatID = chatID
@@ -181,6 +183,10 @@ final class ConversationViewController: NSViewController {
         if pane.empty != inputs.empty { pane.empty = inputs.empty }
         if pane.loadingOlder != inputs.loadingOlder { pane.loadingOlder = inputs.loadingOlder }
         if pane.closedChat != inputs.closedChat { pane.closedChat = inputs.closedChat }
+        if inputs.style.theme.key != titleBandTheme {
+            titleBandTheme = inputs.style.theme.key
+            titleBand.setWallpaper(inputs.style.theme.wallpaper)
+        }
         timeline.update(
             chatID: chatID,
             messages: inputs.messages,
@@ -201,7 +207,8 @@ final class ConversationViewController: NSViewController {
 
 /// The title bar's frosted band over the top of the timeline, with a
 /// hairline under it: what scrolls under the toolbar shows through,
-/// blurred and veiled, as in WhatsApp's header, never sharp over it.
+/// blurred and veiled in the chat's own wallpaper colour, so the header
+/// reads as the wallpaper going on under frosted glass, as in WhatsApp's.
 ///
 /// AppKit's own edge effect needs a background the scroll view draws
 /// itself; the timeline's is the wallpaper behind it, so AppKit left the
@@ -214,14 +221,20 @@ final class ConversationViewController: NSViewController {
 /// stands in.
 final class TitleBandView: NSView {
     private let backdrop: CALayer?
-    private let veil = CALayer()
+    /// The wallpaper's colour along the top edge: one colour, or a
+    /// gradient's top corners left to right.
+    private let veil = CAGradientLayer()
+    private var wallpaper: WallpaperFill = .none
     private let hairline = CALayer()
     private var fallback: NSVisualEffectView?
 
-    /// The blur, in points, and how much of the window's colour veils it.
-    static let blurRadius = 12.0
-    static let veilLight = 0.62
-    static let veilDark = 0.58
+    /// The blur, in points, and how much of the wallpaper's colour veils
+    /// it; over a photo (no one colour) the window's, thinner.
+    static let blurRadius = 6.0
+    static let veilAlpha = 0.55
+    static let photoVeilAlpha = 0.35
+    static let plainVeilLight = 0.62
+    static let plainVeilDark = 0.58
 
     override init(frame: NSRect) {
         backdrop = Self.makeBackdrop()
@@ -240,8 +253,10 @@ final class TitleBandView: NSView {
             addSubview(material)
             fallback = material
         }
+        veil.startPoint = CGPoint(x: 0, y: 0.5)
+        veil.endPoint = CGPoint(x: 1, y: 0.5)
         for sublayer in [veil, hairline] {
-            sublayer.actions = ["frame": NSNull(), "position": NSNull(), "bounds": NSNull(), "backgroundColor": NSNull()]
+            sublayer.actions = ["frame": NSNull(), "position": NSNull(), "bounds": NSNull(), "backgroundColor": NSNull(), "colors": NSNull()]
         }
         layer?.addSublayer(hairline)
     }
@@ -283,16 +298,38 @@ final class TitleBandView: NSView {
         updateColors()
     }
 
+    /// The open chat's wallpaper, whose colour veils the blur.
+    func setWallpaper(_ fill: WallpaperFill) {
+        wallpaper = fill
+        updateColors()
+    }
+
     private func updateColors() {
         let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            veil.backgroundColor = NSColor.windowBackgroundColor
-                .withAlphaComponent(dark ? Self.veilDark : Self.veilLight).cgColor
+            veil.colors = Self.veilColors(wallpaper, dark: dark).map(\.cgColor)
             hairline.backgroundColor = NSColor.separatorColor.cgColor
         }
         CATransaction.commit()
+    }
+
+    /// Resolved in the current drawing appearance.
+    static func veilColors(_ fill: WallpaperFill, dark: Bool) -> [NSColor] {
+        switch fill {
+        case .color(let color, _):
+            let color = NSColor(color).withAlphaComponent(veilAlpha)
+            return [color, color]
+        case .gradient(let corners) where corners.count >= 2:
+            return corners.prefix(2).map { NSColor($0).withAlphaComponent(veilAlpha) }
+        case .photo:
+            let color = NSColor.windowBackgroundColor.withAlphaComponent(photoVeilAlpha)
+            return [color, color]
+        case .none, .gradient:
+            let color = NSColor.windowBackgroundColor.withAlphaComponent(dark ? plainVeilDark : plainVeilLight)
+            return [color, color]
+        }
     }
 
     /// A picture only: the toolbar above it takes the clicks.

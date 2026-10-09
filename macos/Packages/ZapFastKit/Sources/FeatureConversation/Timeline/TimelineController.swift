@@ -159,6 +159,22 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
 
     nonisolated private static let signposter = OSSignposter(subsystem: "ZapFast", category: "Timeline")
 
+    /// AppKit's scroll edge effect under the title bar washes the top of
+    /// the chat in the window's colour, over the wallpaper; the pane's own
+    /// band (`TitleBandView`) frosts that edge in the wallpaper's colour
+    /// instead. The switch is not published (macOS 26 offers styles, not
+    /// "none"): where it is missing, AppKit's effect stays.
+    private static func dropTopEdgeEffect(_ scrollView: NSScrollView) {
+        let getter = NSSelectorFromString("allowedPocketEdges")
+        let setter = NSSelectorFromString("setAllowedPocketEdges:")
+        guard scrollView.responds(to: getter), scrollView.responds(to: setter) else { return }
+        typealias Get = @convention(c) (AnyObject, Selector) -> UInt
+        typealias Set = @convention(c) (AnyObject, Selector, UInt) -> Void
+        let allowed = unsafeBitCast(scrollView.method(for: getter), to: Get.self)(scrollView, getter)
+        // Edge 0 is the top, a bit per edge.
+        unsafeBitCast(scrollView.method(for: setter), to: Set.self)(scrollView, setter, allowed & ~UInt(1))
+    }
+
     func makeScrollView() -> NSScrollView {
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("message"))
         column.resizingMask = .autoresizingMask
@@ -184,6 +200,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         // Content scrolls under the title bar and the composer; `place` insets
         // it by both, and keeps the scroll bar clear of them.
         scrollView.automaticallyAdjustsContentInsets = false
+        Self.dropTopEdgeEffect(scrollView)
 
         floatingDay.passesPointer = true
         floatingDay.large = true

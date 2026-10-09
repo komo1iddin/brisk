@@ -317,13 +317,16 @@ public final class ChatDetailViewController: NSViewController {
     }
 }
 
-/// The chat's wallpaper, following its theme.
+/// The chat's wallpaper, following its theme. It runs under the title
+/// bar too, where the header's frosted band shows it through, as the
+/// wallpaper goes on under WhatsApp's header.
 private struct ChatWallpaper: View {
     let chatID: String
     let model: AppModel
 
     var body: some View {
         WallpaperView(model.chatTheme(for: chatID).wallpaper)
+            .ignoresSafeArea()
     }
 }
 

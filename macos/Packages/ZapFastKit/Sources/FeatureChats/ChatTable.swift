@@ -57,6 +57,8 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         }
     }
     private var selectedID: String?
+    /// The selected row's wash, from the default chat theme.
+    private var accent: NSColor = .controlAccentColor
 
     /// `ListTableRowView` heights under SwiftUI's sidebar list.
     static let chatRowHeight: CGFloat = 56
@@ -68,6 +70,8 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         tableView.addTableColumn(column)
         tableView.headerView = nil
         tableView.style = .sourceList
+        // `SidebarRowView` draws the open chat's wash.
+        tableView.selectionHighlightStyle = .none
         tableView.rowSizeStyle = .medium
         tableView.intercellSpacing = NSSize(width: 3, height: 0)
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
@@ -120,6 +124,11 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
     func update(rows new: [SidebarRow], selection: String?, model: AppModel, select: @escaping (String?) -> Void) {
         self.model = model
         self.select = select
+        let accent = NSColor(model.chatTheme(for: nil).accent)
+        if accent != self.accent {
+            self.accent = accent
+            tableView.enumerateAvailableRowViews { view, _ in (view as? SidebarRowView)?.accent = accent }
+        }
         let old = rows
         rows = new
 
@@ -295,15 +304,17 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         for case let cell as ChatCell in rowView.subviews { cell.stopObserving() }
     }
 
-    /// The open chat's row stays in the accent colour while the window is
-    /// active, as in Messages: opening a chat moves focus to the composer,
-    /// and the table would grey its selection until clicked again.
+    /// The open chat's row keeps its wash while the window is active:
+    /// opening a chat moves focus to the composer, and the table would grey
+    /// its selection until clicked again.
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         if let reused = tableView.makeView(withIdentifier: SidebarRowView.identifier, owner: nil) as? SidebarRowView {
+            reused.accent = accent
             return reused
         }
         let view = SidebarRowView()
         view.identifier = SidebarRowView.identifier
+        view.accent = accent
         return view
     }
 
@@ -351,7 +362,10 @@ private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
 }
 
-/// Emphasized, in the accent colour, while its window is key.
+/// The open chat's row: a soft wash of the chats' accent colour behind
+/// text in its usual colours, as WhatsApp marks it, rather than the solid
+/// system highlight with white text. It stays while the composer has the
+/// focus, and goes grey while another window is active.
 final class SidebarRowView: NSTableRowView {
     static let identifier = NSUserInterfaceItemIdentifier("SidebarRow")
     #if DEBUG
@@ -359,17 +373,65 @@ final class SidebarRowView: NSTableRowView {
     static var emphasizesInGallery = false
     #endif
 
-    override var isEmphasized: Bool {
-        get {
-            #if DEBUG
-            if Self.emphasizesInGallery { return true }
-            #endif
-            return window?.isKeyWindow ?? false
-        }
-        // The table sets this when focus or the key window changes; redraw
-        // with the getter's answer.
-        set { super.isEmphasized = newValue }
+    /// The default chat theme's accent.
+    var accent: NSColor = .controlAccentColor {
+        didSet { if isSelected, accent != oldValue { needsDisplay = true } }
     }
+
+    /// Never emphasized: the cells keep their own colours on the wash.
+    override var isEmphasized: Bool {
+        get { false }
+        // The table sets this when focus or the key window changes.
+        set {
+            super.isEmphasized = false
+            if isSelected { needsDisplay = true }
+        }
+    }
+
+    override var interiorBackgroundStyle: NSView.BackgroundStyle { .normal }
+
+    private var isActive: Bool {
+        #if DEBUG
+        if Self.emphasizesInGallery { return true }
+        #endif
+        return window?.isKeyWindow ?? false
+    }
+
+    override var isSelected: Bool {
+        didSet { if isSelected != oldValue { needsDisplay = true } }
+    }
+
+    /// The table highlights nothing itself (`selectionHighlightStyle` is
+    /// none: a source list's own highlight ignores `drawSelection`), so the
+    /// wash is drawn as the row's background.
+    override func drawBackground(in dirtyRect: NSRect) {
+        super.drawBackground(in: dirtyRect)
+        guard isSelected else { return }
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let fill = isActive
+            ? accent.withAlphaComponent(dark ? 0.32 : 0.18)
+            : NSColor.labelColor.withAlphaComponent(dark ? 0.12 : 0.07)
+        fill.setFill()
+        let rect = bounds.insetBy(dx: Self.inset, dy: 1)
+        NSBezierPath(roundedRect: rect, xRadius: Self.radius, yRadius: Self.radius).fill()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        let center = NotificationCenter.default
+        center.removeObserver(self)
+        guard let window else { return }
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+            center.addObserver(self, selector: #selector(keyChanged), name: name, object: window)
+        }
+    }
+
+    @objc private func keyChanged() {
+        if isSelected { needsDisplay = true }
+    }
+
+    private static let inset: CGFloat = 6
+    private static let radius: CGFloat = 10
 }
 
 /// The sidebar table: its context menu is the clicked chat's, a click on a

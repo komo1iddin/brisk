@@ -168,3 +168,16 @@ struct ChatTableTests {
         #expect(controller.toolTip(forRow: 0) == nil)
     }
 }
+
+/// The open chat's row is a soft wash behind text in its usual colours,
+/// never the emphasized highlight that turns the text white.
+@MainActor
+struct SidebarRowViewTests {
+    @Test func theSelectedRowKeepsItsCellsColours() {
+        let row = SidebarRowView()
+        row.isSelected = true
+        row.isEmphasized = true
+        #expect(!row.isEmphasized)
+        #expect(row.interiorBackgroundStyle == .normal)
+    }
+}

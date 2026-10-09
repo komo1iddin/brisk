@@ -434,16 +434,47 @@ private struct AdvancedSettings: View {
 extension View {
     /// A Settings tab: a grouped form as tall as what it holds, so the
     /// Settings window takes each tab's own height, as the system's
-    /// Settings windows do, and nothing scrolls.
+    /// Settings windows do, and nothing scrolls. On a screen too short for
+    /// it the tab stops at the screen's height and the form scrolls.
     func settingsPane() -> some View {
-        formStyle(.grouped)
-            .scrollDisabled(true)
-            .fixedSize(horizontal: false, vertical: true)
+        SettingsPaneHeight(limit: SettingsPaneHeight.screenLimit) {
+            formStyle(.grouped)
+        }
     }
 
     /// The small print under a section.
     func settingsFootnote() -> some View {
         foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Its content's own height, up to `limit`: measured with no height
+/// proposed (a form answers with all its rows), then offered at most the
+/// limit, where a form scrolls.
+struct SettingsPaneHeight: Layout {
+    let limit: CGFloat
+
+    /// The screen's height left under the menu bar, less the Settings
+    /// window's title bar and tab bar and a margin.
+    static var screenLimit: CGFloat {
+        #if DEBUG
+        // `ZAPFAST_SETTINGS_SCREEN=<points>` stands in for a short screen.
+        let override = ProcessInfo.processInfo.environment["ZAPFAST_SETTINGS_SCREEN"].flatMap(Double.init)
+        let screen = override.map { CGFloat($0) } ?? NSScreen.main?.visibleFrame.height ?? 900
+        #else
+        let screen = NSScreen.main?.visibleFrame.height ?? 900
+        #endif
+        return max(320, screen - 120)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        let ideal = content.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: proposal.width ?? ideal.width, height: min(ideal.height, limit))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
     }
 }
 

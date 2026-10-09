@@ -168,16 +168,21 @@ protocol. These notes are for coding agents and new contributors.
   `widgets::line` / `widgets::rich_text` or `markup::layout`: their
   placeholders keep the emoji-only sizing and let `transcript::refine`
   put copied emoji back.
-- `src/animation.rs` plays animated stickers and GIFs: WebP/GIF frames
-  decode in-process, and so do MP4s (the `mp4` crate demuxes, `openh264`
-  decodes the H.264 WhatsApp uses, samples converted from AVCC to Annex
-  B); `ffmpeg` is only a fallback for other codecs. `openh264` compiles
-  its C++ from source with the C++ compiler of the host; `nasm` is
-  optional and only adds the SIMD paths (the AUR recipes leave it out,
-  the build works without it). Frames become textures on the interface
-  thread and are dropped when unseen. A paused animation decodes only its
-  first frame, the poster, and the rest once it plays: full decodes of a
-  picker's paused stickers overran the frame budget and evicted each other.
+- `src/frames.rs` decodes: WebP/GIF frames decode in-process, and so do
+  MP4s (the `mp4` crate demuxes, `openh264` decodes the H.264 WhatsApp
+  uses, samples converted from AVCC to Annex B); `ffmpeg` is only a
+  fallback for other codecs. `openh264` compiles its C++ from source with
+  the C++ compiler of the host; `nasm` is optional and only adds the SIMD
+  paths (the AUR recipes leave it out, the build works without it). A
+  frame comes out as an `image::RgbaImage` held to `MAX_WIDTH`, so nothing
+  here knows about egui; `poster` reads an outgoing clip's picture, size
+  and length for the worker, which draws nothing. Two decoders run at
+  once (`claim_slot`).
+- `src/animation.rs` plays animated stickers and GIFs from those frames:
+  they become textures on the interface thread and are dropped when
+  unseen. A paused animation decodes only its first frame, the poster, and
+  the rest once it plays: full decodes of a picker's paused stickers
+  overran the frame budget and evicted each other.
 - `src/video.rs` plays other videos inside their message, one at a time,
   with the same `mp4` and `openh264` pieces: a thread decodes from the
   keyframe before the start (openh264 must not flush after each packet or

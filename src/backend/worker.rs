@@ -8940,7 +8940,7 @@ async fn prepare_media(
         // Reading a second of frames takes a moment, so off the runtime.
         let poster = {
             let bytes = bytes.clone();
-            tokio::task::spawn_blocking(move || crate::animation::poster(&bytes))
+            tokio::task::spawn_blocking(move || crate::frames::poster(&bytes))
                 .await
                 .ok()
                 .flatten()

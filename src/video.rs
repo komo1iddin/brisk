@@ -881,8 +881,8 @@ fn decode(
     )
     .map_err(|error| error.to_string())?;
     let mut parameters = Vec::new();
-    crate::animation::push_annex_b(&mut parameters, &sps);
-    crate::animation::push_annex_b(&mut parameters, &pps);
+    crate::frames::push_annex_b(&mut parameters, &sps);
+    crate::frames::push_annex_b(&mut parameters, &pps);
     let _ = decoder.decode(&parameters);
     let mut order = Reorder::default();
     let mut output = Output {
@@ -899,7 +899,7 @@ fn decode(
         };
         order.push(sample.start_time as i64 + i64::from(sample.rendering_offset));
         let mut annex_b = Vec::with_capacity(sample.bytes.len() + 16);
-        crate::animation::avcc_to_annex_b(&mut annex_b, &sample.bytes);
+        crate::frames::avcc_to_annex_b(&mut annex_b, &sample.bytes);
         if let Ok(Some(yuv)) = decoder.decode(&annex_b) {
             let at = timeline.time(order.pop().unwrap_or_default());
             if !output.frame(at, &yuv) {

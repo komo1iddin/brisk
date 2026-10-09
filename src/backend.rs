@@ -1033,8 +1033,8 @@ pub enum Unsent {
     Gif,
 }
 
-/// Cross-thread window wake handle: repaints whichever window exists.
-pub use fastframe_shell::Waker;
+/// Cross-thread wake handle: asks whoever draws for a new frame.
+pub use crate::waker::Waker;
 
 /// UI handle to the backend runtime.
 pub struct Backend {

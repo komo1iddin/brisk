@@ -158,7 +158,18 @@ fn run() -> eframe::Result<()> {
         }
         return Ok(());
     }
+    // The shell owns the window's egui context; the backend knows only that
+    // something wants a frame. Binding the two here keeps egui out of the
+    // backend (see `zapfast::waker`).
+    let shell_waker = fastframe_shell::Waker::default();
     let waker = backend::Waker::default();
+    waker.attach({
+        let shell_waker = shell_waker.clone();
+        move |delay| match delay {
+            Some(delay) => shell_waker.wake_after(delay),
+            None => shell_waker.wake(),
+        }
+    });
     #[cfg(feature = "demo")]
     let demo = cli.demo || cli.demo_shot.is_some() || cli.demo_tour;
     #[cfg(not(feature = "demo"))]
@@ -268,7 +279,7 @@ fn run() -> eframe::Result<()> {
     // window when the tray, a notification, or another launch requests one;
     // without a tray a hidden start shows the window (App::start_hidden).
     let start_hidden = cli.start_hidden && !demo && update_receipt.is_none();
-    fastframe_shell::Shell::new(app, &waker)
+    fastframe_shell::Shell::new(app, &shell_waker)
         .start_hidden(start_hidden)
         .idle(fastframe_tray::idle)
         .run(|lease| {

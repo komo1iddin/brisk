@@ -60,7 +60,7 @@ pub fn label_rules() -> LabelRules {
     LabelRules {
         limit: count(zapfast::archive::LABEL_LIMIT),
         name_limit: count(zapfast::archive::NAME_LIMIT),
-        colors: zapfast::ui::labels::PRESET_COLORS
+        colors: zapfast::archive::PRESET_COLORS
             .iter()
             .map(|color| color.to_string())
             .collect(),

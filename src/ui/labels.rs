@@ -9,18 +9,13 @@ use std::borrow::Cow;
 use egui::{Color32, CornerRadius, Rect, Sense, Stroke, pos2, vec2};
 
 use crate::app::App;
+use crate::archive::PRESET_COLORS;
 use crate::i18n::{Locale, gettext, ngettext, pgettext};
 use crate::model::{Action, Chat, Dialog, Label};
 use crate::theme::{self, Icon, Palette};
 
 use super::focus::{Stop, TabStop};
 use super::widgets;
-
-/// Colours offered when a label is made or edited.
-pub const PRESET_COLORS: [&str; 10] = [
-    "#3b82f6", "#22c55e", "#eab308", "#f97316", "#ef4444", "#ec4899", "#a855f7", "#14b8a6",
-    "#64748b", "#0ea5e9",
-];
 
 const ROW_HEIGHT: f32 = 34.0;
 

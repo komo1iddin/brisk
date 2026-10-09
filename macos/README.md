@@ -72,12 +72,17 @@ SwiftUI's layout of the whole window.
 
 ### How events reach the interface
 
-Upstream's worker calls `Waker::wake()` after each event. That waker wraps an
-`egui::Context`; the bridge gives it a windowless context whose repaint
-callback signals a pump thread. The pump drains `Backend::poll()`, converts
+Upstream's worker calls `Waker::wake()` after each event. The waker holds
+whatever callback its host attached; the bridge attaches one that sends on a
+channel a pump thread waits on. The pump drains `Backend::poll()`, converts
 the events, and calls Swift's `EventListener`, which replays them on the
-main queue in order. `Context::run_logic` re-arms the callback after each
-drain, and a one-second timeout backs it up.
+main queue in order. A one-second timeout backs the channel up, so an event
+can be late but never lost.
+
+The bridge takes upstream with `default-features = false`, which leaves out
+its egui interface: the views, the desktop shell, and eframe with winit and
+glow behind them. What is linked is the engine, the protocol, the archive,
+the settings, the palettes and media decoding.
 
 With Reduce Motion on, stickers and GIFs stay still under the pointer
 and ZapFast's slides, pulses and growth turn into fades or nothing. On

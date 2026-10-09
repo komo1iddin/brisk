@@ -29,8 +29,14 @@ CREATE INDEX IF NOT EXISTS local_chat_labels_by_label ON local_chat_labels (labe
 pub const LABEL_LIMIT: usize = 20;
 /// Longest label name kept, in characters.
 pub const NAME_LIMIT: usize = 32;
+/// Colours offered when a label is made or edited. A host picking a colour
+/// offers these, so they live with the labels rather than with a view.
+pub const PRESET_COLORS: [&str; 10] = [
+    "#3b82f6", "#22c55e", "#eab308", "#f97316", "#ef4444", "#ec4899", "#a855f7", "#14b8a6",
+    "#64748b", "#0ea5e9",
+];
 /// Colour used when the given one is not a hex colour.
-pub const DEFAULT_COLOR: &str = "#3b82f6";
+pub const DEFAULT_COLOR: &str = PRESET_COLORS[0];
 
 impl Archive {
     /// Labels in the order they were created.

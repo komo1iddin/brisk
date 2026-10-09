@@ -15,7 +15,7 @@ pub use encryption::{archive_key_identity, copy_archive_key, forget_archive_key}
 mod favorites;
 pub use favorites::Favorite;
 mod labels;
-pub use labels::{DEFAULT_COLOR, LABEL_LIMIT, NAME_LIMIT};
+pub use labels::{DEFAULT_COLOR, LABEL_LIMIT, NAME_LIMIT, PRESET_COLORS};
 mod polls;
 mod receipts;
 mod stickers;

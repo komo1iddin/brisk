@@ -1,15 +1,12 @@
 //! Delivers backend events to Swift.
 //!
-//! The worker calls `Waker::wake` after every event it sends. That waker
-//! repaints an `egui::Context`; here the context has no window, only a repaint
-//! callback that signals the pump thread. The pump drains the backend,
+//! The worker calls `Waker::wake` after every event it sends. The waker here
+//! sends on a channel the pump thread waits on; the pump drains the backend,
 //! converts the events, and hands them to the listener.
 //!
-//! egui calls the callback only when a repaint becomes *more* urgent than the
-//! one already outstanding, and a windowless context never runs a pass that
-//! would clear it. `Context::run_logic` consumes the outstanding request
-//! without drawing, so the next wake reaches the callback again. A slow
-//! timeout backs this up so an event can be late but never lost.
+//! A wake asking for a frame after a delay is taken as one now: the pump has
+//! no clock to keep, and a drain that finds nothing costs nothing. A slow
+//! timeout backs the channel up so an event can be late but never lost.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
@@ -24,24 +21,21 @@ use crate::client::EventListener;
 /// Longest an event can wait if a wake signal were ever missed.
 const SAFETY_POLL: Duration = Duration::from_secs(1);
 
-/// The windowless context behind the waker, and the wake signal it raises.
+/// The receiving end of the wake signal the waker raises.
 pub struct Signal {
-    context: egui::Context,
     wakes: Receiver<()>,
 }
 
 /// A waker wired to a signal channel, and that channel's receiving end.
 pub fn waker() -> (Waker, Signal) {
     let (tx, rx) = mpsc::channel();
+    // `Sender` is not `Sync`, and the backend wakes from several threads.
     let tx = Mutex::new(tx);
-    let context = egui::Context::default();
-    // Runs under egui's context lock: only signal, never touch the context.
-    context.set_request_repaint_callback(move |_| {
+    let waker = Waker::default();
+    waker.attach(move |_delay| {
         let _ = tx.lock().unwrap_or_else(|p| p.into_inner()).send(());
     });
-    let waker = Waker::default();
-    waker.attach(&context);
-    (waker, Signal { context, wakes: rx })
+    (waker, Signal { wakes: rx })
 }
 
 pub struct Pump {
@@ -76,7 +70,6 @@ impl Pump {
 }
 
 fn run(backend: &Mutex<Backend>, signal: &Signal, listener: &dyn EventListener, stop: &AtomicBool) {
-    let rearm = egui::RawInput::default();
     // A wake or the safety poll runs a drain; only a dropped sender ends it.
     while !matches!(
         signal.wakes.recv_timeout(SAFETY_POLL),
@@ -89,9 +82,6 @@ fn run(backend: &Mutex<Backend>, signal: &Signal, listener: &dyn EventListener, 
         while signal.wakes.try_recv().is_ok() {}
 
         let raw = backend.lock().unwrap_or_else(|p| p.into_inner()).poll();
-        // Re-arm before converting, so a wake during conversion is not lost.
-        let _ = signal.context.run_logic(&rearm, |_| {});
-
         let events: Vec<_> = raw.into_iter().filter_map(crate::events::convert).collect();
         if !events.is_empty() {
             listener.on_events(events);

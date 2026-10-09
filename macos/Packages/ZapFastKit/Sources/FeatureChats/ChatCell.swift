@@ -344,32 +344,20 @@ final class ChatCell: NSTableCellView {
         drawUnread()
     }
 
-    private static let timerSize: CGFloat = 16
+    private static let timerSize = DisappearingBadgeArt.size(forAvatar: ChatCellMetrics.avatar)
 
-    /// The timer badge, in this appearance's colours: the accent on a disc
-    /// of the window's background.
+    /// The timer badge (`DisappearingBadgeArt`), in this appearance's
+    /// colours, on a disc of the window's background.
     private func drawTimer() {
         let size = Self.timerSize
         let scale = window?.backingScaleFactor ?? 2
-        var image: NSImage?
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
-                NSColor.windowBackgroundColor.setFill()
-                NSBezierPath(ovalIn: rect).fill()
-                if let symbol = NSImage(systemSymbolName: "timer", accessibilityDescription: nil)?
-                    .withSymbolConfiguration(
-                        NSImage.SymbolConfiguration(pointSize: size * 0.6, weight: .bold)
-                            .applying(NSImage.SymbolConfiguration(paletteColors: [.controlAccentColor]))
-                    ) {
-                    symbol.draw(in: NSRect(
-                        x: (size - symbol.size.width) / 2, y: (size - symbol.size.height) / 2,
-                        width: symbol.size.width, height: symbol.size.height
-                    ))
-                }
+            let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+                DisappearingBadgeArt.draw(in: rect, background: .windowBackgroundColor)
                 return true
             }
             // Drawn here, while this appearance's colours are current.
-            timer.contents = image?.layerContents(forContentsScale: scale)
+            timer.contents = image.layerContents(forContentsScale: scale)
         }
         timer.contentsScale = scale
     }

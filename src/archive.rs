@@ -22,6 +22,10 @@ mod stickers;
 pub use polls::PollVote;
 pub use stickers::FavoriteSticker;
 
+/// How many messages a page of history holds, both the first page a chat
+/// opens with and each one fetched after it.
+pub const PAGE: usize = 60;
+
 /// Outcome of deleting or clearing a chat.
 #[derive(Clone, Debug, Default)]
 pub struct Removed {

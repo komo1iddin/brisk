@@ -131,6 +131,8 @@ final class BubbleCell: NSView {
     /// In a group, the sender's photo beside the last message of their run.
     private let avatar = AvatarLayers()
     private var highlighted = false
+    /// The message's menu is open.
+    private var menuOpen = false
     /// Reply and React beside the bubble, made once the pointer rests on
     /// the row: a row swept past while scrolling makes none.
     private var hoverActions: NSView?
@@ -183,6 +185,7 @@ final class BubbleCell: NSView {
                 if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
                 hideHoverActions(animated: false)
                 popover?.close()
+                menuOpen = false
             }
             messageID = id
             bubbleLayout = layout
@@ -341,12 +344,21 @@ final class BubbleCell: NSView {
         paintBackground(animated: animated)
     }
 
-    /// A search hit or quote jumped to is marked, else a picked message.
-    private func paintBackground(animated: Bool) {
+    /// The message's menu opened or closed: the row is marked meanwhile,
+    /// quickly on, gently off.
+    func setMenuOpen(_ open: Bool) {
+        guard open != menuOpen else { return }
+        menuOpen = open
+        paintBackground(animated: window != nil, duration: open ? 0.12 : 0.3)
+    }
+
+    /// A search hit or quote jumped to is marked, or the message whose menu
+    /// is open, else a picked message.
+    private func paintBackground(animated: Bool, duration: CFTimeInterval = 0.6) {
         let accent = bubbleLayout?.accent ?? .controlAccentColor
         var color = NSColor.clear.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            if highlighted {
+            if highlighted || menuOpen {
                 color = accent.withAlphaComponent(0.18).cgColor
             } else if selection.selecting, selection.selected {
                 color = accent.withAlphaComponent(0.12).cgColor
@@ -354,7 +366,7 @@ final class BubbleCell: NSView {
         }
         CATransaction.begin()
         if animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            CATransaction.setAnimationDuration(0.6)
+            CATransaction.setAnimationDuration(duration)
             CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
         } else {
             CATransaction.setDisableActions(true)

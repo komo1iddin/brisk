@@ -29,6 +29,8 @@ import ZapFastSharedUI
 /// - `react:<n>`, `sender:<n>`: the reaction picker, or the sender's page,
 ///   of the nth message from the bottom of the screen; answers with the
 ///   frames of the bubble and of the popover.
+/// - `menu:<n>`: the menu of the nth message from the bottom, with the
+///   reactions above it; captures every window but the main one and closes it.
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
 ///   scroll view with whole numbers, to try AppKit's settings live.
@@ -236,6 +238,23 @@ enum DebugCommands {
                     + others.map { "\(NSStringFromClass(type(of: $0))) \($0.frame.integral) alpha \($0.alphaValue) level \($0.level.rawValue)" }
                         .joined(separator: "\n"))
             }
+        case "menu":
+            // menu:<n>: the menu of the nth message from the bottom, with
+            // the reactions above it; captures each window to menu-<i>.png
+            // and closes the menu.
+            guard let content = mainWindow()?.contentView, let table = timeline(in: content) else { return }
+            let n = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+            var lines: [String] = []
+            let target = TimelineDebug.menu(in: table, fromBottom: n) { menu in
+                let others = NSApp.windows.filter { $0 !== mainWindow() && $0.isVisible }
+                for (index, window) in others.enumerated() {
+                    let size = capture(window, to: "menu-\(index).png")
+                    lines.append("\(NSStringFromClass(type(of: window))) \(window.frame.integral) level \(window.level.rawValue) \(size)")
+                }
+                if let main = mainWindow() { lines.append("main \(capture(main, to: "menu-main.png"))") }
+                menu.cancelTracking()
+            }
+            write(name, "\(target)\nwindow \(mainWindow()?.frame ?? .zero)\n" + lines.joined(separator: "\n"))
         case "layers":
             // layers:<class fragment>: the layers under the first view whose class name has it.
             func find(_ view: NSView, _ part: String) -> NSView? {
@@ -673,6 +692,22 @@ enum DebugCommands {
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
         let file = fetch ? "fetch.png" : call ? "call.png" : popover ? "popover.png" : other ? "other.png" : "shot.png"
+        try? data.write(to: folder.appending(path: file))
+        return "\(image.width)x\(image.height)"
+    }
+
+    /// One window of the app's own, as the screen shows it.
+    private static func capture(_ window: NSWindow, to file: String) -> String {
+        typealias Capture = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+        guard let handle = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW),
+              let symbol = dlsym(handle, "CGWindowListCreateImage") else { return "no capture" }
+        let capture = unsafeBitCast(symbol, to: Capture.self)
+        guard let image = capture(.null, 1 << 3, UInt32(window.windowNumber), 1 << 0 | 1 << 3)?.takeRetainedValue(),
+              let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+            return "capture failed"
+        }
+        let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appending(path: Bundle.main.bundleIdentifier ?? "ZapFastMac").appending(path: "debug")
         try? data.write(to: folder.appending(path: file))
         return "\(image.width)x\(image.height)"
     }

@@ -7,11 +7,17 @@ import ZapFastSharedUI
 struct MessageActions: View {
     let message: MessageRecord
     let model: AppModel
+    /// Whether React is a submenu here.
+    var reactsInMenu = true
 
     var body: some View {
         if isLive {
             Button("Reply", systemImage: "arrowshape.turn.up.left") { model.reply(to: message) }
+        }
 
+        // The drawn timeline floats the quick reactions above its menu
+        // (`MenuReactionBar`); VoiceOver and the SwiftUI rows find them here.
+        if isLive, reactsInMenu {
             Menu("React", systemImage: "face.smiling") {
                 ForEach(model.quickReactions(for: message), id: \.self) { emoji in
                     Button(emoji) { model.react(emoji, to: message) }

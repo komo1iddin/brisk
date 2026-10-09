@@ -32,6 +32,22 @@ public enum TimelineDebug {
         return "bubble at \(screen.integral)"
     }
 
+    /// Opens the menu of the `n`th message from the bottom, as a
+    /// right-click does; `during` runs while it tracks. Returns once it closed.
+    @MainActor
+    public static func menu(in table: NSTableView, fromBottom n: Int, during: @escaping (NSMenu) -> Void) -> String {
+        guard let (cell, screen) = bubble(in: table, fromBottom: n), let id = cell.messageID,
+              let menu = cell.delegate?.menu(forMessage: id, selection: nil) else { return "no bubble" }
+        nonisolated(unsafe) let (shown, during) = (menu, during)
+        let timer = Timer(timeInterval: 0.9, repeats: false) { _ in
+            MainActor.assumeIsolated { during(shown) }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        let point = NSPoint(x: cell.bounds.midX, y: cell.bounds.midY)
+        menu.popUp(positioning: nil, at: point, in: cell)
+        return "bubble at \(screen.integral)"
+    }
+
     /// Clicks the sender's photo of the `n`th message from the bottom.
     @MainActor
     public static func sender(in table: NSTableView, fromBottom n: Int) -> String {

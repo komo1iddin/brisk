@@ -104,6 +104,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var onInfoRequest: (InfoRequest) -> Void = { _ in }
     /// The page of the person whose name or photo was clicked.
     var senderPopover: NSPopover?
+    /// The message whose menu is open, marked, with the reactions above it.
+    var messageMenu: MessageMenuSession?
     var onScrollState: (ScrollState) -> Void = { _ in }
 
     private(set) var items: [Item] = []

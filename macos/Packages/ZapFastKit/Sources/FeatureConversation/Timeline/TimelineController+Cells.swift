@@ -54,7 +54,8 @@ extension TimelineController: TimelineCellDelegate {
 
     func menu(forMessage id: String, selection: String?) -> NSMenu? {
         guard let model, let message = message(id) else { return nil }
-        let menu = NSHostingMenu(rootView: MessageActions(message: message, model: model))
+        let reactsInMenu = message.isRevoked || NSWorkspace.shared.isVoiceOverEnabled
+        let menu = NSHostingMenu(rootView: MessageActions(message: message, model: model, reactsInMenu: reactsInMenu))
         if let selection {
             let copy = NSMenuItem(title: String(localized: "Copy Selection"), action: #selector(copySelection(_:)), keyEquivalent: "")
             copy.target = self
@@ -63,7 +64,31 @@ extension TimelineController: TimelineCellDelegate {
             menu.insertItem(copy, at: 0)
             menu.insertItem(.separator(), at: 1)
         }
+        trackMenu(menu, of: message, reactsInMenu: reactsInMenu)
         return menu
+    }
+
+    /// While the menu is open its message is marked, and the quick
+    /// reactions float above it (VoiceOver finds them in the menu instead).
+    private func trackMenu(_ menu: NSMenu, of message: MessageRecord, reactsInMenu: Bool) {
+        messageMenu?.end()
+        var bar: MenuReactionBar?
+        if let model, !reactsInMenu {
+            bar = MenuReactionBar(
+                emojis: model.quickReactions(for: message),
+                mine: message.reactions.first(where: \.fromMe)?.emoji,
+                accent: NSColor(style.theme.accent),
+                onPick: { [weak model] emoji in model?.toggleReaction(emoji, on: message) },
+                onMore: { [weak model] in model?.showReactionPicker(for: message) }
+            )
+        }
+        let id = message.id
+        messageMenu = MessageMenuSession(menu: menu, bar: bar) { [weak self] open in
+            self?.forEachBubbleCell { cell in
+                if cell.messageID == id { cell.setMenuOpen(open) }
+            }
+            if !open { self?.messageMenu = nil }
+        }
     }
 
     @objc private func copySelection(_ item: NSMenuItem) {
@@ -282,5 +307,50 @@ extension TimelineController: TimelineCellDelegate {
 private extension MessageRecord {
     var isRevoked: Bool {
         if case .revoked = content { true } else { false }
+    }
+}
+
+/// A message's menu from the moment it begins tracking to its close.
+@MainActor
+final class MessageMenuSession {
+    private let bar: MenuReactionBar?
+    private let mark: (Bool) -> Void
+    private weak var menu: NSMenu?
+    private var observers: [NSObjectProtocol] = []
+    private var ended = false
+
+    init(menu: NSMenu, bar: MenuReactionBar?, mark: @escaping (Bool) -> Void) {
+        self.menu = menu
+        self.bar = bar
+        self.mark = mark
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: menu, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, !self.ended, let menu = self.menu else { return }
+                self.mark(true)
+                self.bar?.menuOpened(menu)
+            }
+        })
+        observers.append(center.addObserver(forName: NSMenu.didEndTrackingNotification, object: menu, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.bar?.menuClosed()
+                self.finish()
+            }
+        })
+    }
+
+    /// Another menu replaced this one before it closed.
+    func end() {
+        bar?.dismiss()
+        finish()
+    }
+
+    private func finish() {
+        guard !ended else { return }
+        ended = true
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        mark(false)
     }
 }

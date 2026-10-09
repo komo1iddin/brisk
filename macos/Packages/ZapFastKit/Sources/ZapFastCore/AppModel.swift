@@ -1529,6 +1529,19 @@ public final class AppModel {
         attachments[chat]![index].caption = caption
     }
 
+    /// Escape in the composer once nothing nearer takes it (upstream's
+    /// chain): staged files go first, then the chat closes. A reply or an
+    /// edit is cancelled by its own strip before this.
+    public func escapeInComposer(_ chat: String) -> Bool {
+        if !(attachments[chat] ?? []).isEmpty {
+            discardAttachments(in: chat)
+            return true
+        }
+        guard selectedChatID == chat, replyingTo[chat] == nil, editing[chat] == nil else { return false }
+        selectedChatID = nil
+        return true
+    }
+
     /// Closes the editor without sending. The first caption returns to the
     /// field, so nothing typed is lost.
     public func discardAttachments(in chat: String) {

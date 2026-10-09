@@ -9,15 +9,16 @@ struct ShortcutsSheet: View {
     private struct Shortcut: Identifiable {
         let keys: String
         let does: LocalizedStringKey
-        var id: String { keys }
+        var id: String { keys + "\(does)" }
     }
 
     private let groups: [(title: LocalizedStringKey, items: [Shortcut])] = [
         ("Chats", [
             Shortcut(keys: "⌘N", does: "New chat"),
             Shortcut(keys: "⇧⌘] / ⇧⌘[", does: "Next / previous chat"),
+            Shortcut(keys: "⌥↓ / ⌥↑", does: "Next / previous chat, on any keyboard"),
             Shortcut(keys: "⌘1 … ⌘9", does: "The first nine chats in the sidebar"),
-            Shortcut(keys: "⌥⌘F", does: "Search all chats"),
+            Shortcut(keys: "⌥⌘F / ⌘K", does: "Search all chats"),
             Shortcut(keys: "⌘I", does: "Chat info"),
             Shortcut(keys: "⇧⌘R / ⇧⌘U", does: "Mark read / unread"),
         ]),
@@ -29,6 +30,9 @@ struct ShortcutsSheet: View {
             Shortcut(keys: "Home / End", does: "Oldest / newest message (empty field)"),
             Shortcut(keys: "⌘-click / ⇧-click", does: "Select messages / a run of them"),
             Shortcut(keys: "Esc", does: "Cancel a reply, an edit or a selection"),
+            Shortcut(keys: "Esc", does: "Drop staged files, then close the chat"),
+            Shortcut(keys: "Space / M", does: "Play or pause / mute a video (viewer)"),
+            Shortcut(keys: "⇧← / ⇧→", does: "Five seconds back / on in a video (viewer)"),
         ]),
         ("Writing", [
             Shortcut(keys: "⌘L", does: "Write a message"),

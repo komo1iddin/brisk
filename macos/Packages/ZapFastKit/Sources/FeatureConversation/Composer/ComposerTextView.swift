@@ -23,6 +23,8 @@ struct ComposerTextView: NSViewRepresentable {
     var onPasteImage: (CGImage) -> Void = { _ in }
     /// Up Arrow in an empty field; returns whether it was used.
     var onUpInEmpty: () -> Bool = { false }
+    /// Escape with no suggestions open; returns whether it was used.
+    var onEscape: () -> Bool = { false }
     /// Page Up and Down, and Home and End in an empty field, scroll the
     /// messages (upstream's PgUp / PgDn and Home / End).
     var onScrollMessages: (TimelineScroll) -> Void = { _ in }
@@ -135,6 +137,9 @@ struct ComposerTextView: NSViewRepresentable {
             }
             if selector == #selector(NSResponder.moveUp(_:)), textView.string.isEmpty {
                 return parent.onUpInEmpty()
+            }
+            if selector == #selector(NSResponder.cancelOperation(_:)), !textView.hasMarkedText() {
+                return parent.onEscape()
             }
             switch selector {
             case #selector(NSResponder.scrollPageUp(_:)), #selector(NSResponder.pageUp(_:)):

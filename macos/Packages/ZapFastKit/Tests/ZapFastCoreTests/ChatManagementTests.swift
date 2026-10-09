@@ -264,4 +264,17 @@ struct ChatManagementTests {
         #expect(backend.sent.last == .leaveGroup(chat: group, archive: false))
     }
 
+
+    @Test func escapeInTheComposerClosesTheChatWhenNothingElseTakesIt() {
+        let (model, _) = model()
+        model.selectedChatID = direct
+        let reply = message("r", in: direct, at: 10, fromMe: false)
+        model.apply([.messages(chat: direct, messages: [reply], older: false, complete: true)])
+        model.reply(to: reply)
+        #expect(!model.escapeInComposer(direct), "the reply strip takes Escape first")
+        model.cancelReply(in: direct)
+        #expect(model.escapeInComposer(direct))
+        #expect(model.selectedChatID == nil)
+    }
+
 }

@@ -242,6 +242,8 @@ struct EditorKeys: NSViewRepresentable {
     enum Key {
         case escape, delete, left, right, commandZ, commandShiftZ
         case space, commandC, commandS, zoomIn, zoomOut, zoomReset
+        /// M, and ⇧← ⇧→: a video's sound, and five seconds back or on.
+        case mute, back, forward
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -297,6 +299,9 @@ struct EditorKeys: NSViewRepresentable {
             case 6 where flags == .command: return .commandZ
             case 6 where flags == [.command, .shift]: return .commandShiftZ
             case 49 where flags.isEmpty: return .space
+            case 46 where flags.isEmpty: return .mute
+            case 123 where flags == .shift: return .back
+            case 124 where flags == .shift: return .forward
             case 8 where flags == .command: return .commandC
             case 1 where flags == .command: return .commandS
             // ⌘= and ⌘+ (Shift on US-style keyboards).

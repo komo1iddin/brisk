@@ -415,6 +415,17 @@ struct MediaViewerView: View {
             guard let current, MediaGallery.kind(of: current) == .video else { return false }
             if player.rate == 0 { player.play() } else { player.pause() }
             return true
+        case .mute:
+            guard let current, MediaGallery.kind(of: current) == .video else { return false }
+            player.isMuted.toggle()
+            return true
+        case .back, .forward:
+            // Upstream's ← → in a playing video; here ← → step between items.
+            guard let current, MediaGallery.kind(of: current) == .video else { return false }
+            let now = player.currentTime().seconds
+            let target = max(0, (now.isFinite ? now : 0) + (key == .back ? -5 : 5))
+            player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+            return true
         case .commandC:
             guard let current, MediaGallery.kind(of: current) == .photo, let url = current.mediaURL else { return false }
             AttachmentSaving.copyImage(at: url)

@@ -92,6 +92,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeBadge()
         watchInput()
+        watchShortcuts()
         let icon = MenuBarIcon(hub: hub)
         icon.openMainWindow = { [weak self] in self?.mainWindow?.show() }
         menuBarIcon = icon
@@ -187,6 +188,30 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
             self?.hub.shared.appLock.noteInput()
             return event
+        }
+    }
+
+    /// Upstream's keys that macOS menus cannot hold beside their own: ⌘K
+    /// searches the chats (as ⌥⌘F does), and ⌥↑ ⌥↓ go to the previous or
+    /// next chat whatever the keyboard layout (as ⇧⌘[ ⇧⌘] do), in the main
+    /// window only.
+    private func watchShortcuts() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let window = self.mainWindow?.window, event.window === window,
+                  !self.hub.shared.appLock.isLocked else { return event }
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                .subtracting([.numericPad, .function, .capsLock])
+            switch (event.keyCode, flags) {
+            case (40, .command):
+                self.model.focusSidebarSearch()
+            case (126, .option):
+                self.model.selectAdjacentChat(forward: false)
+            case (125, .option):
+                self.model.selectAdjacentChat(forward: true)
+            default:
+                return event
+            }
+            return nil
         }
     }
 

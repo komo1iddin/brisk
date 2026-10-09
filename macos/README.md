@@ -27,7 +27,8 @@ as-is. Only the interface is new: SwiftUI and AppKit, designed to Apple's HIG.
 ```
 macos/
 ├── Bridge/                    Rust crate `zapfast-bridge` (UniFFI → Swift)
-│   ├── src/client.rs          BridgeClient: start / send / shutdown
+│   ├── src/accounts.rs        AccountManager: the data folder, the roster, adding and removing
+│   ├── src/client.rs          BridgeClient, one per account: start / send / shutdown
 │   ├── src/pump.rs            wakes Swift when the backend has events
 │   ├── src/commands.rs        BridgeCommand → upstream Command
 │   ├── src/events.rs          upstream Event → BridgeEvent (exhaustive match)
@@ -85,6 +86,29 @@ composer, a message's Reply and React), and a chat you cannot write to
 shows why in the same glass. VoiceOver reaches what the pointer does: a
 message's actions include Reply, React and Select, the voice waveform
 steps by tenths, and suggestions and notices are announced.
+
+### Several accounts
+
+As upstream since 0.19, several WhatsApp accounts can be linked at once.
+The bridge's `AccountManager` opens the data folder once (its lock, the log,
+the roster in `Config/accounts.json`) and makes a `BridgeClient` per
+account, each with upstream's folders, `State/accounts/<id>` and
+`<caches>/accounts/<id>`. The first start after the update moves a
+single-account setup into account 1 with upstream's
+`adopt_single_account`, which copies the archive's keychain key before the
+archive moves and refuses when anything is in the way; the call history
+moves beside it, key first.
+
+`AccountHub` keeps one `AppModel` per account. The one on screen is read;
+the others keep running and notify, but send no receipts and are not
+online. Our picture leads the sidebar's toolbar and opens the switcher
+(accounts with their unread chats, and Add Account), with a red dot while
+another account has unread chats. Receipts, typing, automatic downloads,
+notifications, saving contacts and the last chat are per account
+(`AccountPreferences`; account 1 kept the old keys); the rest of Settings,
+the app lock and the themes are the same for all. Settings > Account lists
+the accounts and removes one: its backend unlinks and stops, then its
+folders, key and preferences go. The last account is only unlinked.
 
 Settings has a tab for each area, as the Mac's own apps do: General
 (login, menu bar, running in the background, downloads), Account, Chats
@@ -426,7 +450,7 @@ A chat shows its calls among its messages, as centred rows ("Missed voice
 call · 14:05", "Voice call · 2 min · 14:05"): the calls the phone syncs
 through app state (`call_log`), and those rung or placed here, the phone's
 record winning. Upstream's archive has no place for them, so the bridge
-keeps `State/calls.db`, encrypted as the archive is (SQLCipher, its own
+keeps each account's `calls.db` beside its archive, encrypted as the archive is (SQLCipher, its own
 random key in the keychain). The phone sends its whole call history only
 when the device links; a device linked before this version shows the calls
 from now on.
@@ -545,7 +569,9 @@ the counts (then deletes the file), `fetchstats:<n>`, `fetchhistory:<n>:<message
 `fetchfiles:<n>[:<pvaf>]` count, load older messages of and download the files of the nth
 chat (numbers only; the last two use the phone and the last writes files), `fetch:<stage>`
 and `shot:fetch` show the Download from Phone sheet over a made-up chat,
-`reconnectnow` reconnects without waiting, and `action:<selector>` sends an action
+`reconnectnow` reconnects without waiting, `accounts` lists the accounts by id
+(`*` on screen, `?` not linked), `addaccount`, `cancelaccount` and
+`switchaccount:<id>` act as the switcher does, and `action:<selector>` sends an action
 (`action:terminate:` quits). Answers go to
 `~/Library/Caches/<bundle id>/debug/` and name views and numbers only.
 
@@ -570,8 +596,8 @@ Five changes live in upstream's files in this fork, to be offered upstream:
 
 - fetching a document's page preview (`Command::FetchPreview`,
   `src/backend/worker/document_preview.rs`, `Archive::set_thumbnail`);
-- handing the worker's WhatsApp client to an embedder for calls
-  (`src/backend/client_hook.rs`, one line in `start_bot`);
+- handing each worker's WhatsApp client, with its account, to an embedder
+  for calls (`src/backend/client_hook.rs`, one line in `start_bot`);
 - messages that travel in a wrapper, no longer shown as "unsupported": Lottie stickers
   (stickers whose file is a `.was` zip with the animation inside; playing it is the
   interface's business), the pictures of an album (what phones send when several are

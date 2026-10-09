@@ -224,3 +224,23 @@ struct SyncStatus: View {
         if case .disconnected = session.link { true } else { false }
     }
 }
+
+/// The search holds the Locked folder's code: only the folder shows, until
+/// it is clicked (upstream's search-code entry).
+struct LockedEntryList: View {
+    let open: () -> Void
+
+    var body: some View {
+        List {
+            Button(action: open) {
+                Label("Locked Chats", systemImage: "lock.fill")
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+    }
+}

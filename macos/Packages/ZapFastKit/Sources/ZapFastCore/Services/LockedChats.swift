@@ -15,6 +15,10 @@ public final class LockedChats {
     public private(set) var checking = false
     /// The last code tried was wrong.
     public private(set) var wrongCode = false
+    /// The chat list's search holds the code (upstream's search-code entry,
+    /// kept beside the Locked folder): the search shows the folder alone.
+    public private(set) var revealedBySearch = false
+    @ObservationIgnored private var searchCheck: Task<Void, Never>?
 
     @ObservationIgnored private let preferences: Preferences
 
@@ -80,9 +84,34 @@ public final class LockedChats {
         return nil
     }
 
+    /// Checks what the chat list's search holds against the code, after a
+    /// pause in the typing: the check is slow on purpose.
+    public func searchChanged(_ query: String) {
+        searchCheck?.cancel()
+        revealedBySearch = false
+        let code = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let stored = preferences.chatLockVerifier, !code.isEmpty, !isOpen else { return }
+        searchCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            let matched = await Self.verifies(stored, code)
+            guard !Task.isCancelled, let self else { return }
+            self.revealedBySearch = matched
+        }
+    }
+
+    /// Opens the folder the search revealed.
+    public func openRevealed() {
+        guard revealedBySearch else { return }
+        revealedBySearch = false
+        wrongCode = false
+        isOpen = true
+    }
+
     func close() {
         isOpen = false
         wrongCode = false
+        revealedBySearch = false
     }
 
     func resetAttempt() {

@@ -90,4 +90,20 @@ struct LockedChatsTests {
         #expect(preferences.chatLockVerifier == nil)
         #expect(!model.lockedChats.isOpen)
     }
+
+    @Test func theCodeTypedInTheSearchRevealsTheFolder() async throws {
+        let (model, _, _) = model(code: "2468")
+        model.lockedChats.searchChanged("13")
+        try await Task.sleep(for: .seconds(2))
+        #expect(!model.lockedChats.revealedBySearch, "a wrong code shows nothing")
+        model.lockedChats.searchChanged("2468")
+        for _ in 0..<40 where !model.lockedChats.revealedBySearch {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(model.lockedChats.revealedBySearch)
+        model.lockedChats.openRevealed()
+        #expect(model.lockedChats.isOpen)
+        #expect(!model.lockedChats.revealedBySearch)
+    }
+
 }

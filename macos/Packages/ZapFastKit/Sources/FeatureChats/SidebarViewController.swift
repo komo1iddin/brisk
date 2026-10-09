@@ -145,6 +145,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 chats: chats,
                 shortcutTitles: chats.prefix(9).map { model.chats.title(for: $0) },
                 hits: hits,
+                revealed: model.lockedChats.revealedBySearch && !inLocked,
                 contacts: contacts,
                 offerSelf: offerSelf,
                 rows: Self.rows(chats, model: model, state: state, inLocked: inLocked),
@@ -201,23 +202,33 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 && state.query.trimmingCharacters(in: .whitespaces).isEmpty && !shown.inLocked
             if !favoritesOrder { table.revealTop() }
         }
-        let searching = !shown.hits.isEmpty || !shown.contacts.isEmpty || shown.offerSelf
-        tableScroll.isHidden = searching
-        results.isHidden = !searching
-        results.rootView = searching
-            ? AnyView(SidebarSearchList(
-                chats: shown.chats, hits: shown.hits, contacts: shown.contacts, offerSelf: shown.offerSelf,
-                query: state.query, cursor: cursor, model: model
-            ))
-            : AnyView(EmptyView())
-        let nothing = shown.chats.isEmpty && shown.hits.isEmpty && shown.contacts.isEmpty && !shown.offerSelf
-        empty.isHidden = !nothing
-        empty.rootView = nothing
-            ? AnyView(EmptyState(
-                query: state.query, filter: state.filter, archived: state.showingArchived,
-                locked: shown.inLocked, labeled: state.label != nil
-            ))
-            : AnyView(EmptyView())
+        // The code typed in the search shows the Locked folder alone.
+        if shown.revealed {
+            tableScroll.isHidden = true
+            results.isHidden = false
+            empty.isHidden = true
+            results.rootView = AnyView(LockedEntryList { [weak self] in
+                self?.model.lockedChats.openRevealed()
+            })
+        } else {
+            let searching = !shown.hits.isEmpty || !shown.contacts.isEmpty || shown.offerSelf
+            tableScroll.isHidden = searching
+            results.isHidden = !searching
+            results.rootView = searching
+                ? AnyView(SidebarSearchList(
+                    chats: shown.chats, hits: shown.hits, contacts: shown.contacts, offerSelf: shown.offerSelf,
+                    query: state.query, cursor: cursor, model: model
+                ))
+                : AnyView(EmptyView())
+            let nothing = shown.chats.isEmpty && shown.hits.isEmpty && shown.contacts.isEmpty && !shown.offerSelf
+            empty.isHidden = !nothing
+            empty.rootView = nothing
+                ? AnyView(EmptyState(
+                    query: state.query, filter: state.filter, archived: state.showingArchived,
+                    locked: shown.inLocked, labeled: state.label != nil
+                ))
+                : AnyView(EmptyView())
+        }
         sync.isHidden = !shown.syncing
         if #available(macOS 26, *), let accessory = syncAccessory as? NSSplitViewItemAccessoryViewController {
             accessory.isHidden = !shown.syncing
@@ -289,6 +300,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         state.query = query
         state.cursor = nil
         model.searchMessages(query)
+        model.lockedChats.searchChanged(query)
     }
 
     /// Escape clears the search, then leaves the field. While searching, ↓
@@ -343,6 +355,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         state.query = query
         state.cursor = nil
         model.searchMessages(query)
+        model.lockedChats.searchChanged(query)
     }
 
     // MARK: Toolbar

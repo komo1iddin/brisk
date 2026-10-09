@@ -20,12 +20,12 @@ struct ReactionBarTests {
         #expect(bar.slot(at: NSPoint(x: plus, y: bar.bounds.maxY + 4)) == nil)
     }
 
-    @Test func aMessageWithAnOpenMenuIsMarked() {
+    @Test func onlyTheBubbleIsMarkedNotTheRow() {
         let cell = BubbleCell(identifier: BubbleCell.identifier)
-        #expect(cell.layer?.backgroundColor.map { $0.alpha == 0 } ?? true)
         cell.setMenuOpen(true)
-        #expect((cell.layer?.backgroundColor?.alpha ?? 0) > 0)
-        cell.setMenuOpen(false)
+        // No row band behind the message.
         #expect(cell.layer?.backgroundColor.map { $0.alpha == 0 } ?? true)
+        cell.setMenuOpen(false)
+        #expect(!cell.showsMenuMark)
     }
 }

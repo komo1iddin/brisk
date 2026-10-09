@@ -133,6 +133,8 @@ final class BubbleCell: NSView {
     private var highlighted = false
     /// The message's menu is open.
     private var menuOpen = false
+    /// The bubble's shape, darkened, while its menu is open.
+    private var menuMark: CALayer?
     /// Reply and React beside the bubble, made once the pointer rests on
     /// the row: a row swept past while scrolling makes none.
     private var hoverActions: NSView?
@@ -186,6 +188,7 @@ final class BubbleCell: NSView {
                 hideHoverActions(animated: false)
                 popover?.close()
                 menuOpen = false
+                hideMenuMark(animated: false)
             }
             messageID = id
             bubbleLayout = layout
@@ -345,21 +348,89 @@ final class BubbleCell: NSView {
         paintBackground(animated: animated)
     }
 
-    /// The message's menu opened or closed: the row is marked meanwhile,
-    /// quickly on, gently off.
+    /// The message's menu opened or closed: the bubble itself (its tail
+    /// too, not the row) darkens meanwhile, as WhatsApp and Telegram mark
+    /// the message a menu is for; quickly on, gently off.
     func setMenuOpen(_ open: Bool) {
         guard open != menuOpen else { return }
         menuOpen = open
-        paintBackground(animated: window != nil, duration: open ? 0.12 : 0.3)
+        let animated = window != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if open {
+            showMenuMark(animated: animated)
+        } else {
+            hideMenuMark(animated: animated)
+        }
     }
 
-    /// A search hit or quote jumped to is marked, or the message whose menu
-    /// is open, else a picked message.
+    /// Whether the bubble shows that its menu is open.
+    var showsMenuMark: Bool { menuMark != nil }
+
+    private func showMenuMark(animated: Bool) {
+        guard let layout = bubbleLayout, let host = layer else { return }
+        hideMenuMark(animated: false)
+        let shift = selection.selecting && !layout.fromMe ? Self.checkboxRoom : 0
+        let frame = layout.bubbleFrame(rowWidth: bounds.width).offsetBy(dx: shift, dy: 0)
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let ink = (dark ? NSColor.white : NSColor.black).cgColor
+        // The pieces are opaque and the group is faded as one, so where the
+        // tail meets the rounded corner it is no darker than elsewhere.
+        let mark = CALayer()
+        mark.allowsGroupOpacity = true
+        mark.frame = frame
+        mark.opacity = Float(dark ? 0.14 : 0.1)
+        let radius = layout.bare ? Metrics.controlRadius : Metrics.bubbleRadius
+        let body = CAShapeLayer()
+        body.path = CGPath(
+            roundedRect: CGRect(origin: .zero, size: frame.size),
+            cornerWidth: radius, cornerHeight: radius, transform: nil
+        )
+        body.fillColor = ink
+        mark.addSublayer(body)
+        if layout.tail, !layout.bare {
+            let tail = CAShapeLayer()
+            tail.path = BubbleTail.path(size: frame.size, fromMe: layout.fromMe)
+            tail.fillColor = ink
+            mark.addSublayer(tail)
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        host.addSublayer(mark)
+        CATransaction.commit()
+        menuMark = mark
+        guard animated else { return }
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0
+        fade.toValue = mark.opacity
+        fade.duration = 0.12
+        fade.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        mark.add(fade, forKey: "fade")
+    }
+
+    private func hideMenuMark(animated: Bool) {
+        guard let mark = menuMark else { return }
+        menuMark = nil
+        guard animated else {
+            mark.removeFromSuperlayer()
+            return
+        }
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { mark.removeFromSuperlayer() }
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = mark.presentation()?.opacity ?? mark.opacity
+        fade.toValue = 0
+        fade.duration = 0.3
+        fade.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        mark.opacity = 0
+        mark.add(fade, forKey: "fade")
+        CATransaction.commit()
+    }
+
+    /// A search hit or quote jumped to is marked, else a picked message.
     private func paintBackground(animated: Bool, duration: CFTimeInterval = 0.6) {
         let accent = bubbleLayout?.accent ?? .controlAccentColor
         var color = NSColor.clear.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            if highlighted || menuOpen {
+            if highlighted {
                 color = accent.withAlphaComponent(0.18).cgColor
             } else if selection.selecting, selection.selected {
                 color = accent.withAlphaComponent(0.12).cgColor

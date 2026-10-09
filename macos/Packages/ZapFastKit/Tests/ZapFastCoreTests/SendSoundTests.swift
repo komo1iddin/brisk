@@ -2,20 +2,22 @@ import Foundation
 import Testing
 @testable import ZapFastCore
 
-/// The send sound is made in code; it must stay short, soft (nothing
-/// sharp in it), and a well-formed WAV.
+/// The send sounds are made in code; each must stay short, quiet, free of
+/// clicks, and a well-formed WAV.
 struct SendSoundTests {
-    @Test func isAQuarterOfASecondBelowHalfScale() {
-        let samples = SendSound.samples()
-        #expect(abs(Double(samples.count) / SendSound.rate - 0.26) < 0.001)
+    @Test(arguments: [SendSoundStyle.breath, .air, .airLanding])
+    func isShortQuietAndStartsAndEndsSilent(_ style: SendSoundStyle) throws {
+        let shape = try #require(SendSound.Shape(style))
+        let samples = SendSound.samples(shape)
+        #expect(Double(samples.count) / SendSound.rate < 0.25)
         let peak = samples.map(abs).max() ?? 0
         #expect(abs(peak - SendSound.peak) < 0.001)
-        // It starts and ends at silence: no click either way.
         #expect(abs(samples.first ?? 1) < 0.01)
         #expect(abs(samples.last ?? 1) < 0.01)
-        // It fades out: the last tenth is near silence.
-        let tail = samples.suffix(samples.count / 10).map(abs).max() ?? 1
-        #expect(tail < 0.05)
+    }
+
+    @Test func noneMakesNoSound() {
+        #expect(SendSound.Shape(.none) == nil)
     }
 
     @Test func isAWav() {

@@ -1752,7 +1752,7 @@ public final class AppModel {
     private func followSentChat() {
         sentChatFollows &+= 1
         lastSentHere = Date()
-        if preferences.sendSound { SendSound.play() }
+        SendSound.play(preferences.sendSound)
     }
 
     /// When something was last sent from this window (the composer, a

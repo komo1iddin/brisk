@@ -308,7 +308,15 @@ private struct ChatSettings: View {
             }
             Section {
                 Toggle("Return sends", isOn: $preferences.enterSends)
-                Toggle("Play a sound when sending", isOn: $preferences.sendSound)
+                Picker("Sound when sending", selection: $preferences.sendSound) {
+                    Text("Breath").tag(SendSoundStyle.breath)
+                    Text("Air").tag(SendSoundStyle.air)
+                    Text("Air and Landing").tag(SendSoundStyle.airLanding)
+                    Divider()
+                    Text("None").tag(SendSoundStyle.none)
+                }
+                // Choosing one plays it, as the notification sounds do.
+                .onChange(of: preferences.sendSound) { _, style in SendSound.play(style) }
             } header: {
                 Text("Writing")
             } footer: {

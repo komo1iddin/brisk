@@ -136,10 +136,17 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 )
             let trimmed = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
             let hits = inLocked || trimmed.isEmpty || model.search.messageQuery != trimmed ? [] : model.search.messageHits
+            // People to start a chat with, and ourselves, under the chats
+            // and messages found, as upstream's search shows them.
+            let contacts = inLocked ? [] : model.chats.matchingContacts(query: trimmed)
+            let offerSelf = !inLocked && !trimmed.isEmpty && model.chats.offersSelf(query: trimmed)
+                && !chats.contains { model.session.isOurs($0.id) }
             return (
                 chats: chats,
                 shortcutTitles: chats.prefix(9).map { model.chats.title(for: $0) },
                 hits: hits,
+                contacts: contacts,
+                offerSelf: offerSelf,
                 rows: Self.rows(chats, model: model, state: state, inLocked: inLocked),
                 selection: model.selectedChatID,
                 cursor: state.cursor,
@@ -194,13 +201,16 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
                 && state.query.trimmingCharacters(in: .whitespaces).isEmpty && !shown.inLocked
             if !favoritesOrder { table.revealTop() }
         }
-        let searching = !shown.hits.isEmpty
+        let searching = !shown.hits.isEmpty || !shown.contacts.isEmpty || shown.offerSelf
         tableScroll.isHidden = searching
         results.isHidden = !searching
         results.rootView = searching
-            ? AnyView(SidebarSearchList(chats: shown.chats, hits: shown.hits, query: state.query, cursor: cursor, model: model))
+            ? AnyView(SidebarSearchList(
+                chats: shown.chats, hits: shown.hits, contacts: shown.contacts, offerSelf: shown.offerSelf,
+                query: state.query, cursor: cursor, model: model
+            ))
             : AnyView(EmptyView())
-        let nothing = shown.chats.isEmpty && shown.hits.isEmpty
+        let nothing = shown.chats.isEmpty && shown.hits.isEmpty && shown.contacts.isEmpty && !shown.offerSelf
         empty.isHidden = !nothing
         empty.rootView = nothing
             ? AnyView(EmptyState(

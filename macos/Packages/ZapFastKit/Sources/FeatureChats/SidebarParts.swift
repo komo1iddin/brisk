@@ -4,11 +4,14 @@ import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
-/// The sidebar while searching finds messages too: the chats that match,
-/// then the messages, in SwiftUI's sidebar list.
+/// The sidebar while searching finds more than chats: the chats that match,
+/// then the messages, then people with no chat yet (and ourselves), in
+/// SwiftUI's sidebar list.
 struct SidebarSearchList: View {
     let chats: [ChatSummary]
     let hits: [MessageRecord]
+    let contacts: [(id: String, name: String)]
+    let offerSelf: Bool
     let query: String
     /// The chat the arrow keys reached in the search field: marked here,
     /// not opened.
@@ -26,10 +29,27 @@ struct SidebarSearchList: View {
                         }
                     }
                 }
-                Section("Messages") {
-                    ForEach(hits, id: \.id) { hit in
-                        MessageHitRow(message: hit, query: query, model: model)
-                            .selectionDisabled()
+                if !hits.isEmpty {
+                    Section("Messages") {
+                        ForEach(hits, id: \.id) { hit in
+                            MessageHitRow(message: hit, query: query, model: model)
+                                .selectionDisabled()
+                        }
+                    }
+                }
+                if !contacts.isEmpty || offerSelf {
+                    Section("Contacts") {
+                        if offerSelf {
+                            PersonRow(
+                                id: model.session.account?.id ?? "", name: model.chats.selfTitle,
+                                detail: String(localized: "Message yourself"), model: model
+                            )
+                            .tag(Self.yourself)
+                        }
+                        ForEach(contacts, id: \.id) { person in
+                            PersonRow(id: person.id, name: person.name, detail: PhoneFormat.display(id: person.id), model: model)
+                                .tag(Self.person + person.id)
+                        }
                     }
                 }
             }
@@ -48,15 +68,48 @@ struct SidebarSearchList: View {
         }
     }
 
-    /// The chat the keys reached, else the open one; a click opens.
+    private static let yourself = "\u{0}self"
+    private static let person = "\u{0}person:"
+
+    /// The chat the keys reached, else the open one; a click opens, and on
+    /// a person starts their chat.
     private var opening: Binding<String?> {
         Binding(
             get: { cursor ?? model.selectedChatID },
             set: { id in
+                if id == Self.yourself { return model.messageYourself() }
+                if let id, id.hasPrefix(Self.person) {
+                    return model.startChat(with: String(id.dropFirst(Self.person.count)))
+                }
                 if let id { model.keepUnread(id) }
                 model.selectedChatID = id
             }
         )
+    }
+}
+
+/// Someone found by the search with no chat yet.
+private struct PersonRow: View {
+    let id: String
+    let name: String
+    let detail: String?
+    let model: AppModel
+
+    var body: some View {
+        HStack(spacing: Metrics.s) {
+            AvatarView(
+                url: model.avatars.url(for: id), seed: id,
+                placeholder: .initials(String(name.trimmingPrefix("~"))), size: 36,
+                version: model.avatars.version(for: id)
+            )
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name).lineLimit(1)
+                if let detail {
+                    Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
 

@@ -32,6 +32,20 @@ struct NewChatTests {
         #expect(model.chats.newChatCandidates(query: "2").map(\.id) == ["2@s.whatsapp.net"])
     }
 
+    @Test func theChatListSearchFindsPeopleWithoutAChat() {
+        let (model, _) = model()
+        #expect(model.chats.matchingContacts(query: "").isEmpty, "nothing typed, nobody listed")
+        #expect(model.chats.matchingContacts(query: "a").map(\.name) == ["Anvar", "Zarina"])
+        model.apply([.chats(chats: [ChatSummary(
+            id: "2@s.whatsapp.net", name: "Anvar", groupSubjectKnown: true, kind: .direct, lastActivity: 1, unread: 0,
+            markedUnread: false, archived: false, pinned: false, pinnedAt: 0, mutedUntil: nil, last: nil,
+            favorite: false, favoritePosition: 0, participants: [], readOnly: false, left: false,
+            infoLocked: nil, admin: false, locked: false, ephemeralExpiration: nil, labels: [],
+            hasCustomSound: false, isChannel: false, looksUnread: false, phone: nil
+        )])])
+        #expect(model.chats.matchingContacts(query: "a").map(\.name) == ["Zarina"], "a chat lists Anvar already")
+    }
+
     @Test func messageYourselfIsOfferedForItsWords() {
         let (model, _) = model()
         #expect(model.chats.offersSelf(query: ""))

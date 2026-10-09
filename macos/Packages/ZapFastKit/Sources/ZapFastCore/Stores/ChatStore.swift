@@ -314,6 +314,14 @@ public final class ChatStore {
             }
     }
 
+    /// People found by the chat list's search with no chat yet (upstream's
+    /// `matching_contacts`): saved contacts with a number, by name, at most
+    /// fifteen, and none while nothing is typed.
+    public func matchingContacts(query: String) -> [(id: String, name: String)] {
+        guard !searchKey(text: query.trimmingCharacters(in: .whitespacesAndNewlines)).isEmpty else { return [] }
+        return Array(newChatCandidates(query: query).filter { chats[$0.id] == nil && contacts[$0.id] != nil }.prefix(15))
+    }
+
     /// Whether "Message yourself" belongs in a list searched for `query`
     /// (upstream's `offers_self`).
     public func offersSelf(query: String) -> Bool {

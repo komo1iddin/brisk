@@ -35,10 +35,23 @@ public enum TimelineDebug {
     /// Opens the menu of the `n`th message from the bottom, as a
     /// right-click does; `during` runs while it tracks. Returns once it closed.
     @MainActor
-    public static func menu(in table: NSTableView, fromBottom n: Int, during: @escaping (NSMenu) -> Void) -> String {
+    public static func menu(
+        in table: NSTableView, fromBottom n: Int, hover: Bool = false, during: @escaping (NSMenu) -> Void
+    ) -> String {
         guard let (cell, screen) = bubble(in: table, fromBottom: n), let id = cell.messageID,
               let menu = cell.delegate?.menu(forMessage: id, selection: nil) else { return "no bubble" }
         nonisolated(unsafe) let (shown, during) = (menu, during)
+        let hovered = cell
+        if hover {
+            // As a real pointer: the hover buttons are up when the menu
+            // opens, and go as the pointer leaves for the menu.
+            hovered.pointerMoved(to: NSPoint(x: cell.bounds.midX, y: cell.bounds.midY))
+            RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+            let leave = Timer(timeInterval: 0.1, repeats: false) { _ in
+                MainActor.assumeIsolated { hovered.pointerLeft() }
+            }
+            RunLoop.main.add(leave, forMode: .common)
+        }
         let timer = Timer(timeInterval: 0.9, repeats: false) { _ in
             MainActor.assumeIsolated { during(shown) }
         }

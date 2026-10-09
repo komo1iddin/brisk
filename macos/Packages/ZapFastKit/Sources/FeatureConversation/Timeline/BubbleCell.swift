@@ -133,8 +133,11 @@ final class BubbleCell: NSView {
     private var highlighted = false
     /// The message's menu is open.
     private var menuOpen = false
-    /// The bubble's shape, darkened, while its menu is open.
-    private var menuMark: CALayer?
+    /// The bubble's shape, darkened, while its menu is open. A view of its
+    /// own, not a loose sublayer: AppKit reorders a view's sublayers to
+    /// match its subviews when one comes or goes (the hover buttons go as
+    /// the menu opens), which put a loose layer behind the bubble.
+    private var menuMark: PassiveLayerView?
     /// Reply and React beside the bubble, made once the pointer rests on
     /// the row: a row swept past while scrolling makes none.
     private var hoverActions: NSView?
@@ -366,7 +369,7 @@ final class BubbleCell: NSView {
     var showsMenuMark: Bool { menuMark != nil }
 
     private func showMenuMark(animated: Bool) {
-        guard let layout = bubbleLayout, let host = layer else { return }
+        guard let layout = bubbleLayout else { return }
         hideMenuMark(animated: false)
         let shift = selection.selecting && !layout.fromMe ? Self.checkboxRoom : 0
         let frame = layout.bubbleFrame(rowWidth: bounds.width).offsetBy(dx: shift, dy: 0)
@@ -374,9 +377,9 @@ final class BubbleCell: NSView {
         let ink = (dark ? NSColor.white : NSColor.black).cgColor
         // The pieces are opaque and the group is faded as one, so where the
         // tail meets the rounded corner it is no darker than elsewhere.
-        let mark = CALayer()
+        let view = PassiveLayerView(frame: frame)
+        guard let mark = view.layer else { return }
         mark.allowsGroupOpacity = true
-        mark.frame = frame
         mark.opacity = Float(dark ? 0.14 : 0.1)
         let radius = layout.bare ? Metrics.controlRadius : Metrics.bubbleRadius
         let body = CAShapeLayer()
@@ -394,9 +397,9 @@ final class BubbleCell: NSView {
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        host.addSublayer(mark)
+        addSubview(view, positioned: .above, relativeTo: bubble)
         CATransaction.commit()
-        menuMark = mark
+        menuMark = view
         guard animated else { return }
         let fade = CABasicAnimation(keyPath: "opacity")
         fade.fromValue = 0
@@ -407,14 +410,14 @@ final class BubbleCell: NSView {
     }
 
     private func hideMenuMark(animated: Bool) {
-        guard let mark = menuMark else { return }
+        guard let view = menuMark else { return }
         menuMark = nil
-        guard animated else {
-            mark.removeFromSuperlayer()
+        guard animated, let mark = view.layer else {
+            view.removeFromSuperview()
             return
         }
         CATransaction.begin()
-        CATransaction.setCompletionBlock { mark.removeFromSuperlayer() }
+        CATransaction.setCompletionBlock { view.removeFromSuperview() }
         let fade = CABasicAnimation(keyPath: "opacity")
         fade.fromValue = mark.presentation()?.opacity ?? mark.opacity
         fade.toValue = 0
@@ -726,6 +729,22 @@ extension BubbleCell: NSPopoverDelegate {
         popoverMessage = nil
         if !hovering { hideHoverActions(animated: true) }
     }
+}
+
+/// A layer-backed view that only shows its layer: no drawing, no clicks.
+final class PassiveLayerView: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .never
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var isFlipped: Bool { true }
+    override var wantsUpdateLayer: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 // MARK: - Bubble

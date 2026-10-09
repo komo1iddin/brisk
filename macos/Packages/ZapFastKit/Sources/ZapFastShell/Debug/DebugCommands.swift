@@ -29,7 +29,8 @@ import ZapFastSharedUI
 /// - `react:<n>`, `sender:<n>`: the reaction picker, or the sender's page,
 ///   of the nth message from the bottom of the screen; answers with the
 ///   frames of the bubble and of the popover.
-/// - `menu:<n>`: the menu of the nth message from the bottom, with the
+/// - `menu:<n>[:hover]`: the menu of the nth message from the bottom (with
+///   its hover buttons up first, as a real pointer leaves them), with the
 ///   reactions above it; captures every window but the main one and closes it.
 /// - `arrive[:<text>]`, `compose:<text>`: a message arrives in, or is sent
 ///   from the composer of, the open chat (benchmark only).
@@ -273,7 +274,7 @@ enum DebugCommands {
             guard let content = mainWindow()?.contentView, let table = timeline(in: content) else { return }
             let n = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
             var lines: [String] = []
-            let target = TimelineDebug.menu(in: table, fromBottom: n) { menu in
+            let target = TimelineDebug.menu(in: table, fromBottom: n, hover: parts.count > 2 && parts[2] == "hover") { menu in
                 let others = NSApp.windows.filter { $0 !== mainWindow() && $0.isVisible }
                 for (index, window) in others.enumerated() {
                     let size = capture(window, to: "menu-\(index).png")

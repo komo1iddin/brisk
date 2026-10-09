@@ -23,6 +23,7 @@ public struct ChatActions: View {
         }
         Divider()
 
+        // What a reader flips often, one click each.
         if chat.looksUnread {
             Button("Mark as Read", systemImage: "checkmark.circle") { model.markRead(chat.id) }
         } else {
@@ -43,6 +44,16 @@ public struct ChatActions: View {
             }
         }
 
+        Button(
+            chat.archived ? "Unarchive" : "Archive",
+            systemImage: chat.archived ? "tray.and.arrow.up" : "archivebox"
+        ) {
+            model.setArchived(!chat.archived, chat: chat.id)
+        }
+
+        Divider()
+
+        // How the chat is filed and kept.
         Menu("Labels", systemImage: "tag") {
             ForEach(model.chats.labels, id: \.id) { label in
                 Toggle(isOn: Binding(
@@ -70,32 +81,28 @@ public struct ChatActions: View {
             Button("Always") { model.setMuted(until: 0, chat: chat.id) }
         }
 
-        ChatSoundMenu(chat: chat, model: model)
-
-        Button("Chat Theme…", systemImage: "paintpalette") { model.themeEditorChat = chat.id }
-
-        Divider()
-
         if chat.locked {
             Button("Unlock Chat", systemImage: "lock.open") { model.setLocked(false, chat: chat.id) }
         } else {
             Button("Lock Chat…", systemImage: "lock") { model.confirmLock(chat.id) }
         }
 
-        Button(
-            chat.archived ? "Unarchive" : "Archive",
-            systemImage: chat.archived ? "tray.and.arrow.up" : "archivebox"
-        ) {
-            model.setArchived(!chat.archived, chat: chat.id)
+        Divider()
+
+        // How it sounds and looks.
+        ChatSoundMenu(chat: chat, model: model)
+
+        Button("Chat Theme…", systemImage: "paintpalette") { model.themeEditorChat = chat.id }
+
+        Divider()
+
+        Menu("Chat History", systemImage: "clock.arrow.circlepath") {
+            // Reads this Mac's archive, then asks the phone for what it lacks.
+            Button("Download from Phone…", systemImage: "iphone.and.arrow.forward") { model.openPhoneFetch(chat.id) }
+            // Reads this Mac's archive only, so it works offline.
+            Button("Export Chat…", systemImage: "arrow.down.doc") { model.requestExport(chat.id) }
         }
-
-        // Reads this Mac's archive only, so it works offline.
-        Button("Export Chat…", systemImage: "arrow.down.doc") { model.requestExport(chat.id) }
-            .disabled(model.exportingChat != nil)
-
-        // Reads this Mac's archive, then asks the phone for what it lacks.
-        Button("Download from Phone…", systemImage: "iphone.and.arrow.forward") { model.openPhoneFetch(chat.id) }
-            .disabled(model.exportingChat != nil)
+        .disabled(model.exportingChat != nil)
 
         // Both reach the phone first, so they wait for a connection.
         Button("Clear Chat…", systemImage: "eraser") { model.confirmClear(chat.id) }

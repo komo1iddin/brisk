@@ -245,7 +245,7 @@ and in a group, by whom (from the receipts ZapFast recorded since the
 message was sent). A chat's menu can clear its messages or delete it,
 after asking, here and on the phone; both need a connection.
 
-**Export Chat…** in a chat's menu writes the chat as a conversation to read: it asks
+**Export Chat…** (Chat History in a chat's menu) writes the chat as a conversation to read: it asks
 for a place, makes a folder there named like the phone's ("WhatsApp Chat - Name", never
 replacing one that exists), and opens its `messages.html` in the browser. The page shows who wrote
 each message (a name and a round avatar with their initials where a run of messages
@@ -263,7 +263,7 @@ disturb the open chat; a chat holds what this Mac has, which can start later tha
 does, and attachments that were never downloaded are left out and counted in the notice.
 A Lottie sticker is written as a file, since a browser cannot play it.
 
-**Download from Phone…** in a chat's menu gets what the chat has on the phone and this Mac
+**Download from Phone…** (Chat History in a chat's menu) gets what the chat has on the phone and this Mac
 does not. Files come one at a time as they scroll into view, once, so the sheet counts
 what a chat holds (`ChatReader.census`, `Bridge/src/export.rs`: messages, since when, and
 each photo, video, voice message, audio file and document with whether its file is here)

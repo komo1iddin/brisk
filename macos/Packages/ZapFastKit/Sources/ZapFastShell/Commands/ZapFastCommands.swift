@@ -64,6 +64,12 @@ struct ZapFastCommands: Commands {
 
             Button("Join Group with Link…") { model.askForInviteLink() }
                 .disabled(!model.isLinked || locked)
+
+            // The link, not the app: beside what is made over it rather
+            // than between About and Settings.
+            Divider()
+            Button("Reconnect") { model.reconnect() }
+                .disabled(model.session.isConnected)
         }
 
         CommandGroup(after: .textEditing) {
@@ -115,12 +121,9 @@ struct ZapFastCommands: Commands {
                 .disabled(locked)
         }
 
-        CommandGroup(after: .appInfo) {
-            Button("Reconnect") { model.reconnect() }
-                .disabled(model.session.isConnected)
-        }
-
-        CommandGroup(after: .appSettings) {
+        // Locking ends a sitting as quitting does: last, just above Quit,
+        // as Lock Screen sits above Log Out in the Apple menu.
+        CommandGroup(before: .appTermination) {
             Button("Lock ZapFast") { model.appLock.lock() }
                 .keyboardShortcut("l", modifiers: [.command, .control])
                 .disabled(!model.appLock.isEnabled || model.appLock.isLocked)

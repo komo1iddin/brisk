@@ -285,7 +285,7 @@ phone did not answer (open WhatsApp on it and try again), or the link was down.
 When the network returns while a linked device is not connected, `NetworkWatch` reconnects
 at once (`BridgeClient.reconnect_now`, which pauses and resumes the library's client, the
 way it is told to skip its wait of up to fifteen minutes), and again a few times at growing
-gaps if that did not take; **Reconnect** in the menu does the same.
+gaps if that did not take; File › **Reconnect** does the same.
 
 Settings › Privacy also shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and

@@ -287,12 +287,12 @@ at once (`BridgeClient.reconnect_now`, which pauses and resumes the library's cl
 way it is told to skip its wait of up to fifteen minutes), and again a few times at growing
 gaps if that did not take; File › **Reconnect** does the same.
 
-Settings › Privacy also shows who sees your last seen, online status,
+Settings › Privacy › Personal Info shows who sees your last seen, online status,
 profile photo and About, who can add you to groups, read receipts and
 calls. The values live on the phone: they are read each time Settings
-opens and changed one at a time. Read receipts and typing for this Mac sit there too.
+opens and changed one at a time. Read receipts and typing for this Mac are under This Mac.
 
-Settings › Privacy sets an app lock, as upstream's: a password asked at
+Settings › Privacy › This Mac sets an app lock, as upstream's: a password asked at
 start and after 1 minute, 15 minutes or an hour without use, or at once
 with ⌃⌘L. Touch ID can open it instead. Only a salted PBKDF2 verifier
 is kept; while locked nothing is marked read and notifications say only
@@ -302,7 +302,7 @@ unlinking.
 A chat's menu can lock it with WhatsApp's chat lock, which syncs with
 the phone. Locked chats leave the list, search, badges and
 notifications, and open under Locked Chats with a local code (set the
-first time, changed in Settings › Privacy) or Touch ID. Going back or
+first time, changed in Settings › Privacy › This Mac) or Touch ID. Going back or
 closing the window locks them again; they are read-only here, as
 upstream's are.
 

@@ -3,120 +3,180 @@ import ZapFastBridge
 import ZapFastCore
 import ZapFastDesign
 
-/// The app lock: turn it on with a password, change or turn it off (the
-/// current password first), when it closes, and Touch ID.
+/// Privacy in two tabs of the system's own tab view, as Transmission splits
+/// its tall panes: what the account shows everyone, kept on the phone, and
+/// what this Mac does: receipts, typing, the app lock (turn it on with a
+/// password, change or turn it off with the current one first, when it
+/// closes, and Touch ID) and the Locked Chats code. As one grouped form it
+/// was taller than most screens.
+///
+/// Inside the tab view's box the rows are a columns form, labels to the
+/// left of their controls, as preference panes inside a box are laid out.
 struct PrivacySettings: View {
     let model: AppModel
+    @AppStorage("privacySettingsPage") private var page: Page = .personalInfo
     @State private var form: AppLock.FormMode?
     @State private var codeForm: CodeFormMode?
 
+    enum Page: String {
+        case personalInfo, thisMac
+    }
+
+
     var body: some View {
-        @Bindable var preferences = model.preferences
-        @Bindable var accountPreferences = model.accountPreferences
-        let lock = model.appLock
-        Form {
-            AccountPrivacySection(model: model)
-            Section {
-                Toggle("Send read receipts", isOn: $accountPreferences.sendReadReceipts)
-                Toggle("Show when you are typing", isOn: $accountPreferences.sendTyping)
-            } header: {
+        TabView(selection: $page) {
+            Tab(value: Page.personalInfo) {
+                AccountPrivacyForm(model: model)
+                    .settingsBox()
+            } label: {
+                Text("Personal Info")
+            }
+            Tab(value: Page.thisMac) {
+                thisMac
+                    .settingsBox()
+            } label: {
                 Text("This Mac")
-            } footer: {
-                Text(model.session.receiptsDisabled
-                    ? "Read receipts are off for your account, so only groups get them."
-                    : "With read receipts off, people don't see blue ticks or played voice messages from this Mac.")
-                    .settingsFootnote()
-            }
-            Section {
-                LabeledContent("App lock") {
-                    if lock.isEnabled {
-                        Button("Change Password…") { form = .change }
-                        Button("Turn Off…") { form = .turnOff }
-                    } else {
-                        Button("Set Password…") { form = .set }
-                    }
-                }
-                if lock.isEnabled {
-                    Picker("Lock after", selection: $preferences.appLockAfter) {
-                        Text("1 minute").tag(AutoLock.oneMinute)
-                        Text("15 minutes").tag(AutoLock.fifteenMinutes)
-                        Text("1 hour").tag(AutoLock.oneHour)
-                    }
-                    if AppLock.touchIDAvailable {
-                        Toggle("Unlock with Touch ID", isOn: $preferences.unlockWithTouchID)
-                    }
-                }
-            } footer: {
-                Text(lock.isEnabled
-                    ? "Time without using ZapFast, also counted while it is in the background. Lock ZapFast (⌃⌘L) locks it at once."
-                    : "Asks for a password at start and after a while unused. It keeps people using this Mac out of your chats and encrypts nothing more. A forgotten password means unlinking.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Section {
-                LabeledContent("Locked chats code") {
-                    if model.lockedChats.hasCode {
-                        Button("Change Code…") { codeForm = .change }
-                        Button("Remove…") { codeForm = .remove }
-                    } else {
-                        Button("Set Code…") { codeForm = .set }
-                    }
-                }
-            } footer: {
-                Text("Opens Locked Chats on this Mac. It hides chats; it doesn't encrypt them.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .settingsPane()
-        .onChange(of: preferences.appLockAfter) { model.appLock.noteInput() }
+        .tabViewStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, Metrics.l)
+        .padding(.top, Metrics.m)
+        .padding(.bottom, Metrics.l)
         .sheet(item: $form) { mode in
-            PasswordForm(mode: mode, lock: lock)
+            PasswordForm(mode: mode, lock: model.appLock)
         }
         .sheet(item: $codeForm) { mode in
             ChatLockCodeForm(mode: mode, lockedChats: model.lockedChats)
         }
     }
+
+    private var thisMac: some View {
+        @Bindable var preferences = model.preferences
+        @Bindable var accountPreferences = model.accountPreferences
+        let lock = model.appLock
+        return Form {
+            Section {
+                LabeledContent("Receipts:") {
+                    VStack(alignment: .leading, spacing: Metrics.s) {
+                        Toggle("Send read receipts", isOn: $accountPreferences.sendReadReceipts)
+                        Toggle("Show when you are typing", isOn: $accountPreferences.sendTyping)
+                    }
+                }
+                Text(model.session.receiptsDisabled
+                    ? "Read receipts are off for your account, so only groups get them."
+                    : "With read receipts off, people don't see blue ticks or played voice messages from this Mac.")
+                    .settingsCaption(endsGroup: true)
+            }
+            Section {
+                LabeledContent("App lock:") {
+                    HStack {
+                        if lock.isEnabled {
+                            Button("Change Password…") { form = .change }
+                            Button("Turn Off…") { form = .turnOff }
+                        } else {
+                            Button("Set Password…") { form = .set }
+                        }
+                    }
+                }
+                if lock.isEnabled {
+                    LabeledContent("Lock after:") {
+                        Picker("Lock after:", selection: $preferences.appLockAfter) {
+                            Text("1 minute").tag(AutoLock.oneMinute)
+                            Text("15 minutes").tag(AutoLock.fifteenMinutes)
+                            Text("1 hour").tag(AutoLock.oneHour)
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                    if AppLock.touchIDAvailable {
+                        Toggle("Unlock with Touch ID", isOn: $preferences.unlockWithTouchID)
+                    }
+                }
+                Text(lock.isEnabled
+                    ? "Time without using ZapFast, also counted while it is in the background. Lock ZapFast (⌃⌘L) locks it at once."
+                    : "Asks for a password at start and after a while unused. It keeps people using this Mac out of your chats and encrypts nothing more. A forgotten password means unlinking.")
+                    .settingsCaption(endsGroup: true)
+            }
+            Section {
+                LabeledContent("Locked chats:") {
+                    HStack {
+                        if model.lockedChats.hasCode {
+                            Button("Change Code…") { codeForm = .change }
+                            Button("Remove Code…") { codeForm = .remove }
+                        } else {
+                            Button("Set Code…") { codeForm = .set }
+                        }
+                    }
+                }
+                Text("The code opens Locked Chats on this Mac. It hides chats; it doesn't encrypt them.")
+                    .settingsCaption()
+            }
+        }
+        .onChange(of: preferences.appLockAfter) { model.appLock.noteInput() }
+    }
+}
+
+private extension View {
+    /// A columns form inside the tab view's box, with the box's margins.
+    func settingsBox() -> some View {
+        formStyle(.columns)
+            .padding(.horizontal, Metrics.xl)
+            .padding(.vertical, Metrics.xl)
+            .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    /// The small grey print under a control, in the small system size
+    /// preference panes use for it. One that closes a group of controls
+    /// leaves a gap before the next group, as the groups of a pane are
+    /// set apart by space rather than lines.
+    func settingsCaption(endsGroup: Bool = false) -> some View {
+        font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: 360, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 2)
+            .padding(.bottom, endsGroup ? Metrics.l : Metrics.xs)
+    }
 }
 
 /// Who sees what of the account. The values live on the phone: they are
 /// read each time Settings shows and written one at a time.
-private struct AccountPrivacySection: View {
+private struct AccountPrivacyForm: View {
     let model: AppModel
 
     var body: some View {
         let privacy = model.privacy
         let writable = privacy.isEditable && model.session.isConnected
-        Section {
-            ForEach(privacy.kinds, id: \.self) { kind in
-                Picker(selection: binding(kind)) {
-                    if privacy.choice(kind) == nil {
-                        Text(verbatim: "—").tag(PrivacyChoiceInfo?.none)
-                    }
-                    ForEach(privacy.choices(kind), id: \.self) { choice in
-                        Text(label(choice))
-                            .tag(Optional(choice))
-                            .selectionDisabled(!privacyChoices(kind: kind).contains(choice))
-                    }
-                } label: {
-                    HStack(spacing: Metrics.xs) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(label(kind))
-                            if let hint = hint(kind) {
-                                Text(hint).font(.caption).foregroundStyle(.secondary)
+        Form {
+            Section {
+                ForEach(privacy.kinds, id: \.self) { kind in
+                    LabeledContent(label(kind)) {
+                        Picker(selection: binding(kind)) {
+                            if privacy.choice(kind) == nil {
+                                Text(verbatim: "—").tag(PrivacyChoiceInfo?.none)
                             }
+                            ForEach(privacy.choices(kind), id: \.self) { choice in
+                                Text(label(choice))
+                                    .tag(Optional(choice))
+                                    .selectionDisabled(!privacyChoices(kind: kind).contains(choice))
+                            }
+                        } label: {
+                            Text(label(kind))
                         }
+                        .labelsHidden()
+                        .fixedSize()
+                        .disabled(!writable || privacy.isPending(kind))
                         if privacy.isPending(kind) { ProgressView().controlSize(.mini) }
                     }
+                    if let hint = hint(kind) {
+                        Text(hint).settingsCaption()
+                    }
                 }
-                .disabled(!writable || privacy.isPending(kind))
             }
-        } header: {
-            Text("Who Can See My Personal Info")
-        } footer: {
             Text(footer(privacy))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .settingsCaption()
+                .padding(.top, Metrics.m)
         }
         .onAppear { model.refreshPrivacy() }
     }
@@ -137,13 +197,13 @@ private struct AccountPrivacySection: View {
 
     private func label(_ kind: PrivacyKindInfo) -> LocalizedStringKey {
         switch kind {
-        case .lastSeen: "Last seen"
-        case .online: "Online"
-        case .profile: "Profile photo"
-        case .about: "About"
-        case .groupAdd: "Groups"
-        case .readReceipts: "Read receipts"
-        case .callAdd: "Calls"
+        case .lastSeen: "Last seen:"
+        case .online: "Online:"
+        case .profile: "Profile photo:"
+        case .about: "About:"
+        case .groupAdd: "Groups:"
+        case .readReceipts: "Read receipts:"
+        case .callAdd: "Calls:"
         }
     }
 

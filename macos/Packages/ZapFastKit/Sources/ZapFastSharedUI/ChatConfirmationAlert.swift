@@ -56,6 +56,17 @@ private struct ChatConfirmationAlert: ViewModifier {
                 Button("Delete Chat", role: .destructive) { model.perform(confirmation) }
             case .lock:
                 Button("Lock Chat") { model.perform(confirmation) }
+            case .leave:
+                let chat = model.chats.chat(confirmation.chat)
+                Button(chat?.isChannel == true ? "Leave Channel" : "Leave Group", role: .destructive) {
+                    model.perform(confirmation)
+                }
+                if let chat, !chat.archived {
+                    Button(chat.isChannel ? "Leave Channel and Archive" : "Leave Group and Archive", role: .destructive) {
+                        model.chatConfirmation = nil
+                        model.leaveGroup(chat, archive: true)
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: { confirmation in
@@ -67,6 +78,9 @@ private struct ChatConfirmationAlert: ViewModifier {
         switch confirmation?.action {
         case .delete: Text("Delete this chat?")
         case .lock: Text("Lock this chat?")
+        case .leave:
+            model.chats.chat(confirmation?.chat ?? "")?.isChannel == true
+                ? Text("Leave this channel?") : Text("Leave this group?")
         case .clear, nil: Text("Clear this chat?")
         }
     }
@@ -79,6 +93,8 @@ private struct ChatConfirmationAlert: ViewModifier {
             return String(localized: "This clears every message in your chat with \(name), including downloaded media, on this Mac and on your phone. The chat itself stays. It can't be undone.")
         case .delete:
             return String(localized: "This deletes your chat with \(name), including all messages, on this Mac and on your phone. It can't be undone.")
+        case .leave:
+            return String(localized: "You will not receive new messages. The local history stays on this computer.")
         case .lock:
             return String(localized: "This moves the chat to Locked Chats, hiding it from the chat list, search, unread badges and notifications. The lock also syncs to your phone. Open Locked Chats with a separate local ZapFast code to read it. Sending from locked chats isn't supported yet.")
         }

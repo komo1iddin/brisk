@@ -2236,8 +2236,14 @@ public final class AppModel {
         case .clear where canClearOrDeleteChats: backend.send(.clearChat(chat: confirmation.chat))
         case .delete where canClearOrDeleteChats: backend.send(.deleteChat(chat: confirmation.chat))
         case .lock: setLocked(true, chat: confirmation.chat)
+        case .leave: if let chat = chats.chat(confirmation.chat) { leaveGroup(chat, archive: false) }
         case .clear, .delete: break
         }
+    }
+
+    /// Asks before leaving a group or channel, from its row's menu.
+    public func confirmLeave(_ chat: String) {
+        chatConfirmation = ChatConfirmation(chat: chat, action: .leave)
     }
 
     // MARK: Intents: exporting a chat
@@ -2993,7 +2999,7 @@ public struct MessageDeletion: Identifiable, Equatable, Sendable {
 }
 
 public struct ChatConfirmation: Identifiable, Equatable, Sendable {
-    public enum Action: Sendable { case clear, delete, lock }
+    public enum Action: Sendable { case clear, delete, lock, leave }
     public var id: String { chat }
     public let chat: String
     public let action: Action

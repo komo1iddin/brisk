@@ -104,6 +104,19 @@ public struct ChatActions: View {
         }
         .disabled(model.exportingChat != nil)
 
+        if chat.kind == .direct, let number = PhoneFormat.display(id: chat.id) ?? chat.phone {
+            Button("Copy Number", systemImage: "phone") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(number, forType: .string)
+            }
+        }
+
+        if chat.canLeave(ours: model.ourIDs) {
+            Button(chat.isChannel ? "Leave Channel…" : "Leave Group…", systemImage: "rectangle.portrait.and.arrow.right") {
+                model.confirmLeave(chat.id)
+            }
+        }
+
         // Both reach the phone first, so they wait for a connection.
         Button("Clear Chat…", systemImage: "eraser") { model.confirmClear(chat.id) }
             .disabled(!model.canClearOrDeleteChats)

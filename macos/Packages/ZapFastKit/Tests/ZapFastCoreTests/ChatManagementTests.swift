@@ -255,4 +255,13 @@ struct ChatManagementTests {
         #expect(model.reactionNames("👍", on: message).hasPrefix("You, "))
     }
 
+
+    @Test func leavingFromTheRowMenuAsksFirst() {
+        let (model, backend) = model()
+        model.confirmLeave(group)
+        #expect(!backend.sent.contains { if case .leaveGroup = $0 { true } else { false } })
+        model.perform(model.chatConfirmation!)
+        #expect(backend.sent.last == .leaveGroup(chat: group, archive: false))
+    }
+
 }

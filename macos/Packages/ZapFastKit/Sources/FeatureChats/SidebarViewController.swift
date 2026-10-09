@@ -61,6 +61,20 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private var usesAccessories = false
     /// The sync status's accessory, shown while syncing or offline.
     private var syncAccessory: NSViewController?
+    /// The search bar's accessory, taken off in the collapsed sidebar.
+    private var searchAccessory: NSViewController?
+    private weak var item: NSSplitViewItem?
+    /// Only the chats' pictures, in a narrow column.
+    public private(set) var compact = false
+    /// The list is off screen (a narrow window shows the chat alone): its
+    /// toolbar items go too.
+    public var itemsHidden = false {
+        didSet {
+            guard itemsHidden != oldValue else { return }
+            itemsState = nil
+            updateItems(inLocked: model.lockedChats.isOpen)
+        }
+    }
 
     public init(model: AppModel) {
         self.model = model
@@ -102,11 +116,13 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     /// On macOS 26 the search bar and the sync status go in the item's
     /// accessories, under the toolbar and at the foot of the sidebar.
     public func install(in item: NSSplitViewItem) {
+        self.item = item
         if #available(macOS 26, *) {
             usesAccessories = true
             let top = NSSplitViewItemAccessoryViewController()
             top.view = searchBar
             item.addTopAlignedAccessoryViewController(top)
+            searchAccessory = top
             let bottom = NSSplitViewItemAccessoryViewController()
             bottom.view = sync
             bottom.isHidden = sync.isHidden
@@ -116,6 +132,23 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
             view.addSubview(searchBar)
             view.addSubview(sync)
         }
+        view.needsLayout = true
+    }
+
+    /// Collapses the list to the chats' pictures, or opens it again. The
+    /// search goes while collapsed, and so do the filter and New Chat.
+    public func setCompact(_ compact: Bool) {
+        guard compact != self.compact else { return }
+        self.compact = compact
+        if compact { setQuery("") }
+        searchBar.isHidden = compact
+        if #available(macOS 26, *), let accessory = searchAccessory as? NSSplitViewItemAccessoryViewController, let item {
+            // Hidden, an accessory keeps its room; off, the list moves up.
+            item.topAlignedAccessoryViewControllers = compact ? [] : [accessory]
+        }
+        table.compact = compact
+        itemsState = nil
+        updateItems(inLocked: model.lockedChats.isOpen)
         view.needsLayout = true
     }
 
@@ -269,7 +302,7 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         var bottom: CGFloat = 0
         if !usesAccessories {
             searchBar.frame = CGRect(x: 0, y: top, width: bounds.width, height: Self.searchBarHeight)
-            top += Self.searchBarHeight
+            if !compact { top += Self.searchBarHeight }
             let height = sync.isHidden ? 0 : sync.intrinsicContentSize.height
             sync.frame = CGRect(x: 0, y: bounds.height - height, width: bounds.width, height: height)
             bottom = height
@@ -418,10 +451,11 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         guard shown != itemsState || items.count != itemsStateCount else { return }
         itemsState = shown
         itemsStateCount = items.count
-        items[Self.filterItem]?.isHidden = away
-        items[Self.newChatItem]?.isHidden = away
+        items[Self.filterItem]?.isHidden = away || compact || itemsHidden
+        items[Self.newChatItem]?.isHidden = away || compact || itemsHidden
+        items[Self.accountsItem]?.isHidden = itemsHidden
         if let back = items[Self.backItem] {
-            back.isHidden = !away
+            back.isHidden = !away || itemsHidden
             back.label = inLocked ? String(localized: "Lock and Go Back") : String(localized: "Back to Chats")
             back.toolTip = inLocked ? String(localized: "Lock these chats again and go back") : back.label
         }

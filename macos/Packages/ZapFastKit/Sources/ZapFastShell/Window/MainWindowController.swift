@@ -39,7 +39,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window.toolbarStyle = .unified
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
-        window.contentMinSize = NSSize(width: 720, height: 480)
+        // Narrower than the list and a chat side by side, one of them shows.
+        window.contentMinSize = NSSize(width: 360, height: 480)
         super.init(window: window)
         window.delegate = self
         root.model = model
@@ -115,12 +116,46 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             root.show(.chats, chats: split)
             if window?.toolbar == nil { window?.toolbar = toolbar }
             split.detail.onChange = { [weak self] in self?.chatChanged() }
+            split.onArranged = { [weak self] in self?.arranged() }
             chatChanged()
+            arranged()
         } else {
             root.show(mode, chats: nil)
             window?.toolbar = nil
             window?.title = "ZapFast"
         }
+    }
+
+    /// In a narrow window the open chat has a way back to the list.
+    private func arranged() {
+        let alone = split.showsChatAlone
+        chatsBack?.isHidden = !alone
+        split.sidebar.itemsHidden = alone
+        // The collapsed sidebar has no room for its toggle, nor the chat
+        // alone a use for it; the View menu has it.
+        window?.toolbar?.items.first { $0.itemIdentifier == .toggleSidebar }?.isHidden = split.isCompact || split.isNarrow
+        // The space that pushes the sidebar's buttons to its edge would
+        // push the chat's name out of a narrow toolbar.
+        window?.toolbar?.items.first { $0.itemIdentifier == .flexibleSpace }?.isHidden = alone || split.isCompact
+        // The chat alone has no sidebar edge to follow: the separator would
+        // keep the old sidebar's room at the toolbar's start. The list alone
+        // keeps it, or its buttons would go with the hidden chat's section.
+        if let toolbar = window?.toolbar {
+            let index = toolbar.items.firstIndex { $0.itemIdentifier == .sidebarTrackingSeparator }
+            if alone, let index {
+                toolbar.removeItem(at: index)
+            } else if !alone, index == nil,
+                      let toggle = toolbar.items.firstIndex(where: { $0.itemIdentifier == .toggleSidebar }) {
+                toolbar.insertItem(withItemIdentifier: .sidebarTrackingSeparator, at: toggle + 1)
+            }
+        }
+    }
+
+    private var chatsBack: NSToolbarItem?
+    static let chatsBackItem = NSToolbarItem.Identifier("ZapFastChatsBack")
+
+    @objc private func backToChats() {
+        model.selectedChatID = nil
     }
 
     /// The window is named after the open chat, and the inspector shows
@@ -151,6 +186,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         SidebarViewController.newChatItem,
         .toggleSidebar,
         .sidebarTrackingSeparator,
+        MainWindowController.chatsBackItem,
         ChatDetailViewController.headerItem,
         .flexibleSpace,
         ChatDetailViewController.videoCallItem,
@@ -171,29 +207,69 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         _ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
-        split.sidebar.toolbarItem(identifier) ?? split.detail.toolbarItem(identifier)
+        if identifier == Self.chatsBackItem {
+            let item = NSToolbarItem(itemIdentifier: identifier)
+            item.image = NSImage(systemSymbolName: "chevron.backward", accessibilityDescription: nil)
+            item.label = String(localized: "Chats")
+            item.toolTip = String(localized: "Back to the chats")
+            item.isBordered = true
+            item.target = self
+            item.action = #selector(backToChats)
+            // The way back stays when a narrow toolbar hides the rest.
+            item.visibilityPriority = .user
+            item.isHidden = !split.showsChatAlone
+            chatsBack = item
+            return item
+        }
+        return split.sidebar.toolbarItem(identifier) ?? split.detail.toolbarItem(identifier)
     }
 }
 
 /// The sidebar, the chat and the chat's search.
+///
+/// Narrower than `narrowWidth`, as upstream's narrow window, one of the list
+/// and the chat shows: the list until a chat opens, then the chat with a way
+/// back. The sidebar can also collapse to the chats' pictures.
 @MainActor
 final class MainSplitViewController: NSSplitViewController {
     let sidebar: SidebarViewController
     let detail: ChatDetailViewController
+    private let model: AppModel
     private let sidebarItem: NSSplitViewItem
+    private let detailItem: NSSplitViewItem
     private let inspectorItem: NSSplitViewItem
     private var placedSidebar = false
+    private var narrow = false
+    /// The sidebar as the person left it before the window narrowed.
+    private var sidebarWasCollapsed = false
+    /// The sidebar's width before it collapsed to the pictures.
+    private var fullSidebarWidth: CGFloat = 320
+    private var compactShown = false
+    private var observed = 0
+    var onArranged: () -> Void = {}
+
+    static let narrowWidth: CGFloat = 620
+    static let compactWidth: CGFloat = 76
+
+    /// The sidebar shows only the chats' pictures.
+    var isCompact: Bool { compactShown }
+    var isNarrow: Bool { narrow }
+
+    /// A narrow window shows the open chat on its own.
+    var showsChatAlone: Bool { narrow && model.selectedChatID != nil }
 
     init(model: AppModel) {
+        self.model = model
         sidebar = SidebarViewController(model: model)
         detail = ChatDetailViewController(model: model, source: .selected)
         sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
         inspectorItem = NSSplitViewItem(inspectorWithViewController: detail.inspectorController)
+        detailItem = NSSplitViewItem(viewController: detail)
         super.init(nibName: nil, bundle: nil)
         sidebarItem.minimumThickness = 260
         sidebarItem.maximumThickness = 460
         sidebarItem.canCollapse = true
-        let detailItem = NSSplitViewItem(viewController: detail)
+        detailItem.canCollapse = true
         if #available(macOS 26, *) {
             // The chat's wallpaper reaches under the floating sidebar.
             detailItem.automaticallyAdjustsSafeAreaInsets = true
@@ -205,6 +281,69 @@ final class MainSplitViewController: NSSplitViewController {
         addSplitViewItem(detailItem)
         addSplitViewItem(inspectorItem)
         sidebar.install(in: sidebarItem)
+        observeArrangement()
+    }
+
+    /// A chat opening or closing, and the collapsed sidebar's setting,
+    /// change what shows.
+    private func observeArrangement() {
+        observed += 1
+        let round = observed
+        _ = withObservationTracking {
+            (model.selectedChatID, model.preferences.compactSidebar)
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self, self.observed == round else { return }
+                    self.observeArrangement()
+                }
+            }
+        }
+        arrange()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let now = view.bounds.width < Self.narrowWidth
+        // The list alone fills the window as it grows or shrinks.
+        if now, narrow, detailItem.isCollapsed, abs(sidebar.view.frame.width - view.bounds.width) > 1 {
+            DispatchQueue.main.async { [weak self] in self?.fillWithList() }
+        }
+        guard now != narrow else { return }
+        if now { sidebarWasCollapsed = sidebarItem.isCollapsed }
+        narrow = now
+        DispatchQueue.main.async { [weak self] in self?.arrange() }
+    }
+
+    private func fillWithList() {
+        guard narrow, detailItem.isCollapsed else { return }
+        splitView.setPosition(view.bounds.width, ofDividerAt: 0)
+    }
+
+    private func arrange() {
+        let compact = model.preferences.compactSidebar && !narrow
+        sidebar.setCompact(compact)
+        if narrow {
+            let chatOpen = model.selectedChatID != nil
+            sidebarItem.minimumThickness = 260
+            sidebarItem.maximumThickness = chatOpen ? 460 : NSSplitViewItem.unspecifiedDimension
+            detailItem.isCollapsed = !chatOpen
+            sidebarItem.isCollapsed = chatOpen
+            if !chatOpen { fillWithList() }
+        } else {
+            if compact, !compactShown, !sidebarItem.isCollapsed { fullSidebarWidth = sidebar.view.frame.width }
+            sidebarItem.minimumThickness = compact ? Self.compactWidth : 260
+            sidebarItem.maximumThickness = compact ? Self.compactWidth : 460
+            detailItem.isCollapsed = false
+            if sidebarItem.isCollapsed != sidebarWasCollapsed { sidebarItem.isCollapsed = sidebarWasCollapsed }
+            if compact != compactShown, !sidebarItem.isCollapsed {
+                splitView.setPosition(compact ? Self.compactWidth : fullSidebarWidth, ofDividerAt: 0)
+            }
+        }
+        compactShown = compact && !narrow
+        // The chat's own layout follows its new width now, not on the next resize.
+        detail.view.needsLayout = true
+        onArranged()
     }
 
     @available(*, unavailable)

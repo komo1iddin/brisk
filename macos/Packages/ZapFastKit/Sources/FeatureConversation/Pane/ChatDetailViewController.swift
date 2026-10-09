@@ -213,7 +213,9 @@ public final class ChatDetailViewController: NSViewController {
             item = TitleToolbarItem(itemIdentifier: identifier)
             item.view = host
             item.label = String(localized: "Chat")
-            item.visibilityPriority = .high
+            // The chat's name is the last to go when a narrow window's
+            // toolbar runs out of room.
+            item.visibilityPriority = .user
         case Self.searchItem:
             item = NSToolbarItem(itemIdentifier: identifier)
             item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)

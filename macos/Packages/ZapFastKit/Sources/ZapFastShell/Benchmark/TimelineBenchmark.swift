@@ -58,7 +58,9 @@ enum TimelineBenchmark {
             }
             let report = await BenchmarkRun(model: model, backend: backend).run()
             write(report, caches: AppPaths.standard().caches)
-            NSApp.terminate(nil)
+            // `ZAPFAST_BENCHMARK_KEEP=1` leaves the made-up chats on screen,
+            // to look at the window without real ones.
+            if ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_KEEP"] == nil { NSApp.terminate(nil) }
         }
     }
 

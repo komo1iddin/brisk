@@ -135,6 +135,18 @@ final class ChatCell: NSTableCellView {
     private let plain = RowLayerView(vibrant: false)
     private let avatarLayer = AvatarLayer()
     private let timer = CALayer()
+    /// In the collapsed sidebar: the unread count on the picture.
+    private let unread = CALayer()
+    /// Only the picture, centred, with the unread count on it.
+    var compact = false {
+        didSet {
+            guard compact != oldValue else { return }
+            vibrantText.isHidden = compact
+            plainText.isHidden = compact
+            placeLayers(bounds.size)
+            drawUnread()
+        }
+    }
     private let vibrantText = ChatRowLayer(pass: .vibrant)
     private let plainText = ChatRowLayer(pass: .plain)
     private(set) var chat: ChatSummary?
@@ -157,6 +169,9 @@ final class ChatCell: NSTableCellView {
         timer.isHidden = true
         timer.actions = ["contents": NSNull(), "hidden": NSNull(), "position": NSNull(), "bounds": NSNull()]
         plain.layer?.addSublayer(timer)
+        unread.isHidden = true
+        unread.actions = ["contents": NSNull(), "hidden": NSNull(), "position": NSNull(), "bounds": NSNull()]
+        plain.layer?.addSublayer(unread)
         setAccessibilityElement(true)
         setAccessibilityRole(.cell)
     }
@@ -216,6 +231,7 @@ final class ChatCell: NSTableCellView {
             timer.isHidden = !content.disappearing
             if content.disappearing { drawTimer() }
         }
+        if old?.badge != content.badge { drawUnread() }
         setAccessibilityLabel(content.accessibilityLabel)
     }
 
@@ -257,17 +273,64 @@ final class ChatCell: NSTableCellView {
         super.setFrameSize(newSize)
         vibrant.frame = bounds
         plain.frame = bounds
+        placeLayers(newSize)
+    }
+
+    private func placeLayers(_ newSize: NSSize) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let size = ChatCellMetrics.avatar
-        avatarLayer.frame = CGRect(x: 0, y: ((newSize.height - size) / 2).rounded(), width: size, height: size)
+        let x = compact ? ((newSize.width - size) / 2).rounded() : 0
+        avatarLayer.frame = CGRect(x: x, y: ((newSize.height - size) / 2).rounded(), width: size, height: size)
         let badge = Self.timerSize
         timer.frame = CGRect(
             x: avatarLayer.frame.maxX - badge * 0.8, y: avatarLayer.frame.maxY - badge * 0.8, width: badge, height: badge
         )
+        let count = unread.bounds.size
+        unread.frame = CGRect(
+            x: avatarLayer.frame.maxX - count.width * 0.7, y: avatarLayer.frame.minY - 2,
+            width: count.width, height: count.height
+        )
         vibrantText.frame = bounds
         plainText.frame = bounds
         CATransaction.commit()
+    }
+
+    /// The unread count, or a dot, in the accent colour on the picture's
+    /// corner, while the row has no room for it beside the name.
+    private func drawUnread() {
+        guard compact, let badge = content?.badge else {
+            unread.isHidden = true
+            return
+        }
+        let text: String? = switch badge {
+        case .count(let count): count > 99 ? "99+" : "\(count)"
+        case .dot: nil
+        }
+        let font = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        let label = text.map { NSAttributedString(string: $0, attributes: [.font: font, .foregroundColor: NSColor.white]) }
+        let height: CGFloat = text == nil ? 10 : 16
+        let width = max(height, (label?.size().width ?? 0) + 8)
+        let scale = window?.backingScaleFactor ?? 2
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
+                NSColor.windowBackgroundColor.setFill()
+                NSBezierPath(roundedRect: rect, xRadius: height / 2, yRadius: height / 2).fill()
+                NSColor.controlAccentColor.setFill()
+                let inner = rect.insetBy(dx: 1.5, dy: 1.5)
+                NSBezierPath(roundedRect: inner, xRadius: inner.height / 2, yRadius: inner.height / 2).fill()
+                if let label {
+                    let size = label.size()
+                    label.draw(at: NSPoint(x: (width - size.width) / 2, y: (height - size.height) / 2))
+                }
+                return true
+            }
+            unread.contents = image.layerContents(forContentsScale: scale)
+        }
+        unread.contentsScale = scale
+        unread.bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        unread.isHidden = false
+        placeLayers(bounds.size)
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -278,6 +341,7 @@ final class ChatCell: NSTableCellView {
         }
         if let content { avatarLayer.setColor(seed: content.seed, appearance: effectiveAppearance) }
         if content?.disappearing == true { drawTimer() }
+        drawUnread()
     }
 
     private static let timerSize: CGFloat = 16
@@ -329,6 +393,8 @@ final class FolderCell: NSTableCellView {
     private let plainText = FolderRowLayer(pass: .plain)
     private(set) var folderID: String?
     private var open: () -> Void = {}
+    /// Only the symbol, centred, in the collapsed sidebar.
+    var compact = false
 
     init() {
         super.init(frame: .zero)
@@ -352,7 +418,10 @@ final class FolderCell: NSTableCellView {
     func show(id: String, title: String, systemImage: String, count: Int?, open: @escaping () -> Void) {
         folderID = id
         self.open = open
-        let content = FolderRowLayer.Content(title: title, systemImage: systemImage, count: count.flatMap { $0 > 0 ? $0 : nil })
+        let content = FolderRowLayer.Content(
+            title: compact ? "" : title, systemImage: systemImage,
+            count: compact ? nil : count.flatMap { $0 > 0 ? $0 : nil }, centred: compact
+        )
         guard content != plainText.content else { return }
         for layer in [vibrantText, plainText] {
             layer.content = content
@@ -859,6 +928,8 @@ nonisolated final class FolderRowLayer: CALayer {
         var title: String
         var systemImage: String
         var count: Int?
+        /// In the middle of the row, in the collapsed sidebar.
+        var centred = false
     }
 
     let pass: DrawingPass
@@ -905,8 +976,9 @@ nonisolated final class FolderRowLayer: CALayer {
         if pass == .vibrant,
            let image = ChatRowDrawing.symbol(content.systemImage, size: body.pointSize, weight: .regular, color: .secondaryLabelColor) {
             let imageSize = image.size
+            let column = content.centred ? size.width : ChatCellMetrics.avatar
             image.draw(in: CGRect(
-                x: (ChatCellMetrics.avatar - imageSize.width) / 2, y: middle - imageSize.height / 2,
+                x: (column - imageSize.width) / 2, y: middle - imageSize.height / 2,
                 width: imageSize.width, height: imageSize.height
             ))
         }

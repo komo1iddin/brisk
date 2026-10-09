@@ -88,6 +88,14 @@ struct ZapFastCommands: Commands {
             }
         }
 
+        CommandGroup(after: .sidebar) {
+            Toggle("Show Only Chat Pictures", isOn: Binding(
+                get: { model.preferences.compactSidebar },
+                set: { model.preferences.compactSidebar = $0 }
+            ))
+            .keyboardShortcut("b", modifiers: [.command, .option])
+        }
+
         CommandGroup(after: .toolbar) {
             Divider()
             Button("Bigger") { model.changeTextSize(bigger: true) }

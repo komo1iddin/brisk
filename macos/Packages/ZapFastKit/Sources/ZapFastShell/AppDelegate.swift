@@ -44,6 +44,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if !(launchedAtLogin && hub.preferences.menuBarIcon) { window.show() }
         }
         if TimelineBenchmark.isRequested {
+            #if DEBUG
+            // Made-up chats in the real window, to drive from a shell too.
+            DebugCommands.start(hub: hub)
+            #endif
             TimelineBenchmark.start(model: model)
             return
         }

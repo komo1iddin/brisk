@@ -68,6 +68,12 @@ public final class Preferences {
         didSet { defaults.set(keepRunning, forKey: Key.keepRunning) }
     }
 
+    /// The chat list shows only the chats' pictures, in a narrow column
+    /// (upstream's collapsed sidebar).
+    public var compactSidebar: Bool {
+        didSet { defaults.set(compactSidebar, forKey: Key.compactSidebar) }
+    }
+
     /// Light, dark, or as macOS is (upstream's theme mode; its default is
     /// dark, a Mac's is to follow the system).
     public var appearance: AppAppearance {
@@ -170,6 +176,7 @@ public final class Preferences {
         textScale = defaults.double(forKey: Key.textScale)
         keepRunning = defaults.bool(forKey: Key.keepRunning)
         keepChatsArchived = defaults.bool(forKey: Key.keepChatsArchived)
+        compactSidebar = defaults.bool(forKey: Key.compactSidebar)
         appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init(rawValue:)) ?? .system
         proxy = defaults.string(forKey: Key.proxy) ?? ""
         reactionEmoji = defaults.data(forKey: Key.reactionEmoji)
@@ -198,6 +205,7 @@ public final class Preferences {
         static let keepRunning = "keepRunning"
         static let keepChatsArchived = "keepChatsArchived"
         static let appearance = "appearance"
+        static let compactSidebar = "compactSidebar"
         static let proxy = "proxy"
         static let reactionEmoji = "reactionEmoji"
         static let appLockVerifier = "appLockVerifier"

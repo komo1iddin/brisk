@@ -48,6 +48,15 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
     private var syncingSelection = false
     /// Rows drawn by Core Animation rather than SwiftUI views.
     var drawsRows = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
+    /// Only the pictures, in the collapsed sidebar; the name is the tooltip.
+    var compact = false {
+        didSet {
+            guard compact != oldValue else { return }
+            tableView.reloadData()
+            matchSelection(selectedID)
+        }
+    }
+    private var selectedID: String?
 
     /// `ListTableRowView` heights under SwiftUI's sidebar list.
     static let chatRowHeight: CGFloat = 56
@@ -223,6 +232,7 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
     }
 
     private func matchSelection(_ selection: String?) {
+        selectedID = selection
         let index = selection.flatMap { id in rows.firstIndex { $0.id == id } }
         guard index != (tableView.selectedRow >= 0 ? tableView.selectedRow : nil) else { return }
         syncingSelection = true
@@ -254,10 +264,12 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
         switch rows[row] {
         case let .folder(id, title, systemImage, count, open):
             let cell = tableView.makeView(withIdentifier: FolderCell.identifier, owner: nil) as? FolderCell ?? FolderCell()
+            cell.compact = compact
             cell.show(id: id, title: title, systemImage: systemImage, count: count, open: open)
             return cell
         case .chat(let chat):
             let cell = tableView.makeView(withIdentifier: ChatCell.identifier, owner: nil) as? ChatCell ?? ChatCell()
+            cell.compact = compact
             if let model { cell.show(chat, model: model) }
             return cell
         }
@@ -323,8 +335,15 @@ final class ChatTableController: NSObject, NSTableViewDataSource, NSTableViewDel
 
     /// The last message in full, for the row's tooltip.
     func toolTip(forRow row: Int) -> String? {
-        guard drawsRows, rows.indices.contains(row), case .chat(let chat) = rows[row] else { return nil }
-        return chat.last?.full.nonEmpty
+        guard drawsRows, rows.indices.contains(row) else { return nil }
+        switch rows[row] {
+        case .chat(let chat):
+            // Collapsed, the row has no name: the tooltip gives it.
+            guard compact, let model else { return chat.last?.full.nonEmpty }
+            return model.chats.title(for: chat)
+        case let .folder(_, title, _, _, _):
+            return compact ? title : nil
+        }
     }
 }
 

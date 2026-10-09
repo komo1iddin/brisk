@@ -107,6 +107,19 @@ enum DebugCommands {
             let steps = parts.count > 1 ? Int(parts[1]) ?? 40 : 40
             let points = parts.count > 2 ? Double(parts[2]) ?? 12 : 12
             write(name, resize(steps: steps, points: points))
+        case "width":
+            // width:<points> sets the main window's width, for the narrow layout.
+            guard parts.count > 1, let width = Double(parts[1]), let window = mainWindow() else { return }
+            var frame = window.frame
+            frame.size.width = width
+            window.setFrame(frame, display: true)
+            write(name, "\(window.frame.width)")
+        case "compact":
+            model.preferences.compactSidebar = parts.count > 1 && parts[1] == "on"
+            write(name, "\(model.preferences.compactSidebar)")
+        case "deselect":
+            model.selectedChatID = nil
+            write(name, "none")
         case "select":
             let index = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
             if model.sidebarOrder.indices.contains(index) { model.selectedChatID = model.sidebarOrder[index] }

@@ -44,6 +44,7 @@ struct ShortcutsSheet: View {
         ]),
         ("ZapFast", [
             Shortcut(keys: "⌘+ / ⌘− / ⌘0", does: "Bigger / smaller / actual size text"),
+            Shortcut(keys: "⌥⌘B", does: "Show only the chats' pictures"),
             Shortcut(keys: "⌘,", does: "Settings"),
             Shortcut(keys: "⌃⌘L", does: "Lock ZapFast"),
             Shortcut(keys: "⌘/", does: "These shortcuts"),

@@ -31,7 +31,7 @@ struct ComposerBar: View {
                     .transition(.opacity)
             }
             if let message = model.editing[chatID] {
-                EditPreview(message: message, escapes: !suggesting) {
+                EditPreview(message: message, model: model, escapes: !suggesting) {
                     withAnimation(.zf(reduceMotion)) { model.cancelEditing(in: chatID) }
                 }
                 .modifier(ComposerPanelSurface())
@@ -637,6 +637,7 @@ private struct UnsentVoiceStrip: View {
 /// button (or Escape) to leave it as it was.
 private struct EditPreview: View {
     let message: MessageRecord
+    let model: AppModel
     /// Escape cancels, unless mention suggestions have it.
     let escapes: Bool
     let cancel: () -> Void
@@ -650,7 +651,9 @@ private struct EditPreview: View {
                 Text("Editing message")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tint)
-                Text(message.summary)
+                Text(WhatsAppMarkup.resolvingMentions(
+                    message.summary, mentions: message.mentions, name: { model.chats.displayName($0) }
+                ))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -686,7 +689,9 @@ private struct ReplyPreview: View {
                 Text("Replying to \(model.chats.displayName(message.sender, hint: message.senderName))")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(nameColor)
-                Text(message.summary)
+                Text(WhatsAppMarkup.resolvingMentions(
+                    message.summary, mentions: message.mentions, name: { model.chats.displayName($0) }
+                ))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

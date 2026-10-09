@@ -170,8 +170,9 @@ private struct QuoteView: View {
     @Environment(\.messageTextScale) private var scale
 
     var body: some View {
-        let preview = QuotePreview(
-            quoted, original: quoted.id.isEmpty ? nil : model.conversations.conversation(chat).message(quoted.id)
+        let preview = QuotePreview.named(
+            quoted, original: quoted.id.isEmpty ? nil : model.conversations.conversation(chat).message(quoted.id),
+            name: { model.chats.displayName($0) }
         )
         let size = TimelineText.bodyFonts(scale: scale).name.pointSize
         let name = model.chats.displayName(quoted.sender, hint: quoted.senderName)

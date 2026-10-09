@@ -96,7 +96,9 @@ extension BubbleSource {
             senderID: message.sender,
             forwarded: message.forwarded,
             quote: message.quoted.map { quoted in
-                let preview = QuotePreview(quoted, original: quoted.id.isEmpty ? nil : original(quoted.id))
+                let preview = QuotePreview.named(
+                    quoted, original: quoted.id.isEmpty ? nil : original(quoted.id), name: { chats.displayName($0) }
+                )
                 let name = chats.displayName(quoted.sender, hint: quoted.senderName)
                 return .init(
                     name: name, summary: preview.summary, senderID: quoted.sender,

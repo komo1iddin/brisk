@@ -12,6 +12,18 @@ nonisolated struct QuotePreview: Equatable, Sendable {
     /// The quoted message's JPEG preview.
     var thumbnail: Data?
 
+    /// With `@number` mentions named, as upstream's `quote_mentions` does:
+    /// in a group of privacy ids a quote otherwise shows bare numbers.
+    static func named(
+        _ quoted: QuotedMessage, original: MessageRecord?, name: (String) -> String
+    ) -> QuotePreview {
+        var preview = QuotePreview(quoted, original: original)
+        preview.summary = WhatsAppMarkup.resolvingMentions(
+            preview.summary, mentions: quoted.mentions + (original?.mentions ?? []), name: name
+        )
+        return preview
+    }
+
     init(summary: String, symbol: String? = nil, thumbnail: Data? = nil) {
         self.summary = summary
         self.symbol = symbol

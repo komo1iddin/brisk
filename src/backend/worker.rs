@@ -977,6 +977,8 @@ struct ParsedChat {
     revoked: Vec<String>,
     poll_updates: Vec<HistoryPollUpdate>,
     reactions: Vec<HistoryReaction>,
+    /// HD copies of photos, applied to the photos once those are filed.
+    hd_copies: Vec<wa::Message>,
 }
 
 /// Counts only. Never put message keys, bodies, names, or raw protobufs here:
@@ -4451,6 +4453,11 @@ impl Worker {
                 let _ = self
                     .archive
                     .set_content(&id, &revoked, &Content::Revoked, false);
+            }
+            // After the photos: a replayed photo brings back its standard
+            // keys, and its HD copy comes in the same chunk.
+            for copy in &chat.hd_copies {
+                self.upgrade_to_hd(&id, copy);
             }
             if (metadata || existing.is_none())
                 && let Some(snapshot_unread) = chat.unread
@@ -9382,6 +9389,7 @@ fn parse_conversation(conversation: wa::Conversation) -> ParsedChat {
     let mut revoked = Vec::new();
     let mut poll_updates = Vec::new();
     let mut reactions = Vec::new();
+    let mut hd_copies = Vec::new();
     let mut newest = 0;
     for entry in &conversation.messages {
         let Some(info) = entry.message.as_option() else {
@@ -9522,6 +9530,10 @@ fn parse_conversation(conversation: wa::Conversation) -> ParsedChat {
                 timestamp,
                 update: update.clone(),
             });
+            continue;
+        }
+        if is_hd_copy(message) {
+            hd_copies.push(message.clone());
             continue;
         }
         let Some(mut content) = classify(message) else {
@@ -9690,6 +9702,7 @@ fn parse_conversation(conversation: wa::Conversation) -> ParsedChat {
         revoked,
         poll_updates,
         reactions,
+        hd_copies,
     }
 }
 
@@ -11530,6 +11543,43 @@ mod tests {
     }
 
     #[test]
+    fn a_photo_from_history_takes_its_hd_copy_from_the_same_chunk() {
+        use receipt_tests::{PEER, file_history_entries, history_entry};
+        let (mut worker, _events, _, _) = receipt_tests::worker();
+        let chunk = || {
+            vec![
+                history_entry(
+                    PEER,
+                    "photo",
+                    false,
+                    None,
+                    standard_photo(),
+                    Vec::new(),
+                    None,
+                ),
+                history_entry(
+                    PEER,
+                    "photo-hd",
+                    false,
+                    None,
+                    hd_copy_of("photo"),
+                    Vec::new(),
+                    None,
+                ),
+            ]
+        };
+        // The second time is a replay, which files the standard photo again.
+        for _ in 0..2 {
+            file_history_entries(&mut worker, chunk());
+            let raw = worker.archive.raw(PEER, "photo").unwrap().unwrap();
+            let stored = wa::Message::decode_from_slice(&raw).unwrap();
+            let picture = stored.image_message.as_option().unwrap();
+            assert_eq!(picture.direct_path.as_deref(), Some("/hd"));
+            assert!(worker.archive.message(PEER, "photo-hd").unwrap().is_none());
+        }
+    }
+
+    #[test]
     fn an_hd_copy_of_nothing_we_have_changes_nothing() {
         let (mut worker, _events, _, _) = receipt_tests::worker();
         let chat = file_photo(&mut worker, false, None);
@@ -13159,7 +13209,7 @@ mod receipt_tests {
         assert_eq!(stored.reactions[0].sender, reactor);
     }
 
-    fn file_history_entries(worker: &mut Worker, messages: Vec<wa::HistorySyncMsg>) {
+    pub(super) fn file_history_entries(worker: &mut Worker, messages: Vec<wa::HistorySyncMsg>) {
         worker.apply_history(
             ParsedHistory {
                 chats: vec![parse_conversation(wa::Conversation {
@@ -15744,6 +15794,7 @@ mod chat_removal_tests {
                 revoked: Vec::new(),
                 poll_updates: Vec::new(),
                 reactions: Vec::new(),
+                hd_copies: Vec::new(),
             }],
             push_names: Vec::new(),
             lids: Vec::new(),

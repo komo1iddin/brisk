@@ -314,11 +314,11 @@ private extension MessageRecord {
 /// A message's menu from the moment it begins tracking to its close.
 @MainActor
 final class MessageMenuSession {
-    private let bar: MenuReactionBar?
+    let bar: MenuReactionBar?
     private let mark: (Bool) -> Void
-    private weak var menu: NSMenu?
-    private var observers: [NSObjectProtocol] = []
-    private var ended = false
+    weak var menu: NSMenu?
+    var observers: [NSObjectProtocol] = []
+    var ended = false
 
     init(menu: NSMenu, bar: MenuReactionBar?, mark: @escaping (Bool) -> Void) {
         self.menu = menu

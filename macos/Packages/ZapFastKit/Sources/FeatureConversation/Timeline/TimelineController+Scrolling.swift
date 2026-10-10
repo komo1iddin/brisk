@@ -78,7 +78,7 @@ extension TimelineController {
 
     /// Scrolls to `y`, kept within the content, animated unless Reduce
     /// Motion is on.
-    private func scroll(toY y: CGFloat) {
+    func scroll(toY y: CGFloat) {
         tableView.layoutSubtreeIfNeeded()
         let insets = clip.contentInsets
         let lowest = -insets.top

@@ -50,7 +50,7 @@ public struct SettingsView: View {
                 }
             }
         }
-        .frame(width: 560)
+        .frame(width: SettingsScreen.width)
     }
 }
 
@@ -487,6 +487,9 @@ struct SettingsPaneHeight: Layout {
 
 /// How tall a Settings tab may be on this screen.
 enum SettingsScreen {
+    /// The Settings window's width, the same for every tab.
+    static let width: CGFloat = 560
+
     /// The screen's height left under the menu bar, less the Settings
     /// window's title bar and tab bar and a margin.
     static var paneLimit: CGFloat {

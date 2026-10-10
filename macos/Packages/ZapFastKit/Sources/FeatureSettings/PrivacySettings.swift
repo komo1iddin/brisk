@@ -40,6 +40,10 @@ struct PrivacySettings: View {
         }
         .tabViewStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+        // Never narrower than it is drawn: AppKit fits the tab buttons to
+        // the width of a layout pass, and a pass at next to no width once
+        // left them as one truncated "P…" button in a full-width box.
+        .frame(minWidth: SettingsScreen.width - 2 * Metrics.l)
         .padding(.horizontal, Metrics.l)
         .padding(.top, Metrics.m)
         .padding(.bottom, Metrics.l)

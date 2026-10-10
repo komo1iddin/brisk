@@ -40,6 +40,10 @@ macos/
 │   └── Sources/
 │       ├── ZapFastBridge/     generated Swift over the FFI (+ conformances)
 │       ├── ZapFastCore/       AppModel, stores, formatting (no views)
+│       │   ├── Intents/       one file per subject the interface asks for
+│       │   ├── Events/        applying backend events; notifications and notices
+│       │   ├── Stores/        the observable state the views read
+│       │   └── Models/        the values those two pass around
 │       ├── ZapFastDesign/     tokens, asset colours, generic components
 │       ├── ZapFastSharedUI/   components that need both the model and the kit
 │       ├── FeatureOnboarding/ linking: QR, phone pairing, connection states
@@ -103,6 +107,12 @@ single-account setup into account 1 with upstream's
 `adopt_single_account`, which copies the archive's keychain key before the
 archive moves and refuses when anything is in the way; the call history
 moves beside it, key first.
+
+`AppModel` is one class in several files: the class itself holds the stores
+and its own state, `Events/` applies what the backend reports, and each file
+in `Intents/` is one subject the interface asks for (attachments, forwarding,
+search). An extension cannot hold a stored property, so all of them stay on
+the class.
 
 `AccountHub` keeps one `AppModel` per account. The one on screen is read;
 the others keep running and notify, but send no receipts and are not

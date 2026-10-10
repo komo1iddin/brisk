@@ -299,6 +299,7 @@ private struct ChatSettings: View {
                     Text(verbatim: "A").font(.title3)
                 }
                 Toggle("Show quick reactions above a message's menu", isOn: $preferences.menuReactions)
+                Toggle("Animate menus as they open", isOn: $preferences.menuAnimation)
                 Toggle("Show profile photos on voice messages", isOn: $preferences.voiceAvatars)
                 Toggle("Show the numbers of people not in your contacts in groups", isOn: $preferences.senderPhones)
             } header: {

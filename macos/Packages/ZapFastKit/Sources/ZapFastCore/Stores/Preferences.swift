@@ -111,6 +111,12 @@ public final class Preferences {
         didSet { defaults.set(menuReactions, forKey: Key.menuReactions) }
     }
 
+    /// Menus grow out of the point they open from, as in Telegram; off,
+    /// they appear at once, as the system shows them.
+    public var menuAnimation: Bool {
+        didSet { defaults.set(menuAnimation, forKey: Key.menuAnimation) }
+    }
+
     /// The sound a message we send makes as it leaves, as in Telegram.
     public var sendSound: SendSoundStyle {
         didSet { defaults.set(sendSound.rawValue, forKey: Key.sendSoundStyle) }
@@ -167,6 +173,7 @@ public final class Preferences {
             Key.senderPhones: true,
             Key.enterSends: true,
             Key.menuReactions: true,
+            Key.menuAnimation: true,
             Key.menuBarIcon: true,
             Key.textScale: 1.0,
             Key.keepRunning: true,
@@ -184,6 +191,7 @@ public final class Preferences {
         recentEmoji = defaults.stringArray(forKey: Key.recentEmoji) ?? []
         enterSends = defaults.bool(forKey: Key.enterSends)
         menuReactions = defaults.bool(forKey: Key.menuReactions)
+        menuAnimation = defaults.bool(forKey: Key.menuAnimation)
         // The first builds kept an on/off switch; off stays silent.
         let wasOff = defaults.object(forKey: Key.sendSound) as? Bool == false
         sendSound = defaults.string(forKey: Key.sendSoundStyle).flatMap(SendSoundStyle.init(rawValue:))
@@ -218,6 +226,7 @@ public final class Preferences {
         static let enterSends = "enterSends"
         static let sendSound = "sendSound"
         static let menuReactions = "menuReactions"
+        static let menuAnimation = "menuAnimation"
         static let sendSoundStyle = "sendSoundStyle"
         static let downloadFolder = "downloadFolder"
         static let menuBarIcon = "menuBarIcon"

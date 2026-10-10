@@ -34,6 +34,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        MenuOpening.start()
         // Avatars decode before any timeline is open to say which display.
         if let space = NSScreen.main?.colorSpace?.cgColorSpace { DisplayImage.colorSpace = space }
         if !Self.drawsSnapshotOnly {
@@ -96,6 +97,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeBadge()
         observeAppearance()
+        observeMenuAnimation()
         watchInput()
         watchShortcuts()
         let icon = MenuBarIcon(hub: hub)
@@ -230,6 +232,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } onChange: { [weak self] in
             DispatchQueue.main.async { self?.observeAppearance() }
+        }
+    }
+
+    /// Menus grow as they open, unless Settings turned it off.
+    private func observeMenuAnimation() {
+        withObservationTracking {
+            MenuOpening.isEnabled = hub.preferences.menuAnimation
+        } onChange: { [weak self] in
+            DispatchQueue.main.async { self?.observeMenuAnimation() }
         }
     }
 

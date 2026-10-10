@@ -127,7 +127,7 @@ folders, key and preferences go. The last account is only unlinked.
 
 Settings has a tab for each area, as the Mac's own apps do: General
 (login, menu bar, running in the background, downloads), Account, Chats
-(text size, Return, voice message photos, contacts), Notifications,
+(text size, Return, voice message photos, menu animation, contacts), Notifications,
 Appearance, Privacy and Advanced (proxy, GIPHY key, log). Each keeps a
 set height and scrolls, so the window fits the screen.
 

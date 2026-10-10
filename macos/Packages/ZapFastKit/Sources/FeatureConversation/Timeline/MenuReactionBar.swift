@@ -1,4 +1,5 @@
 import AppKit
+import ZapFastDesign
 
 /// The quick reactions in a capsule of their own above a message's menu,
 /// as Telegram shows them, instead of a React submenu inside it.
@@ -137,7 +138,7 @@ final class MenuReactionBar {
     /// Above the menu's window, its leading edge on the menu's, kept on
     /// screen; below the menu when there is no room above.
     private func place() {
-        guard let menuWindow = NSApp.windows.first(where: Self.isMenuWindow) else { return }
+        guard let menuWindow = MenuOpening.menuWindow() else { return }
         let menuFrame = menuWindow.frame
         let screen = (menuWindow.screen ?? NSScreen.main)?.visibleFrame ?? menuFrame
         let size = bar.frame.size
@@ -154,11 +155,6 @@ final class MenuReactionBar {
         panel.orderFrontRegardless()
         placed = true
         bar.appear(fromBelow: above)
-    }
-
-    private static func isMenuWindow(_ window: NSWindow) -> Bool {
-        window.isVisible && window.level == .popUpMenu
-            && String(describing: type(of: window)).contains("Menu")
     }
 }
 

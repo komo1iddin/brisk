@@ -40,7 +40,7 @@ impl PaletteTheme {
     }
 }
 
-fn hex(color: egui::Color32) -> String {
+fn hex(color: ecolor::Color32) -> String {
     format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b())
 }
 

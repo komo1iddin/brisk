@@ -8,8 +8,6 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3b7f7f85a7e5f68090000ed7622545829afd484d210358702ae4cb97dd0c320"
 dependencies = [
- "enumn",
- "serde",
  "uuid",
 ]
 
@@ -83,7 +81,6 @@ checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
  "once_cell",
- "serde",
  "version_check",
  "zerocopy",
 ]
@@ -1478,7 +1475,6 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
- "serde",
  "smallvec",
  "unicode-segmentation",
  "web-sys",
@@ -1494,9 +1490,6 @@ checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 name = "emath"
 version = "0.36.1"
 source = "git+https://github.com/crmne/egui?rev=ba6790fe7cf46e58e8d27ce1524cbfdee745e938#ba6790fe7cf46e58e8d27ce1524cbfdee745e938"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "emojis"
@@ -1544,17 +1537,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enumn"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f9ed6b3789237c8a0c1c505af1c7eb2c560df6186f01b098c3a1064ea532f38"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
 name = "env_filter"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1585,7 +1567,6 @@ dependencies = [
  "ahash",
  "ecolor",
  "emath",
- "epaint_default_fonts",
  "font-types",
  "harfrust",
  "log",
@@ -1593,7 +1574,6 @@ dependencies = [
  "parking_lot",
  "profiling",
  "self_cell",
- "serde",
  "skrifa",
  "smallvec",
  "unicode-bidi",
@@ -1601,11 +1581,6 @@ dependencies = [
  "unicode-segmentation",
  "vello_cpu",
 ]
-
-[[package]]
-name = "epaint_default_fonts"
-version = "0.36.1"
-source = "git+https://github.com/crmne/egui?rev=ba6790fe7cf46e58e8d27ce1524cbfdee745e938#ba6790fe7cf46e58e8d27ce1524cbfdee745e938"
 
 [[package]]
 name = "equivalent"
@@ -1794,7 +1769,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e64eb721ca85a34323425f4041adc5d82704d3782d5f8f03793bc012419dce23"
 dependencies = [
  "bytemuck",
- "serde",
 ]
 
 [[package]]
@@ -6706,7 +6680,7 @@ dependencies = [
  "base64 0.22.1",
  "cbc",
  "directories",
- "egui",
+ "ecolor",
  "emojis",
  "fastframe-i18n",
  "fastframe-log",
@@ -6766,7 +6740,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
- "egui",
+ "ecolor",
  "emojis",
  "fastframe-log",
  "fastframe-theme",
@@ -7061,6 +7035,11 @@ source = "git+https://github.com/crmne/egui?rev=ba6790fe7cf46e58e8d27ce1524cbfde
 
 [[patch.unused]]
 name = "egui_glow"
+version = "0.36.1"
+source = "git+https://github.com/crmne/egui?rev=ba6790fe7cf46e58e8d27ce1524cbfdee745e938#ba6790fe7cf46e58e8d27ce1524cbfdee745e938"
+
+[[patch.unused]]
+name = "epaint_default_fonts"
 version = "0.36.1"
 source = "git+https://github.com/crmne/egui?rev=ba6790fe7cf46e58e8d27ce1524cbfdee745e938#ba6790fe7cf46e58e8d27ce1524cbfdee745e938"
 

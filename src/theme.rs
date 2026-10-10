@@ -6,7 +6,7 @@
 //! themes. Everything that styles an egui context lives in `style`, behind
 //! the `ui` feature, and is re-exported here so call sites read the same.
 
-use egui::Color32;
+use ecolor::Color32;
 
 #[cfg(feature = "ui")]
 mod style;
@@ -172,42 +172,6 @@ impl Palette {
         }
     }
 
-    /// The soft shadow that lifts message bubbles and date chips off the
-    /// wallpaper: two points down with a short blur, a little denser than
-    /// the palette's own shadow colour, so custom themes steer it. A shadow
-    /// alone barely darkens a dark chat; [`Palette::raised_edge`] lights
-    /// the top as well.
-    pub fn bubble_shadow(&self) -> egui::epaint::Shadow {
-        egui::epaint::Shadow {
-            offset: [0, 2],
-            blur: 6,
-            spread: 0,
-            color: denser(self.lift_shadow(), SHADOW_DENSITY),
-        }
-    }
-
-    /// The shadow under a surface that floats over the window for a moment:
-    /// menus, toasts, the emoji picker, and egui's own popups.
-    pub fn float_shadow(&self) -> egui::epaint::Shadow {
-        egui::epaint::Shadow {
-            offset: [0, 6],
-            blur: 20,
-            spread: 0,
-            color: self.shadow,
-        }
-    }
-
-    /// The deeper shadow under a modal surface that holds the window until
-    /// it closes: dialogs, the update dialog, and the image preview.
-    pub fn modal_shadow(&self) -> egui::epaint::Shadow {
-        egui::epaint::Shadow {
-            offset: [0, 12],
-            blur: 40,
-            spread: 0,
-            color: self.shadow,
-        }
-    }
-
     /// The palette's shadow colour, no heavier than the light theme's: a
     /// dark palette's own shadow is meant for popups and menus, and under
     /// every bubble it weighed on an otherwise flat theme.
@@ -355,8 +319,6 @@ pub fn readable_on(background: Color32, color: Color32, toward: Color32, target:
     }
 }
 
-/// How much denser than the palette's shadow colour a bubble's shadow is.
-const SHADOW_DENSITY: f32 = 1.04;
 /// How far a dark theme's raised edge moves from the surface toward the text.
 const DARK_EDGE_TINT: f32 = 0.128;
 /// The light palette's shadow opacity, the most a raised surface casts.
@@ -365,13 +327,6 @@ const LIGHT_SHADOW_ALPHA: u8 = 50;
 const LIGHT_EDGE_TINT: f32 = 0.48;
 /// How thick the raised edge is, in points.
 pub const RAISED_EDGE: f32 = 1.0;
-
-/// `color` with its opacity scaled by `factor`, up to opaque.
-fn denser(color: Color32, factor: f32) -> Color32 {
-    let [r, g, b, a] = color.to_srgba_unmultiplied();
-    let alpha = (f32::from(a) * factor).round().clamp(0.0, 255.0) as u8;
-    Color32::from_rgba_unmultiplied(r, g, b, alpha)
-}
 
 /// Converts HSL to color bytes for non-egui drawing.
 pub fn hsl_rgb(hue: f32, saturation: f32, lightness: f32) -> [u8; 3] {

@@ -42,7 +42,10 @@ protocol. These notes are for coding agents and new contributors.
   half of `theme`, and the `zapfast` binary. Without it the crate is the
   engine alone: the protocol, the archive, the settings, the palettes and
   media decoding, which is what a host drawing its own interface links
-  (`default-features = false`). Nothing in the engine may reach into a
+  (`default-features = false`). The one egui crate the engine still pulls
+  comes from fastframe-theme, whose `Palette` trait is written in
+  `egui::Color32`; nothing in ZapFast's own engine names egui. Nothing in
+  the engine may reach into a
   gated module, and `cargo clippy --locked --no-default-features --lib --
   -D warnings` is how that is checked. Prefer moving the shared piece
   into the engine over gating a function: `PAGE` belongs to the archive,
@@ -165,8 +168,12 @@ protocol. These notes are for coding agents and new contributors.
   the colour maths (`blend`, `contrast`, `readable_on`), with no egui
   styling, so a host drawing its own interface reads the same themes.
   `src/theme/style.rs`, behind `ui` and re-exported from `theme`, owns the
-  fonts, icons, metrics and shared egui controls; `src/ui/widgets.rs` the
-  shared controls. New icons go in `assets/icons/` as 24px Lucide-style SVGs
+  fonts, icons, metrics, shadows and shared egui controls; `src/ui/widgets.rs`
+  the shared controls. Colours are `ecolor::Color32`, not `egui::Color32`:
+  the same type, named so that carrying a colour does not name a drawing
+  library. `src/wallpaper.rs` splits the same way, the doodle tint and
+  importing the reader's picture in the engine and `wallpaper/paint.rs`
+  behind `ui`. New icons go in `assets/icons/` as 24px Lucide-style SVGs
   and in the `fastframe_icons::icons!` table; an icon fastframe-icons already
   ships is named there as `lucide "name"` instead of copied.
 - `src/markup.rs` turns WhatsApp's text markup, links, and mentions into an

@@ -305,9 +305,9 @@ impl WallpaperColor {
 
     /// The colour drawn under `palette`: [`Self::Theme`] is its chat colour,
     /// read at draw time so a theme switch or Omarchy reload shows at once.
-    pub fn color32(self, palette: &crate::theme::Palette) -> egui::Color32 {
+    pub fn color32(self, palette: &crate::theme::Palette) -> ecolor::Color32 {
         match self.rgb() {
-            Some([r, g, b]) => egui::Color32::from_rgb(r, g, b),
+            Some([r, g, b]) => ecolor::Color32::from_rgb(r, g, b),
             None => palette.chat,
         }
     }
@@ -611,7 +611,7 @@ impl Settings {
     }
 
     /// The wallpaper colour for `palette`, with Theme resolved against it.
-    pub fn wallpaper_background(&self, palette: &crate::theme::Palette) -> egui::Color32 {
+    pub fn wallpaper_background(&self, palette: &crate::theme::Palette) -> ecolor::Color32 {
         self.wallpaper_color_for(palette.dark).color32(palette)
     }
 
@@ -1178,7 +1178,7 @@ mod tests {
         assert_eq!(settings.wallpaper_background(&light), light.chat);
         assert_eq!(settings.wallpaper_background(&dark), dark.chat);
         let mut custom = Palette::dark();
-        custom.chat = egui::Color32::from_rgb(30, 30, 46);
+        custom.chat = ecolor::Color32::from_rgb(30, 30, 46);
         assert_eq!(settings.wallpaper_background(&custom), custom.chat);
         // A fixed colour ignores the palette.
         let chosen = Settings {
@@ -1187,7 +1187,7 @@ mod tests {
         };
         assert_eq!(
             chosen.wallpaper_background(&custom),
-            egui::Color32::from_rgb(15, 36, 36)
+            ecolor::Color32::from_rgb(15, 36, 36)
         );
         assert_eq!(chosen.wallpaper_background(&light), light.chat);
     }

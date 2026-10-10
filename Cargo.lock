@@ -7589,6 +7589,7 @@ dependencies = [
  "cbc",
  "clap",
  "directories",
+ "ecolor",
  "eframe",
  "egui",
  "egui_extras",

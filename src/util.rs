@@ -762,6 +762,8 @@ mod tests {
         );
     }
 
+    // Reads through egui's own loaders, so only the interface build has them.
+    #[cfg(feature = "ui")]
     #[test]
     fn image_loader_reads_native_paths() {
         use egui::load::BytesPoll;

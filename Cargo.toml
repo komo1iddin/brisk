@@ -40,10 +40,11 @@ log = "0.4"
 directories = "6"
 # UI framework. glow avoids the larger wgpu dependency.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11", "persistence"], optional = true }
-# The palette is serialized into the settings, so the colour type needs
-# serde. eframe used to turn that on for us; without it the engine build
-# would not compile the palette.
-egui = { version = "0.36", features = ["serde"] }
+# `Color32` alone: the palette, the settings and the wallpaper's doodle tint
+# are colours, and carrying them must not pull a drawing library in. serde
+# because the palette is written to the settings file.
+ecolor = { version = "0.36", features = ["serde"] }
+egui = { version = "0.36", features = ["serde"], optional = true }
 egui_extras = { version = "0.36", features = ["file", "image", "svg", "webp", "gif"], optional = true }
 # Reads the colour emoji font's bitmaps for the demo tour's GIF fixtures. Keep
 # skrifa aligned with epaint to avoid compiling two versions.
@@ -256,6 +257,7 @@ ui = [
     "dep:arboard",
     "dep:clap",
     "dep:eframe",
+    "dep:egui",
     "dep:egui_extras",
     "dep:fastframe-emoji",
     "dep:fastframe-fonts",

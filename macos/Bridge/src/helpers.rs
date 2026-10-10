@@ -152,7 +152,7 @@ pub fn doodle_ink(background_hex: String) -> String {
     let digits = background_hex.trim_start_matches('#');
     let value = u32::from_str_radix(digits, 16).unwrap_or(0xefeae2);
     let [_, r, g, b] = value.to_be_bytes();
-    let ink = zapfast::wallpaper::doodle_ink(egui::Color32::from_rgb(r, g, b));
+    let ink = zapfast::wallpaper::doodle_ink(ecolor::Color32::from_rgb(r, g, b));
     let [r, g, b, a] = ink.to_srgba_unmultiplied();
     format!("#{r:02x}{g:02x}{b:02x}{a:02x}")
 }

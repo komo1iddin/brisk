@@ -53,10 +53,24 @@ if ! cmp -s "$work/out/ZapFastBridge.swift" "$generated/ZapFastBridge.swift"; th
 fi
 
 echo "▸ xcframework"
-rm -rf "$artifacts/ZapFastBridgeFFI.xcframework"
+framework="$artifacts/ZapFastBridgeFFI.xcframework"
 xcodebuild -create-xcframework \
   -library "$library" \
   -headers "$work/headers" \
-  -output "$artifacts/ZapFastBridgeFFI.xcframework" >/dev/null
+  -output "$work/ZapFastBridgeFFI.xcframework" >/dev/null
+
+# Put it in place only when it changed. It is a binary target, so a fresh
+# copy of the same bytes is still a change to Xcode, and every module that
+# depends on the bridge is rebuilt: all of them but ZapFastDesign. That was
+# 223 files and half a minute on a build where nothing had been edited.
+# `-create-xcframework` is reproducible for the same library, so comparing
+# is enough.
+if diff -r -q "$work/ZapFastBridgeFFI.xcframework" "$framework" >/dev/null 2>&1; then
+  echo "  Artifacts/ZapFastBridgeFFI.xcframework is unchanged"
+else
+  rm -rf "$framework"
+  mv "$work/ZapFastBridgeFFI.xcframework" "$framework"
+  echo "  updated Artifacts/ZapFastBridgeFFI.xcframework"
+fi
 
 echo "✓ bridge ready ($profile)"

@@ -514,6 +514,15 @@ Or `make bridge project` once, then work in `ZapFast.xcodeproj`. The scheme's
 pre-action rebuilds the bridge before every build (log in
 `Build/bridge-build.log`).
 
+That pre-action runs on every build, so it puts its two outputs in place
+only when they changed: `Generated/ZapFastBridge.swift` and the
+`ZapFastBridgeFFI.xcframework`. The xcframework is a binary target, and a
+fresh copy of the same bytes is still a change to Xcode, which then rebuilds
+every module that depends on the bridge: all of them but `ZapFastDesign`.
+Leaving that out cost 223 files and half a minute on a build where nothing
+had been edited. Keep both comparisons if you touch
+`Scripts/build-bridge.sh`.
+
 The app keeps its data in `~/Library/Application Support/<bundle id>` and
 `~/Library/Caches/<bundle id>`, separate from upstream ZapFast.
 Set `ZAPFAST_VERBOSE=1` for debug logging. Each launch logs how long its

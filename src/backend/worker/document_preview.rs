@@ -131,6 +131,66 @@ impl MediaKeys {
     }
 }
 
+impl Worker {
+    /// Fetches a document's sharper page preview, once a session, when the
+    /// archive holds none or only the small inline one.
+    pub(super) fn fetch_preview(&mut self, chat: ChatId, id: String) {
+        if self.previews.contains(&(chat.clone(), id.clone())) {
+            return;
+        }
+        // Not connected: asked again the next time the document shows.
+        let Some(client) = self.client.clone() else {
+            return;
+        };
+        self.previews.insert((chat.clone(), id.clone()));
+        let sharp = self
+            .archive
+            .message(&chat, &id)
+            .ok()
+            .flatten()
+            .and_then(|message| message.thumbnail)
+            .is_some_and(|thumbnail| thumbnail.len() >= document_preview::SHARP_PREVIEW_BYTES);
+        if sharp {
+            return;
+        }
+        let raw = self.archive.raw(&chat, &id).ok().flatten();
+        let Some(preview) = raw
+            .and_then(|raw| wa::Message::decode_from_slice(&raw).ok())
+            .and_then(|message| document_preview::DocumentPreview::of(message.get_base_message()))
+        else {
+            return;
+        };
+        let commands = self.commands.clone();
+        tokio::spawn(async move {
+            let result = with_attachment_deadline(document_preview::PREVIEW_TIMEOUT, async {
+                let payload = client
+                    .download(&preview)
+                    .await
+                    .map_err(|error| error.to_string())?;
+                preview.decrypt(payload)
+            })
+            .await;
+            let _ = commands.send(Command::PreviewFetched { chat, id, result });
+        });
+    }
+
+    /// Files the result and releases any picker request that started it.
+    pub(super) fn preview_fetched(
+        &mut self,
+        chat: ChatId,
+        id: String,
+        result: Result<Vec<u8>, String>,
+    ) {
+        match result {
+            Ok(jpeg) => match self.archive.set_thumbnail(&chat, &id, &jpeg) {
+                Ok(()) => self.emit_message(&chat, &id),
+                Err(error) => log::warn!("could not keep a document preview: {error}"),
+            },
+            Err(error) => log::info!("document preview unavailable: {error}"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

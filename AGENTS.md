@@ -90,6 +90,20 @@ protocol. These notes are for coding agents and new contributors.
   migration checkpoints the old WAL and verifies an encrypted staging file before
   atomic replacement. A locked or missing key stops linking; never fall back to
   a disposable archive. Tests use fixtures and mock credentials only.
+- `src/backend/worker/wrapped.rs` reads the messages WhatsApp sends inside
+  another message: each picture of an album, a Lottie sticker, and the HD
+  copy of a photo or video sent beside the standard one. A client that does
+  not know the wrapper skips what is inside, so `base_of` looks past it,
+  `as_lottie` marks what a Lottie wrapper held, `upgrade_to_hd` gives a photo
+  not yet downloaded the keys of its HD copy, and `backfill_wrapped_messages`
+  reads archived rows again once a wrapper is understood. `classify_base`
+  calls in; it does not spell any of this out.
+- Keep the fork's own code in `backend/worker/<topic>.rs`, never in the body
+  of `worker.rs`. Upstream owns that file, and every line added to it is a
+  conflict at the next sync. What must stay there is the integration: a
+  module declaration, a field on `Worker`, a call where upstream's own code
+  reaches ours. `git diff <merge-base> -- src/backend/worker.rs` should stay
+  small; it is 64 insertions today.
 - `src/model.rs` holds the app's own types. Views never touch a protobuf;
   the worker translates in `classify()` and `parse_conversation()`.
 - Individual **Delete for me** uses `Command::DeleteLocal` to send through

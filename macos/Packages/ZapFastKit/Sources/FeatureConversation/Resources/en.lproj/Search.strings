@@ -24,13 +24,13 @@
 "search.filter.remove" = "Remove this filter";
 
 /* Kinds of message */
-"search.kind.any" = "Any Kind";
+"search.kind.any" = "All";
 "search.kind.photos" = "Photos";
 "search.kind.videos" = "Videos";
 "search.kind.gifs" = "GIFs";
 "search.kind.files" = "Files";
 "search.kind.links" = "Links";
-"search.kind.voice" = "Voice Messages";
+"search.kind.voice" = "Voice";
 "search.kind.music" = "Music";
 
 /* The list of matches and of people */

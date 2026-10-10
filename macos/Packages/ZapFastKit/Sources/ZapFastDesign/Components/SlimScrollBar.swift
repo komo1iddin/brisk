@@ -1,10 +1,12 @@
 import SwiftUI
 
 public extension View {
-    /// A SwiftUI scroll view's bar as `SlimScroller` draws an AppKit one: a
-    /// short slim knob over the content, no track, shown while the pointer is
-    /// over the view, and dragged to scroll. The system's bar is wide when
-    /// macOS is set to always show bars, and takes room from the rows.
+    /// A SwiftUI scroll view's bar in `SlimScroller`'s look: a slim knob over
+    /// the content, no track, shown while the pointer is over the view, and
+    /// dragged to scroll. The system's bar is wide when macOS is set to
+    /// always show bars, and takes room from the rows. Unlike the chat list's,
+    /// the knob is as long as the share of the content in view: these lists
+    /// are short, and a short knob over one said there was far more to see.
     func slimScrollBar() -> some View {
         modifier(SlimScrollBar())
     }
@@ -19,8 +21,7 @@ private struct SlimScrollBar: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let knobWidth: CGFloat = 4
-    static let shortest: CGFloat = 36
-    static let longest: CGFloat = 84
+    static let shortest: CGFloat = 24
     static let inset: CGFloat = 2
 
     func body(content: Content) -> some View {
@@ -45,7 +46,7 @@ private struct SlimScrollBar: ViewModifier {
         let extent = geometry
         if extent.visible > 0, extent.content > extent.visible {
             let slot = extent.visible - 2 * Self.inset
-            let length = min(max(extent.visible / extent.content * slot, Self.shortest), min(Self.longest, slot))
+            let length = min(max(extent.visible / extent.content * slot, Self.shortest), slot)
             let range = extent.content - extent.visible
             let along = min(1, max(0, extent.offset / range))
             Capsule()

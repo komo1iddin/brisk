@@ -23,13 +23,13 @@
 "search.filter.remove" = "Bu filtrni olib tashlash";
 
 /* Xabar turlari */
-"search.kind.any" = "Har qanday tur";
+"search.kind.any" = "Hammasi";
 "search.kind.photos" = "Rasmlar";
 "search.kind.videos" = "Videolar";
 "search.kind.gifs" = "GIF'lar";
 "search.kind.files" = "Fayllar";
 "search.kind.links" = "Havolalar";
-"search.kind.voice" = "Ovozli xabarlar";
+"search.kind.voice" = "Ovozli";
 "search.kind.music" = "Musiqa";
 
 /* Natijalar va odamlar ro'yxati */

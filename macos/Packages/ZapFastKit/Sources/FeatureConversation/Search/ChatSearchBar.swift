@@ -19,6 +19,8 @@ struct ChatSearchBar: View {
     let model: AppModel
     @State private var focusRequest = 0
     @State private var choosingDay = false
+    /// The kinds of message show as chips under the bar.
+    @State private var choosingKind = false
     /// The person the arrow keys reached among those offered.
     @State private var person = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -29,6 +31,10 @@ struct ChatSearchBar: View {
         if let search = model.search.chat, search.chat == chatID {
             VStack(spacing: Metrics.s) {
                 bar(search)
+                if choosingKind {
+                    KindChips(kind: search.kind) { model.setChatSearchKind($0) }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 if search.pickingSender {
                     PeoplePicker(people: people(search), selected: person, model: model) { pick($0) }
                         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -42,6 +48,7 @@ struct ChatSearchBar: View {
             .padding(.bottom, Metrics.l)
             .animation(.zf(reduceMotion), value: search.listShown)
             .animation(.zf(reduceMotion), value: search.pickingSender)
+            .animation(.zf(reduceMotion), value: choosingKind)
             .onChange(of: model.chatSearchFocusRequests, initial: true) { focusRequest += 1 }
             .onChange(of: search.senderText) { person = 0 }
         }
@@ -99,7 +106,14 @@ struct ChatSearchBar: View {
                     if search.pickingSender { model.cancelPickingChatSearchSender() } else { model.beginPickingChatSearchSender() }
                 }
             }
-            KindMenu(kind: search.kind) { model.setChatSearchKind($0) }
+            BarButton(
+                symbol: search.kind == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill",
+                help: searchText("search.kind"),
+                active: choosingKind || search.kind != nil
+            ) {
+                choosingKind.toggle()
+                if choosingKind { model.cancelPickingChatSearchSender() }
+            }
             BarButton(symbol: "calendar", help: searchText("search.calendar"), active: search.day != nil) {
                 choosingDay.toggle()
             }
@@ -124,7 +138,7 @@ struct ChatSearchBar: View {
                 Text(shown)
             }
         }
-        if let kind = search.kind {
+        if let kind = search.kind, !choosingKind {
             Token(help: searchText("search.filter.remove"), remove: { model.setChatSearchKind(nil) }) {
                 Image(systemName: kind.symbol)
                 Text(kind.title)
@@ -163,11 +177,13 @@ struct ChatSearchBar: View {
         }
     }
 
-    /// Escape undoes one thing at a time: the picker, the list, the words,
-    /// and then the search itself.
+    /// Escape undoes one thing at a time: the picker, the kinds, the list,
+    /// the words, and then the search itself.
     private func escape(_ search: ChatSearch) {
         if search.pickingSender {
             model.cancelPickingChatSearchSender()
+        } else if choosingKind {
+            choosingKind = false
         } else if search.listShown {
             model.setChatSearchList(false)
         } else if !search.query.isEmpty {
@@ -310,35 +326,62 @@ private struct BarButton: View {
     }
 }
 
-/// The kinds of message, as a menu; the chosen one is ticked.
-private struct KindMenu: View {
+/// The kinds of message as a row of chips under the bar, as Telegram lays
+/// out a chat's shared media: one click keeps the search to a kind, and
+/// All lifts that. Solid, as the list is, so their words read over the chat.
+private struct KindChips: View {
     let kind: SearchKindInfo?
     let choose: (SearchKindInfo?) -> Void
 
     var body: some View {
-        Menu {
-            Picker(selection: Binding(get: { kind }, set: { choose($0) })) {
-                Label(searchText("search.kind.any"), systemImage: "tray.full").tag(SearchKindInfo?.none)
-                Divider()
-                ForEach(SearchKindInfo.all, id: \.self) { kind in
-                    Label(kind.title, systemImage: kind.symbol).tag(Optional(kind))
+        ScrollView(.horizontal) {
+            HStack(spacing: Metrics.xs) {
+                KindChip(title: searchText("search.kind.any"), symbol: "tray.full", selected: kind == nil) {
+                    choose(nil)
                 }
-            } label: {
-                EmptyView()
+                ForEach(SearchKindInfo.all, id: \.self) { item in
+                    KindChip(title: item.title, symbol: item.symbol, selected: kind == item) {
+                        choose(item)
+                    }
+                }
             }
-            .pickerStyle(.inline)
-        } label: {
-            Image(systemName: kind == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(kind == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(.tint))
+            .padding(.vertical, Metrics.xxs)
         }
-        .menuStyle(.button)
+        .scrollIndicators(.never)
+        .scrollClipDisabled()
+    }
+}
+
+private struct KindChip: View {
+    let title: String
+    let symbol: String
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.callout.weight(selected ? .semibold : .regular))
+                .lineLimit(1)
+                .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                .padding(.horizontal, Metrics.m)
+                .padding(.vertical, 6)
+                .background {
+                    if selected {
+                        Capsule().fill(.tint)
+                    } else {
+                        Capsule().fill(Color(nsColor: .windowBackgroundColor))
+                            .overlay(Capsule().fill(.primary.opacity(hovering ? 0.06 : 0)))
+                            .overlay(Capsule().strokeBorder(.separator))
+                    }
+                }
+                .shadow(color: .black.opacity(0.1), radius: 4, y: 1)
+                .contentShape(Capsule())
+        }
         .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .frame(width: 30, height: 30)
-        .fixedSize()
-        .help(searchText("search.kind"))
-        .accessibilityLabel(searchText("search.kind"))
+        .onHover { hovering = $0 }
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -530,7 +573,7 @@ extension SearchKindInfo {
         case .gifs: "play.square.stack"
         case .files: "doc"
         case .links: "link"
-        case .voice: "waveform"
+        case .voice: "mic"
         case .music: "music.note"
         }
     }

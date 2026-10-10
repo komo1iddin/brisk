@@ -350,7 +350,7 @@ word must match, in any order, from the start of a word (numbers match
 anywhere, so part of a part number finds it), in any case, with any of
 Uzbek's apostrophes (o', oʻ, o‘), and in Latin or Cyrillic: "o'zbek" finds
 "ўзбек". The person button keeps the search to one sender (type to narrow
-the list), the kind menu to photos, videos, GIFs, files, links, voice
+the list), a row of chips under the bar to photos, videos, GIFs, files, links, voice
 messages or music, and the calendar to one day; any of them with no words
 lists their messages. The calendar marks the days that have messages and
 goes to a day's first message, or, with Search Day chosen under it (or

@@ -9,6 +9,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::model::{Chat, ChatKind, Contact, Content, Delivery, LastMessage, Message};
 
+pub mod chat_search;
+pub use chat_search::{ChatSearch, ChatSearchHits, SearchKind, SearchSender};
 mod drafts;
 mod encryption;
 pub use encryption::{archive_key_identity, copy_archive_key, forget_archive_key};

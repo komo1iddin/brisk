@@ -37,6 +37,7 @@ use whatsapp_rust::{MediaRetryResult, MediaReuploadRequest};
 
 mod bot_replies;
 mod channel_pictures;
+mod chat_search;
 mod contact_names;
 mod device_store;
 mod document_preview;
@@ -1088,6 +1089,7 @@ impl Worker {
                 Event::Chats(_)
                     | Event::Drafts(_)
                     | Event::ChatHits { .. }
+                    | Event::ChatSearchHits(_)
                     | Event::ChatUpdated(_)
                     | Event::Messages { .. }
                     | Event::MessageUpdated(_)
@@ -4663,6 +4665,8 @@ impl Worker {
                 from,
                 until,
             } => self.search_chat_messages(chat, query, from, until),
+            Command::SearchChat(search) => self.search_chat(search),
+            Command::ChatDays { chat, starts } => self.chat_days(chat, starts),
             Command::EnsureChat { chat, name } => {
                 let is_new = self.archive.chat(&chat).ok().flatten().is_none();
                 if let Err(error) = self.archive.ensure_chat(&chat, &name) {

@@ -2943,6 +2943,7 @@ impl App {
                 self.toast_error(message);
             }
             Event::AccountRemoved => {}
+            Event::ChatSearchHits(_) | Event::ChatDays { .. } => {}
         }
         self.prune_selection();
     }

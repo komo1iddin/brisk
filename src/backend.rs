@@ -263,6 +263,13 @@ pub enum Command {
         from: Option<i64>,
         until: Option<i64>,
     },
+    /// Searches one chat by words, sender, kind and time.
+    SearchChat(crate::archive::ChatSearch),
+    /// The first message of each span between `starts`, for a calendar.
+    ChatDays {
+        chat: ChatId,
+        starts: Vec<i64>,
+    },
     /// Creates an archive chat before its first message is sent.
     EnsureChat {
         chat: ChatId,
@@ -801,6 +808,14 @@ pub enum Event {
         /// Whether the archive held more matches than `messages` carries, so
         /// the pane can say so instead of dropping them silently.
         truncated: bool,
+    },
+    /// The answer to `Command::SearchChat`.
+    ChatSearchHits(crate::archive::ChatSearchHits),
+    /// The first message of each span, answering `Command::ChatDays`.
+    ChatDays {
+        chat: ChatId,
+        starts: Vec<i64>,
+        first: Vec<Option<String>>,
     },
     ChatUpdated(Box<Chat>),
     /// Chat messages in ascending order. `older` prepends them; `complete`

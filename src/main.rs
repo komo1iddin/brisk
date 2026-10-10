@@ -160,7 +160,7 @@ fn run() -> eframe::Result<()> {
     }
     // The shell owns the window's egui context; the backend knows only that
     // something wants a frame. Binding the two here keeps egui out of the
-    // backend (see `zapfast::waker`).
+    // backend (see `zapfast::backend::Waker`).
     let shell_waker = fastframe_shell::Waker::default();
     let waker = backend::Waker::default();
     waker.attach({

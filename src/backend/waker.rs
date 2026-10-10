@@ -14,7 +14,7 @@
 //! egui, so that a build without the egui interface still links.
 //!
 //! A waker with nothing attached does nothing, which is what tests and
-//! headless runs want.
+//! headless runs want. It is re-exported as [`crate::backend::Waker`].
 
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;

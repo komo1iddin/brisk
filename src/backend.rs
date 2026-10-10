@@ -17,6 +17,7 @@ mod read_sync;
 pub(crate) mod sticker_import;
 mod sticker_maker;
 pub(crate) mod sticker_store;
+mod waker;
 mod worker;
 pub use client_hook::{ClientHook, set_client_hook};
 pub use worker::{PINNED_CHATS, PLUS_PINNED_CHATS};
@@ -1034,7 +1035,7 @@ pub enum Unsent {
 }
 
 /// Cross-thread wake handle: asks whoever draws for a new frame.
-pub use crate::waker::Waker;
+pub use waker::Waker;
 
 /// UI handle to the backend runtime.
 pub struct Backend {

@@ -62,7 +62,6 @@ pub mod util;
 #[cfg(feature = "ui")]
 pub mod video;
 pub mod voice;
-pub mod waker;
 pub mod wallpaper;
 #[cfg(feature = "ui")]
 pub mod window;

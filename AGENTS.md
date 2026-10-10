@@ -111,6 +111,12 @@ protocol. These notes are for coding agents and new contributors.
   costs as much as an insertion. `make footprint` prints both lists, ours
   alone and upstream's that we have edited, worst first; run it before
   `make sync`. Prefer a new file beside the upstream module it extends.
+- `src/` is flat because upstream keeps it flat: 42 of its 43 top-level
+  modules are upstream's. Do not sort them into folders. Upstream put 400
+  commits into `src/` in three months, `demo.rs` alone in 175 of them, and
+  every file moved turns each of those into a rename to resolve at every
+  sync from then on. Unlike the one-off cost of splitting `theme.rs`, that
+  one never stops.
 - `src/model.rs` holds the app's own types. Views never touch a protobuf;
   the worker translates in `classify()` and `parse_conversation()`.
 - Individual **Delete for me** uses `Command::DeleteLocal` to send through

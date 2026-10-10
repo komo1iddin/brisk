@@ -183,7 +183,7 @@ final class BubbleCell: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(id: String, layout: BubbleLayout, highlighted: Bool) {
+    func configure(id: String, layout: BubbleLayout, highlighted: Bool, searchMarking: SearchMarking? = nil) {
         if id != messageID || layout !== bubbleLayout {
             if id != messageID {
                 // A reused cell shows another message.
@@ -215,6 +215,11 @@ final class BubbleCell: NSView {
             watchMessage()
         }
         setHighlighted(highlighted, animated: false)
+        setSearchMarking(searchMarking)
+    }
+
+    func setSearchMarking(_ marking: SearchMarking?) {
+        bubble.setSearchMarks(marking)
     }
 
     /// The row scrolled out of the table, or the cell left its row (a

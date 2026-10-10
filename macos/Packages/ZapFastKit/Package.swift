@@ -107,6 +107,8 @@ let package = Package(
                 "ZapFastCore", "ZapFastDesign", "ZapFastSharedUI",
                 .product(name: "Lottie", package: "lottie-ios"),
             ],
+            // The search bar's words, one table per language.
+            resources: [.process("Resources")],
             swiftSettings: uiSettings
         ),
         .target(

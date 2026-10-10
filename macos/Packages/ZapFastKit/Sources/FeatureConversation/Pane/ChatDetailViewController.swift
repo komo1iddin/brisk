@@ -8,8 +8,8 @@ import ZapFastSharedUI
 
 /// An open chat in an AppKit window: its wallpaper, the chat's pane
 /// (timeline and composer), and the parts of the window that belong to the
-/// chat: the header, search and actions in the toolbar, the search in the
-/// inspector, and the sheets and dialogs SwiftUI presents. The main window
+/// chat: the header, search and actions in the toolbar, and the sheets and
+/// dialogs SwiftUI presents. The main window
 /// follows the chat picked in the sidebar; a chat's own window shows one.
 ///
 /// SwiftUI is used only in islands that lay out on their own changes: the
@@ -35,17 +35,8 @@ public final class ChatDetailViewController: NSViewController {
     /// The chat's name, for the window's title in the Window menu and the
     /// Dock; nil while no chat is open.
     public private(set) var chatTitle: String?
-    /// Whether the chat's search is open, which shows the inspector.
-    public private(set) var searchShown = false
-    /// The title or the search changed.
+    /// The title changed.
     public var onChange: () -> Void = {}
-
-    /// The inspector's content: the open chat's search.
-    public private(set) lazy var inspectorController: NSViewController = {
-        let controller = NSHostingController(rootView: AnyView(EmptyView()))
-        controller.sizingOptions = []
-        return controller
-    }()
 
     private var conversation: ConversationViewController?
     private let chrome = ConversationChrome()
@@ -125,8 +116,7 @@ public final class ChatDetailViewController: NSViewController {
                         members: chat.kind == .group ? model.chats.participantNames(chat) : ""
                     )
                 },
-                title: title,
-                search: id.map { model.search.chat?.chat == $0 } ?? false
+                title: title
             )
         } onChange: { [weak self] in
             DispatchQueue.main.async {
@@ -146,9 +136,8 @@ public final class ChatDetailViewController: NSViewController {
             shownHeader = state.header
             updateHeader()
         }
-        if state.title != chatTitle || state.search != searchShown {
+        if state.title != chatTitle {
             chatTitle = state.title
-            searchShown = state.search
             onChange()
         }
     }
@@ -177,7 +166,6 @@ public final class ChatDetailViewController: NSViewController {
             presenters.rootView = AnyView(EmptyView())
         }
         placeholder.isHidden = id != nil
-        (inspectorController as? NSHostingController<AnyView>)?.rootView = AnyView(ConversationInspector(chatID: id, model: model))
         view.needsLayout = true
     }
 

@@ -18,6 +18,8 @@ final class ConversationPaneState {
     /// The chat, without its latest activity, while it takes no messages
     /// from us; the composer's place says why.
     var closedChat: ChatSummary?
+    /// The chat's search bar is open over the timeline.
+    var searching = false
 }
 
 /// An open chat, in AppKit: the timeline is a plain subview, and around it
@@ -39,9 +41,13 @@ final class ConversationViewController: NSViewController {
     private let overlay = IslandHostingView(rootView: AnyView(EmptyView()))
     private let newest = IslandHostingView(rootView: AnyView(EmptyView()))
     private let bottomBar = NSHostingView(rootView: AnyView(EmptyView()))
+    /// The chat's search, over the top of the timeline. It sizes itself:
+    /// the bar, and the list under it while that is open.
+    private let searchBar = NSHostingView(rootView: AnyView(EmptyView()))
     private let titleBand = TitleBandView()
     private let bottomBand = BottomBandView()
     private var observed = 0
+    private var observedSearch = 0
     /// The theme the title band was veiled for.
     private var titleBandTheme: String?
 
@@ -60,7 +66,7 @@ final class ConversationViewController: NSViewController {
         view.wantsLayer = true
         let scrollView = timeline.makeScrollView()
         // The title bar's inset comes from AppKit.
-        for island in [scrollView, titleBand, bottomBand, overlay, newest, bottomBar] as [NSView] {
+        for island in [scrollView, titleBand, bottomBand, overlay, newest, bottomBar, searchBar] as [NSView] {
             island.frame = view.bounds
             view.addSubview(island)
         }
@@ -77,15 +83,21 @@ final class ConversationViewController: NSViewController {
         // The composer sizes itself; the timeline ends where it starts.
         bottomBar.sizingOptions = [.intrinsicContentSize]
         bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        searchBar.sizingOptions = [.intrinsicContentSize]
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
         ])
         view.onLayout = { [weak self] in self?.placeTimeline() }
         self.view = view
         // The pane's state first: the islands show it.
         observeTimeline()
+        observeSearch()
         showIslands()
     }
 
@@ -105,6 +117,7 @@ final class ConversationViewController: NSViewController {
         self.chatID = chatID
         pane.scroll = .init()
         observeTimeline()
+        observeSearch()
         showIslands()
     }
 
@@ -117,6 +130,7 @@ final class ConversationViewController: NSViewController {
         newest.rootView = AnyView(NewestMessageIsland(pane: pane) { model.scrollTimeline(.bottom) }.chatStyle(chatID, model: model))
         // A new composer for each chat, as the SwiftUI view made one.
         bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model, pane: pane).id(chatID).chatStyle(chatID, model: model))
+        searchBar.rootView = AnyView(ChatSearchBar(chatID: chatID, model: model).id(chatID).chatStyle(chatID, model: model))
     }
 
     /// The timeline scrolls under the title bar and under the composer, its
@@ -129,6 +143,8 @@ final class ConversationViewController: NSViewController {
         let bar = bottomBar.frame.height
         let frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - bar))
         let top = view.safeAreaInsets.top
+        // While the search is open the first row starts below its bar.
+        let searchRoom = pane.searching ? ChatSearchBar.height + Metrics.s : 0
         titleBand.frame = CGRect(x: 0, y: 0, width: bounds.width, height: top)
         titleBand.isHidden = top == 0
         let soft = (bar * BottomBandView.share).rounded()
@@ -139,7 +155,30 @@ final class ConversationViewController: NSViewController {
         // In the microphone's column, just above the composer: the island is
         // 8 points wider than its button on each side.
         newest.frame = CGRect(x: bounds.width - Metrics.m - size + 8, y: frame.maxY - Metrics.s - size + 8, width: size, height: size)
-        timeline.place(frame: CGRect(origin: .zero, size: bounds.size), topInset: top, bottomInset: bar)
+        timeline.place(frame: CGRect(origin: .zero, size: bounds.size), topInset: top + searchRoom, bottomInset: bar)
+    }
+
+    /// Whether this chat's search is open, which moves the first row down
+    /// below its bar. Watched on its own: the search changes with every
+    /// keystroke and answer, and the timeline needs none of that.
+    private func observeSearch() {
+        observedSearch += 1
+        let round = observedSearch
+        let model = model
+        let chatID = chatID
+        let searching = withObservationTracking {
+            model.search.chat?.chat == chatID
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self, self.observedSearch == round else { return }
+                    self.observeSearch()
+                }
+            }
+        }
+        guard searching != pane.searching else { return }
+        pane.searching = searching
+        view.needsLayout = true
     }
 
     // MARK: The timeline
@@ -183,6 +222,7 @@ final class ConversationViewController: NSViewController {
         if pane.empty != inputs.empty { pane.empty = inputs.empty }
         if pane.loadingOlder != inputs.loadingOlder { pane.loadingOlder = inputs.loadingOlder }
         if pane.closedChat != inputs.closedChat { pane.closedChat = inputs.closedChat }
+
         if inputs.style.theme.key != titleBandTheme {
             titleBandTheme = inputs.style.theme.key
             titleBand.setWallpaper(inputs.style.theme.wallpaper)

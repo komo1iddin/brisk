@@ -66,7 +66,7 @@ Bridge → FFI`. Features never import each other; the shell composes them.
 
 The main window and a chat's own window are AppKit: `MainWindowController`
 holds an `NSSplitViewController` (the sidebar, `SidebarViewController`; the
-chat, `ChatDetailViewController`; the chat's search as the inspector) and
+chat, `ChatDetailViewController`, with the chat's search as a bar over it) and
 one `NSToolbar` whose items those controllers make. The lock screen and
 linking take the split view's place. SwiftUI draws islands inside them that
 lay out only on their own changes (rows, the header, the composer, menus,
@@ -144,10 +144,10 @@ set height and scrolls, so the window fits the screen.
 | Home / End in an empty composer | Oldest loaded / newest message |
 | ⌘/ | Keyboard shortcuts (Help › Keyboard Shortcuts) |
 | ⌘+ / ⌘− / ⌘0 | Bigger / smaller / actual size message text (View menu, or Settings › Chats) |
-| ⌘F | Search the open chat (a panel beside it lists the matches) |
+| ⌘F | Search the open chat (a bar over it counts the matches and marks them in the bubbles) |
 | ⌥⌘F | Search all chats: names in the sidebar, then matching messages |
 | ⌘G / ⇧⌘G | Next / previous match in the open chat (older / newer) |
-| ↑ ↓ Return | Walk the matches from the search field; Esc closes it |
+| ↑ ↓ Return ⇧Return | Walk the matches from the search field (older / newer); Esc closes the list, a picker, then the bar; Delete in an empty field drops the last filter |
 | Return / ⇧Return / ⌘Return | Send / new line / send in the composer (with Return sends off in Settings › Chats: new line / new line / send) |
 | ↑ in an empty composer | Edit your newest message (up to 15 minutes old); Esc cancels |
 | @ in a group's composer | Suggest members to mention; ↑ ↓ choose, Return or Tab picks, Esc closes |
@@ -341,9 +341,21 @@ field, ranked as upstream ranks them (its `emojis` data, exact shortcodes
 first); ↑ ↓ choose, Return or Tab picks, Escape closes. A bare `:`
 offers the ones picked most recently.
 
-The calendar beside the in-chat search field keeps the search to one
-day; a day with nothing typed lists that day's messages, as upstream's
-does.
+The in-chat search is a bar over the chat, in the spirit of Telegram's.
+It counts the matches ("3 of 27"), marks the words in every bubble (the
+one shown more strongly), and lists them under the bar when asked. Every
+word must match, in any order, from the start of a word (numbers match
+anywhere, so part of a part number finds it), in any case, with any of
+Uzbek's apostrophes (o', oʻ, o‘), and in Latin or Cyrillic: "o'zbek" finds
+"ўзбек". The person button keeps the search to one sender (type to narrow
+the list), the kind menu to photos, videos, GIFs, files, links, voice
+messages or music, and the calendar to one day; any of them with no words
+lists their messages. The calendar marks the days that have messages and
+goes to a day's first message, or, with Search Day chosen under it (or
+from a day's right-click menu), keeps the search to that day. The archive
+does the matching (`src/archive/chat_search.rs`), and the bubbles mark
+words through the same rules (`searchMatchSpans`), so the two never
+disagree. Its words are in `FeatureConversation/Resources/*.lproj/Search.strings`.
 
 Picking a match, clicking the quote in a reply, or clicking a
 notification scrolls to the message,
@@ -588,9 +600,12 @@ draws a made-up Lottie sticker, one still and one moving, and writes `-later` af
 Each run's JSON lands in `~/Library/Caches/<bundle id>/benchmarks/`.
 A Debug build also takes commands from a shell
 (`DistributedNotificationCenter`, name `com.komoliddin.ZapFastMac.debug`,
-the command as the object): `tree` writes the main window's views and
+the command as the object; `pid=<n>;<command>` reaches only that process,
+when another copy is running): `tree` writes the main window's views and
 safe areas, `resize:<steps>:<points>` times each step of a resize,
-`select:<n>` opens a chat, `top:<n>` loads older pages, `open:search` and
+`select:<n>` opens a chat, `top:<n>` loads older pages, `search:<words>`,
+`searchstep:<older|newer>`, `searchlist` and `searchpeople` drive the in-chat
+search and answer with counts only, `open:search` and
 the like open parts of the window, `shot` captures the window as shown,
 `export:<n>[:media]` exports the nth chat to a temporary file and answers with
 the counts (then deletes the file), `fetchstats:<n>`, `fetchhistory:<n>:<messages>` and

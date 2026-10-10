@@ -119,19 +119,3 @@ struct ConversationHeader: View {
         .opensInviteLinks(model: model)
     }
 }
-
-/// The inspector: the open chat's search, while it is open.
-struct ConversationInspector: View {
-    let chatID: String?
-    let model: AppModel
-
-    var body: some View {
-        if let chatID, let search = model.search.chat, search.chat == chatID {
-            let theme = model.chatTheme(for: chatID)
-            ChatSearchPanel(search: search, model: model)
-                .id(chatID)
-                .environment(\.chatTheme, theme)
-                .tint(theme.accent)
-        }
-    }
-}

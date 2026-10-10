@@ -14,7 +14,6 @@ final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolba
     let model: AppModel
     private let detail: ChatDetailViewController
     private let split = NSSplitViewController()
-    private let inspectorItem: NSSplitViewItem
     private let note = NSHostingController(rootView: AnyView(EmptyView()))
     private let container = NSViewController()
     private var observed = 0
@@ -26,7 +25,6 @@ final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolba
         self.chatID = chatID
         self.model = model
         detail = ChatDetailViewController(model: model, source: .chat(chatID))
-        inspectorItem = NSSplitViewItem(inspectorWithViewController: detail.inspectorController)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 680),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -42,10 +40,6 @@ final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolba
         super.init(window: window)
         window.delegate = self
         split.addSplitViewItem(NSSplitViewItem(viewController: detail))
-        inspectorItem.minimumThickness = 240
-        inspectorItem.maximumThickness = 420
-        inspectorItem.isCollapsed = true
-        split.addSplitViewItem(inspectorItem)
         note.sizingOptions = []
         container.view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 680))
         window.contentViewController = container
@@ -126,13 +120,6 @@ final class ChatWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private func chatChanged() {
         guard available == true else { return }
         window?.title = detail.chatTitle ?? "ZapFast"
-        let shown = detail.searchShown
-        guard inspectorItem.isCollapsed == shown else { return }
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            inspectorItem.isCollapsed = !shown
-        } else {
-            inspectorItem.animator().isCollapsed = !shown
-        }
     }
 
     func windowWillClose(_ notification: Notification) {

@@ -86,6 +86,30 @@ extension TimelineController {
         }
     }
 
+    /// The words of the chat's open search, marked in the bubbles it
+    /// matched, the one on screen more strongly.
+    func observeSearchMarks() {
+        guard let model else { return }
+        let shown = withObservationTracking { [chatID] () -> SearchShown in
+            guard let search = model.search.chat, search.chat == chatID, !search.trimmedQuery.isEmpty else { return SearchShown() }
+            return SearchShown(query: search.trimmedQuery, matches: Set(search.ids), current: search.currentID)
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.observeSearchMarks() }
+            }
+        }
+        guard shown != searchShown else { return }
+        searchShown = shown
+        forEachBubbleCell { cell in
+            cell.setSearchMarking(searchMarking(cell.messageID))
+        }
+    }
+
+    func searchMarking(_ id: String?) -> SearchMarking? {
+        guard let id, let query = searchShown.query, searchShown.matches.contains(id) else { return nil }
+        return SearchMarking(query: query, current: id == searchShown.current)
+    }
+
     func isHighlighted(_ id: String?) -> Bool {
         guard let highlighted, let id else { return false }
         return highlighted.chat == chatID && highlighted.message == id
@@ -125,7 +149,7 @@ extension TimelineController {
             let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? BubbleCell
                 ?? BubbleCell(identifier: identifier)
             cell.delegate = self
-            cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id))
+            cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id), searchMarking: searchMarking(row.id))
             return cell
         case .hosted(let row, _):
             // Reused only for the same kind of message, so SwiftUI updates a

@@ -71,10 +71,13 @@ extension AppModel {
         case let .searchHits(query, messages):
             let visible = messages.filter { chats.chat($0.chat)?.locked != true }
             search.applyMessageHits(query: query, messages: visible, wanted: wantedMessageQuery)
-        case let .chatHits(chat, query, from, until, messages, truncated):
-            search.applyChatHits(
-                chat: chat, query: query, from: from, until: until, messages: messages, truncated: truncated
-            )
+        case .chatHits:
+            // Upstream's single-query search; the bar asks with `searchChat`.
+            break
+        case let .chatSearchHits(chat, request, ids, messages, truncated):
+            search.applyChatSearchHits(chat: chat, request: request, ids: ids, messages: messages, truncated: truncated)
+        case let .chatDays(chat, starts, first):
+            search.applyDays(chat: chat, starts: starts, first: first)
         case .labels(let labels):
             chats.replaceLabels(labels)
         case .stickers(let library):

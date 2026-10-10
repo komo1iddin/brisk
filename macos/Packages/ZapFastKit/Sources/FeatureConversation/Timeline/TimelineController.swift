@@ -141,6 +141,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// messages are here.
     var placesUnread = false
     var highlighted: MessageKey?
+    /// The open search's words and matches, which bubbles mark.
+    var searchShown = SearchShown()
     var reactionTarget: MessageKey?
     var namesChanged = false
     var widthCheckScheduled = false
@@ -238,4 +240,17 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
         NotificationCenter.default.removeObserver(self)
     }
 
+}
+
+/// What the open search asks the timeline to mark.
+struct SearchShown: Equatable {
+    var query: String?
+    var matches: Set<String> = []
+    var current: String?
+}
+
+/// The words to mark in one bubble, and whether it is the match on screen.
+struct SearchMarking: Equatable {
+    let query: String
+    let current: Bool
 }

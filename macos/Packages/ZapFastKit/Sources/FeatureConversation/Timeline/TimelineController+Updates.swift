@@ -55,6 +55,7 @@ extension TimelineController {
             newBelow = 0
             handledScroll = scrollRequest?.token
             tableView.reloadData()
+            observeSearchMarks()
         }
         if let jump, jump.key.chat == chatID, jump.token != handledJump {
             pendingJump = jump

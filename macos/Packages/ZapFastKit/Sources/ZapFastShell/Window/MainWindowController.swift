@@ -158,12 +158,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         model.selectedChatID = nil
     }
 
-    /// The window is named after the open chat, and the inspector shows
-    /// while its search is open. Nothing names a chat while locked.
+    /// The window is named after the open chat. Nothing names a chat while
+    /// locked.
     private func chatChanged() {
         guard mode == .chats else { return }
         window?.title = split.detail.chatTitle ?? "ZapFast"
-        split.showInspector(split.detail.searchShown)
     }
 
     // MARK: Window
@@ -225,7 +224,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 }
 
-/// The sidebar, the chat and the chat's search.
+/// The sidebar and the chat.
 ///
 /// Narrower than `narrowWidth`, as upstream's narrow window, one of the list
 /// and the chat shows: the list until a chat opens, then the chat with a way
@@ -237,7 +236,6 @@ final class MainSplitViewController: NSSplitViewController {
     private let model: AppModel
     private let sidebarItem: NSSplitViewItem
     private let detailItem: NSSplitViewItem
-    private let inspectorItem: NSSplitViewItem
     private var placedSidebar = false
     private var narrow = false
     /// The sidebar as the person left it before the window narrowed.
@@ -263,7 +261,6 @@ final class MainSplitViewController: NSSplitViewController {
         sidebar = SidebarViewController(model: model)
         detail = ChatDetailViewController(model: model, source: .selected)
         sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
-        inspectorItem = NSSplitViewItem(inspectorWithViewController: detail.inspectorController)
         detailItem = NSSplitViewItem(viewController: detail)
         super.init(nibName: nil, bundle: nil)
         sidebarItem.minimumThickness = 260
@@ -274,12 +271,8 @@ final class MainSplitViewController: NSSplitViewController {
             // The chat's wallpaper reaches under the floating sidebar.
             detailItem.automaticallyAdjustsSafeAreaInsets = true
         }
-        inspectorItem.minimumThickness = 240
-        inspectorItem.maximumThickness = 420
-        inspectorItem.isCollapsed = true
         addSplitViewItem(sidebarItem)
         addSplitViewItem(detailItem)
-        addSplitViewItem(inspectorItem)
         sidebar.install(in: sidebarItem)
         observeArrangement()
     }
@@ -363,15 +356,6 @@ final class MainSplitViewController: NSSplitViewController {
         placedSidebar = true
         if UserDefaults.standard.object(forKey: "NSSplitView Subview Frames \(Self.autosaveName)") == nil {
             splitView.setPosition(320, ofDividerAt: 0)
-        }
-    }
-
-    func showInspector(_ shown: Bool) {
-        guard inspectorItem.isCollapsed == shown else { return }
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || view.window == nil {
-            inspectorItem.isCollapsed = !shown
-        } else {
-            inspectorItem.animator().isCollapsed = !shown
         }
     }
 }

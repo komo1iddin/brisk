@@ -17,6 +17,9 @@ final class BubbleView: NSView {
     private(set) var linkView: LinkPreviewView?
     private let chrome = BubbleChromeLayer()
     private let body = TextLayer()
+    /// The words a search found, under the body's text.
+    private let searchMarks = CAShapeLayer()
+    private var marked: SearchMarking?
     /// The quoted message's picture, on the quote's right.
     private let quoteImage = CALayer()
     private var quoteLoads = 0
@@ -36,6 +39,9 @@ final class BubbleView: NSView {
         layer?.shadowRadius = 0.5
         layer?.shadowOffset = CGSize(width: 0, height: -0.5)
         layer?.addSublayer(chrome)
+        searchMarks.isHidden = true
+        searchMarks.actions = ["bounds": NSNull(), "position": NSNull(), "path": NSNull(), "hidden": NSNull(), "fillColor": NSNull()]
+        layer?.addSublayer(searchMarks)
         layer?.addSublayer(body)
         quoteImage.contentsGravity = .resizeAspectFill
         quoteImage.masksToBounds = true
@@ -98,6 +104,68 @@ final class BubbleView: NSView {
         body.setNeedsDisplay()
         overBody = false
         bodyHover?.cancel()
+        // Another layout: whatever was marked is measured again.
+        marked = nil
+        searchMarks.isHidden = true
+    }
+
+    /// Marks the words a search found in the body, as the archive matched
+    /// them, measured by TextKit as the body's text view lays it out; the
+    /// match on screen in a stronger colour.
+    func setSearchMarks(_ marking: SearchMarking?) {
+        guard marking != marked || (marking != nil && searchMarks.isHidden) else { return }
+        marked = marking
+        guard let marking, let body = bubbleLayout?.body else {
+            searchMarks.isHidden = true
+            return
+        }
+        let ranges = SearchMarks.ranges(in: body.string.string, matching: marking.query)
+        guard !ranges.isEmpty else {
+            searchMarks.isHidden = true
+            return
+        }
+        let path = CGMutablePath()
+        for rect in Self.rects(of: ranges, in: body.string, width: body.rect.width) {
+            path.addRoundedRect(in: rect.insetBy(dx: -1.5, dy: 0), cornerWidth: 3, cornerHeight: 3)
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        searchMarks.frame = body.rect
+        searchMarks.path = path
+        searchMarks.fillColor = Self.markColor(current: marking.current, onAccent: bubbleLayout?.fromMe == true)
+        searchMarks.isHidden = false
+        CATransaction.commit()
+    }
+
+    /// Yellow under dark text, as a highlighter marks paper; white under
+    /// the white text of our own bubbles, whose accent yellow would muddy.
+    /// The match on screen is marked more strongly than the others.
+    static func markColor(current: Bool, onAccent: Bool) -> CGColor {
+        if onAccent {
+            return NSColor.white.withAlphaComponent(current ? 0.45 : 0.22).cgColor
+        }
+        return NSColor.systemYellow.withAlphaComponent(current ? 0.7 : 0.3).cgColor
+    }
+
+    /// Where `ranges` of `string` fall when it is laid out `width` wide,
+    /// one rectangle per line each covers.
+    static func rects(of ranges: [NSRange], in string: NSAttributedString, width: CGFloat) -> [CGRect] {
+        let storage = NSTextStorage(attributedString: string)
+        let manager = NSLayoutManager()
+        storage.addLayoutManager(manager)
+        let container = NSTextContainer(size: CGSize(width: width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        manager.addTextContainer(container)
+        var rects: [CGRect] = []
+        for range in ranges where NSMaxRange(range) <= string.length {
+            let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            manager.enumerateEnclosingRects(
+                forGlyphRange: glyphs, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: container
+            ) { rect, _ in
+                rects.append(rect)
+            }
+        }
+        return rects
     }
 
     func refreshColors() {

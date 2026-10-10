@@ -1,0 +1,48 @@
+/* Ochiq chat ustidagi qidiruv. Kalitlarni Search/SearchText.swift o'qiydi. */
+
+/* Maydon */
+"search.prompt" = "Qidirish";
+"search.prompt.people" = "Kim yozgan?";
+"search.clear" = "Tozalash";
+"search.you" = "Siz";
+
+/* Topilganlar soni */
+"search.counter %lld %lld" = "%1$lld / %2$lld";
+"search.count %lld" = "%lld ta topildi";
+"search.count.more %lld" = "%lld+ ta topildi";
+"search.none" = "Topilmadi";
+"search.searching" = "Qidirilmoqda";
+
+/* Tugmalar */
+"search.older" = "Eskiroq natija (↑ yoki Return)";
+"search.newer" = "Yangiroq natija (↓ yoki Shift-Return)";
+"search.list.show" = "Natijalarni ro'yxat qilib ko'rsatish";
+"search.list.hide" = "Ro'yxatni yopish";
+"search.sender" = "Yuboruvchi bo'yicha";
+"search.kind" = "Xabar turi bo'yicha";
+"search.calendar" = "Sanaga o'tish";
+"search.close" = "Qidiruvni yopish (Esc)";
+"search.filter.remove" = "Bu filtrni olib tashlash";
+
+/* Xabar turlari */
+"search.kind.any" = "Har qanday tur";
+"search.kind.photos" = "Rasmlar";
+"search.kind.videos" = "Videolar";
+"search.kind.gifs" = "GIF'lar";
+"search.kind.files" = "Fayllar";
+"search.kind.links" = "Havolalar";
+"search.kind.voice" = "Ovozli xabarlar";
+"search.kind.music" = "Musiqa";
+
+/* Natijalar va odamlar ro'yxati */
+"search.list.more %lld %lld" = "%2$lld tadan eng yangi %1$lld tasi ko'rsatilgan. Hammasini ↑ va ↓ bilan ko'rish mumkin.";
+"search.list.truncated" = "Natijalar juda ko'p. So'z yoki filtr qo'shib, qidiruvni toraytiring.";
+"search.people.none" = "Bunday ism topilmadi";
+
+/* Kalendar */
+"search.calendar.previous" = "Oldingi oy";
+"search.calendar.next" = "Keyingi oy";
+"search.calendar.goto" = "Kunga o'tish";
+"search.calendar.filter" = "Kun bo'yicha qidirish";
+"search.calendar.every" = "Barcha kunlar";
+"search.calendar.empty" = "Bu kuni xabar yo'q";

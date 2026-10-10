@@ -12,13 +12,23 @@ public final class SearchStore {
     /// The query `messageHits` answers.
     public private(set) var messageQuery = ""
 
-    /// The search inside a chat, while its panel is open.
+    /// The search inside a chat, while its bar is open.
     public internal(set) var chat: ChatSearch?
 
     public init() {}
 
-    /// Upstream shows this many in-chat matches (`CHAT_SEARCH_LIMIT`).
-    public static let chatLimit = 80
+    /// Matches an answer carries whole, for the list under the bar; the
+    /// rest arrive as ids, which is all stepping through them needs.
+    public static let chatListLimit: UInt32 = 200
+
+    /// Numbers each in-chat search sent, so only the answer to the last one
+    /// is shown.
+    @ObservationIgnored private var lastRequest: UInt64 = 0
+
+    func nextRequest() -> UInt64 {
+        lastRequest += 1
+        return lastRequest
+    }
 
     // MARK: Applying events
 
@@ -33,25 +43,39 @@ public final class SearchStore {
         messageHits = []
     }
 
-    func applyChatHits(
-        chat id: String, query: String, from: Int64?, until: Int64?, messages: [MessageRecord], truncated: Bool
-    ) {
-        guard var search = chat, search.chat == id, search.trimmedQuery == query,
-              search.dayBounds?.from == from, search.dayBounds?.until == until else { return }
+    /// An answer to the in-chat search. The match on screen stays the
+    /// current one when the new answer still has it.
+    func applyChatSearchHits(chat id: String, request: UInt64, ids: [String], messages: [MessageRecord], truncated: Bool) {
+        guard var search = chat, search.chat == id, search.request == request else { return }
+        let shown = search.currentID
+        search.ids = ids
         search.hits = messages
         search.truncated = truncated
         search.pending = false
-        search.selected = nil
+        search.current = shown.flatMap { ids.firstIndex(of: $0) }
+        chat = search
+    }
+
+    /// Which days of a span have messages, and the first of each, for the
+    /// calendar.
+    func applyDays(chat id: String, starts: [Int64], first: [String?]) {
+        guard var search = chat, search.chat == id else { return }
+        for (start, message) in zip(starts, first) {
+            search.days[start] = .some(message)
+        }
         chat = search
     }
 
     /// A chat was cleared up to `through`, or deleted.
     func dropHits(in id: String, through: Int64) {
         messageHits.removeAll { $0.chat == id && $0.timestamp <= through }
-        if chat?.chat == id {
-            chat?.hits.removeAll { $0.timestamp <= through }
-            chat?.selected = nil
-        }
+        guard var search = chat, search.chat == id else { return }
+        let gone = Set(search.hits.filter { $0.timestamp <= through }.map(\.id))
+        search.hits.removeAll { gone.contains($0.id) }
+        search.ids.removeAll { gone.contains($0) }
+        search.current = nil
+        search.days = [:]
+        chat = search
     }
 
     func clear() {
@@ -60,34 +84,79 @@ public final class SearchStore {
     }
 }
 
-/// The search inside one chat.
+/// Whose messages the in-chat search keeps.
+public enum ChatSearchSender: Equatable, Hashable, Sendable {
+    case me
+    case person(String)
+
+    var info: SearchSenderInfo {
+        switch self {
+        case .me: .me
+        case .person(let id): .person(id: id)
+        }
+    }
+}
+
+/// The search inside one chat: words, and any of a sender, a kind and a
+/// day, all of which must hold. Its matches are walked in the timeline,
+/// newest first; the list under the bar shows them too, when asked.
 public struct ChatSearch: Equatable, Sendable {
     public let chat: String
     public internal(set) var query = ""
-    /// Matches, newest first.
-    public internal(set) var hits: [MessageRecord] = []
-    /// The archive held more than `SearchStore.chatLimit` matches.
-    public internal(set) var truncated = false
-    /// An answer to the current query is on its way.
-    public internal(set) var pending = false
-    /// The match last revealed in the timeline, an index into `hits`.
-    public internal(set) var selected: Int?
-    /// Only messages from this day (upstream's `chat_search_day`), its
-    /// first and first-after instants in Unix seconds.
+    public internal(set) var sender: ChatSearchSender?
+    public internal(set) var kind: SearchKindInfo?
+    /// Only messages from this day, its first and first-after instants in
+    /// Unix seconds.
     public internal(set) var day: Date?
-    public internal(set) var dayBounds: (from: Int64, until: Int64)?
+    public internal(set) var dayBounds: DayBounds?
+
+    /// The request whose answer is shown, or is on its way.
+    public internal(set) var request: UInt64 = 0
+    /// Every match, newest first.
+    public internal(set) var ids: [String] = []
+    /// The newest matches whole, for the list.
+    public internal(set) var hits: [MessageRecord] = []
+    /// More matched than `ids` holds.
+    public internal(set) var truncated = false
+    /// An answer to the current search is on its way.
+    public internal(set) var pending = false
+    /// The match revealed in the timeline, an index into `ids`.
+    public internal(set) var current: Int?
+
+    /// The list of matches is open under the bar.
+    public internal(set) var listShown = false
+    /// The bar's field names people to pick a sender from, instead of words.
+    public internal(set) var pickingSender = false
+    public internal(set) var senderText = ""
+
+    /// The first message of each day the calendar asked about (`nil` for a
+    /// day without any), by the day's first instant in Unix seconds.
+    public internal(set) var days: [Int64: String?] = [:]
+
+    public struct DayBounds: Equatable, Sendable {
+        public let from: Int64
+        public let until: Int64
+    }
+
+    public init(chat: String) {
+        self.chat = chat
+    }
 
     public var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// A day alone lists that day's messages, as upstream's does.
+    /// A sender, a kind or a day lists their messages with no words.
     public var isAsking: Bool {
-        !trimmedQuery.isEmpty || day != nil
+        !trimmedQuery.isEmpty || sender != nil || kind != nil || day != nil
     }
 
-    public static func == (lhs: ChatSearch, rhs: ChatSearch) -> Bool {
-        lhs.chat == rhs.chat && lhs.query == rhs.query && lhs.hits == rhs.hits && lhs.truncated == rhs.truncated
-            && lhs.pending == rhs.pending && lhs.selected == rhs.selected && lhs.day == rhs.day
+    public var currentID: String? {
+        current.flatMap { ids.indices.contains($0) ? ids[$0] : nil }
+    }
+
+    /// What the bar's field shows: words, or a person's name being picked.
+    public var fieldText: String {
+        pickingSender ? senderText : query
     }
 }

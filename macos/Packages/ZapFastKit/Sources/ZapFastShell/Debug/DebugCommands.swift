@@ -40,6 +40,12 @@ import ZapFastSharedUI
 /// - `scroll:<points>`: scrolls the timeline by that much.
 /// - `send <selector> <int> [<int>]`: calls a method of the timeline's
 ///   scroll view with whole numbers, to try AppKit's settings live.
+/// - `search:<words>`: opens the open chat's search for those words and,
+///   with no archive in the benchmark, answers it from the messages loaded;
+///   `searchstep:<older|newer>`, `searchlist` and `searchpeople` walk the
+///   matches, toggle their list and open the sender picker.
+/// - `pid=<n>;<command>`: the command, for the copy of the app with that
+///   process id only.
 /// - `open:<search|closesearch|newchat|window|info>`: opens the open
 ///   chat's search, a new chat, the chat in its own window, its info.
 /// - `export:<n>[:media]`: exports the sidebar's nth chat to a temporary
@@ -71,7 +77,13 @@ enum DebugCommands {
         observer = DistributedNotificationCenter.default().addObserver(
             forName: Notification.Name("com.komoliddin.ZapFastMac.debug"), object: nil, queue: .main
         ) { notification in
-            let command = notification.object as? String ?? ""
+            var command = notification.object as? String ?? ""
+            // `pid=<n>;<command>` is for one copy of the app only, so a
+            // build being checked can be driven beside one in daily use.
+            if command.hasPrefix("pid="), let end = command.firstIndex(of: ";") {
+                guard command.dropFirst(4).prefix(upTo: end) == "\(getpid())" else { return }
+                command = String(command[command.index(after: end)...])
+            }
             MainActor.assumeIsolated {
                 if !runAccounts(command, hub: hub) { run(command, model: hub.active) }
             }
@@ -559,6 +571,22 @@ enum DebugCommands {
             // shot:popover captures the popover over the window instead.
             let target = parts.count > 1 ? parts[1] : ""
             write(name, shot(popover: target == "popover", other: target == "other", call: target == "call", fetch: target == "fetch"))
+        case "search":
+            model.openChatSearch()
+            model.setChatSearchQuery(parts.dropFirst().joined(separator: ":"))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                model.answerChatSearchFromLoaded()
+                write(name, "\(model.search.chat?.ids.count ?? -1)")
+            }
+        case "searchstep":
+            model.stepChatSearch(older: parts.count > 1 && parts[1] == "older")
+            write(name, "\(model.search.chat?.current ?? -1)")
+        case "searchlist":
+            model.setChatSearchList(!(model.search.chat?.listShown ?? true))
+            write(name, "\(model.search.chat?.listShown ?? false)")
+        case "searchpeople":
+            model.beginPickingChatSearchSender()
+            write(name, "\(model.search.chat?.pickingSender ?? false)")
         case "action":
             // action:<selector>, colons and all (`action:terminate:` quits).
             let selector = String(command.dropFirst("action:".count))

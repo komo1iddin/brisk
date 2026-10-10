@@ -136,6 +136,6 @@ struct ZapFastCommands: Commands {
     }
 
     private var hasChatHits: Bool {
-        model.search.chat.map { !$0.hits.isEmpty } ?? false
+        model.search.chat.map { !$0.ids.isEmpty } ?? false
     }
 }

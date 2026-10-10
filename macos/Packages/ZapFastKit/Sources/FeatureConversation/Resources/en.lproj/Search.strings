@@ -17,8 +17,6 @@
 /* The bar's buttons */
 "search.older" = "Older match (↑ or Return)";
 "search.newer" = "Newer match (↓ or Shift-Return)";
-"search.list.show" = "Show matches as a list";
-"search.list.hide" = "Hide the list";
 "search.sender" = "Search by sender";
 "search.kind" = "Search by kind";
 "search.calendar" = "Go to a date";

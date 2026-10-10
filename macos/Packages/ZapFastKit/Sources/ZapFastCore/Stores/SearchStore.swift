@@ -123,7 +123,8 @@ public struct ChatSearch: Equatable, Sendable {
     /// The match revealed in the timeline, an index into `ids`.
     public internal(set) var current: Int?
 
-    /// The list of matches is open under the bar.
+    /// The list of matches is open under the bar: by itself with each new
+    /// search, until a match is picked.
     public internal(set) var listShown = false
     /// The bar's field names people to pick a sender from, instead of words.
     public internal(set) var pickingSender = false

@@ -113,7 +113,8 @@ extension AppModel {
         askChatSearch(current, wait: false)
     }
 
-    /// Opens or closes the list of matches under the bar.
+    /// Opens or closes the list of matches under the bar. It opens by
+    /// itself with each new search, and closes once a match is picked.
     public func setChatSearchList(_ shown: Bool) {
         guard var current = search.chat, current.listShown != shown else { return }
         current.listShown = shown
@@ -136,6 +137,7 @@ extension AppModel {
             return
         }
         current.pending = true
+        if !current.pickingSender { current.listShown = true }
         self.search.chat = current
         let command = BridgeCommand.searchChat(
             chat: current.chat, request: current.request, query: current.trimmedQuery,

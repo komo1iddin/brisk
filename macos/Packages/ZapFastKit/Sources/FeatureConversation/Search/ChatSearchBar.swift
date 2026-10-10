@@ -7,8 +7,10 @@ import ZapFastSharedUI
 /// The search over the top of an open chat, in one glass bar: the field
 /// with its filters as tokens, the count, the arrows that walk the matches
 /// in the timeline, and the buttons that add a sender, a kind and a date.
-/// Under it, when asked for, the matches as a list or the people to pick a
-/// sender from.
+/// Under it, the matches as a list, open by itself with each new search
+/// until one is picked, or the people to pick a sender from. Those are on a
+/// solid panel: glass over a list is harder to read and blurs the chat
+/// behind it on every frame.
 ///
 /// The arrows go the way the chat does: ↑ to older matches, higher up the
 /// chat. In the list, newest first, ↓ goes to older ones, down the list.
@@ -30,7 +32,7 @@ struct ChatSearchBar: View {
                 if search.pickingSender {
                     PeoplePicker(people: people(search), selected: person, model: model) { pick($0) }
                         .transition(.opacity.combined(with: .move(edge: .top)))
-                } else if search.listShown, search.isAsking {
+                } else if search.listShown, search.isAsking, !(search.pending && search.hits.isEmpty) {
                     HitList(search: search, model: model)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
@@ -92,14 +94,6 @@ struct ChatSearchBar: View {
 
             Divider().frame(height: 18).padding(.horizontal, Metrics.xxs)
 
-            BarButton(
-                symbol: "list.bullet",
-                help: search.listShown ? searchText("search.list.hide") : searchText("search.list.show"),
-                active: search.listShown
-            ) {
-                model.setChatSearchList(!search.listShown)
-            }
-            .disabled(!search.isAsking)
             if canPickSender {
                 BarButton(symbol: "person", help: searchText("search.sender"), active: search.pickingSender || search.sender != nil) {
                     if search.pickingSender { model.cancelPickingChatSearchSender() } else { model.beginPickingChatSearchSender() }
@@ -426,14 +420,9 @@ private struct PeoplePicker: View {
                     HStack(spacing: Metrics.m) {
                         SenderAvatar(sender: person.sender, name: person.name, model: model, size: 30)
                         Text(person.name).lineLimit(1)
-                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, Metrics.m)
-                    .padding(.vertical, Metrics.xs + 2)
-                    .background(index == selected ? AnyShapeStyle(.tint.opacity(0.16)) : AnyShapeStyle(.clear))
-                    .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SearchRowStyle(selected: index == selected))
                 .id(index)
             }
         }
@@ -460,12 +449,8 @@ private struct HitList: View {
                     model.setChatSearchList(false)
                 } label: {
                     HitRow(message: hit, query: search.trimmedQuery, model: model)
-                        .padding(.horizontal, Metrics.m)
-                        .padding(.vertical, Metrics.xs + 2)
-                        .background(index == search.current ? AnyShapeStyle(.tint.opacity(0.16)) : AnyShapeStyle(.clear))
-                        .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SearchRowStyle(selected: index == search.current))
                 .id(index)
             }
             if search.truncated {
@@ -485,62 +470,39 @@ private struct HitList: View {
     }
 }
 
-/// One match: who wrote it and when, and the text around the words found.
-private struct HitRow: View {
-    let message: MessageRecord
-    let query: String
-    let model: AppModel
-
-    var body: some View {
-        HStack(alignment: .top, spacing: Metrics.m) {
-            SenderAvatar(sender: message.fromMe ? .me : .person(message.sender), model: model, size: 30)
-            VStack(alignment: .leading, spacing: Metrics.xxs) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(sender)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(1)
-                    Spacer(minLength: Metrics.xs)
-                    Text(DateText.chatRow(message.timestamp))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Text(SearchSnippet.make(model.messageText(message), matching: query))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var sender: String {
-        message.fromMe ? searchText("search.you") : model.chats.displayName(message.sender, hint: message.senderName)
-    }
-}
-
-/// A glass panel under the bar that scrolls, keeping the row the keys
-/// reached in view.
+/// A solid panel under the bar, as tall as its rows up to a limit, that
+/// scrolls past it, keeping the row the keys reached in view.
 private struct DropdownList<Content: View>: View {
     let selected: Int
     @ViewBuilder let content: Content
+    /// The rows' height, measured: a lazy stack's own guess left room under
+    /// a short list.
+    @State private var height: CGFloat = 0
+
+    static var tallest: CGFloat { 360 }
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     content
                 }
-                .padding(.vertical, Metrics.xs)
+                .padding(Metrics.xs)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
             }
-            .scrollIndicators(.automatic)
-            .frame(maxHeight: 320)
-            .fixedSize(horizontal: false, vertical: true)
+            .slimScrollBar()
+            .frame(height: height > 0 ? min(height, Self.tallest) : nil)
+            .frame(maxHeight: Self.tallest)
             .onChange(of: selected) { _, index in
                 guard index >= 0 else { return }
                 proxy.scrollTo(index)
             }
         }
-        .searchSurface(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Color(nsColor: .windowBackgroundColor), in: shape)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(.separator))
+        .shadow(color: .black.opacity(0.14), radius: 12, y: 4)
     }
 }
 

@@ -16,8 +16,6 @@
 /* Tugmalar */
 "search.older" = "Eskiroq natija (↑ yoki Return)";
 "search.newer" = "Yangiroq natija (↓ yoki Shift-Return)";
-"search.list.show" = "Natijalarni ro'yxat qilib ko'rsatish";
-"search.list.hide" = "Ro'yxatni yopish";
 "search.sender" = "Yuboruvchi bo'yicha";
 "search.kind" = "Xabar turi bo'yicha";
 "search.calendar" = "Sanaga o'tish";

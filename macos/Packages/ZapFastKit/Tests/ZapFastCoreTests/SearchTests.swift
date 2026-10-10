@@ -288,6 +288,22 @@ struct SearchTests {
         #expect(model.search.chat?.current == 1)
     }
 
+    @Test func theListOpensWithEachNewSearchUntilAMatchIsPicked() async throws {
+        let (model, backend) = model()
+        model.selectedChatID = chat
+        model.openChatSearch()
+        #expect(model.search.chat?.listShown == false, "nothing asked yet")
+        model.setChatSearchQuery("he")
+        #expect(model.search.chat?.listShown == true)
+        answer(model, try await sentSearch(backend), ids: ["c", "b", "a"])
+        model.revealChatSearchHit(1)
+        model.setChatSearchList(false)
+        model.stepChatSearch(older: true)
+        #expect(model.search.chat?.listShown == false, "walking the matches keeps it closed")
+        model.setChatSearchKind(.photos)
+        #expect(model.search.chat?.listShown == true)
+    }
+
     @Test func theCalendarGoesToADaysFirstMessage() {
         let (model, backend) = model()
         model.selectedChatID = chat

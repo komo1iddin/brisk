@@ -343,7 +343,9 @@ offers the ones picked most recently.
 
 The in-chat search is a bar over the chat, in the spirit of Telegram's.
 It counts the matches ("3 of 27"), marks the words in every bubble (the
-one shown more strongly), and lists them under the bar when asked. Every
+one shown more strongly), and lists them under the bar as soon as it
+searches, on a solid panel (glass over a list is harder to read); picking
+one, or Esc, closes the list, and the next search opens it again. Every
 word must match, in any order, from the start of a word (numbers match
 anywhere, so part of a part number finds it), in any case, with any of
 Uzbek's apostrophes (o', oʻ, o‘), and in Latin or Cyrillic: "o'zbek" finds

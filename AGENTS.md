@@ -104,6 +104,13 @@ protocol. These notes are for coding agents and new contributors.
   module declaration, a field on `Worker`, a call where upstream's own code
   reaches ours. `git diff <merge-base> -- src/backend/worker.rs` should stay
   small; it is 64 insertions today.
+- A merge conflicts per file, so a file upstream does not have cannot
+  conflict, wherever it sits: the fork's own code needs no directory of its
+  own, and sorting the tree by who wrote what would only split a subject in
+  two. What costs a sync is editing one of upstream's files, and a deletion
+  costs as much as an insertion. `make footprint` prints both lists, ours
+  alone and upstream's that we have edited, worst first; run it before
+  `make sync`. Prefer a new file beside the upstream module it extends.
 - `src/model.rs` holds the app's own types. Views never touch a protobuf;
   the worker translates in `classify()` and `parse_conversation()`.
 - Individual **Delete for me** uses `Command::DeleteLocal` to send through

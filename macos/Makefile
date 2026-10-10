@@ -14,7 +14,7 @@ APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
 # app is too; Release otherwise builds an Intel slice that cannot link.
 XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath $(DERIVED) ARCHS=arm64
 
-.PHONY: all bridge project build run test release sync clean check
+.PHONY: all bridge project build run test release sync footprint clean check
 
 all: build
 
@@ -38,6 +38,10 @@ release:
 
 sync:
 	./Scripts/sync-upstream.sh
+
+# What this fork has done to upstream's tree, and so where a merge can hurt.
+footprint:
+	./Scripts/upstream-footprint.sh
 
 # Before merging: no warnings in ZapFastKit's own sources (some Swift 6
 # isolation errors are only warnings, and crash at run time), then the tests.

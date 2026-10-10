@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Brings in upstream ZapFast and checks the bridge still fits it.
 #
-#   1. fetch and merge upstream/main (our files live only under macos/, so
-#      this merge does not conflict unless someone edited upstream files);
+#   1. fetch and merge upstream/main. Files only this fork has cannot
+#      conflict, wherever they live; the files it has edited of upstream's
+#      can, and `upstream-footprint.sh` lists them before the merge starts;
 #   2. copy upstream's [patch.crates-io] and lockfile into the bridge;
 #   3. build the bridge: a compile error here names exactly which upstream
 #      type, field or event changed and needs a decision in macos/Bridge.
@@ -18,6 +19,10 @@ fi
 
 before="$(git rev-parse --short HEAD)"
 git fetch upstream
+
+# Where this merge can hurt, before it does.
+"$root/macos/Scripts/upstream-footprint.sh"
+
 git merge --no-edit upstream/main
 
 echo "▸ Upstream changes since $before:"

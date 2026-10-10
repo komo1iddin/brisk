@@ -27,6 +27,7 @@ mod helpers;
 mod link;
 mod logging;
 mod pump;
+mod search;
 mod themes;
 pub mod types;
 mod vcard;

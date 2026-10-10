@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 use zapfast::backend::Command;
 
+use crate::search::{SearchKindInfo, SearchSenderInfo};
 use crate::types::{
     GifInfo, NotificationSoundInfo, PageKey, PollDraftInfo, PrivacyChoiceInfo, PrivacyKindInfo,
     StickerCropInfo,
@@ -119,6 +120,25 @@ pub enum BridgeCommand {
         query: String,
         from: Option<i64>,
         until: Option<i64>,
+    },
+    /// Searches one chat by words, sender, kind and time; answered by
+    /// `ChatSearchHits` carrying the same `request`.
+    SearchChat {
+        chat: String,
+        request: u64,
+        query: String,
+        from: Option<i64>,
+        until: Option<i64>,
+        sender: Option<SearchSenderInfo>,
+        kind: Option<SearchKindInfo>,
+        /// Matches sent whole; the rest come as ids.
+        limit: u32,
+    },
+    /// The first message of each span between `starts`; answered by
+    /// `ChatDays`.
+    ChatDays {
+        chat: String,
+        starts: Vec<i64>,
     },
 
     // Writing
@@ -490,6 +510,26 @@ impl BridgeCommand {
                 from,
                 until,
             },
+            Self::SearchChat {
+                chat,
+                request,
+                query,
+                from,
+                until,
+                sender,
+                kind,
+                limit,
+            } => Command::SearchChat(zapfast::archive::ChatSearch {
+                chat,
+                request,
+                query,
+                from,
+                until,
+                sender: sender.map(Into::into),
+                kind: kind.map(Into::into),
+                limit: limit as usize,
+            }),
+            Self::ChatDays { chat, starts } => Command::ChatDays { chat, starts },
 
             Self::SendText {
                 chat,

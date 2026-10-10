@@ -139,6 +139,22 @@ pub enum BridgeEvent {
         messages: Vec<MessageRecord>,
         truncated: bool,
     },
+    /// The answer to `SearchChat`: every match's id, newest first, and
+    /// the newest ones whole.
+    ChatSearchHits {
+        chat: String,
+        request: u64,
+        ids: Vec<String>,
+        messages: Vec<MessageRecord>,
+        truncated: bool,
+    },
+    /// The first message of each span between `starts`, `None` for a span
+    /// with none.
+    ChatDays {
+        chat: String,
+        starts: Vec<i64>,
+        first: Vec<Option<String>>,
+    },
     /// A reply to a business message is on its way (`pending`), or done.
     InteractiveReplyState {
         chat: String,
@@ -358,6 +374,22 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
             until,
             messages: messages.into_iter().map(Into::into).collect(),
             truncated,
+        }),
+        Event::ChatSearchHits(hits) => Some(B::ChatSearchHits {
+            chat: hits.chat,
+            request: hits.request,
+            ids: hits.ids,
+            messages: hits.messages.into_iter().map(Into::into).collect(),
+            truncated: hits.truncated,
+        }),
+        Event::ChatDays {
+            chat,
+            starts,
+            first,
+        } => Some(B::ChatDays {
+            chat,
+            starts,
+            first,
         }),
         Event::InteractiveReplyState {
             chat,

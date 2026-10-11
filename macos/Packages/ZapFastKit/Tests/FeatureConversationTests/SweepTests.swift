@@ -57,6 +57,7 @@ struct SweepTests {
         while controller.items.count <= messages.count, Date.now < deadline {
             try await Task.sleep(for: .milliseconds(5))
         }
+        try #require(controller.items.count > messages.count)
         try await Task.sleep(for: .milliseconds(50))
         controller.tableView.layoutSubtreeIfNeeded()
         let rows = Dictionary(uniqueKeysWithValues: controller.items.enumerated().map { ($1.id, $0) })

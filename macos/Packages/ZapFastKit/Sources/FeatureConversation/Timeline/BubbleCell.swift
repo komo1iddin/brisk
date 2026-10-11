@@ -183,8 +183,10 @@ final class BubbleCell: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(id: String, layout: BubbleLayout, highlighted: Bool, searchMarking: SearchMarking? = nil) {
-        if id != messageID || layout !== bubbleLayout {
+    private var mediaScope = ["preview"]
+
+    func configure(id: String, layout: BubbleLayout, highlighted: Bool, searchMarking: SearchMarking? = nil, mediaScope: [String] = ["preview"]) {
+        if id != messageID || layout !== bubbleLayout || mediaScope != self.mediaScope {
             if id != messageID {
                 // A reused cell shows another message.
                 if let messageID, bubbleLayout?.hasAttachment == true { delegate?.attachmentHidden(inMessage: messageID) }
@@ -194,9 +196,10 @@ final class BubbleCell: NSView {
                 hideMenuMark(animated: false)
             }
             messageID = id
+            self.mediaScope = mediaScope
             bubbleLayout = layout
             removeBodyText()
-            bubble.configure(layout, messageID: id)
+            bubble.configure(layout, messageID: id, mediaScope: mediaScope)
             pills.configure(layout)
             CATransaction.begin()
             CATransaction.setDisableActions(true)

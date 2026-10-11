@@ -20,7 +20,7 @@ struct MessageContentView: View {
         case let .text(text, preview):
             VStack(alignment: .leading, spacing: Metrics.s) {
                 BodyText(text: text, message: message, model: model)
-                if let preview { LinkPreviewCard(preview: preview, thumbnail: message.thumbnail, key: message.id, model: model) }
+                if let preview { LinkPreviewCard(preview: preview, thumbnail: message.thumbnail, key: message.id, chat: message.chat, model: model) }
             }
         case let .interactive(text, card):
             InteractiveContent(message: message, text: text, card: card, model: model)

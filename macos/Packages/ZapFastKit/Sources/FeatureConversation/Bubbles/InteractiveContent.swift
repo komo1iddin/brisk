@@ -186,12 +186,17 @@ private struct CardImage: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(media.path == nil ? Text("Download image") : Text("Image"))
         .accessibilityAddTraits(.isButton)
-        .task(id: "\(message.id)-\(card ?? -1)-\(media.path ?? "")") {
+        .task(id: Thumbnails.scope([model.accountID, message.chat, message.id, String(card ?? -1), media.path ?? "", Thumbnails.contentID(thumbnail)])) {
+            let loaded: NSImage?
             if let path = media.path {
-                image = await Thumbnails.load(URL(filePath: path), points: 280)
+                loaded = await Thumbnails.load(URL(filePath: path), points: 280)
             } else if let thumbnail {
-                image = await Thumbnails.load(thumbnail, key: "card-\(message.id)-\(card ?? -1)", points: 280)
+                loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([model.accountID, message.chat, "card", message.id, String(card ?? -1)]), points: 280)
+            } else {
+                loaded = nil
             }
+            guard !Task.isCancelled else { return }
+            image = loaded
             if media.path == nil, model.accountPreferences.autoDownload, state == nil { download() }
         }
     }

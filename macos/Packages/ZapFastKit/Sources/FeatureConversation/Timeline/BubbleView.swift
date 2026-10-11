@@ -59,19 +59,19 @@ final class BubbleView: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(_ layout: BubbleLayout, messageID: String) {
+    func configure(_ layout: BubbleLayout, messageID: String, mediaScope: [String] = ["preview"]) {
         bubbleLayout = layout
         if let picture = layout.picture {
             let view = install(&pictureView, frame: picture.frame) { PictureView() }
             view.cell = cell
-            view.configure(picture, messageID: messageID, color: layout.textColor)
+            view.configure(picture, messageID: messageID, color: layout.textColor, mediaScope: mediaScope)
         } else {
             remove(&pictureView)
         }
         if let document = layout.document {
             let view = install(&documentView, frame: document.frame) { DocumentView() }
             view.cell = cell
-            view.configure(document, messageID: messageID, color: layout.textColor)
+            view.configure(document, messageID: messageID, color: layout.textColor, mediaScope: mediaScope)
         } else {
             remove(&documentView)
         }
@@ -85,12 +85,12 @@ final class BubbleView: NSView {
         if let preview = layout.linkPreview {
             let view = install(&linkView, frame: preview.frame) { LinkPreviewView() }
             view.cell = cell
-            view.configure(preview, messageID: messageID)
+            view.configure(preview, messageID: messageID, mediaScope: mediaScope)
         } else {
             remove(&linkView)
         }
         overPicture = false
-        showQuotePicture(layout.quote, messageID: messageID)
+        showQuotePicture(layout.quote, messageID: messageID, mediaScope: mediaScope)
         chrome.layout = layout
         body.piece = layout.body.map { TextPiece(string: $0.string, rect: CGRect(origin: .zero, size: $0.rect.size)) }
         body.isHidden = layout.body == nil
@@ -174,7 +174,7 @@ final class BubbleView: NSView {
         body.setNeedsDisplay()
     }
 
-    private func showQuotePicture(_ quote: BubbleLayout.QuoteLayout?, messageID: String) {
+    private func showQuotePicture(_ quote: BubbleLayout.QuoteLayout?, messageID: String, mediaScope: [String]) {
         quoteLoads += 1
         let load = quoteLoads
         CATransaction.begin()
@@ -186,9 +186,9 @@ final class BubbleView: NSView {
             quoteImage.contents = nil
             return
         }
-        let key = "quote-\(messageID)"
+        let key = Thumbnails.scope(mediaScope + ["quote", messageID])
         let points = max(rect.width, rect.height)
-        if let cached = Thumbnails.cached(key: key, points: points) {
+        if let cached = Thumbnails.cached(data, key: key, points: points) {
             quoteImage.contents = cached.cgImage(forProposedRect: nil, context: nil, hints: nil)
             return
         }

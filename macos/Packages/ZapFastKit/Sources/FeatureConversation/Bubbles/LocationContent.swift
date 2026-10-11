@@ -67,7 +67,7 @@ struct LocationContent: View {
     /// at a location never asks a map service for the sender's coordinates.
     private func load() async {
         let preview = await LocationPreview.load(
-            message.thumbnail, key: "map-\(model.accountID)-\(message.chat)-\(message.id)-\(version)",
+            message.thumbnail, key: Thumbnails.scope([model.accountID, message.chat, "map", message.id, String(version)]),
             points: Self.mapSize.width
         )
         guard !Task.isCancelled else { return }

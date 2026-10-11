@@ -541,9 +541,15 @@ private struct PendingMedia: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: message.id) {
-            guard let thumbnail = message.thumbnail else { return }
-            preview = await Thumbnails.load(thumbnail, key: "thumb-\(message.id)", points: 320)
+        .task(id: Thumbnails.scope([model.accountID, message.chat, message.id, Thumbnails.contentID(message.thumbnail)])) {
+            let loaded: NSImage?
+            if let thumbnail = message.thumbnail {
+                loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([model.accountID, message.chat, "thumb", message.id]), points: 320)
+            } else {
+                loaded = nil
+            }
+            guard !Task.isCancelled else { return }
+            preview = loaded
         }
     }
 }
@@ -551,6 +557,7 @@ private struct PendingMedia: View {
 /// The small picture of a photo or video: the file once here, else the
 /// preview WhatsApp sent with it.
 private struct MediaThumbnail: View {
+    let account: String
     let message: MessageRecord
     let points: CGFloat
     @State private var image: NSImage?
@@ -565,12 +572,17 @@ private struct MediaThumbnail: View {
                 }
             }
             .clipped()
-        .task(id: "\(message.id)-\(message.mediaURL?.path ?? "")") {
+        .task(id: Thumbnails.scope([account, message.chat, message.id, message.mediaURL?.path ?? "", Thumbnails.contentID(message.thumbnail)])) {
+            let loaded: NSImage?
             if MediaGallery.kind(of: message) == .photo, let url = message.mediaURL {
-                image = await Thumbnails.load(url, points: points)
+                loaded = await Thumbnails.load(url, points: points)
             } else if let thumbnail = message.thumbnail {
-                image = await Thumbnails.load(thumbnail, key: "thumb-\(message.id)", points: points)
+                loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([account, message.chat, "thumb", message.id]), points: points)
+            } else {
+                loaded = nil
             }
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }
@@ -592,7 +604,7 @@ private struct MediaStrip: View {
                 LazyHStack(spacing: 3) {
                     ForEach(items, id: \.id) { message in
                         let selected = message.id == current
-                        MediaThumbnail(message: message, points: 48)
+                        MediaThumbnail(account: model.accountID, message: message, points: 48)
                             .frame(width: selected ? 48 : 30, height: 44)
                             .clipShape(.rect(cornerRadius: 5, style: .continuous))
                             .overlay {
@@ -646,7 +658,7 @@ private struct MediaGrid: View {
                 ForEach(MediaGallery.months(of: items), id: \.month) { group in
                     Section {
                         ForEach(group.items.reversed(), id: \.id) { message in
-                            MediaThumbnail(message: message, points: 180)
+                            MediaThumbnail(account: model.accountID, message: message, points: 180)
                                 .aspectRatio(1, contentMode: .fit)
                                 .overlay(alignment: .bottomLeading) { badge(message) }
                                 .contentShape(.rect)

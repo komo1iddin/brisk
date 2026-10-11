@@ -149,7 +149,10 @@ extension TimelineController {
             let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? BubbleCell
                 ?? BubbleCell(identifier: identifier)
             cell.delegate = self
-            cell.configure(id: row.id, layout: layout, highlighted: isHighlighted(row.id), searchMarking: searchMarking(row.id))
+            cell.configure(
+                id: row.id, layout: layout, highlighted: isHighlighted(row.id), searchMarking: searchMarking(row.id),
+                mediaScope: [model?.accountID ?? "preview", chatID ?? ""]
+            )
             return cell
         case .hosted(let row, _):
             // Reused only for the same kind of message, so SwiftUI updates a

@@ -44,7 +44,7 @@ struct VisualMedia: View {
         .clipShape(shape)
         .onHover { hovering = $0 }
         .draggableAttachment(message)
-        .task(id: "\(message.id)-\(media.path ?? "")") { await load(size) }
+        .task(id: Thumbnails.scope([model.accountID, message.chat, message.id, media.path ?? "", Thumbnails.contentID(message.thumbnail)])) { await load(size) }
         .onDisappear {
             if case .video = message.content { model.videoHidden(message) }
         }
@@ -165,11 +165,16 @@ struct VisualMedia: View {
 
     private func load(_ size: CGSize) async {
         let points = max(size.width, size.height)
+        let loaded: NSImage?
         if let path = media.path, media.mime.hasPrefix("image") {
-            image = await Thumbnails.load(URL(filePath: path), points: points)
+            loaded = await Thumbnails.load(URL(filePath: path), points: points)
         } else if let thumbnail = message.thumbnail {
-            image = await Thumbnails.load(thumbnail, key: "thumb-\(message.id)", points: points)
+            loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([model.accountID, message.chat, "thumb", message.id]), points: points)
+        } else {
+            loaded = nil
         }
+        guard !Task.isCancelled else { return }
+        image = loaded
         model.autoDownload(message)
     }
 

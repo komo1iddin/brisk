@@ -73,6 +73,7 @@ struct LinkPreviewCard: View {
     let preview: LinkPreviewInfo
     let thumbnail: Data?
     let key: String
+    let chat: String
     let model: AppModel
 
     @State private var image: NSImage?
@@ -100,9 +101,15 @@ struct LinkPreviewCard: View {
         }
         .padding(Metrics.s)
         .background(Palette.inset, in: .rect(cornerRadius: Metrics.controlRadius))
-        .task(id: key) {
-            guard let thumbnail else { return }
-            image = await Thumbnails.load(thumbnail, key: "preview-\(key)", points: 56)
+        .task(id: Thumbnails.scope([model.accountID, chat, key, Thumbnails.contentID(thumbnail)])) {
+            let loaded: NSImage?
+            if let thumbnail {
+                loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([model.accountID, chat, "preview", key]), points: 56)
+            } else {
+                loaded = nil
+            }
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
         .onTapGesture(perform: open)
         .accessibilityElement(children: .combine)

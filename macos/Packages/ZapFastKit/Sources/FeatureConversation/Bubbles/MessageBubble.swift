@@ -218,9 +218,11 @@ private struct QuoteView: View {
                         }
                     }
                     .clipped()
-                    .task(id: quoted.id) {
+                    .task(id: Thumbnails.scope([model.accountID, chat, quoted.id, Thumbnails.contentID(preview.thumbnail)])) {
                         guard let data = preview.thumbnail else { return }
-                        picture = await Thumbnails.load(data, key: "quote-view-\(quoted.id)", points: TimelineGeometry.quoteThumbnail * 1.5)
+                        let loaded = await Thumbnails.load(data, key: Thumbnails.scope([model.accountID, chat, "quote-view", quoted.id]), points: TimelineGeometry.quoteThumbnail * 1.5)
+                        guard !Task.isCancelled else { return }
+                        picture = loaded
                     }
             }
         }

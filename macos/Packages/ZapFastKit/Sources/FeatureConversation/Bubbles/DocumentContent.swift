@@ -73,7 +73,7 @@ struct DocumentContent: View {
         }
         .buttonStyle(.plain)
         .draggableAttachment(message)
-        .task(id: "\(message.id)-\(media.path ?? "")") { await load() }
+        .task(id: Thumbnails.scope([model.accountID, message.chat, message.id, media.path ?? "", Thumbnails.contentID(message.thumbnail)])) { await load() }
     }
 
     private var detail: String {
@@ -93,9 +93,14 @@ struct DocumentContent: View {
         if let url = message.mediaURL, DocumentType.of(fileName: fileName, mime: media.mime).conforms(to: .pdf),
            let page = await Thumbnails.document(url, size: CGSize(width: Self.width, height: tall)) {
             // The file itself draws sharper than the sender's small preview.
+            guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.15)) { preview = page }
         } else if let thumbnail = message.thumbnail {
-            preview = await Thumbnails.load(thumbnail, key: "document-\(message.id)", points: tall)
+            let loaded = await Thumbnails.load(thumbnail, key: Thumbnails.scope([model.accountID, message.chat, "document", message.id]), points: tall)
+            guard !Task.isCancelled else { return }
+            preview = loaded
+        } else {
+            preview = nil
         }
     }
 

@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import ImageIO
 import QuickLookThumbnailing
 
@@ -29,7 +30,7 @@ public enum Thumbnails {
     /// An image from bytes (a message's JPEG preview), decoded to `points`.
     @concurrent
     public static func load(_ data: Data, key: String, points: CGFloat, scale: CGFloat = 2) async -> NSImage? {
-        let key = "\(key)@\(Int(points * scale))" as NSString
+        let key = byteKey(data, key: key, points: points, scale: scale)
         if let cached = cache.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return decode(source, points: points, scale: scale, key: key)
@@ -43,9 +44,24 @@ public enum Thumbnails {
         return cache.object(forKey: "\(url.path(percentEncoded: false))#\(modified)@\(Int(points * scale))" as NSString)
     }
 
-    /// The image `load(_:key:points:)` gave, if it is still kept.
-    public nonisolated static func cached(key: String, points: CGFloat, scale: CGFloat = 2) -> NSImage? {
-        cache.object(forKey: "\(key)@\(Int(points * scale))" as NSString)
+    /// The image of these bytes, never a previous preview under the same name.
+    public nonisolated static func cached(_ data: Data, key: String, points: CGFloat, scale: CGFloat = 2) -> NSImage? {
+        cache.object(forKey: byteKey(data, key: key, points: points, scale: scale))
+    }
+
+    /// Separates the caller's namespaces even when their names contain separators.
+    public nonisolated static func scope(_ parts: [String]) -> String {
+        parts.map { "\($0.utf8.count):\($0)" }.joined()
+    }
+
+    /// A small preview's content identity, also used to reload edited previews.
+    public nonisolated static func contentID(_ data: Data?) -> String {
+        guard let data else { return "none" }
+        return Data(SHA256.hash(data: data)).base64EncodedString()
+    }
+
+    private nonisolated static func byteKey(_ data: Data, key: String, points: CGFloat, scale: CGFloat) -> NSString {
+        "\(scope([key, contentID(data)]))@\(Int(points * scale))#\(scale)" as NSString
     }
 
     /// The page `document(_:size:)` gave for this file, if it is still kept.

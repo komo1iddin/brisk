@@ -69,14 +69,17 @@ final class PictureView: AttachmentView {
 
     // MARK: Configuring
 
-    func configure(_ layout: BubbleLayout.PictureLayout, messageID: String, color: NSColor) {
-        let sameMessage = messageID == self.messageID
+    private var mediaScope = ["preview"]
+
+    func configure(_ layout: BubbleLayout.PictureLayout, messageID: String, color: NSColor, mediaScope: [String] = ["preview"]) {
+        let sameMessage = messageID == self.messageID && mediaScope == self.mediaScope
         let same = sameMessage && layout.picture == pictureLayout?.picture && layout.points == pictureLayout?.points
         if !sameMessage {
             setMoving(false)
             setPlaying(false)
         }
         self.messageID = messageID
+        self.mediaScope = mediaScope
         pictureLayout = layout
         textColor = color
         let bounds = CGRect(origin: .zero, size: layout.frame.size)
@@ -234,12 +237,12 @@ final class PictureView: AttachmentView {
         let picture = layout.picture
         let points = layout.points
         let file = picture.path.flatMap { picture.mime.hasPrefix("image") ? URL(filePath: $0) : nil }
-        let key = "thumb-\(id)"
+        let key = Thumbnails.scope(mediaScope + ["thumb", id])
         if let file, let image = Thumbnails.cached(file, points: points) {
             show(image)
             return
         }
-        if file == nil, picture.thumbnail != nil, let image = Thumbnails.cached(key: key, points: points) {
+        if file == nil, let thumbnail = picture.thumbnail, let image = Thumbnails.cached(thumbnail, key: key, points: points) {
             show(image)
             return
         }

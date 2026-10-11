@@ -45,10 +45,13 @@ final class DocumentView: AttachmentView {
         spinner.inset = 1.5
     }
 
-    func configure(_ layout: BubbleLayout.DocumentLayout, messageID: String, color: NSColor) {
-        let sameMessage = messageID == self.messageID
+    private var mediaScope = ["preview"]
+
+    func configure(_ layout: BubbleLayout.DocumentLayout, messageID: String, color: NSColor, mediaScope: [String] = ["preview"]) {
+        let sameMessage = messageID == self.messageID && mediaScope == self.mediaScope
         let same = sameMessage && layout.document == documentLayout?.document && layout.preview?.width == documentLayout?.preview?.width
         self.messageID = messageID
+        self.mediaScope = mediaScope
         documentLayout = layout
         self.color = color
         let bounds = CGRect(origin: .zero, size: layout.frame.size)
@@ -149,12 +152,12 @@ final class DocumentView: AttachmentView {
         let tall = preview.width * 1.5
         let size = CGSize(width: preview.width, height: tall)
         let file = document.path.flatMap { document.isPDF ? URL(filePath: $0) : nil }
-        let key = "document-\(id)"
+        let key = Thumbnails.scope(mediaScope + ["document", id])
         if let file, let cached = Thumbnails.cachedDocument(file, size: size) {
             showPage(cached)
             return
         }
-        if file == nil, let cached = Thumbnails.cached(key: key, points: tall) {
+        if file == nil, let thumbnail = document.thumbnail, let cached = Thumbnails.cached(thumbnail, key: key, points: tall) {
             showPage(cached)
             return
         }
@@ -254,9 +257,12 @@ final class LinkPreviewView: NSView {
     override var isFlipped: Bool { true }
     override var wantsUpdateLayer: Bool { true }
 
-    func configure(_ layout: BubbleLayout.LinkPreviewLayout, messageID: String) {
-        let same = messageID == self.messageID && layout.preview == previewLayout?.preview
+    private var mediaScope = ["preview"]
+
+    func configure(_ layout: BubbleLayout.LinkPreviewLayout, messageID: String, mediaScope: [String] = ["preview"]) {
+        let same = messageID == self.messageID && layout.preview == previewLayout?.preview && mediaScope == self.mediaScope
         self.messageID = messageID
+        self.mediaScope = mediaScope
         previewLayout = layout
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -278,9 +284,9 @@ final class LinkPreviewView: NSView {
         }
         loads += 1
         let load = loads
-        let key = "preview-\(id)"
+        let key = Thumbnails.scope(mediaScope + ["preview", id])
         let points = TimelineGeometry.linkImage
-        if let cached = Thumbnails.cached(key: key, points: points) {
+        if let cached = Thumbnails.cached(thumbnail, key: key, points: points) {
             image.contents = cached.cgImage(forProposedRect: nil, context: nil, hints: nil)
             return
         }

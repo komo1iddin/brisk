@@ -6,20 +6,24 @@ import ZapFastDesign
 
 @MainActor
 struct AuditCacheIsolationTests {
-    private func png(_ color: NSColor) throws -> Data {
+    private func png(_ rgba: [UInt8]) throws -> Data {
         let bitmap = try #require(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
             isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
         ))
-        for x in 0..<2 { for y in 0..<2 { bitmap.setColor(color, atX: x, y: y) } }
+        let bytes = try #require(bitmap.bitmapData)
+        for y in 0..<2 { for x in 0..<2 {
+            let offset = y * bitmap.bytesPerRow + x * 4
+            for component in 0..<4 { bytes[offset + component] = rgba[component] }
+        } }
         return try #require(bitmap.representation(using: .png, properties: [:]))
     }
 
     @Test func replacingThumbnailBytesUnderOneMessageKeyShowsTheNewImage() async throws {
         let key = "audit-thumbnail-\(UUID().uuidString)"
-        let first = try #require(await Thumbnails.load(png(.red), key: key, points: 2))
-        let second = try #require(await Thumbnails.load(png(.blue), key: key, points: 2))
+        let first = try #require(await Thumbnails.load(png([255, 0, 0, 255]), key: key, points: 2))
+        let second = try #require(await Thumbnails.load(png([0, 0, 255, 255]), key: key, points: 2))
         #expect(first !== second)
     }
 

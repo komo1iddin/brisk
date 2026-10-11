@@ -108,4 +108,27 @@ struct ConversationMergeTests {
         #expect(after.messagesRevision == before.messagesRevision)
         #expect(after.changes == before.changes)
     }
+
+    @Test func indexedUpdatesSurvivePrependReorderDeletionAndDuplicateDelivery() {
+        let store = ConversationStore()
+        store.protect(["c"])
+        let original = (0..<10_000).map { message("\($0)", at: Int64($0)) }
+        store.applyMessages(chat: "c", messages: original, older: false, complete: false)
+        store.applyMessages(chat: "c", messages: [message("older", at: -1)], older: true, complete: true)
+        var moved = message("0", at: 20_000)
+        moved.chat = "c"
+        store.applyUpdated(moved)
+        store.applyDeleted(chat: "c", id: "5000")
+        var receipt = message("1", at: 1)
+        receipt.chat = "c"
+        receipt.status = .read
+        store.applyUpdated(receipt)
+        store.applyMessages(chat: "c", messages: [message("new", at: 20_001), message("new", at: 20_001)], older: false, complete: false)
+        let conversation = store.conversation("c")
+        #expect(conversation.message("1")?.status == .read)
+        #expect(conversation.message("5000") == nil)
+        #expect(conversation.messages.suffix(2).map(\.id) == ["0", "new"])
+        #expect(conversation.messages.count == 10_001)
+        #expect(conversation.changes.last?.updated == [10_000])
+    }
 }

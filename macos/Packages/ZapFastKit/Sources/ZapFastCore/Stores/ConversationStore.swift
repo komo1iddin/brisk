@@ -38,7 +38,7 @@ public struct Conversation: Equatable, Sendable {
     /// lacks. Messages stay ascending by timestamp, ties in the phone's history
     /// order; the array is sorted only when a merge breaks that, not on every
     /// live message.
-    mutating func merge(_ incoming: [MessageRecord], older: Bool) {
+    mutating func merge(_ incoming: [MessageRecord], older: Bool, positions knownPositions: [String: Int]? = nil) {
         incremental = nil
         guard !incoming.isEmpty else { incremental = []; return }
         var mustSort = false
@@ -48,10 +48,14 @@ public struct Conversation: Equatable, Sendable {
             mustSort = !isAscending
         } else if incoming.count <= 8 {
             var indexes: [Int] = []
+            var addedPositions: [String: Int] = [:]
             var keepsGroups = true
             // Live messages and updates: usually about the newest ones.
             for message in incoming {
-                if let index = messages.lastIndex(where: { $0.id == message.id }) {
+                let found: Int?
+                if let knownPositions { found = knownPositions[message.id] ?? addedPositions[message.id] }
+                else { found = messages.lastIndex(where: { $0.id == message.id }) }
+                if let index = found {
                     let old = messages[index]
                     keepsGroups = keepsGroups && old.timestamp == message.timestamp && old.sender == message.sender
                         && old.fromMe == message.fromMe
@@ -61,6 +65,7 @@ public struct Conversation: Equatable, Sendable {
                     if index + 1 < messages.count, messages[index].order > messages[index + 1].order { mustSort = true }
                 } else {
                     if let last = messages.last, last.order > message.order { mustSort = true }
+                    addedPositions[message.id] = messages.count
                     messages.append(message)
                 }
             }
@@ -144,6 +149,9 @@ public final class ConversationStore {
     /// Chats the store has an entry for; a slot can exist only because a
     /// view read it.
     @ObservationIgnored private var known: Set<String> = []
+    // Kept outside Conversation snapshots, so UI readers cannot force this
+    // index to be copied on every append.
+    @ObservationIgnored private var messagePositions: [String: [String: Int]] = [:]
     @ObservationIgnored private var protected: Set<String> = []
     @ObservationIgnored private var recency: [String: UInt64] = [:]
     @ObservationIgnored private var clock: UInt64 = 0
@@ -218,6 +226,7 @@ public final class ConversationStore {
             count -= 1
             slot.value = Conversation(revision: slot.value.revision &+ 1, messagesRevision: slot.value.messagesRevision &+ 1)
             known.remove(chat)
+            messagePositions[chat] = nil
             recency[chat] = nil
         }
     }
@@ -279,6 +288,14 @@ public final class ConversationStore {
                                                               updated: indexes))
                 if conversation.changes.count > 32 { conversation.changes.removeFirst(conversation.changes.count - 32) }
             } else { conversation.changes = [] }
+            if conversation.incremental != nil {
+                for index in previousCount..<conversation.messages.count {
+                    messagePositions[chat, default: [:]][conversation.messages[index].id] = index
+                }
+            } else {
+                messagePositions[chat] = Dictionary(conversation.messages.enumerated().map { ($1.id, $0) },
+                                                   uniquingKeysWith: { first, _ in first })
+            }
         }
         slot.value = conversation
         known.insert(chat)
@@ -314,7 +331,7 @@ public final class ConversationStore {
         var bare = false
         update(chat) { conversation in
             let wasEmpty = conversation.messages.isEmpty
-            conversation.merge(messages, older: older)
+            conversation.merge(messages, older: older, positions: messagePositions[chat])
             conversation.requested = true
             if older {
                 conversation.loadingOlder = false
@@ -329,7 +346,7 @@ public final class ConversationStore {
 
     func applyUpdated(_ message: MessageRecord) {
         guard known.contains(message.chat) else { return }
-        update(message.chat) { $0.merge([message], older: false) }
+        update(message.chat) { $0.merge([message], older: false, positions: messagePositions[message.chat]) }
     }
 
     func applyDeleted(chat: String, id: String) {
@@ -417,6 +434,7 @@ public final class ConversationStore {
             slot.value = nil
         }
         known = []
+        messagePositions = [:]
         typing = [:]
         presence = [:]
         cardDownloads = [:]

@@ -41,7 +41,9 @@ extension AppModel {
     func setOnScreen(_ shown: Bool) {
         guard shown != isOnScreen else { return }
         isOnScreen = shown
+        protectOpenConversations()
         if shown {
+            if let selectedChatID { ensureLoaded(selectedChatID) }
             guard started, !appLock.isLocked else { return }
             backend.send(.setOnline(online: isActive))
             if isActive, let selectedChatID {

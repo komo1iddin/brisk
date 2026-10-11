@@ -118,6 +118,12 @@ public final class ConversationStore {
     /// Chats the store has an entry for; a slot can exist only because a
     /// view read it.
     @ObservationIgnored private var known: Set<String> = []
+    @ObservationIgnored private var protected: Set<String> = []
+    @ObservationIgnored private var recency: [String: UInt64] = [:]
+    @ObservationIgnored private var clock: UInt64 = 0
+    @ObservationIgnored private var memoryPressure: DispatchSourceMemoryPressure?
+    private let inactiveChatLimit: Int
+    private let inactiveRowLimit: Int
     /// Who is typing, per chat, and who is online. Views read one chat's
     /// with `typing(in:)` and `presence(of:)`: typing in a busy group
     /// changes several times a second.
@@ -145,7 +151,50 @@ public final class ConversationStore {
         public var lastSeen: Date?
     }
 
-    public init() {}
+    public convenience init() { self.init(inactiveChatLimit: 8, inactiveRowLimit: 12_000) }
+
+    init(inactiveChatLimit: Int, inactiveRowLimit: Int) {
+        self.inactiveChatLimit = max(0, inactiveChatLimit)
+        self.inactiveRowLimit = max(0, inactiveRowLimit)
+        let pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        pressure.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.trimInactive(all: true) }
+        }
+        pressure.resume()
+        memoryPressure = pressure
+    }
+
+    isolated deinit { memoryPressure?.cancel() }
+
+    /// Open panes keep their loaded rows, selections and paging anchors.
+    /// Inactive rows are disposable copies of the encrypted archive.
+    func protect(_ chats: Set<String>) {
+        protected = chats
+        for chat in chats { touch(chat) }
+        trimInactive()
+    }
+
+    private func touch(_ chat: String) {
+        clock &+= 1
+        recency[chat] = clock
+    }
+
+    func trimInactive(all: Bool = false) {
+        let eligible = known.filter {
+            !protected.contains($0) && slots[$0]?.value.loadingOlder != true && slots[$0]?.value.fetchingPhone != true
+        }.sorted { recency[$0, default: 0] < recency[$1, default: 0] }
+        var count = eligible.count
+        var rows = eligible.reduce(0) { $0 + (slots[$1]?.value.messages.count ?? 0) }
+        for chat in eligible {
+            guard all || count > inactiveChatLimit || rows > inactiveRowLimit else { break }
+            guard let slot = slots[chat] else { continue }
+            rows -= slot.value.messages.count
+            count -= 1
+            slot.value = Conversation(revision: slot.value.revision &+ 1, messagesRevision: slot.value.messagesRevision &+ 1)
+            known.remove(chat)
+            recency[chat] = nil
+        }
+    }
 
     /// Who is typing in one chat.
     public func typing(in chat: String) -> Set<String> {
@@ -164,7 +213,8 @@ public final class ConversationStore {
     }
 
     public func conversation(_ chat: String) -> Conversation {
-        slot(chat).value
+        touch(chat)
+        return slot(chat).value
     }
 
     /// A message's download, while one is running or after it failed.
@@ -196,6 +246,8 @@ public final class ConversationStore {
         if messages { conversation.messagesRevision &+= 1 }
         slot.value = conversation
         known.insert(chat)
+        touch(chat)
+        trimInactive()
     }
 
     private func setDownload(_ key: MessageKey, _ state: DownloadState?) {

@@ -55,6 +55,7 @@ public final class AppModel {
                 cancelEditing(in: oldValue)
                 flushDraft(for: oldValue)
             }
+            protectOpenConversations()
             if let selectedChatID { opened(selectedChatID) }
             // What is open now opens at the next start; a locked chat never does.
             accountPreferences.lastChat = selectedChatID.flatMap { chats.chat($0)?.locked == true ? nil : $0 }
@@ -112,7 +113,9 @@ public final class AppModel {
     public internal(set) var infoPerson: String?
     /// Chats shown in windows of their own, and how many of each: they
     /// are open as the main window's chat is, for reading and notifying.
-    public internal(set) var windowChats: [String: Int] = [:]
+    public internal(set) var windowChats: [String: Int] = [:] {
+        didSet { protectOpenConversations() }
+    }
 
     /// Chats opened from the Unread list, which stay listed there after
     /// they are read (upstream's `unread_kept`), until the list changes.

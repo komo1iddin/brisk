@@ -7,6 +7,12 @@ import Foundation
 import ZapFastBridge
 
 extension AppModel {
+    func protectOpenConversations() {
+        var open = Set(windowChats.keys)
+        if isOnScreen, let selectedChatID { open.insert(selectedChatID) }
+        conversations.protect(open)
+    }
+
     // MARK: Intents: chat windows
 
     /// The chat shows in the main window or one of its own.

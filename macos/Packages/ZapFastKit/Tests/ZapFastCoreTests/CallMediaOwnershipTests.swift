@@ -90,6 +90,37 @@ struct CallMediaOwnershipTests {
         calls.shutdown()
     }
 
+    @Test func resetReleasesAPendingPermissionWithoutClearingANewerIntent() async {
+        let service = PreviewCallService()
+        let calls = CallStore(service: service, live: false)
+        var permissions: [CheckedContinuation<Bool, Never>] = []
+        calls.microphoneAllowed = { await withCheckedContinuation { permissions.append($0) } }
+        let old = Task { await calls.place(chat: "old") }
+        while permissions.isEmpty { await Task.yield() }
+        calls.reset()
+        let replacement = Task { await calls.place(chat: "new") }
+        let deadline = ContinuousClock.now + .seconds(1)
+        while permissions.count < 2, ContinuousClock.now < deadline { await Task.yield() }
+        #expect(permissions.count == 2)
+        guard permissions.count == 2 else {
+            permissions[0].resume(returning: false)
+            await old.value; await replacement.value
+            calls.shutdown()
+            return
+        }
+        permissions[0].resume(returning: true)
+        await old.value
+        let duplicate = Task { await calls.place(chat: "duplicate") }
+        for _ in 0..<20 { await Task.yield() }
+        #expect(permissions.count == 2)
+        for permission in permissions.dropFirst(2) { permission.resume(returning: false) }
+        await duplicate.value
+        permissions[1].resume(returning: true)
+        await replacement.value
+        #expect(service.requests == [.place("new", video: false)])
+        calls.shutdown()
+    }
+
     @Test func aFailedAudioDeviceChangeReportsTheFailureAndEndsItsOwnCall() {
         let service = PreviewCallService()
         let calls = CallStore(service: service, live: false)

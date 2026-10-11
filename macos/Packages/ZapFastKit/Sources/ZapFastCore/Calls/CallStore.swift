@@ -104,7 +104,7 @@ public final class CallStore {
         guard media.available(to: self) else { return busyOtherAccount() }
         intentInFlight = true
         let epoch = epoch
-        defer { intentInFlight = false }
+        defer { if epoch == self.epoch { intentInFlight = false } }
         let microphone = await microphoneAllowed()
         guard running, epoch == self.epoch, !isLocked else { return }
         guard microphone else { return deniedMicrophone() }
@@ -137,7 +137,7 @@ public final class CallStore {
         guard media.available(to: self) else { return busyOtherAccount() }
         intentInFlight = true
         let epoch = epoch
-        defer { intentInFlight = false }
+        defer { if epoch == self.epoch { intentInFlight = false } }
         guard await microphoneAllowed() else {
             guard epoch == self.epoch, isRinging(session) else { return }
             deniedMicrophone()
@@ -393,6 +393,7 @@ public final class CallStore {
         call = nil
         waiting = nil
         placing = false
+        intentInFlight = false
         cameraPermitted = false
         connectedAt = nil
         endedAt = nil

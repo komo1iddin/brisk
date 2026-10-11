@@ -64,4 +64,48 @@ struct ConversationMergeTests {
         let separators = rows.filter { if case .day = $0 { true } else { false } }
         #expect(separators.count == 2)
     }
+
+    @Test func aChangedTimestampResortsAndClearsTheIncrementalJournal() {
+        let store = ConversationStore()
+        store.protect(["c"])
+        store.applyMessages(chat: "c", messages: [message("a", at: 1), message("b", at: 2), message("c", at: 3)], older: false, complete: false)
+        var changed = message("a", at: 4)
+        changed.chat = "c"
+        store.applyUpdated(changed)
+        #expect(store.conversation("c").messages.map(\.id) == ["b", "c", "a"])
+        #expect(store.conversation("c").changes.isEmpty)
+    }
+
+    @Test func theJournalContainsCoalescedReceiptsAndAppendsButNotHistoryOrDeletion() {
+        let store = ConversationStore()
+        store.protect(["c"])
+        store.applyMessages(chat: "c", messages: [message("a", at: 1)], older: false, complete: false)
+        var receipt = message("a", at: 1)
+        receipt.chat = "c"
+        receipt.status = .read
+        store.applyUpdated(receipt)
+        store.applyMessages(chat: "c", messages: [message("b", at: 2)], older: false, complete: false)
+        let changes = store.conversation("c").changes
+        #expect(changes.count == 3)
+        #expect(changes[1].updated == [0])
+        #expect(changes[2].previousCount == 1 && changes[2].count == 2)
+        store.applyMessages(chat: "c", messages: [message("older", at: 0)], older: true, complete: true)
+        #expect(store.conversation("c").changes.isEmpty)
+        store.applyDeleted(chat: "c", id: "a")
+        #expect(store.conversation("c").changes.isEmpty)
+    }
+
+    @Test func revisionHistoryIsBoundedAndPagingFlagsDoNotEraseIt() {
+        let store = ConversationStore()
+        store.protect(["c"])
+        for index in 0..<80 {
+            store.applyMessages(chat: "c", messages: [message("\(index)", at: Int64(index))], older: false, complete: false)
+        }
+        let before = store.conversation("c")
+        #expect(before.changes.count == 32)
+        store.markLoadingOlder("c")
+        let after = store.conversation("c")
+        #expect(after.messagesRevision == before.messagesRevision)
+        #expect(after.changes == before.changes)
+    }
 }

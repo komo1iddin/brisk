@@ -15,6 +15,7 @@ extension TimelineController {
         chatID: String,
         messages: [MessageRecord],
         revision: Int,
+        changes: [ConversationDelta] = [],
         calls: [CallLogEntry] = [],
         fromStart: Bool = false,
         isGroup: Bool,
@@ -76,6 +77,7 @@ extension TimelineController {
         }
         self.unread = unread
         if revision != self.revision {
+            let previousRevision = self.revision
             self.revision = revision
             let old = self.messages
             self.messages = messages
@@ -83,7 +85,13 @@ extension TimelineController {
             // or two in place: those rows alone are made again, not all of
             // them, which cost a frame or more in a long chat each time. A
             // message that arrives adds its own rows after the others.
-            if !rebuilds, let edited = editedInPlace(from: old, to: messages) {
+            if !rebuilds, !items.isEmpty, !preparing, let previousRevision,
+               let delta = TimelineMutation.resolve(changes, after: previousRevision, through: revision,
+                                                    previousCount: old.count, count: messages.count),
+               messages.count - old.count <= backgroundThreshold {
+                refresh(delta.filter { $0 < old.count }.map { messages[$0] })
+                if messages.count > old.count, let last = old.last { append(messages[old.count...], after: last) }
+            } else if !rebuilds, let edited = editedInPlace(from: old, to: messages) {
                 refresh(edited)
             } else if !rebuilds, let change = appended(from: old, to: messages) {
                 refresh(change.edited)

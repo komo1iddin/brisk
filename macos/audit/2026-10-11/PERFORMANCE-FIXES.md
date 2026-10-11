@@ -9,8 +9,9 @@ chat xarajatlarini fixture bilan tekshirish davom etmoqda.
 | F12 | Eskirgan batch cache’dan oldin generation/cancellation guard bilan rad etiladi. Bir active parallel batch va har timeline uchun bitta latest pending snapshot; cancel frame/row orasida tekshiriladi. 3 cancellation regression + mavjud layout/lifetime testlari PASS. |
 | F13 | Badge oldingi message tail’dan keyingi incoming insertion’larni sanaydi. History prepend/gap fill va initial page sanalmaydi; same-second live va own-message/deleted-tail holatlari 3 test bilan PASS. |
 | F10 | Inactive model retention hal qilindi: per account max 8 chat/12k row, LRU eviction, memory-pressure trim, open pane/window va running history request himoyasi; qayta ochishda archive reload. 50 × 3k inactive + 15k open fixture, pressure/reload testlari va mavjud merge/account testlari: 17 PASS. Active-chat row/byte limit va ikki tomonlama paging qismi ochiq. |
+| F11 | Live merge’da full ascending scan o‘rniga qo‘shni order tekshiruvi. 32-revision journal timeline’ga faqat edited indeks va append range beradi; coalesced, missing revision, regroup/reorder/history/delete holatlari tekshirilgan. Full array copy, eski message ID lookup va resize xarajatlari hali mavjud. Release A/B quyida qayd etiladi. |
 
 [Budjet va fallback xatti-harakati](../../../docs/_reference/native-macos-media-budgets.md).
-F11 event latency va F10 active-history qismi keyingi tekshiruv mavzulari.
+F11 qolgan scaling yo‘llari va F10 active-history qismi ochiq.
 Real user archive o‘qilmadi;
 barcha fixture vaqtinchalik va sintetik.

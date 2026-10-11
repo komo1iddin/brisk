@@ -21,6 +21,9 @@ public struct Conversation: Equatable, Sendable {
     /// Bumped only when `messages` change: paging flags leave it alone, so
     /// the timeline does not rebuild its rows for a spinner.
     public internal(set) var messagesRevision = 0
+    /// Recent simple mutations, so coalesced view updates need no full diff.
+    public internal(set) var changes: [ConversationDelta] = []
+    var incremental: [Int]?
 
     public func message(_ id: String) -> MessageRecord? {
         messages.first { $0.id == id }
@@ -36,19 +39,32 @@ public struct Conversation: Equatable, Sendable {
     /// order; the array is sorted only when a merge breaks that, not on every
     /// live message.
     mutating func merge(_ incoming: [MessageRecord], older: Bool) {
-        guard !incoming.isEmpty else { return }
+        incremental = nil
+        guard !incoming.isEmpty else { incremental = []; return }
+        var mustSort = false
         if older {
             let known = Set(messages.map(\.id))
             messages = incoming.filter { !known.contains($0.id) } + messages
+            mustSort = !isAscending
         } else if incoming.count <= 8 {
+            var indexes: [Int] = []
+            var keepsGroups = true
             // Live messages and updates: usually about the newest ones.
             for message in incoming {
                 if let index = messages.lastIndex(where: { $0.id == message.id }) {
+                    let old = messages[index]
+                    keepsGroups = keepsGroups && old.timestamp == message.timestamp && old.sender == message.sender
+                        && old.fromMe == message.fromMe
                     messages[index] = message.keepingMediaPath(of: messages[index])
+                    indexes.append(index)
+                    if index > 0, messages[index - 1].order > messages[index].order { mustSort = true }
+                    if index + 1 < messages.count, messages[index].order > messages[index + 1].order { mustSort = true }
                 } else {
+                    if let last = messages.last, last.order > message.order { mustSort = true }
                     messages.append(message)
                 }
             }
+            if !mustSort, keepsGroups { incremental = indexes }
         } else {
             var positions = Dictionary(
                 messages.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first }
@@ -61,8 +77,9 @@ public struct Conversation: Equatable, Sendable {
                     messages.append(message)
                 }
             }
+            mustSort = !isAscending
         }
-        if !isAscending {
+        if mustSort {
             // Stable, as upstream's `sort_by_key`: equal keys keep their order.
             messages = messages.enumerated()
                 .sorted {
@@ -76,6 +93,15 @@ public struct Conversation: Equatable, Sendable {
     private var isAscending: Bool {
         zip(messages, messages.dropFirst()).allSatisfy { $0.order <= $1.order }
     }
+}
+
+/// A bounded revision journal. Reordering, deletion and history merges
+/// clear it, forcing the existing general diff path.
+public struct ConversationDelta: Equatable, Sendable {
+    public let revision: Int
+    public let previousCount: Int
+    public let count: Int
+    public let updated: [Int]
 }
 
 public enum DownloadState: Equatable, Sendable {
@@ -241,9 +267,19 @@ public final class ConversationStore {
     private func update(_ chat: String, messages: Bool = true, _ change: (inout Conversation) -> Void) {
         let slot = slot(chat)
         var conversation = slot.value
+        let previousCount = conversation.messages.count
+        conversation.incremental = nil
         change(&conversation)
         conversation.revision &+= 1
-        if messages { conversation.messagesRevision &+= 1 }
+        if messages {
+            conversation.messagesRevision &+= 1
+            if let indexes = conversation.incremental {
+                conversation.changes.append(ConversationDelta(revision: conversation.messagesRevision,
+                                                              previousCount: previousCount, count: conversation.messages.count,
+                                                              updated: indexes))
+                if conversation.changes.count > 32 { conversation.changes.removeFirst(conversation.changes.count - 32) }
+            } else { conversation.changes = [] }
+        }
         slot.value = conversation
         known.insert(chat)
         touch(chat)
@@ -344,7 +380,7 @@ public final class ConversationStore {
             setDownload(key, state)
         }
         if let path, known.contains(chat), let index = slot(chat).value.messages.lastIndex(where: { $0.id == id }) {
-            update(chat) { $0.messages[index].setMediaPath(path, card: card) }
+            update(chat) { $0.messages[index].setMediaPath(path, card: card); $0.incremental = [index] }
         }
     }
 

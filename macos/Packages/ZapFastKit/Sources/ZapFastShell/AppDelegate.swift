@@ -38,7 +38,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // Avatars decode before any timeline is open to say which display.
         if let space = NSScreen.main?.colorSpace?.cgColorSpace { DisplayImage.colorSpace = space }
         if !Self.drawsSnapshotOnly {
-            let window = MainWindowController(model: model)
+            let window = MainWindowController(model: model, remembersFrame: !TimelineBenchmark.isRequested)
             mainWindow = window
             // A start at login stays in the menu bar, as upstream's does,
             // while there is a menu bar icon to come back by.

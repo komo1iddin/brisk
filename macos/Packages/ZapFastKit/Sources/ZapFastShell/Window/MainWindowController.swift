@@ -25,7 +25,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var mode: RootViewController.Mode?
     private var appeared = false
 
-    init(model: AppModel) {
+    init(model: AppModel, remembersFrame: Bool = true) {
         self.model = model
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 740),
@@ -46,8 +46,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         root.model = model
         window.contentViewController = root
         window.setContentSize(NSSize(width: 1100, height: 740))
-        if !window.setFrameUsingName(Self.frameName) { window.center() }
-        window.setFrameAutosaveName(Self.frameName)
+        if remembersFrame {
+            if !window.setFrameUsingName(Self.frameName) { window.center() }
+            window.setFrameAutosaveName(Self.frameName)
+        } else {
+            window.center()
+        }
         observe()
     }
 

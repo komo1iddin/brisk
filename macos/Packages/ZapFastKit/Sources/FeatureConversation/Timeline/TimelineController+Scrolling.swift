@@ -19,8 +19,12 @@ extension TimelineController {
         let moved = scrollView.frame != frame
         let reinset = clip.contentInsets.top != topInset || clip.contentInsets.bottom != bottomInset
         guard moved || reinset else { return }
+        // Width alone does not change the table's explicit row heights.
+        // Avoid forcing a nested AppKit/SwiftUI layout from the pane's
+        // layout callback. A later reflow restores its own reading anchor.
+        let verticalChange = reinset || scrollView.frame.height != frame.height
         let follow = followsBottom
-        let anchor = follow ? nil : readingAnchor()
+        let anchor = verticalChange && !follow ? readingAnchor() : nil
         scrollView.frame = frame
         if reinset {
             scrollView.contentInsets = insets
@@ -31,7 +35,7 @@ extension TimelineController {
             // is not.
             scrollView.scrollerInsets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
         }
-        if follow {
+        if follow, verticalChange {
             scrollToBottom()
         } else if let anchor {
             restore(anchor)

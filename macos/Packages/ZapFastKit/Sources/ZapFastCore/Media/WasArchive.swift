@@ -1,11 +1,12 @@
 import Compression
+import CryptoKit
 import Foundation
 
 /// A Lottie sticker's file: WhatsApp's `.was`, a zip with the animation in it
 /// (`animation/animation_secondary.json`, and any pictures it points at).
 ///
-/// Unpacked once into a folder of the cache, where the Lottie player reads
-/// it, and left there: a sticker's file never changes.
+/// Unpacked by source path and content, so accounts and replacements never
+/// reuse another sticker's animation or pictures.
 nonisolated public enum WasArchive {
     /// The mimetype WhatsApp gives the file.
     public static let mime = "application/was"
@@ -40,15 +41,18 @@ nonisolated public enum WasArchive {
     /// for it first, then any other Lottie file in the archive.
     static let animationNames = ["animation/animation_secondary.json", "animation/animation.json"]
 
-    /// Unpacks `file` into a folder of `cache` named after it, unless that
-    /// was done already, and says where the animation is.
+    /// Unpacks `file` into its own source/content folder in `cache`.
+    /// The source must still exist, including on a cache hit.
     @concurrent
     public static func unpack(_ file: URL, into cache: URL) async throws -> Unpacked {
         let files = FileManager.default
-        let folder = cache.appending(path: file.lastPathComponent, directoryHint: .isDirectory)
+        let data = try Data(contentsOf: file)
+        let source = fingerprint(Data(file.standardizedFileURL.path(percentEncoded: false).utf8))
+        let folder = cache.appending(path: source, directoryHint: .isDirectory)
+            .appending(path: fingerprint(data), directoryHint: .isDirectory)
         if let found = animation(in: folder) { return found }
 
-        let bytes = [UInt8](try Data(contentsOf: file))
+        let bytes = [UInt8](data)
         let entries = try Zip.entries(of: bytes)
         guard !entries.isEmpty else { throw Failure.notAZip }
 
@@ -67,9 +71,14 @@ nonisolated public enum WasArchive {
         if files.fileExists(atPath: folder.path(percentEncoded: false)) {
             try? files.removeItem(at: folder)
         }
+        try files.createDirectory(at: folder.deletingLastPathComponent(), withIntermediateDirectories: true)
         try files.moveItem(at: staging, to: folder)
         guard let found = animation(in: folder) else { throw Failure.noAnimation }
         return found
+    }
+
+    private static func fingerprint(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// The Lottie JSON in an unpacked folder, if there is one.

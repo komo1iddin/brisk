@@ -64,12 +64,38 @@ struct WasArchiveTests {
         #expect(try String(contentsOf: unpacked.animation, encoding: .utf8) == "{\"v\":\"5\"}")
         #expect(try String(contentsOf: unpacked.folder.appending(path: "images/a.png"), encoding: .utf8) == "png")
 
-        // Done once: the file itself is not needed again.
-        try FileManager.default.removeItem(at: was)
+        // An unchanged source reuses the same unpacked content.
         #expect(try await WasArchive.unpack(was, into: cache) == unpacked)
         // No staging folder is left behind.
         let left = try FileManager.default.contentsOfDirectory(atPath: cache.path(percentEncoded: false))
-        #expect(left == ["chat-id.was"])
+        #expect(left.count == 1)
+        #expect(!left.contains(where: { $0.hasPrefix(".unpacking-") }))
+        // Removed account/source files must not be resurrected from a cache.
+        try FileManager.default.removeItem(at: was)
+        await #expect(throws: (any Error).self) { try await WasArchive.unpack(was, into: cache) }
+    }
+
+    @Test func matchingFilenamesInDifferentAccountsAndReplacementsStaySeparate() async throws {
+        let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = root.appending(path: "cache")
+        let a = root.appending(path: "account-a/same.was")
+        let b = root.appending(path: "account-b/same.was")
+        try FileManager.default.createDirectory(at: a.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: b.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try storedZip([("animation/animation.json", "account-a")]).write(to: a)
+        try storedZip([("animation/animation.json", "account-b")]).write(to: b)
+        let first = try await WasArchive.unpack(a, into: cache)
+        let second = try await WasArchive.unpack(b, into: cache)
+        #expect(first.folder != second.folder)
+        #expect(try String(contentsOf: second.animation, encoding: .utf8) == "account-b")
+        try storedZip([("animation/animation.json", "replacement")]).write(to: a)
+        let replaced = try await WasArchive.unpack(a, into: cache)
+        #expect(replaced.folder != first.folder)
+        #expect(try String(contentsOf: replaced.animation, encoding: .utf8) == "replacement")
+        try FileManager.default.removeItem(at: a.deletingLastPathComponent())
+        await #expect(throws: (any Error).self) { try await WasArchive.unpack(a, into: cache) }
+        #expect(try await WasArchive.unpack(b, into: cache) == second)
     }
 
     @Test func anotherNamedAnimationWillDo() async throws {

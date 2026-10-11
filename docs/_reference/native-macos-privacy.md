@@ -17,3 +17,11 @@ The app lock hides both sides of a video call and turns off the local camera.
 Existing call audio may continue and incoming calls can be answered with
 voice while locked. Unlocking does not turn the camera back on. Video
 requires an explicit camera action after unlocking.
+
+Native media previews use account/chat namespaces and content fingerprints.
+Lottie stickers are unpacked by their full source path and content hash into
+`.lottie-cache` beside the downloaded sticker, within the account's folder.
+Removing that account removes these derived files too. The old shared
+`Lottie/<filename>` cache is no longer read. A removed source file cannot be
+reopened through its derived cache. Old shared cache files can be removed
+manually after quitting the app; they contain no archive history.

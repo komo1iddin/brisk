@@ -33,39 +33,30 @@ final class LottieStickerView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    /// Where unpacked stickers are kept: beside the app's other caches.
-    static let cache: URL = {
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        return caches
-            .appending(path: Bundle.main.bundleIdentifier ?? "ZapFast", directoryHint: .isDirectory)
-            .appending(path: "Lottie", directoryHint: .isDirectory)
-    }()
-
     /// Unpacks the sticker, reads its animation and shows its first frame;
     /// false when the file holds nothing that plays. A later `load` makes
     /// this one's answer moot.
     @discardableResult
-    func load(file: URL, cache: URL = LottieStickerView.cache) async -> Bool {
+    func load(file: URL, cache: URL? = nil) async -> Bool {
         loads += 1
         let load = loads
         isReady = false
-        let key = file.path(percentEncoded: false) as NSString
+        player.stop()
+        player.animation = nil
+        // Downloaded stickers live inside their account's folders. Keep the
+        // derived files there too, so account removal removes them together.
+        let cache = cache ?? file.deletingLastPathComponent().appending(path: ".lottie-cache", directoryHint: .isDirectory)
+        guard let unpacked = try? await WasArchive.unpack(file, into: cache) else { return false }
+        let key = unpacked.animation.path(percentEncoded: false) as NSString
         let animation: LottieAnimation?
-        let folder: URL
         if let known = Self.decoded.object(forKey: key) {
             animation = known
-            folder = cache.appending(path: file.lastPathComponent, directoryHint: .isDirectory)
-                .appending(path: "animation", directoryHint: .isDirectory)
-        } else if let unpacked = try? await WasArchive.unpack(file, into: cache) {
-            animation = await Self.decode(unpacked.animation)
-            folder = unpacked.folder
         } else {
-            return false
+            animation = await Self.decode(unpacked.animation)
         }
         guard load == loads, let animation else { return false }
         Self.decoded.setObject(animation, forKey: key)
-        player.imageProvider = FilepathImageProvider(filepath: folder.path(percentEncoded: false))
+        player.imageProvider = FilepathImageProvider(filepath: unpacked.folder.path(percentEncoded: false))
         player.animation = animation
         player.currentProgress = 0
         isReady = true

@@ -76,7 +76,9 @@ nonisolated public enum WasArchive {
     private static func extract(_ file: URL, into cache: URL) throws -> Unpacked {
         try Task.checkCancellation()
         let files = FileManager.default
-        let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        // URL resourceValues may retain metadata across replacement of a
+        // downloaded source. Stat it afresh before reading compressed bytes.
+        let size = try files.attributesOfItem(atPath: file.path(percentEncoded: false))[.size] as? Int ?? 0
         guard size <= fileLimit else { throw Failure.resourceLimit }
         let data = try Data(contentsOf: file)
         guard data.count <= fileLimit else { throw Failure.resourceLimit }

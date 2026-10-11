@@ -19,6 +19,7 @@ actor AnimatedFrameLoader {
     private var jobs: [String: Job] = [:]
     private var queued: [String] = []
     private var running = 0
+    var readerCount: Int { jobs.values.reduce(0) { $0 + $1.readers.count } }
     private let decode: @Sendable (URL, Int) async -> AnimatedFrames?
 
     init(decode: @escaping @Sendable (URL, Int) async -> AnimatedFrames? = AnimatedFrames.decode) {
@@ -71,6 +72,14 @@ actor AnimatedFrameLoader {
     private func finish(_ key: String, frames: AnimatedFrames?) {
         let job = jobs.removeValue(forKey: key)
         running -= 1
+        if let job, job.task?.isCancelled == true, !job.readers.isEmpty {
+            // A pointer can return before the cancelled decoder finishes.
+            // Those new readers need a fresh job rather than its nil answer.
+            jobs[key] = Job(url: job.url, pixels: job.pixels, readers: job.readers)
+            queued.append(key)
+            pump()
+            return
+        }
         if let frames, job?.readers.isEmpty == false {
             cache.setObject(frames, forKey: key as NSString,
                             cost: frames.frames.reduce(0) { $0 + $1.bytesPerRow * $1.height })

@@ -81,4 +81,50 @@ struct AnimatedFramesTests {
         }
         #expect(await probe.maximum == 2)
     }
+
+    private actor ReturningReaderProbe {
+        var calls = 0
+        private var held: CheckedContinuation<Void, Never>?
+        private var start: CheckedContinuation<Void, Never>?
+        let frames: AnimatedFrames
+        init(_ frames: AnimatedFrames) { self.frames = frames }
+        func started() async {
+            if calls > 0 { return }
+            await withCheckedContinuation { start = $0 }
+        }
+        func finishCancelledDecode() { held?.resume(); held = nil }
+        func decode() async -> AnimatedFrames? {
+            calls += 1
+            if calls == 1 {
+                await withCheckedContinuation {
+                    held = $0
+                    start?.resume()
+                    start = nil
+                }
+                return nil
+            }
+            return frames
+        }
+    }
+
+    @Test func aReaderReturningDuringCancellationReceivesAFreshDecode() async throws {
+        let file = try gif(frames: 2)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let frames = try #require(await AnimatedFrames.load(file, points: 16))
+        let probe = ReturningReaderProbe(frames)
+        let loader = AnimatedFrameLoader { _, _ in await probe.decode() }
+        let first = Task { await loader.load(file, pixels: 16, key: "returning") }
+        await probe.started()
+        first.cancel()
+        #expect(await first.value == nil)
+        let second = Task { await loader.load(file, pixels: 16, key: "returning") }
+        for _ in 0..<200 {
+            if await loader.readerCount == 1 { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        #expect(await loader.readerCount == 1)
+        await probe.finishCancelledDecode()
+        #expect(await second.value === frames)
+        #expect(await probe.calls == 2)
+    }
 }

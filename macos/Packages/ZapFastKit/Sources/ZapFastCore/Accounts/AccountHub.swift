@@ -9,6 +9,14 @@ public struct SharedServices {
     public let appLock: AppLock
     public let themes: ThemeStore
     public let notifier: Notifier?
+    public let callMedia: CallMediaCoordinator
+
+    public init(appLock: AppLock, themes: ThemeStore, notifier: Notifier?, callMedia: CallMediaCoordinator = CallMediaCoordinator()) {
+        self.appLock = appLock
+        self.themes = themes
+        self.notifier = notifier
+        self.callMedia = callMedia
+    }
 }
 
 /// The WhatsApp accounts linked on this Mac, each with a model of its own,
@@ -69,7 +77,7 @@ public final class AccountHub {
         paths = .standard()
         preferences = model.preferences
         live = false
-        shared = SharedServices(appLock: model.appLock, themes: model.themes, notifier: nil)
+        shared = SharedServices(appLock: model.appLock, themes: model.themes, notifier: nil, callMedia: model.calls.media)
         models = [model]
         active = model
     }

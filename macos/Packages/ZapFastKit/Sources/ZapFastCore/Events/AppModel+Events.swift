@@ -256,6 +256,7 @@ extension AppModel {
             avatars.forgetMisses()
             if let selectedChatID { ensureLoaded(selectedChatID) }
         case .loggedOut:
+            calls.reset()
             chats.clear()
             conversations.clear()
             phoneHistory.clear()

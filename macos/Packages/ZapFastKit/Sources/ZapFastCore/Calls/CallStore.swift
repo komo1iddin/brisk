@@ -34,8 +34,17 @@ public final class CallStore {
     @ObservationIgnored var microphoneAllowed: () async -> Bool
     /// The same for the camera.
     @ObservationIgnored var cameraAllowed: () async -> Bool
+    @ObservationIgnored var cameraFactory: ((@escaping @Sendable (Data, UInt32) -> Void, @escaping @Sendable () -> Void) -> CallCamera)?
+    @ObservationIgnored private var cameraRun: UUID?
 
     @ObservationIgnored private let service: CallService
+    @ObservationIgnored let media: CallMediaCoordinator
+    private var placing = false
+    @ObservationIgnored private var intentInFlight = false
+    @ObservationIgnored private var running = true
+    @ObservationIgnored private var epoch = UUID()
+    @ObservationIgnored private var retiredSession: UInt64 = 0
+    @ObservationIgnored private let videoReceiver: CallVideoReceiver
     /// No hardware is touched without it: previews and tests run silent.
     @ObservationIgnored private let live: Bool
     @ObservationIgnored private let playout = PlayoutBuffer()
@@ -46,28 +55,35 @@ public final class CallStore {
     /// Locking requires an explicit camera action before capture can resume.
     @ObservationIgnored private var cameraPermitted = true
 
-    public init(service: CallService, live: Bool) {
+    public init(service: CallService, live: Bool, media: CallMediaCoordinator? = nil) {
         self.service = service
         self.live = live
+        self.media = media ?? (live ? .shared : CallMediaCoordinator())
         history = CallHistory(read: { [service] chat in await service.history(chat: chat) })
         microphoneAllowed = live ? { await VoiceRecorder.microphoneAllowed() } : { true }
         cameraAllowed = live ? { await CallCamera.allowed() } : { true }
+        cameraFactory = live ? { send, failed in CallCamera(frameRate: Int(callVideoFrameRate()), send: send, onFailure: failed) } : nil
         let renderer = VideoRenderer(requestKeyframe: service.requestKeyframe, onOrientation: { _ in })
         remoteVideo = renderer
+        let videoReceiver = CallVideoReceiver(renderer)
+        self.videoReceiver = videoReceiver
         let keyframes = KeyframeRelay()
         self.keyframes = keyframes
         service.connect(CallSinks(
             playout: playout,
             onCall: { [weak self] call in self?.update(call) },
-            onCallLog: { [weak self] entry in self?.history.add(entry) },
-            onVideo: { frame in
-                renderer.enqueue(frame.data, keyframe: frame.keyframe, orientation: frame.orientation)
+            onCallLog: { [weak self] entry in
+                guard let self, self.running else { return }
+                self.history.add(entry)
             },
+            onVideo: { frame in videoReceiver.receive(frame) },
             onKeyframeNeeded: { keyframes.camera?.requestKeyframe() }
         ))
         renderer.orientationChanged = { [weak self] turns in
             MainActor.assumeIsolated { self?.remoteOrientation = turns }
         }
+        audio.onFailure = { [weak self] in self?.audioFailed() }
+        self.media.register(self)
     }
 
     /// Hands the camera to the bridge's thread for keyframe requests.
@@ -75,6 +91,7 @@ public final class CallStore {
 
     /// A call is ringing or going; a new one cannot start.
     public var isBusy: Bool {
+        if placing { return true }
         guard let call else { return false }
         return !call.phase.isEnded
     }
@@ -83,12 +100,22 @@ public final class CallStore {
 
     /// Calls a person's chat, with our camera on for a video call.
     public func place(chat: String, video: Bool = false) async {
-        guard !isLocked, !isBusy else { return }
-        guard await microphoneAllowed() else { return deniedMicrophone() }
+        guard running, !isLocked, !isBusy, !intentInFlight else { return }
+        guard media.available(to: self) else { return busyOtherAccount() }
+        intentInFlight = true
+        let epoch = epoch
+        defer { intentInFlight = false }
+        let microphone = await microphoneAllowed()
+        guard running, epoch == self.epoch, !isLocked else { return }
+        guard microphone else { return deniedMicrophone() }
         let video = await cameraPermission(requested: video)
-        guard !isLocked, !isBusy else { return }
+        guard running, epoch == self.epoch, !isLocked, !isBusy else { return }
+        guard media.claim(self) else { return busyOtherAccount() }
+        placing = true
         if video { cameraPermitted = true }
         if !service.place(chat: chat, video: video) {
+            placing = false
+            media.release(self)
             onNotice(.error, String(localized: "Could not start the call. Check the connection and try again."))
         }
     }
@@ -106,13 +133,21 @@ public final class CallStore {
     }
 
     private func answer(_ session: UInt64, video: Bool) async {
+        guard running, !intentInFlight else { return }
+        guard media.available(to: self) else { return busyOtherAccount() }
+        intentInFlight = true
+        let epoch = epoch
+        defer { intentInFlight = false }
         guard await microphoneAllowed() else {
+            guard epoch == self.epoch, isRinging(session) else { return }
             deniedMicrophone()
             service.end(session: session)
             return
         }
+        guard running, epoch == self.epoch, isRinging(session) else { return }
         let video = await cameraPermission(requested: video)
-        guard call?.session == session || waiting?.session == session else { return }
+        guard running, epoch == self.epoch, isRinging(session) else { return }
+        guard media.claim(self) else { return busyOtherAccount() }
         if video { cameraPermitted = true }
         service.answer(session: session, video: video)
     }
@@ -132,7 +167,10 @@ public final class CallStore {
     public func setLocked(_ locked: Bool) {
         guard locked != isLocked else { return }
         isLocked = locked
-        guard locked else { return }
+        guard locked else { followCamera(); return }
+        videoReceiver.setEnabled(false)
+        remoteVideo.reset()
+        remoteOrientation = 0
         cameraPermitted = false
         let wasOn = call?.camera == true
         call?.camera = false
@@ -166,6 +204,16 @@ public final class CallStore {
     // MARK: From the bridge
 
     func update(_ new: CallInfo) {
+        guard running, new.session > retiredSession else { return }
+        // A late callback must never reacquire devices for an ended call.
+        if call?.session == new.session, call?.phase.isEnded == true { return }
+        if let call, call.session > new.session { return }
+        placing = false
+        switch new.phase {
+        case .calling, .connecting, .active:
+            guard media.claim(self) else { service.end(session: new.session); busyOtherAccount(); return }
+        default: break
+        }
         defer { follow() }
         if new.session == waiting?.session {
             switch new.phase {
@@ -186,6 +234,7 @@ public final class CallStore {
         if let call, call.session > new.session { return }
         show(new)
         guard new.phase.isEnded else { return }
+        media.release(self)
         if let waiting {
             // The call waiting rings on in the panel at once.
             self.waiting = nil
@@ -196,7 +245,7 @@ public final class CallStore {
         let lingering = lingering
         Task { [weak self] in
             try? await Task.sleep(for: lingering)
-            guard let self, self.call?.session == session else { return }
+            guard let self, self.call?.session == session, self.call?.phase.isEnded == true else { return }
             self.call = nil
             self.connectedAt = nil
             self.endedAt = nil
@@ -205,6 +254,12 @@ public final class CallStore {
 
     private func show(_ new: CallInfo) {
         if call?.session != new.session {
+            stopCapture()
+            videoReceiver.setEnabled(false)
+            audio.stop()
+            playout.reset()
+            remoteVideo.reset()
+            remoteOrientation = 0
             connectedAt = nil
             endedAt = nil
         }
@@ -234,6 +289,7 @@ public final class CallStore {
     private func follow() {
         followCamera()
         guard live else { return }
+        guard media.available(to: self) else { ringer.stop(); audio.stop(); return }
         switch call?.phase {
         case .ringing:
             audio.stop()
@@ -263,32 +319,106 @@ public final class CallStore {
 
     /// Our camera runs while the call with media has it on.
     private func followCamera() {
+        let receivesVideo: Bool = switch call?.phase {
+        case .calling, .connecting, .active: running && !isLocked && media.available(to: self)
+        default: false
+        }
+        videoReceiver.setEnabled(receivesVideo)
         let wanted: Bool = switch call?.phase {
         case .calling, .connecting, .active: !isLocked && cameraPermitted && call?.camera == true
         default: false
         }
-        if !wanted, let camera {
-            camera.stop()
-            self.camera = nil
-            keyframes.camera = nil
-        }
+        if !wanted { stopCapture() }
         if call == nil || call?.phase.isEnded == true {
             remoteVideo.reset()
             remoteOrientation = 0
         }
-        guard wanted, camera == nil, live else { return }
-        let started = CallCamera(frameRate: Int(callVideoFrameRate()), send: service.camera)
-        guard started.start() else {
-            onNotice(.error, String(localized: "No camera was found for the video call."))
-            service.setCamera(false)
-            return
+        guard wanted, camera == nil, let session = call?.session, let cameraFactory else { return }
+        let run = UUID()
+        cameraRun = run
+        let failed: @Sendable () -> Void = { [weak self] in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.cameraFailed(session: session, run: run) } }
         }
+        let started = cameraFactory(service.camera, failed)
         camera = started
         keyframes.camera = started
+        started.start { success in if !success { failed() } }
     }
 
     private func deniedMicrophone() {
         onNotice(.error, String(localized: "ZapFast needs the microphone for calls. Allow it in System Settings › Privacy & Security › Microphone."))
+    }
+
+    private func isRinging(_ session: UInt64) -> Bool {
+        (call?.session == session && call?.phase == .ringing) || (waiting?.session == session && waiting?.phase == .ringing)
+    }
+
+    private func busyOtherAccount() {
+        onNotice(.error, String(localized: "End the call in the other account before starting another call."))
+    }
+
+    func mediaOwnershipChanged() { follow() }
+
+    private func stopCapture() {
+        cameraRun = nil
+        camera?.stop()
+        camera = nil
+        keyframes.camera = nil
+    }
+
+    private func cameraFailed(session: UInt64, run: UUID) {
+        guard cameraRun == run, call?.session == session else { return }
+        cameraPermitted = false
+        call?.camera = false
+        stopCapture()
+        service.setCamera(false)
+        onNotice(.error, String(localized: "The camera could not keep running. The call continues with voice; try turning the camera on again."))
+    }
+
+    func audioFailed() {
+        guard running, let call, !call.phase.isEnded else { return }
+        onNotice(.error, String(localized: "The microphone or speaker changed and could not restart. Please start the call again."))
+        service.end(session: call.session)
+    }
+
+    /// Unlinking/account removal invalidates permission tasks and releases devices.
+    public func reset() {
+        epoch = UUID()
+        // A placed call may already exist in Rust while its first callback
+        // is still queued. End and retire that session as well.
+        let known = [call, waiting].compactMap { $0 } + service.current()
+        let sessions = Dictionary(known.map { ($0.session, $0) }, uniquingKeysWith: { first, _ in first })
+        retiredSession = max(retiredSession, sessions.keys.max() ?? 0)
+        for info in sessions.values where !info.phase.isEnded { service.end(session: info.session) }
+        call = nil
+        waiting = nil
+        placing = false
+        cameraPermitted = false
+        connectedAt = nil
+        endedAt = nil
+        stopCapture()
+        videoReceiver.setEnabled(false)
+        audio.stop()
+        ringer.stop()
+        remoteVideo.reset()
+        remoteOrientation = 0
+        history.clear()
+        media.release(self)
+    }
+
+    public func shutdown() { running = false; reset(); service.disconnect() }
+
+    isolated deinit {
+        camera?.stop()
+        audio.stop()
+        ringer.stop()
+        videoReceiver.setEnabled(false)
+        remoteVideo.reset()
+        history.cancelLoads()
+        if running {
+            for info in service.current() where !info.phase.isEnded { service.end(session: info.session) }
+        }
+        service.disconnect()
     }
 }
 

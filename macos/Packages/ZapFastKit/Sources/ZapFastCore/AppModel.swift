@@ -318,7 +318,7 @@ public final class AppModel {
         let live = backend is LiveBackend
         self.calls = CallStore(
             service: calls ?? (live ? LiveCallService(account: accountID) : PreviewCallService()),
-            live: live
+            live: live, media: shared?.callMedia
         )
         self.calls.setLocked(appLock.isLocked)
         self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }
@@ -408,6 +408,7 @@ public final class AppModel {
     }
 
     public func shutdown() {
+        calls.shutdown()
         guard started else { return }
         if let selectedChatID { flushDraft(for: selectedChatID) }
         networkWatch?.stop()

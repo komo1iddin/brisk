@@ -15,6 +15,9 @@ final class CallAudio {
     private var tone: Tone?
     private var send: (@Sendable ([Int16]) -> Void)?
     private var restarts: NSObjectProtocol?
+    private var capture: CallCaptureGate?
+    private var hasTap = false
+    var onFailure: () -> Void = {}
     private let log = Logger(subsystem: "ZapFast", category: "Calls")
 
     var isRunning: Bool { engine != nil }
@@ -23,6 +26,12 @@ final class CallAudio {
     /// frame on an audio thread; `playout` is read for the speaker.
     func start(playout: PlayoutBuffer, send: @escaping @Sendable ([Int16]) -> Void) -> Bool {
         guard engine == nil else { return true }
+        let capture = CallCaptureGate()
+        let send: @Sendable ([Int16]) -> Void = { [send] samples in
+            capture.forward { send(samples) }
+        }
+        var started = false
+        defer { if !started { capture.close(); self.send = nil } }
         let engine = AVAudioEngine()
         // The output side first: enabling voice processing before the
         // engine has made it leaves the output with no channels, and the
@@ -61,6 +70,9 @@ final class CallAudio {
             return false
         }
         self.engine = engine
+        hasTap = true
+        self.capture = capture
+        started = true
         self.tones = tones
         // Voice processing reconfigures the devices just after the engine
         // starts, and the engine stops for it; without a restart nothing
@@ -77,17 +89,22 @@ final class CallAudio {
         guard let engine, let send,
               let wire = AVAudioFormat(standardFormatWithSampleRate: CallTones.sampleRate, channels: 1) else { return }
         let input = engine.inputNode
-        input.removeTap(onBus: 0)
+        if hasTap { input.removeTap(onBus: 0); hasTap = false }
         guard Self.tap(input, wire: wire, send: send) else {
             log.error("calls: the microphone has no usable format after a device change")
+            stop()
+            onFailure()
             return
         }
+        hasTap = true
         engine.prepare()
         do {
             try engine.start()
         } catch {
             let code = (error as NSError).code
             log.error("calls: the audio engine did not restart (\(code, privacy: .public))")
+            stop()
+            onFailure()
             return
         }
         let channels = input.outputFormat(forBus: 0).channelCount
@@ -114,12 +131,14 @@ final class CallAudio {
     }
 
     func stop() {
+        capture?.close()
+        capture = nil
+        send = nil
         guard let engine else { return }
         if let restarts { NotificationCenter.default.removeObserver(restarts) }
         restarts = nil
-        send = nil
         tones?.stop()
-        engine.inputNode.removeTap(onBus: 0)
+        if hasTap { engine.inputNode.removeTap(onBus: 0); hasTap = false }
         engine.stop()
         // Lets the hardware leave voice processing, which lowers other apps.
         try? engine.inputNode.setVoiceProcessingEnabled(false)

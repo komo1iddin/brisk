@@ -16,6 +16,8 @@ public struct CallSinks {
 /// `LiveCallService` is the real one; previews and tests pass their own.
 public protocol CallService: AnyObject {
     func connect(_ sinks: CallSinks)
+    func disconnect()
+    func current() -> [CallInfo]
     /// A chat's calls, oldest first.
     func history(chat: String) async -> [CallLogEntry]
     func place(chat: String, video: Bool) -> Bool
@@ -46,7 +48,16 @@ public final class LiveCallService: CallService {
         center.setListener(listener: CallRelay(sinks))
     }
 
-    public func history(chat: String) async -> [CallLogEntry] { await historyReader.read(chat) }
+    public func disconnect() {
+        // Replacing the listener breaks center -> renderer -> center retention.
+        center.setListener(listener: SilentCallRelay())
+    }
+
+    public func current() -> [CallInfo] { center.current() }
+
+    public func history(chat: String) async -> [CallLogEntry] {
+        await historyReader.read(chat)
+    }
     public func place(chat: String, video: Bool) -> Bool { center.place(chat: chat, video: video) }
     public func answer(session: UInt64, video: Bool) { center.answer(session: session, video: video) }
     public func end(session: UInt64) { center.end(session: session) }
@@ -102,6 +113,14 @@ nonisolated private final class CallRelay: CallListener, @unchecked Sendable {
     }
 }
 
+nonisolated private final class SilentCallRelay: CallListener, Sendable {
+    func onCall(call: CallInfo) {}
+    func onPlayout(samples: [Int16]) {}
+    func onCallLog(entry: CallLogEntry) {}
+    func onVideo(frame: VideoFrameInfo) {}
+    func onKeyframeNeeded() {}
+}
+
 /// A call center that goes nowhere, for previews and tests: it records what
 /// it was asked and lets a test play the bridge's part.
 public final class PreviewCallService: CallService {
@@ -114,6 +133,7 @@ public final class PreviewCallService: CallService {
     public var accepts = true
     /// The calls `history` reads.
     public var calls: [CallLogEntry] = []
+    public var currentCalls: [CallInfo] = []
     private var sinks: CallSinks?
 
     public init() {}
@@ -121,6 +141,9 @@ public final class PreviewCallService: CallService {
     public func connect(_ sinks: CallSinks) {
         self.sinks = sinks
     }
+
+    public func disconnect() { sinks = nil }
+    public func current() -> [CallInfo] { currentCalls }
 
     public func history(chat: String) async -> [CallLogEntry] {
         calls.filter { $0.chat == chat }
@@ -141,6 +164,8 @@ public final class PreviewCallService: CallService {
 
     /// Plays the bridge reporting `call`.
     public func report(_ call: CallInfo) {
+        currentCalls.removeAll { $0.session == call.session }
+        if !call.phase.isEnded { currentCalls.append(call) }
         sinks?.onCall(call)
     }
 
@@ -148,4 +173,6 @@ public final class PreviewCallService: CallService {
     public func report(log entry: CallLogEntry) {
         sinks?.onCallLog(entry)
     }
+
+    public func report(video: VideoFrameInfo) { sinks?.onVideo(video) }
 }

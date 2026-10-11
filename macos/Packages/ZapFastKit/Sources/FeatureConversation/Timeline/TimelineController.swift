@@ -122,6 +122,12 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     /// Bumped by every preparation; a background layout that finishes after
     /// a newer one started is not installed.
     var generation = 0
+    let measurementOwner = UUID()
+    var layoutTask: Task<Void, Never>?
+    var layoutCancellation = TimelineLayoutCancellation()
+    var measureLayouts: @Sendable ([BubbleSource], CGFloat, UUID, TimelineLayoutCancellation) async -> [BubbleLayout] = {
+        await TimelineLayoutScheduler.shared.measure($0, limit: $1, owner: $2, cancellation: $3)
+    }
     /// Layouts are being measured in the background; the rows on screen
     /// are older than the plans.
     var preparing = false
@@ -236,6 +242,8 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     isolated deinit {
+        layoutCancellation.cancel()
+        layoutTask?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)
         NotificationCenter.default.removeObserver(self)
     }

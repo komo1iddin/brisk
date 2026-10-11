@@ -50,6 +50,8 @@ extension TimelineController {
             if bubbleLayouts.count > 8_000 { bubbleLayouts = [:] }
             if hostedHeights.count > 3_000 { hostedHeights = [:] }
             generation += 1
+            layoutCancellation.cancel()
+            layoutTask?.cancel()
             followsBottom = true
             placesUnread = true
             newBelow = 0
@@ -316,6 +318,10 @@ extension TimelineController {
     /// Measures the text rows that have no layout for `limit` yet, in the
     /// background when there are many, then installs the rows.
     func prepare(limit: CGFloat, restyled: Bool = false) {
+        layoutCancellation.cancel()
+        layoutTask?.cancel()
+        layoutTask = nil
+        layoutCancellation = TimelineLayoutCancellation()
         generation += 1
         let generation = generation
         var missing: [BubbleSource] = []
@@ -334,20 +340,26 @@ extension TimelineController {
         }
         // The table keeps showing what it has until the layouts land.
         preparing = true
-        Task {
-            let layouts = await Self.measure(missing, limit: limit)
-            store(layouts, for: missing)
-            guard generation == self.generation else { return }
-            preparing = false
-            install(limit: limit, restyled: restyled)
+        let cancellation = layoutCancellation
+        let owner = measurementOwner
+        let measure = measureLayouts
+        layoutTask = Task { [weak self] in
+            let layouts = await Self.measure(missing, limit: limit, owner: owner, cancellation: cancellation, measure: measure)
+            guard !Task.isCancelled, !cancellation.isCancelled,
+                  let self, generation == self.generation, layouts.count == missing.count else { return }
+            self.store(layouts, for: missing)
+            self.preparing = false
+            self.layoutTask = nil
+            self.install(limit: limit, restyled: restyled)
         }
     }
 
     @concurrent
-    static func measure(_ sources: [BubbleSource], limit: CGFloat) async -> [BubbleLayout] {
+    static func measure(_ sources: [BubbleSource], limit: CGFloat, owner: UUID, cancellation: TimelineLayoutCancellation,
+                        measure: @Sendable ([BubbleSource], CGFloat, UUID, TimelineLayoutCancellation) async -> [BubbleLayout]) async -> [BubbleLayout] {
         let state = signposter.beginInterval("Layout", "\(sources.count) messages")
         defer { signposter.endInterval("Layout", state) }
-        return TimelineLayoutEngine.layouts(for: sources, widthLimit: limit)
+        return await measure(sources, limit, owner, cancellation)
     }
 
     private func store(_ layouts: [BubbleLayout], for sources: [BubbleSource]) {

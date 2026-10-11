@@ -8,9 +8,16 @@ import ZapFastDesign
 /// timeline's worth runs in parallel: 10,000 messages take a fraction of a
 /// second on Apple silicon, which the main actor never waits for.
 nonisolated enum TimelineLayoutEngine {
-    static func layouts(for sources: [BubbleSource], widthLimit: CGFloat) -> [BubbleLayout] {
+    static func layouts(for sources: [BubbleSource], widthLimit: CGFloat,
+                        cancelled: @Sendable () -> Bool = { false }) -> [BubbleLayout] {
+        guard !cancelled() else { return [] }
         guard sources.count > 32 else {
-            return sources.map { layout(for: $0, widthLimit: widthLimit) }
+            var layouts: [BubbleLayout] = []
+            for source in sources {
+                guard !cancelled() else { return [] }
+                layouts.append(layout(for: source, widthLimit: widthLimit))
+            }
+            return layouts
         }
         let chunkSize = 64
         let chunkCount = (sources.count + chunkSize - 1) / chunkSize
@@ -25,9 +32,11 @@ nonisolated enum TimelineLayoutEngine {
         DispatchQueue.concurrentPerform(iterations: chunkCount) { chunk in
             let range = (chunk * chunkSize)..<min((chunk + 1) * chunkSize, sources.count)
             for index in range {
+                guard !cancelled() else { return }
                 base[index] = layout(for: sources[index], widthLimit: widthLimit)
             }
         }
+        guard !cancelled() else { return [] }
         return results.map { $0! }
     }
 

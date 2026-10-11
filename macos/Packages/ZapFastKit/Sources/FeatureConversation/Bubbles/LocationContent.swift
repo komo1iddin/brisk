@@ -7,9 +7,8 @@ import ZapFastCore
 import ZapFastDesign
 import ZapFastSharedUI
 
-/// A place as WhatsApp shows it: an Apple Maps picture of the street around
-/// it with a pin on the spot (the sender's own preview until it is drawn,
-/// or when it cannot be), then the place's name and address, or for a live
+/// A place with the sender's preview and a pin on the spot, then the
+/// place's name and address, or for a live
 /// location when it last moved, how fast and how precisely. The map runs
 /// almost to the bubble's edge, as a photo does. A click opens it in Maps.
 struct LocationContent: View {
@@ -26,7 +25,6 @@ struct LocationContent: View {
     var inset = true
 
     @State private var picture: NSImage?
-    @Environment(\.colorScheme) private var colorScheme
 
     /// As a landscape photo; the room is kept from the start, as the row
     /// is measured once.
@@ -62,23 +60,18 @@ struct LocationContent: View {
         }
         .buttonStyle(.plain)
         .help("Open in Maps")
-        .task(id: "\(message.id)-\(version)-\(latitude),\(longitude)-\(colorScheme == .dark)") { await load() }
+        .task(id: message.thumbnail) { await load() }
     }
 
-    /// The map, or the sender's preview while it is drawn and when it
-    /// cannot be (offline).
+    /// Only bytes already carried by the message are decoded here. Looking
+    /// at a location never asks a map service for the sender's coordinates.
     private func load() async {
-        let dark = colorScheme == .dark
-        if let cached = MapSnapshots.cached(latitude: latitude, longitude: longitude, size: Self.mapSize, dark: dark) {
-            picture = cached
-            return
-        }
-        if let thumbnail = message.thumbnail {
-            picture = await Thumbnails.load(thumbnail, key: "map-\(message.id)-\(version)", points: Self.mapSize.width)
-        }
-        if let map = await MapSnapshots.snapshot(latitude: latitude, longitude: longitude, size: Self.mapSize, dark: dark) {
-            withAnimation(.easeOut(duration: 0.15)) { picture = map }
-        }
+        let preview = await LocationPreview.load(
+            message.thumbnail, key: "map-\(model.accountID)-\(message.chat)-\(message.id)-\(version)",
+            points: Self.mapSize.width
+        )
+        guard !Task.isCancelled else { return }
+        picture = preview
     }
 
     /// "Updated 14:05 · 31 km/h · ±12 m", as upstream words a live location.

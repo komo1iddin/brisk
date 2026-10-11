@@ -5,7 +5,7 @@ Scope: foydalanuvchi tanlovi bo‘yicha P1 masalalar va test bilan tasdiqlangan 
 | Topilma | Ish | Holat |
 |---|---|---|
 | F01 | Parallel layout ownership va lifetime regressioni | Yopildi: buffer deinitialize; 7 batch chegarasi va 20 takroriy parallel batch lifetime testi PASS |
-| F02 | Location preview uchun automatic Maps network access’ni olib tashlash | Rejalashtirilgan |
+| F02 | Location preview uchun automatic Maps network access’ni olib tashlash | Yopildi: MapKit snapshot yo‘li olib tashlandi; lokal preview uchun 3 test PASS; privacy hujjati yangilandi |
 | F03 | Lock’da call video/camera himoyasi | Rejalashtirilgan |
 | F06 | Thumbnail content invalidation va account/chat identity | Rejalashtirilgan |
 | F07 | Lottie cache identity/izolatsiyasi | Rejalashtirilgan |

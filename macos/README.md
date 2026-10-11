@@ -408,14 +408,11 @@ by upstream's rules (the `waid` WhatsApp adds, else an international
 number): Message opens their chat, Add saves them when they are not a
 contact yet, and the message's menu has Save to Contacts… (the card goes
 to the Contacts app, which asks first) and Copy Number. A place shows
-an Apple Maps picture of the streets around it with a pin, as WhatsApp
-does, then its name and address; a live location says when it last
-moved, how fast and how precisely. Unlike upstream, which shows only the
-sender's small preview, this sends Apple the place's coordinates when the
-bubble first appears (MapKit draws the map); the pictures are kept in
-memory only, and the sender's preview shows until the map is drawn or
-when it cannot be. A click opens Apple Maps (upstream opens
-OpenStreetMap); Copy Coordinates is in the menu.
+the sender's preview with a pin, then its name and address; a live location
+says when it last moved, how fast and how precisely. Without a usable
+preview it shows a plain background. Displaying the message makes no
+map-service request. A click opens Apple Maps and shares the place's
+coordinates with that app; Copy Coordinates stays local.
 
 Select in a message's menu, or ⌘-click, starts selecting messages: a
 click adds or removes one, ⇧-click a run of them, and the bar in place of

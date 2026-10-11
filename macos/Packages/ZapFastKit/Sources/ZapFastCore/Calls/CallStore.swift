@@ -25,6 +25,8 @@ public final class CallStore {
     public private(set) var camera: CallCamera?
     /// The other side's picture's rotation, in quarter turns clockwise.
     public private(set) var remoteOrientation: UInt8 = 0
+    /// The shared app lock also hides the call's pictures and stops our camera.
+    public private(set) var isLocked = false
 
     /// Shows a short message in the window's notice banner.
     @ObservationIgnored public var onNotice: (Notice.Kind, String) -> Void = { _, _ in }
@@ -41,6 +43,8 @@ public final class CallStore {
     @ObservationIgnored private let ringer = Ringer()
     /// How long an ended call stays on screen with its reason.
     @ObservationIgnored var lingering: Duration = .seconds(2)
+    /// Locking requires an explicit camera action before capture can resume.
+    @ObservationIgnored private var cameraPermitted = true
 
     public init(service: CallService, live: Bool) {
         self.service = service
@@ -79,9 +83,11 @@ public final class CallStore {
 
     /// Calls a person's chat, with our camera on for a video call.
     public func place(chat: String, video: Bool = false) async {
-        guard !isBusy else { return }
+        guard !isLocked, !isBusy else { return }
         guard await microphoneAllowed() else { return deniedMicrophone() }
-        let video = video ? await cameraAllowed() || deniedCamera() : false
+        let video = await cameraPermission(requested: video)
+        guard !isLocked, !isBusy else { return }
+        if video { cameraPermitted = true }
         if !service.place(chat: chat, video: video) {
             onNotice(.error, String(localized: "Could not start the call. Check the connection and try again."))
         }
@@ -105,19 +111,40 @@ public final class CallStore {
             service.end(session: session)
             return
         }
-        let video = video ? await cameraAllowed() || deniedCamera() : false
+        let video = await cameraPermission(requested: video)
+        guard call?.session == session || waiting?.session == session else { return }
+        if video { cameraPermitted = true }
         service.answer(session: session, video: video)
     }
 
     /// Turns our camera on or off: on a voice call, turning it on asks the
     /// other side to switch to video, or accepts when they asked.
     public func toggleCamera() async {
-        guard let call, isBusy, call.phase != .ringing else { return }
-        if !call.camera, !(await cameraAllowed()) {
-            _ = deniedCamera()
-            return
-        }
+        guard !isLocked, let call, isBusy, call.phase != .ringing else { return }
+        if !call.camera, !(await cameraPermission(requested: true)) { return }
+        guard !isLocked, self.call?.session == call.session, isBusy else { return }
+        if !call.camera { cameraPermitted = true }
         service.setCamera(!call.camera)
+    }
+
+    /// Existing call audio may continue while the local screen is locked.
+    /// Video capture stays off after unlocking until the person turns it on.
+    public func setLocked(_ locked: Bool) {
+        guard locked != isLocked else { return }
+        isLocked = locked
+        guard locked else { return }
+        cameraPermitted = false
+        let wasOn = call?.camera == true
+        call?.camera = false
+        followCamera()
+        if wasOn { service.setCamera(false) }
+    }
+
+    private func cameraPermission(requested: Bool) async -> Bool {
+        guard requested, !isLocked else { return false }
+        let allowed = await cameraAllowed()
+        guard !isLocked else { return false }
+        return allowed || deniedCamera()
     }
 
     /// Declines a ringing call or ends the one going.
@@ -183,7 +210,12 @@ public final class CallStore {
         }
         if new.phase == .active, connectedAt == nil { connectedAt = .now }
         if new.phase.isEnded, endedAt == nil { endedAt = .now }
-        call = new
+        var visible = new
+        if visible.camera, isLocked || !cameraPermitted {
+            visible.camera = false
+            service.setCamera(false)
+        }
+        call = visible
     }
 
     #if DEBUG
@@ -232,7 +264,7 @@ public final class CallStore {
     /// Our camera runs while the call with media has it on.
     private func followCamera() {
         let wanted: Bool = switch call?.phase {
-        case .calling, .connecting, .active: call?.camera == true
+        case .calling, .connecting, .active: !isLocked && cameraPermitted && call?.camera == true
         default: false
         }
         if !wanted, let camera {

@@ -17,7 +17,7 @@ struct VideoCallContent: View {
     var body: some View {
         ZStack {
             Color.black
-            if call.peerVideo {
+            if call.peerVideo, !model.appLock.isLocked {
                 LayerView(layer: model.calls.remoteVideo.layer, quarterTurns: model.calls.remoteOrientation)
             } else {
                 VStack(spacing: 10) {
@@ -40,7 +40,7 @@ struct VideoCallContent: View {
                     .foregroundStyle(.white)
                     .shadow(radius: 3)
                     Spacer(minLength: 8)
-                    if call.camera, let camera = model.calls.camera {
+                    if !model.appLock.isLocked, call.camera, let camera = model.calls.camera {
                         CameraPreview(session: camera.session)
                             .frame(width: 90, height: 120)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

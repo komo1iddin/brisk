@@ -464,7 +464,10 @@ turns the photos off.
 A person's chat has a phone button and a video button in the toolbar. An incoming call rings
 in a small panel at the top right of the screen, over other windows and
 Spaces, and bounces the Dock; Return answers, Esc declines. While the app
-lock is closed the panel says only "WhatsApp Call". During a call the
+lock is closed the panel says only "WhatsApp Call", hides video, and turns
+our camera off. Existing call audio may continue and incoming calls can be
+answered with voice. Unlocking does not turn the camera back on; turn it on
+explicitly in the call. During a call the
 panel shows the time and has Mute and End; the ringback plays while the
 other side's phone rings. A second call during one rings as a banner over
 the panel with two beeps: Decline, or End & Accept (WhatsApp has no hold).

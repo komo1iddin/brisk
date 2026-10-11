@@ -317,6 +317,7 @@ public final class AppModel {
             service: calls ?? (live ? LiveCallService(account: accountID) : PreviewCallService()),
             live: live
         )
+        self.calls.setLocked(appLock.isLocked)
         self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }
         voice.onFinished = { [weak self] key in self?.continueVoice(after: key) }
         // A shared lock is for every account; whoever shares it tells them.
@@ -445,9 +446,10 @@ public final class AppModel {
 
     // MARK: App lock
 
-    /// While locked nothing plays or records, and the phone keeps its
-    /// notifications, as nobody is reading.
+    /// Locking stops message playback/recording and call video. Existing
+    /// call audio can continue, while the phone keeps its notifications.
     func locked() {
+        calls.setLocked(true)
         leaveScreen()
         if started { backend.send(.setOnline(online: false)) }
     }
@@ -475,6 +477,7 @@ public final class AppModel {
     }
 
     func unlocked() {
+        calls.setLocked(false)
         if let key = openAfterUnlock {
             openAfterUnlock = nil
             open(notified: key)

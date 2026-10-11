@@ -71,7 +71,8 @@ public final class CallWindowController: NSWindowController {
         let round = observed
         let calls = model.calls
         let (call, waiting) = withObservationTracking {
-            (calls.call, calls.waiting?.session)
+            _ = calls.isLocked
+            return (calls.call, calls.waiting?.session)
         } onChange: { [weak self] in
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
@@ -106,7 +107,7 @@ public final class CallWindowController: NSWindowController {
             }
             return
         }
-        let now = Shown(session: call.session, waiting: waiting, video: call.showsVideo)
+        let now = Shown(session: call.session, waiting: waiting, video: call.showsVideo(locked: model.appLock.isLocked))
         guard shown != now else { return }
         // A new call goes to the corner; a banner coming or going keeps
         // the panel's top where the person may have dragged it.

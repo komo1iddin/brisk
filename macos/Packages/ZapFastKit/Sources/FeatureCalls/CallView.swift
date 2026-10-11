@@ -16,7 +16,7 @@ struct CallView: View {
                     WaitingBanner(call: waiting, model: model)
                     Divider()
                 }
-                if call.showsVideo {
+                if call.showsVideo(locked: model.appLock.isLocked) {
                     VideoCallContent(call: call, model: model)
                 } else {
                     CallContent(call: call, model: model)
@@ -63,8 +63,9 @@ private struct WaitingBanner: View {
 
 extension CallInfo {
     /// The window shows pictures rather than the caller's photo.
-    var showsVideo: Bool {
-        switch phase {
+    func showsVideo(locked: Bool) -> Bool {
+        guard !locked else { return false }
+        return switch phase {
         case .calling, .connecting, .active: camera || peerVideo
         case .ringing, .ended: false
         }
@@ -102,7 +103,7 @@ private struct CallContent: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            if call.videoRequested, !setAside {
+            if call.videoRequested, !setAside, !model.appLock.isLocked {
                 VStack(spacing: 8) {
                     Text(String(localized: "Asks to switch to video"))
                         .font(.callout)
@@ -213,7 +214,7 @@ private struct CallButtons: View {
                     calls.hangUp()
                 }
                 .keyboardShortcut(.cancelAction)
-                if call.videoOffered, !call.group {
+                if call.videoOffered, !call.group, !calls.isLocked {
                     RoundButton(symbol: "phone.fill", style: .accept, label: String(localized: "Voice")) {
                         Task { await calls.answer() }
                     }
@@ -272,7 +273,7 @@ private struct InCallButtons: View {
         ) {
             calls.toggleMute()
         }
-        if !call.group {
+        if !call.group, !calls.isLocked {
             RoundButton(
                 symbol: call.camera ? "video.fill" : "video.slash.fill",
                 style: .toggle(on: call.camera),

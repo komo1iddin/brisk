@@ -232,18 +232,18 @@ extension TimelineController {
         let anchor = follow ? nil : readingAnchor()
         var changed = IndexSet()
         var resized = IndexSet()
-        var updated = items
         for ((index, _), plan) in zip(rows, resolved) {
             plans[index] = plan
             let item = self.item(for: plan, limit: limit)
-            guard item.differs(from: updated[index]) else { continue }
+            guard item.differs(from: items[index]) else { continue }
             changed.insert(index)
-            if item.height != updated[index].height { resized.insert(index) }
-            updated[index] = item
+            if item.height != items[index].height { resized.insert(index) }
+            // The main actor owns this array. Keeping a second value here
+            // copied and retained every row for a one-message refresh.
+            items[index] = item
         }
         guard !changed.isEmpty else { return }
         // The same rows in the same places: the index holds.
-        items = updated
         reload(changed, resized: resized)
         if follow {
             scrollToBottom()

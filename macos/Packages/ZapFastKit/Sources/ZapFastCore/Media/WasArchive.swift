@@ -20,11 +20,13 @@ nonisolated public enum WasArchive {
         case notAZip
         case unsupported
         case noAnimation
+        case resourceLimit
 
         public var errorDescription: String? {
             switch self {
             case .notAZip, .unsupported: String(localized: "This sticker's file could not be read.")
             case .noAnimation: String(localized: "This sticker has no animation.")
+            case .resourceLimit: String(localized: "This sticker is too large to animate.")
             }
         }
     }
@@ -35,6 +37,17 @@ nonisolated public enum WasArchive {
         public let animation: URL
         /// The folder the animation's own pictures are looked up in.
         public let folder: URL
+        private let lease: WasCache.Lease
+
+        init(animation: URL, folder: URL) {
+            self.animation = animation
+            self.folder = folder
+            lease = WasCache.Lease(folder.deletingLastPathComponent())
+        }
+
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.animation == rhs.animation && lhs.folder == rhs.folder
+        }
     }
 
     /// The animation, in the order they are preferred: WhatsApp's own name
@@ -45,12 +58,36 @@ nonisolated public enum WasArchive {
     /// The source must still exist, including on a cache hit.
     @concurrent
     public static func unpack(_ file: URL, into cache: URL) async throws -> Unpacked {
+        try await gate.acquire()
+        do {
+            let result = try extract(file, into: cache)
+            await gate.release()
+            return result
+        } catch {
+            await gate.release()
+            throw error
+        }
+    }
+
+    private static let gate = WasExtractionGate()
+    static let fileLimit = 64 * 1024 * 1024
+    static let jsonLimit = 8 * 1024 * 1024
+
+    private static func extract(_ file: URL, into cache: URL) throws -> Unpacked {
+        try Task.checkCancellation()
         let files = FileManager.default
+        let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard size <= fileLimit else { throw Failure.resourceLimit }
         let data = try Data(contentsOf: file)
+        guard data.count <= fileLimit else { throw Failure.resourceLimit }
         let source = fingerprint(Data(file.standardizedFileURL.path(percentEncoded: false).utf8))
         let folder = cache.appending(path: source, directoryHint: .isDirectory)
             .appending(path: fingerprint(data), directoryHint: .isDirectory)
-        if let found = animation(in: folder) { return found }
+        if let found = animation(in: folder) {
+            try? files.setAttributes([.modificationDate: Date.now], ofItemAtPath: folder.path(percentEncoded: false))
+            WasCache.trim(cache)
+            return found
+        }
 
         let bytes = [UInt8](data)
         let entries = try Zip.entries(of: bytes)
@@ -62,18 +99,21 @@ nonisolated public enum WasArchive {
         try files.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? files.removeItem(at: staging) }
         for entry in entries where !entry.isDirectory {
+            try Task.checkCancellation()
             guard let safe = Self.safePath(entry.name) else { continue }
             let target = staging.appending(path: safe)
             try files.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Zip.contents(of: entry, in: bytes).write(to: target)
         }
         guard animation(in: staging) != nil else { throw Failure.noAnimation }
+        try Task.checkCancellation()
         if files.fileExists(atPath: folder.path(percentEncoded: false)) {
             try? files.removeItem(at: folder)
         }
         try files.createDirectory(at: folder.deletingLastPathComponent(), withIntermediateDirectories: true)
         try files.moveItem(at: staging, to: folder)
         guard let found = animation(in: folder) else { throw Failure.noAnimation }
+        WasCache.trim(cache)
         return found
     }
 
@@ -133,8 +173,10 @@ nonisolated public enum WasArchive {
         static func entries(of bytes: [UInt8]) throws -> [Entry] {
             guard let end = endOfDirectory(in: bytes) else { throw Failure.notAZip }
             let count = Int(le16(bytes, end + 10))
+            guard count <= 256 else { throw Failure.resourceLimit }
             var position = Int(le32(bytes, end + 16))
             var entries: [Entry] = []
+            var total = 0
             for _ in 0..<count {
                 guard position + 46 <= bytes.count, le32(bytes, position) == 0x0201_4b50 else { throw Failure.notAZip }
                 let flags = le16(bytes, position + 8)
@@ -152,6 +194,9 @@ nonisolated public enum WasArchive {
                     throw Failure.unsupported
                 }
                 let name = String(decoding: bytes[(position + 46)..<(position + 46 + nameLength)], as: UTF8.self)
+                guard size <= fileLimit - total,
+                      !name.lowercased().hasSuffix(".json") || size <= jsonLimit else { throw Failure.resourceLimit }
+                total += size
                 entries.append(Entry(name: name, method: method, compressedSize: compressed, size: size, offset: offset))
                 position += 46 + nameLength + extraLength + commentLength
             }
@@ -166,6 +211,7 @@ nonisolated public enum WasArchive {
             let packed = Data(bytes[start..<(start + entry.compressedSize)])
             switch entry.method {
             case 0:
+                guard entry.compressedSize == entry.size else { throw Failure.notAZip }
                 return packed
             case 8:
                 return try inflate(packed, size: entry.size)
@@ -177,6 +223,7 @@ nonisolated public enum WasArchive {
         /// Raw deflate, which is what `COMPRESSION_ZLIB` reads.
         private static func inflate(_ packed: Data, size: Int) throws -> Data {
             if size == 0 { return Data() }
+            guard !packed.isEmpty else { throw Failure.notAZip }
             var output = Data(count: size)
             let written = output.withUnsafeMutableBytes { destination in
                 packed.withUnsafeBytes { source in

@@ -167,4 +167,78 @@ struct WasArchiveTests {
         #expect(WasArchive.safePath("/") == nil)
         #expect(WasArchive.safePath("/etc/passwd") == nil)
     }
+
+    @Test func tooManyEntriesAreRejectedBeforeExtraction() async throws {
+        let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let was = root.appending(path: "many.was")
+        try storedZip((0..<257).map { ("animation/\($0).json", "{}") }).write(to: was)
+        let cache = root.appending(path: "cache")
+        await #expect(throws: WasArchive.Failure.resourceLimit) { try await WasArchive.unpack(was, into: cache) }
+        #expect(!FileManager.default.fileExists(atPath: cache.path))
+    }
+
+    @Test(arguments: [true, false])
+    func advertisedJsonAndAggregateSizesAreRejectedWithoutAllocatingThem(json: Bool) async throws {
+        let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let was = root.appending(path: "large.was")
+        var bytes = [UInt8](storedZip([(json ? "animation/a.json" : "animation/a.png", "a"), ("animation/b.png", "b")]))
+        let size = json ? WasArchive.jsonLimit + 1 : 40 * 1024 * 1024
+        for index in 0..<(bytes.count - 28) where Array(bytes[index..<(index + 4)]) == [0x50, 0x4b, 0x01, 0x02] {
+            for byte in 0..<4 { bytes[index + 24 + byte] = UInt8((size >> (byte * 8)) & 255) }
+        }
+        try Data(bytes).write(to: was)
+        await #expect(throws: WasArchive.Failure.resourceLimit) { try await WasArchive.unpack(was, into: root.appending(path: "cache")) }
+    }
+
+    @Test func aSparseOversizeSourceIsRejectedBeforeReading() async throws {
+        let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let was = root.appending(path: "large.was")
+        try Data().write(to: was)
+        let file = try FileHandle(forWritingTo: was)
+        try file.truncate(atOffset: UInt64(WasArchive.fileLimit + 1))
+        try file.close()
+        await #expect(throws: WasArchive.Failure.resourceLimit) { try await WasArchive.unpack(was, into: root.appending(path: "cache")) }
+    }
+
+    @Test func cachePruningPreservesActiveResourcesAndUnrelatedFiles() async throws {
+        let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let was = root.appending(path: "sticker.was")
+        let cache = root.appending(path: "cache")
+        try storedZip([("animation/animation.json", "{}")]).write(to: was)
+        var unpacked: WasArchive.Unpacked? = try await WasArchive.unpack(was, into: cache)
+        let animation = try #require(unpacked?.animation)
+        let unrelated = cache.appending(path: "unrelated/keep.txt")
+        try write("fixture", to: unrelated)
+        withExtendedLifetime(unpacked) {
+            WasCache.trim(cache, bytes: 0, count: 0)
+            #expect(FileManager.default.fileExists(atPath: animation.path))
+        }
+        unpacked = nil
+        WasCache.trim(cache, bytes: 0, count: 0)
+        #expect(!FileManager.default.fileExists(atPath: animation.path))
+        #expect(FileManager.default.fileExists(atPath: unrelated.path))
+        #expect(FileManager.default.fileExists(atPath: was.path))
+    }
+
+    @Test func aCancelledExtractionWaiterDoesNotBlockTheNextReader() async throws {
+        let gate = WasExtractionGate()
+        try await gate.acquire()
+        let waiting = Task { try await gate.acquire(); await gate.release() }
+        waiting.cancel()
+        await #expect(throws: CancellationError.self) { try await waiting.value }
+        await gate.release()
+        try await gate.acquire()
+        await gate.release()
+    }
+
+    @Test(arguments: [UInt16(0), UInt16(8)])
+    func emptyPackedDataCannotSatisfyANonemptyEntry(method: UInt16) {
+        let header: [UInt8] = [0x50, 0x4b, 0x03, 0x04] + Array(repeating: 0, count: 26)
+        let entry = WasArchive.Zip.Entry(name: "a", method: method, compressedSize: 0, size: 1, offset: 0)
+        #expect(throws: WasArchive.Failure.notAZip) { try WasArchive.Zip.contents(of: entry, in: header) }
+    }
 }

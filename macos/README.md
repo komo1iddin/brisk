@@ -249,11 +249,14 @@ pointer is over them, as upstream's do.
 Lottie stickers (WhatsApp's `.was` files: a zip with a Lottie animation inside) are
 downloaded like any sticker and played by Lottie (the `lottie-ios` package) under the
 pointer too, showing their first frame at rest. `WasArchive` unpacks one into
-`~/Library/Caches/<bundle id>/Lottie/` once; `LottieStickerView` draws it. They stay out
+an account-local `.lottie-cache` beside the downloaded file, scoped by source and
+content; `LottieStickerView` draws it. They stay out
 of the sticker picker, and a click does nothing, since Quick Look has nothing to show.
 The animation comes from `animation/animation_secondary.json`, or any other JSON under
 `animation/`; this was checked against the file layout community tools write, not
 against stickers WhatsApp itself sends, so a sticker that does not play is worth a report.
+Animated frames and Lottie extraction use [resource budgets](../docs/_reference/native-macos-media-budgets.md).
+Oversized animations retain their local still preview.
 
 Notifications sound as upstream's do: its receive sound for new
 messages and its alert for a mention of you or a reply to you (Pidgin's

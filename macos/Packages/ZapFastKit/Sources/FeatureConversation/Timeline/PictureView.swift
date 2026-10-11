@@ -35,6 +35,7 @@ final class PictureView: AttachmentView {
     /// made from, as SwiftUI's `.quaternary` and `.secondary` are.
     private var textColor = NSColor.labelColor
     private var loads = 0
+    private var animationTask: Task<Void, Never>?
     private var download: DownloadState?
     private(set) var moving = false
 
@@ -66,6 +67,8 @@ final class PictureView: AttachmentView {
         "bounds": NSNull(), "position": NSNull(), "contents": NSNull(), "hidden": NSNull(),
         "backgroundColor": NSNull(), "cornerRadius": NSNull(), "frame": NSNull(),
     ]
+
+    isolated deinit { animationTask?.cancel() }
 
     // MARK: Configuring
 
@@ -283,6 +286,8 @@ final class PictureView: AttachmentView {
         let on = on && pictureLayout?.picture.path != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         guard on != moving, let layout = pictureLayout else { return }
         moving = on
+        animationTask?.cancel()
+        animationTask = nil
         switch layout.picture.kind {
         case .gif:
             if on, let path = layout.picture.path {
@@ -300,9 +305,9 @@ final class PictureView: AttachmentView {
                 lottie?.setPlaying(on)
             } else if on, let path = layout.picture.path {
                 let load = loads
-                Task { [weak self] in
+                animationTask = Task { [weak self] in
                     guard let frames = await AnimatedFrames.load(URL(filePath: path), points: layout.points),
-                          let self, self.loads == load, self.moving else { return }
+                          !Task.isCancelled, let self, self.loads == load, self.moving else { return }
                     self.picture.add(frames.contentsAnimation(), forKey: "frames")
                 }
             } else {

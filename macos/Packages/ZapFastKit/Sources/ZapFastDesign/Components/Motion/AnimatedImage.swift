@@ -36,8 +36,11 @@ public struct AnimatedImage: View {
             }
         }
         .task(id: playing ? url : nil) {
-            guard playing, animation == nil else { return }
-            animation = await AnimatedFrames.load(url, points: points)
+            guard playing else { animation = nil; return }
+            guard animation == nil else { return }
+            let loaded = await AnimatedFrames.load(url, points: points)
+            guard !Task.isCancelled else { return }
+            animation = loaded
         }
     }
 }
@@ -76,38 +79,52 @@ public nonisolated final class AnimatedFrames: Sendable {
         return frames[index]
     }
 
-    nonisolated(unsafe) private static let cache: NSCache<NSString, AnimatedFrames> = {
-        let cache = NSCache<NSString, AnimatedFrames>()
-        // Only a few play at once (under the pointer); keep a handful, and
-        // no more than 48 MB of frames.
-        cache.countLimit = 12
-        cache.totalCostLimit = 48 * 1024 * 1024
-        return cache
-    }()
+    static let frameLimit = 150
+    static let byteLimit = 24 * 1024 * 1024
+    private static let loader = AnimatedFrameLoader()
 
     @concurrent
     public static func load(_ url: URL, points: CGFloat, scale: CGFloat = 2) async -> AnimatedFrames? {
-        let key = "\(url.path(percentEncoded: false))@\(Int(points * scale))" as NSString
-        if let cached = cache.object(forKey: key) { return cached }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        guard points.isFinite, scale.isFinite, points > 0, scale > 0, !Task.isCancelled,
+              let values = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false)),
+              let size = values[.size] as? Int, size <= 64 * 1024 * 1024 else { return nil }
+        let pixels = Int(min(640, points * scale))
+        let key = "\(url.standardizedFileURL.path(percentEncoded: false))@\(size)@\((values[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)@\(pixels)"
+        return await loader.load(url, pixels: max(1, pixels), key: key)
+    }
+
+    @concurrent
+    static func decode(_ url: URL, pixels: Int) async -> AnimatedFrames? {
+        guard !Task.isCancelled,
+              let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
         let count = CGImageSourceGetCount(source)
-        guard count > 1 else { return nil }
+        guard count > 1, count <= frameLimit else { return nil }
+        // Reserve for square RGBA frames and row alignment before decoding.
+        // Oversized animations retain their complete timing at a smaller size.
+        let budgetPixels = max(1, Int(sqrt(Double(byteLimit / count / 4))) - 16)
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(points * scale)),
+            kCGImageSourceThumbnailMaxPixelSize: min(pixels, budgetPixels),
+            kCGImageSourceShouldCache: false,
         ]
         var frames: [CGImage] = []
         var delays: [TimeInterval] = []
+        var bytes = 0
         for index in 0..<count {
-            guard let frame = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else { continue }
-            frames.append(DisplayImage.prepare(frame))
+            guard !Task.isCancelled else { return nil }
+            let frame: CGImage? = autoreleasepool {
+                CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary).map(DisplayImage.prepare)
+            }
+            guard let frame else { return nil }
+            let cost = frame.bytesPerRow * frame.height
+            guard cost <= byteLimit - bytes else { return nil }
+            bytes += cost
+            frames.append(frame)
             delays.append(delay(of: source, at: index))
         }
         guard frames.count > 1 else { return nil }
-        let animation = AnimatedFrames(frames: frames, delays: delays)
-        cache.setObject(animation, forKey: key, cost: frames.reduce(0) { $0 + $1.bytesPerRow * $1.height })
-        return animation
+        return AnimatedFrames(frames: frames, delays: delays)
     }
 
     /// A frame's delay; very short ones play at 10 fps, as browsers do.

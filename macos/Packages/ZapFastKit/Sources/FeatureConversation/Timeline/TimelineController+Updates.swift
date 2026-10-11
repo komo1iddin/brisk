@@ -13,7 +13,7 @@ import ZapFastSharedUI
 extension TimelineController {
     func update(
         chatID: String,
-        messages: [MessageRecord],
+        messages: some Collection<MessageRecord>,
         revision: Int,
         changes: [ConversationDelta] = [],
         calls: [CallLogEntry] = [],
@@ -27,6 +27,7 @@ extension TimelineController {
         onReachTop: @escaping () -> Void,
         onScrollState: @escaping (ScrollState) -> Void
     ) {
+        let messages = MessageHistory(messages)
         self.onReachTop = onReachTop
         self.onScrollState = onScrollState
         // Pictures are decoded for the display the timeline is on.
@@ -116,7 +117,7 @@ extension TimelineController {
     /// the same order, or nil when they differ otherwise (messages came,
     /// went, or moved; or a change could regroup the rows: a sender or a
     /// time). At most a few dozen; more is a new list.
-    private func editedInPlace(from old: [MessageRecord], to new: [MessageRecord]) -> [MessageRecord]? {
+    private func editedInPlace(from old: MessageHistory, to new: MessageHistory) -> [MessageRecord]? {
         guard !items.isEmpty, !preparing, old.count == new.count, !new.isEmpty else { return nil }
         return changed(from: old, to: new[...])
     }
@@ -126,8 +127,8 @@ extension TimelineController {
     /// the reader's own message often comes with the answer); nil when the
     /// list changed otherwise, or so much that it is a new list.
     private func appended(
-        from old: [MessageRecord], to new: [MessageRecord]
-    ) -> (edited: [MessageRecord], arrived: ArraySlice<MessageRecord>, last: MessageRecord)? {
+        from old: MessageHistory, to new: MessageHistory
+    ) -> (edited: [MessageRecord], arrived: Slice<MessageHistory>, last: MessageRecord)? {
         guard !items.isEmpty, !preparing, let last = old.last, new.count > old.count,
               new.count - old.count <= backgroundThreshold,
               let edited = changed(from: old, to: new[..<old.count]) else { return nil }
@@ -140,7 +141,7 @@ extension TimelineController {
     /// The messages of `new` that differ from those of `old` at the same
     /// place, when nothing that groups the rows (an id, a sender, a time)
     /// changed and at most a few dozen did.
-    private func changed(from old: [MessageRecord], to new: ArraySlice<MessageRecord>) -> [MessageRecord]? {
+    private func changed(from old: MessageHistory, to new: Slice<MessageHistory>) -> [MessageRecord]? {
         var edited: [MessageRecord] = []
         // By index: zipping copied every message out of both lists.
         for index in old.indices where old[index] != new[new.startIndex + index] {
@@ -158,8 +159,8 @@ extension TimelineController {
     /// the list is added to in place rather than compared with a new one:
     /// in a long chat that copying and comparing was most of a message's
     /// cost.
-    func append(_ arrived: ArraySlice<MessageRecord>, after last: MessageRecord) {
-        let rows = TimelineRow.build([last] + arrived, unread: unread)
+    func append(_ arrived: Slice<MessageHistory>, after last: MessageRecord) {
+        let rows = TimelineRow.build([last] + Array(arrived), unread: unread)
         guard let lastRow = rows.firstIndex(where: { $0.id == last.id }) else {
             rebuild()
             return

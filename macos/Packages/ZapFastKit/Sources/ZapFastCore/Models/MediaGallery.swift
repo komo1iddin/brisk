@@ -22,7 +22,7 @@ public enum MediaGallery {
         }
     }
 
-    public static func items(in messages: [MessageRecord]) -> [MessageRecord] {
+    public static func items(in messages: some Sequence<MessageRecord>) -> [MessageRecord] {
         messages.filter { kind(of: $0) != nil }
     }
 

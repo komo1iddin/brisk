@@ -5,7 +5,7 @@ import ZapFastBridge
 /// One chat's loaded messages and paging state.
 public struct Conversation: Equatable, Sendable {
     /// Ascending by timestamp.
-    public internal(set) var messages: [MessageRecord] = []
+    public internal(set) var messages: MessageHistory = []
     /// The archive holds nothing earlier.
     public internal(set) var complete = false
     /// The first page was requested.
@@ -44,7 +44,7 @@ public struct Conversation: Equatable, Sendable {
         var mustSort = false
         if older {
             let known = Set(messages.map(\.id))
-            messages = incoming.filter { !known.contains($0.id) } + messages
+            messages = MessageHistory(incoming.filter { !known.contains($0.id) } + Array(messages))
             mustSort = !isAscending
         } else if incoming.count <= 8 {
             var indexes: [Int] = []
@@ -86,12 +86,12 @@ public struct Conversation: Equatable, Sendable {
         }
         if mustSort {
             // Stable, as upstream's `sort_by_key`: equal keys keep their order.
-            messages = messages.enumerated()
+            messages = MessageHistory(messages.enumerated()
                 .sorted {
                     let (a, b) = ($0.element.order, $1.element.order)
                     return a != b ? a < b : $0.offset < $1.offset
                 }
-                .map(\.element)
+                .map(\.element))
         }
     }
 

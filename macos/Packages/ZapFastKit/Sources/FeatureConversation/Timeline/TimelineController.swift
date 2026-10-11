@@ -81,7 +81,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     let tableView = TimelineTableView()
     var chatID: String?
     var revision: Int?
-    var messages: [MessageRecord] = []
+    var messages: MessageHistory = []
     var isGroup = false
     var style = TimelineStyle.standard
     var colors = BubbleColors(TimelineStyle.standard)

@@ -6,7 +6,7 @@ import ZapFastBridge
 final class ConversationIndex {
     private var positions: [String: Int]
 
-    init(_ messages: [MessageRecord]) {
+    init(_ messages: some Sequence<MessageRecord>) {
         positions = Dictionary(messages.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 

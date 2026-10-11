@@ -27,18 +27,19 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
     /// `calls` are the chat's, oldest first. Those older than the first
     /// message wait for the page that reaches them, unless `fromStart`
     /// says the messages go back to the chat's beginning.
-    public static func build(
-        _ messages: [MessageRecord],
+    public static func build<Messages: RandomAccessCollection>(
+        _ messages: Messages,
         calls: [CallLogEntry] = [],
         fromStart: Bool = false,
         unread: UnreadDivider? = nil,
         calendar: Calendar = .current,
         now: Date = .now
-    ) -> [TimelineRow] {
+    ) -> [TimelineRow] where Messages.Element == MessageRecord, Messages.Index == Int {
+        let base = messages.startIndex
         let first = messages.first?.timestamp ?? .min
         let shown = calls.filter { fromStart || $0.timestamp >= first }
         guard shown.isEmpty else {
-            return interleaved(messages, calls: shown, unread: unread, calendar: calendar, now: now)
+            return interleaved(MessageHistory(messages), calls: shown, unread: unread, calendar: calendar, now: now)
         }
         var rows: [TimelineRow] = []
         rows.reserveCapacity(messages.count + 8)
@@ -47,10 +48,10 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
         // after a long pause even from the same sender.
         func startsRun(at index: Int, newDay: Bool) -> Bool {
             guard index > 0, !newDay else { return true }
-            return unread?.message == messages[index].id
-                || messages[index - 1].sender != messages[index].sender
-                || messages[index - 1].fromMe != messages[index].fromMe
-                || messages[index].timestamp - messages[index - 1].timestamp > 5 * 60
+            return unread?.message == messages[base + index].id
+                || messages[base + index - 1].sender != messages[base + index].sender
+                || messages[base + index - 1].fromMe != messages[base + index].fromMe
+                || messages[base + index].timestamp - messages[base + index - 1].timestamp > 5 * 60
         }
         // The current day's bounds, so the calendar is asked once per day
         // rather than once per message.
@@ -74,7 +75,7 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
             // A run ends where the next message starts one.
             var endsRun = true
             if index + 1 < messages.count, let day {
-                let next = DateText.date(messages[index + 1].timestamp)
+                let next = DateText.date(messages[base + index + 1].timestamp)
                 endsRun = startsRun(at: index + 1, newDay: !(day.start <= next && next < day.end))
             }
             rows.append(.message(message, startsRun: startsRun(at: index, newDay: newDay), endsRun: endsRun))
@@ -86,7 +87,7 @@ public enum TimelineRow: Identifiable, Hashable, Sendable {
     /// call ending the run before it and starting a new one after. Kept apart
     /// so the common case, no calls, pays nothing for them.
     private static func interleaved(
-        _ messages: [MessageRecord],
+        _ messages: MessageHistory,
         calls: [CallLogEntry],
         unread: UnreadDivider?,
         calendar: Calendar,

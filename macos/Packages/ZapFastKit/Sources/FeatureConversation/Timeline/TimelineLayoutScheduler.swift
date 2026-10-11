@@ -2,9 +2,9 @@ import Foundation
 import Synchronization
 
 nonisolated final class TimelineLayoutCancellation: Sendable {
-    private let stopped = Mutex(false)
-    var isCancelled: Bool { stopped.withLock { $0 } }
-    func cancel() { stopped.withLock { $0 = true } }
+    private let stopped = Atomic(false)
+    var isCancelled: Bool { stopped.load(ordering: .relaxed) }
+    func cancel() { stopped.store(true, ordering: .relaxed) }
 }
 
 /// One active parallel batch across timelines, one latest pending batch per

@@ -1,7 +1,7 @@
 import Synchronization
 import ZapFastBridge
 
-/// The bridge calls from its media thread. Hidden/locked/retired calls
+/// The bridge calls from its media thread. Inactive/locked/retired calls
 /// must not keep scheduling a decoder or orientation callbacks.
 nonisolated final class CallVideoReceiver: Sendable {
     private let enabled = Atomic<Bool>(false)

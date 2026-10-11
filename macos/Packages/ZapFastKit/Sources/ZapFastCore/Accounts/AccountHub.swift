@@ -61,7 +61,8 @@ public final class AccountHub {
         shared = SharedServices(
             appLock: AppLock(preferences: preferences),
             themes: ThemeStore(defaults: preferences.defaults, wallpapersFolder: paths.data.appending(path: "Wallpapers")),
-            notifier: notifier
+            notifier: notifier,
+            callMedia: .shared
         )
         let first = AppModel(
             accountID: LiveAccounts.activeAccount(paths: paths), paths: paths, preferences: preferences, shared: shared

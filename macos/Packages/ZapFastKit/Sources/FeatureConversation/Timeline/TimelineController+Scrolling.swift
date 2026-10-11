@@ -106,7 +106,7 @@ extension TimelineController {
         guard placesUnread, !items.isEmpty else { return }
         placesUnread = false
         // The message jumped to wins over the unread divider.
-        guard pendingJump == nil, let index = items.firstIndex(where: { $0.id == "unread" }) else { return }
+        guard pendingJump == nil, let index = itemIndex["unread"] else { return }
         tableView.layoutSubtreeIfNeeded()
         let insets = clip.contentInsets
         let lowest = -insets.top
@@ -121,7 +121,7 @@ extension TimelineController {
     /// waits for the update that brings its page.
     func performPendingJump() {
         guard let jump = pendingJump, jump.key.chat == chatID,
-              let index = items.firstIndex(where: { $0.id == jump.key.message }) else { return }
+              let index = itemIndex[jump.key.message] else { return }
         pendingJump = nil
         handledJump = jump.token
         tableView.layoutSubtreeIfNeeded()
@@ -151,7 +151,7 @@ extension TimelineController {
     }
 
     func restore(_ anchor: (id: String, offset: CGFloat)) {
-        guard let index = items.firstIndex(where: { $0.id == anchor.id }) else { return }
+        guard let index = itemIndex[anchor.id] else { return }
         tableView.layoutSubtreeIfNeeded()
         let top = tableView.rect(ofRow: index).minY - anchor.offset
         clip.scroll(to: NSPoint(x: clip.bounds.minX, y: top))

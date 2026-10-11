@@ -485,6 +485,7 @@ private final class BenchmarkRun: NSObject {
         let original = window.frame
         var steps: [Double] = []
         for index in 1...10 {
+            let interval = Self.signposter.beginInterval("ResizeStep")
             let start = CACurrentMediaTime()
             var frame = original
             frame.size.width -= CGFloat(index * 8)
@@ -493,6 +494,7 @@ private final class BenchmarkRun: NSObject {
             window.displayIfNeeded()
             CATransaction.flush()
             steps.append((CACurrentMediaTime() - start) * 1000)
+            Self.signposter.endInterval("ResizeStep", interval)
             if let table = timeline { integrity.add(audit(table), at: .resize) }
             // A turn of the run loop, as between the frames of a drag.
             await pause(.milliseconds(16))

@@ -1,0 +1,86 @@
+ZapFast native macOS audit validation
+Date: 2026-10-11
+Baseline: cec8c150cf50b6d6566e99ad1e50e04250add795, main
+Source and workflow implementation unchanged.
+Personal archive/session/message/contact data not read.
+Exported audit logs replace local user/workspace paths with placeholders.
+
+Host
+  Mac15,7, Apple M3 Pro, 18 GiB RAM, 12 CPUs
+  macOS 27.0.1 (26A434)
+  Xcode 27 beta, Swift 6.4, Rust/Cargo 1.98
+  Native Release arm64, 1100 x 740 window, 794 pt timeline, 120 Hz
+
+PASS, exit 0
+  repo: cargo fmt --all --check
+  macos/Bridge: cargo fmt --all --check
+  repo: cargo clippy --locked --offline --no-default-features --lib -- -D warnings
+  macos/Bridge: cargo clippy --locked --offline --all-targets -- -D warnings
+  macos/Bridge: cargo test --locked --offline --lib
+    test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+PASS, exit 0, final unchanged native suite
+  macos/Packages/ZapFastKit:
+    CLANG_MODULE_CACHE_PATH="$PWD/.build/audit-module-cache" SWIFT_MODULECACHE_PATH="$PWD/.build/audit-module-cache" swift test --disable-sandbox --cache-path .build/audit-cache --config-path .build/audit-config --security-path .build/audit-security
+    Test run with 397 tests in 73 suites passed after 3.044 seconds.
+    Test run with 66 tests in 19 suites passed after 1.178 seconds.
+    Test run with 8 tests in 3 suites passed after 0.132 seconds.
+    Total: 471 tests.
+  The first outer-sandbox run aborted on CoreAudio initialization; the
+  normal-host rerun and final rebuilt suite passed. No microphone recording
+  or real WhatsApp call was initiated by the audit.
+
+PASS, exit 0
+  macos:
+    xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath Build/DerivedData ARCHS=arm64 -configuration Release build -quiet
+  Existing generated bridge/project and cached dependencies were used.
+  This is a Release rebuild, not a fresh machine bootstrap verification.
+
+PASS, exit 0
+  codesign --verify --deep --strict --verbose=2 [RELEASE_APP]
+  Native app and embedded Share extension verified.
+  Signing identity class: Apple Development.
+  Hardened runtime enabled. Native app approximately 55 MiB on disk.
+  Developer ID distribution, notarization, stapling and Gatekeeper on a
+  fresh Mac were not validated.
+
+FAIL, exit 1, native own-source warning gate
+  macos: Scripts/check-warnings.sh
+  ChatInfoPanel.swift:140: @Entry closure may invalidate dependents on every update.
+  DebugCommands.swift:613: use #selector rather than constructing a Selector.
+  Full diagnostic: audit-warning-check.log
+
+FAIL, exit 101, engine-only unit-test compilation
+  repo: cargo test --locked --offline --no-default-features --lib
+  error[E0433]: cannot find markup in crate
+  src/backend/worker.rs:9720 and :9722
+  src/lib.rs:35-36 gates markup behind feature ui.
+  Full diagnostic: audit-engine-tests.log
+  This target did not run tests; no engine-only test-pass count is claimed.
+
+Expected FAIL, audit-only regression probes
+  AuditLayoutLifetimeTests
+    serialBatchReleasesItsLayouts: PASS
+    parallelBatchReleasesItsLayouts: FAIL, weak layout stays alive
+  AuditCacheIsolationTests
+    replacingThumbnailBytesUnderOneMessageKeyShowsTheNewImage: FAIL
+    stickersWithTheSameFilenameInTwoAccountsStaySeparate: FAIL
+  AuditVideoOrientationTests
+    anotherCallWithTheSameRotationNotifiesAgain: FAIL, [1] instead of [1, 1]
+  These probes were removed from normal Tests/ after execution and saved
+  under reproducers/. The final 471-test suite above excludes them.
+
+PASS, exit 0, two synthetic Release benchmark executions
+  macos:
+    ZAPFAST_BENCHMARK_COUNT=2000 ./Build/DerivedData/Build/Products/Release/ZapFast.app/Contents/MacOS/ZapFast --benchmark
+    ZAPFAST_BENCHMARK_COUNT=10000 ./Build/DerivedData/Build/Products/Release/ZapFast.app/Contents/MacOS/ZapFast --benchmark
+  Raw outputs: timeline-2000.txt/json, timeline-10000.txt/json
+  Direct executable launch, one run per size, some concurrent compilation.
+  Real native window, synthetic model/media, no real account/backend/archive.
+  No official WhatsApp A/B, idle CPU/energy study, peak-memory recording,
+  controlled repeat distribution, network/call stress or long soak performed.
+
+Artifact checks
+  22 finding entries; relative file links checked for existence.
+  No em dashes in authored audit Markdown.
+  Only macos/audit/ artifacts added to Git working tree.

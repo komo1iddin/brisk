@@ -1,0 +1,51 @@
+Building for debugging...
+[Computing dependencies]
+[Constructing description]
+[Pre-planning 1 / 629]
+[Planning deferred tasks]
+[1 / 1]
+[1 / 18] ZapFastBridge
+[12 / 25] FeatureConversationTests-product
+[15 / 27] ZapFastCoreTests-product
+[17 / 29] ZapFastCoreTests-product
+[23 / 28] ZapFastCoreTests-product
+[25 / 28] ZapFastCoreTests-product
+Build complete! (6,24 secs)
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite AuditCacheIsolationTests started.
+◇ Test replacingThumbnailBytesUnderOneMessageKeyShowsTheNewImage() started.
+◇ Test stickersWithTheSameFilenameInTwoAccountsStaySeparate() started.
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.494 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+✘ Test stickersWithTheSameFilenameInTwoAccountsStaySeparate() recorded an issue at AuditCacheIsolationTests.swift:50:9: Expectation failed: try String(contentsOf: unpacked.animation, encoding: .utf8) == "{\"audit\":\"b\"}"
+↳ try String(contentsOf: unpacked.animation, encoding: .utf8) == "{\"audit\":\"b\"}" → <not evaluated>
+✘ Test stickersWithTheSameFilenameInTwoAccountsStaySeparate() failed after 0.016 seconds with 1 issue.
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unrecognized colorspace number -1
+2026-10-11 14:22:44.529 swiftpm-testing-helper[35764:18698242] Unknown number of components for colorspace model -1
+✘ Test replacingThumbnailBytesUnderOneMessageKeyShowsTheNewImage() recorded an issue at AuditCacheIsolationTests.swift:23:9: Expectation failed: first !== second
+↳ first !== second → false
+↳   first → <NSImage 0x7547188820 Size={1, 1} RepProvider=<NSImageArrayRepProvider: 0x7547280650, reps:(
+        "<NSCGImageSnapshotRep:0x100798c20 cgImage=<CGImage 0x100784ca0> (DP)\n\t<<CGColorSpace 0x1007897e0> (kCGColorSpaceICCBased; kCGColorSpaceModelRGB; sRGB IEC61966-2.1)>\n\t\theadroom = 1.000000  \n\t\twidth = 2, height = 2, bpc = 8, bpp = 32, row bytes = 32, \n\t\tkCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little  | kCGImagePixelFormatPacked \n\t\tis mask? No, has masking color? No, has soft mask? No, has matte? No, should interpolate? Yes>"
+    )>>
+↳   second → <NSImage 0x7547188820 Size={1, 1} RepProvider=<NSImageArrayRepProvider: 0x7547280650, reps:(
+        "<NSCGImageSnapshotRep:0x100798c20 cgImage=<CGImage 0x100784ca0> (DP)\n\t<<CGColorSpace 0x1007897e0> (kCGColorSpaceICCBased; kCGColorSpaceModelRGB; sRGB IEC61966-2.1)>\n\t\theadroom = 1.000000  \n\t\twidth = 2, height = 2, bpc = 8, bpp = 32, row bytes = 32, \n\t\tkCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little  | kCGImagePixelFormatPacked \n\t\tis mask? No, has masking color? No, has soft mask? No, has matte? No, should interpolate? Yes>"
+    )>>
+✘ Test replacingThumbnailBytesUnderOneMessageKeyShowsTheNewImage() failed after 0.048 seconds with 1 issue.
+✘ Suite AuditCacheIsolationTests failed after 0.048 seconds with 2 issues.
+✘ Test run with 2 tests in 1 suite failed after 0.049 seconds with 2 issues.
+Note: Some test targets reported failures:
+  - ZapFastCoreTests (Swift Testing)

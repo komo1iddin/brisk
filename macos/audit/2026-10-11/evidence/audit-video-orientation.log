@@ -1,0 +1,25 @@
+Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 629]
+[Planning deferred tasks]
+[1 / 1]
+[1 / 58] ZapFastBridge
+[15 / 27] FeatureChatsTests-product
+[15 / 27] ZapFastCoreTests-product
+[17 / 29] ZapFastCoreTests-product
+[23 / 28] ZapFastCoreTests-product
+[25 / 28] ZapFastCoreTests-product
+Build complete! (4,41 secs)
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite AuditVideoOrientationTests started.
+◇ Test anotherCallWithTheSameRotationNotifiesAgain() started.
+✘ Test anotherCallWithTheSameRotationNotifiesAgain() recorded an issue at AuditVideoOrientationTests.swift:22:9: Expectation failed: witness.rotations == [1, 1]
+↳ witness.rotations == [1, 1] → false
+↳   witness.rotations → [1]
+✘ Test anotherCallWithTheSameRotationNotifiesAgain() failed after 0.249 seconds with 1 issue.
+✘ Suite AuditVideoOrientationTests failed after 0.249 seconds with 1 issue.
+✘ Test run with 1 test in 1 suite failed after 0.249 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - ZapFastCoreTests (Swift Testing)

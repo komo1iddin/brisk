@@ -1,0 +1,237 @@
+Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 629]
+[Planning deferred tasks]
+[1 / 1]
+[1 / 35] FeatureConversation
+[12 / 27] FeatureConversationTests-product
+[16 / 28] FeatureChatsTests-product
+[16 / 28] FeatureConversationTests-product
+[18 / 30] FeatureConversationTests-product
+[25 / 30] FeatureConversationTests-product
+[27 / 30] FeatureConversationTests-product
+Build complete! (22,76 secs)
+◇ Test run started.
+↳ Testing Library Version: 2078
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite AuditLayoutLifetimeTests started.
+◇ Test serialBatchReleasesItsLayouts() started.
+◇ Test parallelBatchReleasesItsLayouts() started.
+✘ Test parallelBatchReleasesItsLayouts() recorded an issue at AuditLayoutLifetimeTests.swift:35:9: Expectation failed: releasedBatch(count: 64).layout == nil
+↳ releasedBatch(count: 64).layout == nil → false
+↳   releasedBatch(count: 64).layout → FeatureConversation.BubbleLayout
+↳     some → FeatureConversation.BubbleLayout
+↳       parts → Parts(widthLimit: 420.0, fromMe: false, startsRun: true, tail: true, avatarRoom: false, avatar: nil, bare: false, bubbleSize: (210.0, 51.0), name: Optional(FeatureConversation.TextPiece(string: Sample{
+            NSColor = "Catalog color: #$customDynamic C1DA3E49-4DA9-47D4-AE5E-D78BB3DCF01F";
+            NSFont = "\".AppleSystemUIFontDemi 12.00 pt. P [] (0x101570580) fobj=0x101570580, spc=3.20\"";
+            NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+        }, rect: (12.0, 8.0, 186.0, 15.0))), phone: nil, forwarded: nil, forwardedIcon: nil, quote: nil, placeholder: nil, picture: nil, document: nil, voice: nil, linkPreview: nil, body: Optional(FeatureConversation.TextPiece(string: Synthetic audit message{
+            NSColor = "Catalog color: System labelColor";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+        }⁠{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+        }.{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            NSKern = 29;
+        }.{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+        }, rect: (12.0, 27.0, 186.0, 16.0))), bodyLength: 23, linkedBody: Optional(Synthetic audit message{
+            NSColor = "Catalog color: System labelColor";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+        }⁠{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+        }.{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            NSKern = 29;
+        }.{
+            NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+            NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+        }), footer: FeatureConversation.BubbleLayout.Footer(rect: (169.0, 33.0, 29.0, 12.0), edited: nil, time: FeatureConversation.TextPiece(string: 01:26{
+            NSColor = "Catalog color: System secondaryLabelColor";
+            NSFont = "\".SFNS-Regular 10.00 pt. P [] (0x7bab194280) fobj=0x7bab194280, spc=2.93\"";
+            NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+        }, rect: (169.0, 33.0, 29.0, 12.0)), ticks: nil, state: ZapFastBridge.DeliveryState.none, tint: sRGB IEC61966-2.1 (extended) colorspace hdrm(1) 1 1 1 1, secondary: Catalog color: System secondaryLabelColor, capsule: nil), textColor: Catalog color: System labelColor, linkColor: Catalog color: #$customDynamic 81573265-C2D7-4F7B-AA70-1910797EC17C, bubbleColor: Optional(Catalog color: #$customDynamic F013F114-AC39-450D-82F2-4C37093469BE), lifted: false, accent: Catalog color: #$customDynamic 81573265-C2D7-4F7B-AA70-1910797EC17C, pills: [], pillsSize: (0.0, 0.0), accessibilityLabel: "Sample, Synthetic audit message, 01:26")
+↳         widthLimit → 420.0
+↳         fromMe → false
+↳         startsRun → true
+↳         tail → true
+↳         avatarRoom → false
+↳         avatar → nil
+↳         bare → false
+↳         bubbleSize → (210.0, 51.0)
+↳           width → 210.0
+↳           height → 51.0
+↳         name → TextPiece(string: Sample{
+              NSColor = "Catalog color: #$customDynamic C1DA3E49-4DA9-47D4-AE5E-D78BB3DCF01F";
+              NSFont = "\".AppleSystemUIFontDemi 12.00 pt. P [] (0x101570580) fobj=0x101570580, spc=3.20\"";
+              NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+          }, rect: (12.0, 8.0, 186.0, 15.0))
+↳           some → TextPiece(string: Sample{
+                NSColor = "Catalog color: #$customDynamic C1DA3E49-4DA9-47D4-AE5E-D78BB3DCF01F";
+                NSFont = "\".AppleSystemUIFontDemi 12.00 pt. P [] (0x101570580) fobj=0x101570580, spc=3.20\"";
+                NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+            }, rect: (12.0, 8.0, 186.0, 15.0))
+↳             string → Sample{
+                  NSColor = "Catalog color: #$customDynamic C1DA3E49-4DA9-47D4-AE5E-D78BB3DCF01F";
+                  NSFont = "\".AppleSystemUIFontDemi 12.00 pt. P [] (0x101570580) fobj=0x101570580, spc=3.20\"";
+                  NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+              }
+↳             rect → (12.0, 8.0, 186.0, 15.0)
+↳               origin → (12.0, 8.0)
+↳                 x → 12.0
+↳                 y → 8.0
+↳               size → (186.0, 15.0)
+↳                 width → 186.0
+↳                 height → 15.0
+↳         phone → nil
+↳         forwarded → nil
+↳         forwardedIcon → nil
+↳         quote → nil
+↳         placeholder → nil
+↳         picture → nil
+↳         document → nil
+↳         voice → nil
+↳         linkPreview → nil
+↳         body → TextPiece(string: Synthetic audit message{
+              NSColor = "Catalog color: System labelColor";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+          }⁠{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+          }.{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              NSKern = 29;
+          }.{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+          }, rect: (12.0, 27.0, 186.0, 16.0))
+↳           some → TextPiece(string: Synthetic audit message{
+                NSColor = "Catalog color: System labelColor";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+            }⁠{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            }.{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                NSKern = 29;
+            }.{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            }, rect: (12.0, 27.0, 186.0, 16.0))
+↳             string → Synthetic audit message{
+                  NSColor = "Catalog color: System labelColor";
+                  NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                  NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+              }⁠{
+                  NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                  NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              }.{
+                  NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                  NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                  NSKern = 29;
+              }.{
+                  NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                  NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              }
+↳             rect → (12.0, 27.0, 186.0, 16.0)
+↳               origin → (12.0, 27.0)
+↳                 x → 12.0
+↳                 y → 27.0
+↳               size → (186.0, 16.0)
+↳                 width → 186.0
+↳                 height → 16.0
+↳         bodyLength → 23
+↳         linkedBody → Synthetic audit message{
+              NSColor = "Catalog color: System labelColor";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+          }⁠{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+          }.{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+              NSKern = 29;
+          }.{
+              NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+              NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+          }
+↳           some → Synthetic audit message{
+                NSColor = "Catalog color: System labelColor";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+            }⁠{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            }.{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+                NSKern = 29;
+            }.{
+                NSColor = "Generic Gray Gamma 2.2 Profile colorspace 0 0";
+                NSFont = "\".AppleSystemUIFont 13.00 pt. P [] (0x10156c400) fobj=0x10156c400, spc=3.58\"";
+            }
+↳         footer → Footer(rect: (169.0, 33.0, 29.0, 12.0), edited: nil, time: FeatureConversation.TextPiece(string: 01:26{
+              NSColor = "Catalog color: System secondaryLabelColor";
+              NSFont = "\".SFNS-Regular 10.00 pt. P [] (0x7bab194280) fobj=0x7bab194280, spc=2.93\"";
+              NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+          }, rect: (169.0, 33.0, 29.0, 12.0)), ticks: nil, state: ZapFastBridge.DeliveryState.none, tint: sRGB IEC61966-2.1 (extended) colorspace hdrm(1) 1 1 1 1, secondary: Catalog color: System secondaryLabelColor, capsule: nil)
+↳           rect → (169.0, 33.0, 29.0, 12.0)
+↳             origin → (169.0, 33.0)
+↳               x → 169.0
+↳               y → 33.0
+↳             size → (29.0, 12.0)
+↳               width → 29.0
+↳               height → 12.0
+↳           edited → nil
+↳           time → TextPiece(string: 01:26{
+                NSColor = "Catalog color: System secondaryLabelColor";
+                NSFont = "\".SFNS-Regular 10.00 pt. P [] (0x7bab194280) fobj=0x7bab194280, spc=2.93\"";
+                NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+            }, rect: (169.0, 33.0, 29.0, 12.0))
+↳             string → 01:26{
+                  NSColor = "Catalog color: System secondaryLabelColor";
+                  NSFont = "\".SFNS-Regular 10.00 pt. P [] (0x7bab194280) fobj=0x7bab194280, spc=2.93\"";
+                  NSParagraphStyle = "Alignment Natural, LineSpacing 0, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode TruncatingTail, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''";
+              }
+↳             rect → (169.0, 33.0, 29.0, 12.0)
+↳               origin → (169.0, 33.0)
+↳                 x → 169.0
+↳                 y → 33.0
+↳               size → (29.0, 12.0)
+↳                 width → 29.0
+↳                 height → 12.0
+↳           ticks → nil
+↳           state → .none
+↳           tint → sRGB IEC61966-2.1 (extended) colorspace hdrm(1) 1 1 1 1
+↳           secondary → Catalog color: System secondaryLabelColor
+↳           capsule → nil
+↳         textColor → Catalog color: System labelColor
+↳         linkColor → Catalog color: #$customDynamic 81573265-C2D7-4F7B-AA70-1910797EC17C
+↳         bubbleColor → Catalog color: #$customDynamic F013F114-AC39-450D-82F2-4C37093469BE
+↳           some → Catalog color: #$customDynamic F013F114-AC39-450D-82F2-4C37093469BE
+↳         lifted → false
+↳         accent → Catalog color: #$customDynamic 81573265-C2D7-4F7B-AA70-1910797EC17C
+↳         pills → []
+↳         pillsSize → (0.0, 0.0)
+↳           width → 0.0
+↳           height → 0.0
+↳         accessibilityLabel → "Sample, Synthetic audit message, 01:26"
+↳       rowHeight → 61.0
+✘ Test parallelBatchReleasesItsLayouts() failed after 0.131 seconds with 1 issue.
+✔ Test serialBatchReleasesItsLayouts() passed after 0.131 seconds.
+✘ Suite AuditLayoutLifetimeTests failed after 0.131 seconds with 1 issue.
+✘ Test run with 2 tests in 1 suite failed after 0.131 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - FeatureConversationTests (Swift Testing)

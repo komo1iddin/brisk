@@ -40,7 +40,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>ZapFast uses the camera for video calls, only while yours is on.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Native macOS interface for ZapFast (MIT) by Carmine Paolino and contributors.</string>
+	<string>Based on ZapFast by Carmine Paolino and contributors. Native macOS interface by Kamoliddin Fatkhullaev and contributors. See bundled licenses and notices.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ZapFast uses the microphone for voice messages and calls, only when you start one.</string>
 </dict>

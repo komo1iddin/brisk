@@ -1,0 +1,6 @@
+{
+  "status": "pending",
+  "bridge_lock_sha256": "f9914c74c48362732ec64302e9ee8143d9a7fa561525427242de1e96310bdadf",
+  "swift_lock_sha256": "152497466d0b605447fb41471bdb5912f8642e6978a390fbb9bddf7d8ae4d5cf",
+  "decision": "wacore-libsignal declares MIT in Cargo.toml but retains Signal AGPL-3.0-only source headers at the pinned revision. Upstream clarification and distribution review remain pending."
+}

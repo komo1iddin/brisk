@@ -25,3 +25,9 @@ Removing that account removes these derived files too. The old shared
 `Lottie/<filename>` cache is no longer read. A removed source file cannot be
 reopened through its derived cache. Old shared cache files can be removed
 manually after quitting the app; they contain no archive history.
+
+Help > Licenses and Notices opens the repository license, bundled asset
+notices and the native dependency inventory from the app's own resources.
+The inventory preserves available license texts and flags unresolved
+declarations. Binary distribution review remains pending, including the
+MIT/AGPL discrepancy in the pinned Signal-derived dependency.

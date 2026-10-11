@@ -116,6 +116,11 @@ struct ZapFastCommands: Commands {
         }
 
         CommandGroup(after: .help) {
+            Menu("Licenses and Notices") {
+                Button("ZapFast License") { openNotice("LICENSE", withExtension: nil) }
+                Button("Bundled Assets") { openNotice("THIRD-PARTY-NOTICES", withExtension: "md") }
+                Button("Dependency Licenses") { openNotice("DEPENDENCY-LICENSES", withExtension: "md") }
+            }
             Button("Keyboard Shortcuts") { model.shortcutsShown = true }
                 .keyboardShortcut("/")
                 .disabled(locked)
@@ -127,6 +132,12 @@ struct ZapFastCommands: Commands {
             Button("Lock ZapFast") { model.appLock.lock() }
                 .keyboardShortcut("l", modifiers: [.command, .control])
                 .disabled(!model.appLock.isEnabled || model.appLock.isLocked)
+        }
+    }
+
+    private func openNotice(_ name: String, withExtension suffix: String?) {
+        if let url = Bundle.main.url(forResource: name, withExtension: suffix) {
+            NSWorkspace.shared.open(url)
         }
     }
 

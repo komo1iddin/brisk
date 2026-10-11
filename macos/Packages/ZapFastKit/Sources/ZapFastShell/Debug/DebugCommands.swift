@@ -610,7 +610,7 @@ enum DebugCommands {
         if let toolbar = window.toolbar {
             for item in toolbar.items {
                 let frame = item.view.map { $0.convert($0.bounds, to: nil) } ?? .zero
-                let glass = Selector(("glassBehavior"))
+                let glass = NSSelectorFromString("glassBehavior")
                 typealias Getter = @convention(c) (AnyObject, Selector) -> Int
                 let behavior = item.responds(to: glass) ? unsafeBitCast(item.method(for: glass), to: Getter.self)(item, glass) : -1
                 let viewBehavior = item.view.map { $0.responds(to: glass) ? unsafeBitCast($0.method(for: glass), to: Getter.self)($0, glass) : -1 } ?? -2

@@ -10,7 +10,7 @@ set -euo pipefail
 cd "${0:a:h}/../Packages/ZapFastKit"
 # Recompile everything of ours: a cached build prints no warnings.
 find Sources Tests -name '*.swift' -not -path '*/Generated/*' -exec touch {} +
-output=$(swift build --build-tests 2>&1 | sed -E $'s/\x1b\\[[0-9;]*m//g')
+output=$(swift build --build-tests --force-resolved-versions "$@" 2>&1 | sed -E $'s/\x1b\\[[0-9;]*m//g')
 if print -r -- "$output" | grep -q 'error: Build failed\|: error:'; then
   print -r -- "$output" | grep -E ': error:' | sort -u
   exit 1

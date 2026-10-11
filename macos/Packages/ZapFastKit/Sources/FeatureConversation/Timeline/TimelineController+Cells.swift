@@ -44,7 +44,7 @@ extension TimelineController: TimelineCellDelegate {
                 DispatchQueue.main.async { request(asked) }
             }
         )
-        .environment(\.dismissInfo) { [weak popover] in popover?.close() }
+        .environment(\.dismissInfo, DismissInfoAction(popover: popover))
         .environment(\.chatTheme, style.theme)
         .tint(style.theme.accent)
         popover.contentViewController = NSHostingController(rootView: panel)

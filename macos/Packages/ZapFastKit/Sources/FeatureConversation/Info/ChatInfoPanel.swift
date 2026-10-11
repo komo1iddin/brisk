@@ -137,7 +137,23 @@ struct PersonInfoPanel: View {
 extension EnvironmentValues {
     /// Closes the popover a page is shown in, for what leaves it (opening
     /// a chat with the person).
-    @Entry var dismissInfo: @MainActor () -> Void = {}
+    @Entry var dismissInfo = DismissInfoAction()
+}
+
+/// The popover identity is comparable; an unchanged environment action does
+/// not invalidate every dependent view as a stored closure could.
+struct DismissInfoAction: Equatable {
+    private weak var popover: NSPopover?
+    nonisolated private let identity: ObjectIdentifier?
+
+    init(popover: NSPopover? = nil) {
+        self.popover = popover
+        identity = popover.map(ObjectIdentifier.init)
+    }
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.identity == rhs.identity }
+
+    func callAsFunction() { popover?.close() }
 }
 
 private struct BackBar: View {

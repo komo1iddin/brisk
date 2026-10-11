@@ -18,3 +18,10 @@ CI’ni ishlatishga to‘sqinlik qilayotgan F19 native warning va F22 engine-onl
 GitHub push, release, notarization submission yoki upstream’ga xabar yuborish ushbu ishda bajarilmaydi. Release uchun mavjud bo‘lmagan credential yoki upstream license clarification talab qilinsa, uning holati aniq qayd etiladi.
 
 F06 testining dastlabki rang fixture’i Xcode 27 beta muhitida bir xil PNG baytlarini yaratgan. Raw RGBA fixture va baytlar farqliligini tekshirish bilan almashtirildi. Tuzatilgan test eski key algoritmida ikkita assertion bilan yiqildi, yangi algoritmda o‘tdi. Audit reproducer’i ham tuzatildi.
+
+Quality gate: F19 tuzatildi, dismissInfo popover identity bo‘yicha comparable action;
+Debug selector runtime lookup bilan olinadi. Forced source warning check PASS.
+F22 tuzatildi: faqat egui mention display assertion’i `ui` feature ostida;
+protocol assertions engine-only testda ham qoladi. Root engine: 555 PASS,
+8 ignored. Root fmt, default/all-feature clippy va tests, rustdoc: PASS.
+Native full suite: 489 PASS (410 Core, 69 Conversation, 8 Chats, 2 Calls).

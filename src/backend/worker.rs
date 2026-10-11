@@ -9717,14 +9717,19 @@ mod tests {
                 }],
                 "listed: {listed}"
             );
-            let named = crate::markup::plain(
-                &quoted.summary,
-                &[crate::markup::Mention {
-                    user: quoted.mentions[0].user.clone(),
-                    name: "Mira".into(),
-                }],
-            );
-            assert_eq!(named, "Photo: @Mira looks sharp");
+            // The protocol assertions above also run in engine-only builds.
+            // Resolving a mention's display name belongs to the egui view.
+            #[cfg(feature = "ui")]
+            {
+                let named = crate::markup::plain(
+                    &quoted.summary,
+                    &[crate::markup::Mention {
+                        user: quoted.mentions[0].user.clone(),
+                        name: "Mira".into(),
+                    }],
+                );
+                assert_eq!(named, "Photo: @Mira looks sharp");
+            }
         }
     }
 

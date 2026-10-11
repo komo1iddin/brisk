@@ -346,10 +346,13 @@ struct CallHistoryTests {
         #expect(rows(messages, []) == TimelineRow.build(messages, calendar: calendar))
     }
 
-    @Test func historyReadsOnceAndFollowsTheBridge() {
+    @Test func historyReadsOnceAndFollowsTheBridge() async {
         let service = PreviewCallService()
         service.calls = [call("x", at: noon)]
         let calls = CallStore(service: service, live: false)
+        #expect(calls.history.calls(in: chat).isEmpty)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while calls.history.calls(in: chat).isEmpty, ContinuousClock.now < deadline { await Task.yield() }
         #expect(calls.history.calls(in: chat).map(\.callId) == ["x"])
         service.calls = []
         #expect(calls.history.calls(in: chat).count == 1, "read once, then kept")

@@ -11,9 +11,11 @@ public final class CallHistory {
     /// is not told about another.
     private var revisions: [String: Int] = [:]
     @ObservationIgnored private var loaded: [String: [CallLogEntry]] = [:]
-    @ObservationIgnored private let read: (String) -> [CallLogEntry]
+    @ObservationIgnored private let read: (String) async -> [CallLogEntry]
+    @ObservationIgnored private var loads: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var generation = UUID()
 
-    init(read: @escaping (String) -> [CallLogEntry]) {
+    init(read: @escaping (String) async -> [CallLogEntry]) {
         self.read = read
     }
 
@@ -21,11 +23,35 @@ public final class CallHistory {
     public func calls(in chat: String) -> [CallLogEntry] {
         _ = revisions[chat]
         if let calls = loaded[chat] { return calls }
-        // Read once, outside observation's notice: nothing changed, it only
-        // had not been read yet.
-        let calls = read(chat)
-        loaded[chat] = calls
-        return calls
+        loaded[chat] = []
+        let generation = generation
+        let read = read
+        loads[chat] = Task { [weak self] in
+            let disk = await read(chat)
+            guard !Task.isCancelled, let self, generation == self.generation else { return }
+            // Reports received during the read are newer than its snapshot.
+            var merged = Dictionary(disk.map { ($0.callId, $0) }, uniquingKeysWith: { _, last in last })
+            for entry in self.loaded[chat] ?? [] { merged[entry.callId] = entry }
+            self.loaded[chat] = merged.values.sorted {
+                $0.timestamp != $1.timestamp ? $0.timestamp < $1.timestamp : $0.callId < $1.callId
+            }
+            self.loads[chat] = nil
+            self.revisions[chat, default: 0] += 1
+        }
+        return []
+    }
+
+    func cancelLoads() {
+        generation = UUID()
+        for (chat, task) in loads { task.cancel(); loaded[chat] = nil }
+        loads.removeAll()
+    }
+
+    func clear() {
+        let chats = Set(loaded.keys).union(loads.keys)
+        cancelLoads()
+        loaded.removeAll()
+        for chat in chats { revisions[chat, default: 0] += 1 }
     }
 
     /// A call was filed or changed.

@@ -49,7 +49,7 @@ public final class CallStore {
     public init(service: CallService, live: Bool) {
         self.service = service
         self.live = live
-        history = CallHistory(read: { [service] chat in service.history(chat: chat) })
+        history = CallHistory(read: { [service] chat in await service.history(chat: chat) })
         microphoneAllowed = live ? { await VoiceRecorder.microphoneAllowed() } : { true }
         cameraAllowed = live ? { await CallCamera.allowed() } : { true }
         let renderer = VideoRenderer(requestKeyframe: service.requestKeyframe, onOrientation: { _ in })

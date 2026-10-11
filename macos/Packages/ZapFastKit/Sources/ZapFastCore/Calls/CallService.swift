@@ -17,7 +17,7 @@ public struct CallSinks {
 public protocol CallService: AnyObject {
     func connect(_ sinks: CallSinks)
     /// A chat's calls, oldest first.
-    func history(chat: String) -> [CallLogEntry]
+    func history(chat: String) async -> [CallLogEntry]
     func place(chat: String, video: Bool) -> Bool
     func answer(session: UInt64, video: Bool)
     /// Declines the call if it rings, or ends it.
@@ -34,17 +34,19 @@ public protocol CallService: AnyObject {
 
 public final class LiveCallService: CallService {
     private let center: CallCenter
+    private let historyReader: CallHistoryReader
 
     /// The calls of account `account`.
     public init(account: String) {
         center = CallCenter.forAccount(account: account)
+        historyReader = CallHistoryReader(center)
     }
 
     public func connect(_ sinks: CallSinks) {
         center.setListener(listener: CallRelay(sinks))
     }
 
-    public func history(chat: String) -> [CallLogEntry] { center.history(chat: chat) }
+    public func history(chat: String) async -> [CallLogEntry] { await historyReader.read(chat) }
     public func place(chat: String, video: Bool) -> Bool { center.place(chat: chat, video: video) }
     public func answer(session: UInt64, video: Bool) { center.answer(session: session, video: video) }
     public func end(session: UInt64) { center.end(session: session) }
@@ -120,7 +122,7 @@ public final class PreviewCallService: CallService {
         self.sinks = sinks
     }
 
-    public func history(chat: String) -> [CallLogEntry] {
+    public func history(chat: String) async -> [CallLogEntry] {
         calls.filter { $0.chat == chat }
     }
 

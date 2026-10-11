@@ -15,13 +15,15 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
     nonisolated(unsafe) private let renderer: AVSampleBufferVideoRenderer
 
     private let queue = DispatchQueue(label: "ZapFast.CallVideo")
+    // Keeps reset and frame submission ordered even with concurrent callers.
+    private let submissions = NSLock()
+    private let generation = Atomic<UInt64>(0)
     // Touched only on `queue`.
     private var format: CMVideoFormatDescription?
     private var sps: Data?
     private var pps: Data?
     private var waitingForKeyframe = true
-
-    private let orientation = Atomic<UInt8>(0)
+    private var orientation: UInt8?
     private let log = Logger(subsystem: "ZapFast", category: "Calls")
     /// Asks the other side for a keyframe.
     let requestKeyframe: @Sendable () -> Void
@@ -42,20 +44,34 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
 
     /// Decodes and shows one access unit, on the renderer's own queue.
     public func enqueue(_ data: Data, keyframe: Bool, orientation: UInt8) {
-        if self.orientation.exchange(orientation, ordering: .relaxed) != orientation {
-            let changed = orientationChanged
-            DispatchQueue.main.async { changed(orientation) }
+        submissions.lock()
+        defer { submissions.unlock() }
+        let stream = generation.load(ordering: .acquiring)
+        queue.async { [self] in
+            guard stream == generation.load(ordering: .acquiring) else { return }
+            if self.orientation != orientation {
+                self.orientation = orientation
+                let changed = orientationChanged
+                DispatchQueue.main.async { [self] in
+                    guard stream == generation.load(ordering: .acquiring) else { return }
+                    changed(orientation)
+                }
+            }
+            show(data, keyframe: keyframe)
         }
-        queue.async { [self] in show(data, keyframe: keyframe) }
     }
 
     /// Forgets the stream: the next call starts from its first keyframe.
     public func reset() {
+        submissions.lock()
+        defer { submissions.unlock() }
+        generation.store(generation.load(ordering: .relaxed) &+ 1, ordering: .releasing)
         queue.async { [self] in
             format = nil
             sps = nil
             pps = nil
             waitingForKeyframe = true
+            orientation = nil
             renderer.flush(removingDisplayedImage: true, completionHandler: nil)
         }
     }

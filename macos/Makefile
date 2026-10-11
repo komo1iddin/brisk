@@ -51,7 +51,7 @@ footprint:
 # isolation errors are only warnings, and crash at run time), then the tests.
 check: bridge
 	./Scripts/check-warnings.sh
-	cd Packages/ZapFastKit && swift test
+	cd Packages/ZapFastKit && swift test --no-parallel
 
 clean:
 	rm -rf Build ZapFast.xcodeproj Packages/ZapFastKit/Artifacts Packages/ZapFastKit/Sources/ZapFastBridge/Generated

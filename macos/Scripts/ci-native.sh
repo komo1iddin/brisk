@@ -27,7 +27,8 @@ macos/Scripts/build-bridge.sh debug
 macos/Scripts/check-warnings.sh --disable-sandbox --jobs "${NATIVE_BUILD_JOBS:-2}"
 (
     cd macos/Packages/ZapFastKit
-    swift test --disable-sandbox --force-resolved-versions --jobs "${NATIVE_BUILD_JOBS:-2}"
+    # AppKit fixtures share the process layout scheduler, including the 50k resize stress case.
+    swift test --no-parallel --disable-sandbox --force-resolved-versions --jobs "${NATIVE_BUILD_JOBS:-2}"
 )
 python3 macos/Scripts/license-inventory.py --check
 macos/Scripts/build-bridge.sh release

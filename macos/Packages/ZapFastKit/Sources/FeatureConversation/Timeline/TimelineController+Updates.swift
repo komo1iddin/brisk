@@ -438,11 +438,7 @@ extension TimelineController {
         } else {
             if let anchor { restore(anchor) }
             // Counted for the "newest message" button's badge.
-            let known = Set(old.map(\.id))
-            newBelow += new.count { item in
-                guard !known.contains(item.id), let message = item.message else { return false }
-                return !message.fromMe
-            }
+            newBelow += TimelineArrivals.count(from: old, to: new)
         }
     }
 

@@ -37,3 +37,8 @@ scroll’da 39,707 qator tekshirildi, 0 missing / 0 misplaced. Full-scroll p95
 2.74 ms, p99 3.58 ms, physical footprint 108.08 MiB. Bu bitta post-fix run;
 repeat A/B, real account CPU/energy va rasmiy WhatsApp taqqoslashi bajarilmagan.
 F09 to F18, F20 to F21 ushbu bosqichga kirmaydi, audit backlog’ida qoladi.
+
+Keyingi performance bosqichida F09, F12 va F13 uchun tuzatishlar,
+F10 inactive retention va F11 live-event xarajatlari uchun qisman tuzatishlar
+amalga oshirildi. Joriy holat va dalillar:
+[PERFORMANCE-FIXES.md](PERFORMANCE-FIXES.md).

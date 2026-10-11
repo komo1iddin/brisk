@@ -1,0 +1,72 @@
+{
+  "candidateCommit": "c1e360b",
+  "hereIntervals": 15,
+  "instrument": "xctrace Time Profiler 27.0 (27A5252f)",
+  "limitations": [
+    "Inclusive frames overlap and must not be summed.",
+    "Sampling and profiler overhead prevent direct comparison with unprofiled runs.",
+    "Only the synthetic benchmark PID was attached.",
+    "Raw trace and metadata are excluded from repository evidence."
+  ],
+  "samplePeriodMs": 1,
+  "sampledMainCPUms": 575.0,
+  "scenario": "synthetic 50000 messages, full-history Here signposts (last 15)",
+  "selectedInclusiveFrames": [
+    {
+      "sampledCPUms": 359.0,
+      "symbol": "TimelineController.refresh(rows:)"
+    },
+    {
+      "sampledCPUms": 251.0,
+      "symbol": "specialized _ArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)"
+    },
+    {
+      "sampledCPUms": 197.0,
+      "symbol": "_ContiguousArrayStorage.__deallocating_deinit"
+    },
+    {
+      "sampledCPUms": 186.0,
+      "symbol": "specialized Array.subscript.modify"
+    },
+    {
+      "sampledCPUms": 185.0,
+      "symbol": "initializeWithCopy for TimelineController.Item"
+    },
+    {
+      "sampledCPUms": 185.0,
+      "symbol": "specialized _ContiguousArrayBuffer._copyContents(subRange:initializing:)"
+    },
+    {
+      "sampledCPUms": 185.0,
+      "symbol": "specialized _ArrayBuffer._copyContents(subRange:initializing:)"
+    },
+    {
+      "sampledCPUms": 168.0,
+      "symbol": "outlined copy of TimelineController.Item"
+    },
+    {
+      "sampledCPUms": 165.0,
+      "symbol": "destroy for TimelineController.Item"
+    },
+    {
+      "sampledCPUms": 162.0,
+      "symbol": "outlined consume of TimelineController.Item"
+    },
+    {
+      "sampledCPUms": 51.0,
+      "symbol": "specialized ConversationStore.update(_:messages:_:)"
+    },
+    {
+      "sampledCPUms": 50.0,
+      "symbol": "Conversation.merge(_:older:positions:)"
+    },
+    {
+      "sampledCPUms": 19.0,
+      "symbol": "TimelineController.Item.id.getter"
+    },
+    {
+      "sampledCPUms": 1.0,
+      "symbol": "_ArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)"
+    }
+  ]
+}

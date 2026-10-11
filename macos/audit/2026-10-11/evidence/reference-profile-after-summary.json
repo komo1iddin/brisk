@@ -1,0 +1,44 @@
+{
+  "candidateCommit": "bd3b735",
+  "hereIntervals": 15,
+  "instrument": "xctrace Time Profiler 27.0 (27A5252f)",
+  "limitations": [
+    "Inclusive frames overlap and must not be summed.",
+    "Sampling and profiler overhead prevent direct comparison with unprofiled runs.",
+    "Only the synthetic benchmark PID was attached.",
+    "Raw trace and metadata are excluded from repository evidence."
+  ],
+  "samplePeriodMs": 1,
+  "sampledMainCPUms": 226.0,
+  "scenario": "synthetic 50000 messages, full-history Here signposts (last 15)",
+  "selectedInclusiveFrames": [
+    {
+      "sampledCPUms": 53.0,
+      "symbol": "specialized _ArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)"
+    },
+    {
+      "sampledCPUms": 48.0,
+      "symbol": "Conversation.merge(_:older:positions:)"
+    },
+    {
+      "sampledCPUms": 48.0,
+      "symbol": "specialized ConversationStore.update(_:messages:_:)"
+    },
+    {
+      "sampledCPUms": 33.0,
+      "symbol": "_ContiguousArrayStorage.__deallocating_deinit"
+    },
+    {
+      "sampledCPUms": 20.0,
+      "symbol": "TimelineController.Item.id.getter"
+    },
+    {
+      "sampledCPUms": 8.0,
+      "symbol": "TimelineController.refresh(rows:)"
+    },
+    {
+      "sampledCPUms": 4.0,
+      "symbol": "destructiveProjectEnumData for TimelineController.Item"
+    }
+  ]
+}

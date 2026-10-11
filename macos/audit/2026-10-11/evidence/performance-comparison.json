@@ -1,0 +1,66 @@
+{
+  "baselineCommit": "4b87256",
+  "binarySHA256": {
+    "A": "ce3a66552d2be2ec719a3f811b18640f2623c52a3e67b8e1b9847b6b2b61e14d",
+    "B": "5b9a813baf99ccf2999f41c97f9089b938faa65696aca28a7235703fce778725"
+  },
+  "candidateCommit": "e7ad4a0",
+  "runs": [
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 47.47,
+      "json": "performance-10000-A-1.json",
+      "repeat": 1
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.74,
+      "json": "performance-10000-B-1.json",
+      "repeat": 1
+    },
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 43.31,
+      "json": "performance-10000-A-2.json",
+      "repeat": 2
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.22,
+      "json": "performance-10000-B-2.json",
+      "repeat": 2
+    },
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 43.34,
+      "json": "performance-10000-A-3.json",
+      "repeat": 3
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.36,
+      "json": "performance-10000-B-3.json",
+      "repeat": 3
+    },
+    {
+      "binary": "A",
+      "count": 50000,
+      "elapsedSeconds": 45.9,
+      "json": "performance-50000-A-1.json",
+      "repeat": 1
+    },
+    {
+      "binary": "B",
+      "count": 50000,
+      "elapsedSeconds": 45.73,
+      "json": "performance-50000-B-1.json",
+      "repeat": 1
+    }
+  ]
+}

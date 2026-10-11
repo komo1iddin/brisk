@@ -5,6 +5,9 @@ native macOS interface added under `macos/`. The WhatsApp side (whatsapp-rust,
 the SQLCipher archive, media, keychain) is upstream's Rust backend, used
 as-is. Only the interface is new: SwiftUI and AppKit, designed to Apple's HIG.
 
+See [native build and release checks](RELEASING.md) for CI, Apple Silicon
+artifacts, bundled notices and the pending dependency license review.
+
 ## Rules
 
 1. **Never edit upstream files.** Everything outside `macos/` belongs to

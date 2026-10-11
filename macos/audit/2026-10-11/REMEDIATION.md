@@ -10,7 +10,7 @@ Scope: foydalanuvchi tanlovi bo‘yicha P1 masalalar va test bilan tasdiqlangan 
 | F06 | Thumbnail content invalidation va account/chat identity | Yopildi: SHA-256 content key, account/chat scope, preview task reload/cancellation; 4 regression test PASS, eski key bilan negative control FAIL |
 | F07 | Lottie cache identity/izolatsiyasi | Yopildi: source path/content hash, account ichida derived cache, replacement va source removal regressioni; 8 archive + 5 Lottie test PASS |
 | F08 | Video stream reset va orientation regressioni | Yopildi: serialized reset/submission, stream generation guard, first-frame rotation; 0/1/3 rotation va stale callback test PASS |
-| F04 | Native CI va native release artifact yo‘li | Rejalashtirilgan |
+| F04 | Native CI va native release artifact yo‘li | Implementatsiya tayyor: native reusable CI, arm64 app/Share/notice validator, native draft release; local full rehearsal va workflow/shell lint PASS. Hosted/signing/notarization rehearsal hali bajarilmagan |
 | F05 | Native license/notice resources, dependency license inventory | Lokal qismi tayyor: 517 Rust package + 2 Swift pin inventari, mavjud license matnlari, bundle resources va Help menyusi; upstream MIT/AGPL clarification va missing text/distribution review ochiq |
 
 CI’ni ishlatishga to‘sqinlik qilayotgan F19 native warning va F22 engine-only test compile masalalari ham ushbu bosqichning quality gate qismida hal qilinadi. Qolgan performance xavflari keyingi bosqich uchun auditda saqlanadi. Missing call feature’lar ushbu bug-fix bosqichiga kirmaydi.
@@ -31,3 +31,9 @@ lock’lar uchun asoslangan review bo‘lmaguncha binary release to‘xtaydi.
 [Upstream savol draft’i](UPSTREAM-LICENSE-QUESTION.md) tayyor, yuborilmagan.
 Native `.app` Resources’dagi LICENSE, THIRD-PARTY-NOTICES.md va
 DEPENDENCY-LICENSES.md real unsigned Release bundle’da tekshirildi.
+
+Yakuniy tekshiruvlar: [VALIDATION.md](VALIDATION.md). 10k sintetik Release
+scroll’da 39,707 qator tekshirildi, 0 missing / 0 misplaced. Full-scroll p95
+2.74 ms, p99 3.58 ms, physical footprint 108.08 MiB. Bu bitta post-fix run;
+repeat A/B, real account CPU/energy va rasmiy WhatsApp taqqoslashi bajarilmagan.
+F09 to F18, F20 to F21 ushbu bosqichga kirmaydi, audit backlog’ida qoladi.

@@ -18,6 +18,10 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  native-macos:
+    name: Native macOS quality and release build
+    uses: ./.github/workflows/native-macos.yml
+
   audit:
     name: Dependency advisories
     runs-on: ubuntu-latest

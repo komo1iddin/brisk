@@ -1,0 +1,54 @@
+name: Native macOS
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        type: boolean
+        default: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          components: rustfmt, clippy
+          targets: aarch64-apple-darwin
+      - name: Install build tools
+        run: brew install xcodegen cmake nasm
+      - name: Engine, bridge, Swift tests, warnings and native Release
+        run: bash macos/Scripts/ci-native.sh
+      - name: Require reviewed licenses before packaging a binary
+        if: inputs.package
+        run: python3 macos/Scripts/check-release-license.py
+      - name: Package native app for signing
+        if: inputs.package
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent macos/Build/DerivedData/Build/Products/Release/ZapFast.app macos/Build/native-unsigned.zip
+      - uses: actions/upload-artifact@v7
+        if: inputs.package
+        with:
+          name: native-unsigned
+          path: macos/Build/native-unsigned.zip
+          if-no-files-found: error
+          retention-days: 1
+      - name: Build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-build-diagnostics
+          path: macos/Build/*.log
+          if-no-files-found: ignore
+          retention-days: 7

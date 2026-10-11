@@ -29,14 +29,14 @@ export PATH="$HOME/.cargo/bin:$PATH"
 
 cd "$bridge"
 echo "▸ cargo build ($profile, $target)"
-cargo build --lib --target "$target" ${cargo_flags[@]+"${cargo_flags[@]}"}
+cargo build --locked --lib --target "$target" ${cargo_flags[@]+"${cargo_flags[@]}"}
 library="$bridge/target/$target/$profile/libzapfast_bridge.a"
 
 echo "▸ uniffi-bindgen (Swift)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 # The crate's own uniffi.toml (module names) is picked up from its root.
-cargo run --quiet --profile bindgen -p uniffi-bindgen -- generate \
+cargo run --locked --quiet --profile bindgen -p uniffi-bindgen -- generate \
   --library "$library" \
   --language swift \
   --out-dir "$work/out"

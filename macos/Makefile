@@ -14,7 +14,7 @@ APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
 # app is too; Release otherwise builds an Intel slice that cannot link.
 XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath $(DERIVED) ARCHS=arm64
 
-.PHONY: all bridge project build run test release sync footprint clean check
+.PHONY: all bridge project build run test release sync footprint clean check ci
 
 all: build
 
@@ -35,6 +35,10 @@ test: bridge
 
 release:
 	$(MAKE) build CONFIG=Release
+
+# The same engine, bridge, native tests and unsigned Release checks as CI.
+ci:
+	bash Scripts/ci-native.sh
 
 sync:
 	./Scripts/sync-upstream.sh

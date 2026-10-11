@@ -17,6 +17,8 @@ The app lock hides both sides of a video call and turns off the local camera.
 Existing call audio may continue and incoming calls can be answered with
 voice while locked. Unlocking does not turn the camera back on. Video
 requires an explicit camera action after unlocking.
+The lock also stops remote video decoding. [Call recovery and account media
+ownership](native-macos-call-recovery.md) describe capture failures and teardown.
 
 Native media previews use account/chat namespaces and content fingerprints.
 Lottie stickers are unpacked by their full source path and content hash into

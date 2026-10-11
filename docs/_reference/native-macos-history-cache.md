@@ -16,6 +16,17 @@ macOS memory-pressure warnings remove every eligible inactive conversation.
 Composer drafts, reply/edit records and the archive remain separate from this
 cache. An evicted inactive chat reopens on the newest page, as a cold chat does.
 
+Loaded message snapshots share blocks of 256 records. A receipt, reaction,
+download or live append copies the affected block and the small block index,
+rather than the entire loaded history. Existing readers retain their own
+snapshot. Prepending history, deletion and reordering still rebuild the list.
+
+Timeline jumps and reading-anchor restoration use the row ID index. Resizing
+only the width keeps the current vertical position without forcing a nested
+layout pass. When a narrower window changes bubble widths, reflow restores
+the reading anchor after the new heights arrive. Height/composer-inset changes
+continue to keep readers at the bottom when they were following new messages.
+
 These are row/count limits for inactive model copies, not a byte limit or a
 cap on history deliberately loaded in an open pane. A large active chat and
 its timeline items still scale with its loaded row count. Further active-page

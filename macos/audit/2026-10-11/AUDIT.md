@@ -2,6 +2,10 @@
 
 Sana: 2026-10-11. Tekshirilgan commit: `cec8c150cf50b6d6566e99ad1e50e04250add795`, `main`.
 
+Bu dastlabki audit snapshot’i. Keyingi tuzatishlar va joriy tekshiruvlar:
+[P1 bosqichi](REMEDIATION.md), [performance bosqichi](PERFORMANCE-FIXES.md),
+[katta chat, resize va call bosqichi](LARGE-CHAT-CALL-VALIDATION.md).
+
 ## Qaror
 
 Native interfeysning scroll arxitekturasi yaxshi va sintetik sinovlar buni qo‘llab-quvvatlaydi. Oddiy chatda sezilarli tezlik uchun texnik asos bor: `NSTableView` virtualizatsiyasi, Core Animation bilan chiziladigan bubblelar, fon oqimida text layout, o‘lchamga mos image decode va o‘zgargan qatorlarni alohida yangilash.

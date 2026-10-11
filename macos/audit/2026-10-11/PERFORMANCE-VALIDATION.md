@@ -5,6 +5,9 @@ the first-phase candidate `4b87256`. Only synthetic messages, media and
 mock services were used. No real archive rows, contacts, session keys or
 pre-existing user logs were read.
 
+This is the `bd3b735` checkpoint. Later block snapshots, resize and call
+recovery are validated in [the next checkpoint](LARGE-CHAT-CALL-VALIDATION.md).
+
 ## Checks
 
 | Check | Result |

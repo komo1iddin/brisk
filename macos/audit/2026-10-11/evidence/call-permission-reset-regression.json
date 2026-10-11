@@ -1,0 +1,9 @@
+{
+  "afterResult": "PASS",
+  "afterSourceCommit": "92203dc9111af6f80ad7aeffd3b0903db4be1250",
+  "beforeIssue": "permissions.count == 2: reset did not release the pending intent",
+  "beforeResult": "FAIL",
+  "beforeSourceCommit": "6dd1d59",
+  "fixture": "PreviewCallService and suspended mock permission continuations; no microphone",
+  "test": "resetReleasesAPendingPermissionWithoutClearingANewerIntent"
+}

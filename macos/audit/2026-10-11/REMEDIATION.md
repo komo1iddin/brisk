@@ -42,3 +42,6 @@ Keyingi performance bosqichida F09, F12 va F13 uchun tuzatishlar,
 F10 inactive retention va F11 live-event xarajatlari uchun qisman tuzatishlar
 amalga oshirildi. Joriy holat va dalillar:
 [PERFORMANCE-FIXES.md](PERFORMANCE-FIXES.md).
+
+Katta chat, resize va qo‘ng‘iroq lifecycle’ining keyingi tuzatishlari:
+[LARGE-CHAT-CALL-VALIDATION.md](LARGE-CHAT-CALL-VALIDATION.md).

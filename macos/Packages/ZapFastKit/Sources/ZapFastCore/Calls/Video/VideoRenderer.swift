@@ -18,12 +18,18 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
     // Keeps reset and frame submission ordered even with concurrent callers.
     private let submissions = NSLock()
     private let generation = Atomic<UInt64>(0)
+    // Submission lock owns the bounded inbox and one drain's scheduled flag.
+    private var inbox = VideoFrameInbox()
+    private var draining = false
+    private var pendingOrientation: (stream: UInt64, turns: UInt8)?
+    private var deliveringOrientation = false
     // Touched only on `queue`.
     private var format: CMVideoFormatDescription?
     private var sps: Data?
     private var pps: Data?
     private var waitingForKeyframe = true
     private var orientation: UInt8?
+    private var keyframeRequests = VideoKeyframeRequests()
     private let log = Logger(subsystem: "ZapFast", category: "Calls")
     /// Asks the other side for a keyframe.
     let requestKeyframe: @Sendable () -> Void
@@ -44,36 +50,75 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
 
     /// Decodes and shows one access unit, on the renderer's own queue.
     public func enqueue(_ data: Data, keyframe: Bool, orientation: UInt8) {
-        submissions.lock()
-        defer { submissions.unlock() }
-        let stream = generation.load(ordering: .acquiring)
-        queue.async { [self] in
-            guard stream == generation.load(ordering: .acquiring) else { return }
-            if self.orientation != orientation {
-                self.orientation = orientation
-                let changed = orientationChanged
-                DispatchQueue.main.async { [self] in
-                    guard stream == generation.load(ordering: .acquiring) else { return }
-                    changed(orientation)
-                }
-            }
-            show(data, keyframe: keyframe)
+        submissions.withLock {
+            inbox.append(.init(data: data, keyframe: keyframe, orientation: orientation))
+            scheduleDrain()
         }
     }
 
     /// Forgets the stream: the next call starts from its first keyframe.
     public func reset() {
-        submissions.lock()
-        defer { submissions.unlock() }
-        generation.store(generation.load(ordering: .relaxed) &+ 1, ordering: .releasing)
-        queue.async { [self] in
-            format = nil
-            sps = nil
-            pps = nil
-            waitingForKeyframe = true
-            orientation = nil
-            renderer.flush(removingDisplayedImage: true, completionHandler: nil)
+        submissions.withLock {
+            inbox.reset()
+            generation.store(inbox.stream, ordering: .releasing)
+            pendingOrientation = nil
+            scheduleDrain()
         }
+    }
+
+    // Called with the submission lock held. No frame Data lives in dispatch closures.
+    private func scheduleDrain() {
+        guard !draining else { return }
+        draining = true
+        queue.async { [self] in drain() }
+    }
+
+    private func drain() {
+        while let work = submissions.withLock({ () -> VideoFrameInbox.Work? in
+            guard let work = inbox.next() else { draining = false; return nil }
+            return work
+        }) {
+            guard work.stream == generation.load(ordering: .acquiring) else { continue }
+            if work.reset {
+                format = nil; sps = nil; pps = nil; orientation = nil
+                waitingForKeyframe = true
+                keyframeRequests = VideoKeyframeRequests()
+                renderer.flush(removingDisplayedImage: true, completionHandler: nil)
+            }
+            if work.gap {
+                renderer.flush()
+                waitingForKeyframe = true
+                if work.frame?.keyframe != true { askForKeyframe() }
+            }
+            guard let frame = work.frame else { continue }
+            if orientation != frame.orientation {
+                orientation = frame.orientation
+                publishOrientation(frame.orientation, stream: work.stream)
+            }
+            show(frame.data, keyframe: frame.keyframe)
+        }
+    }
+
+    private func publishOrientation(_ turns: UInt8, stream: UInt64) {
+        submissions.withLock {
+            guard stream == inbox.stream else { return }
+            pendingOrientation = (stream, turns)
+            guard !deliveringOrientation else { return }
+            deliveringOrientation = true
+            DispatchQueue.main.async { [self] in
+                let latest = submissions.withLock {
+                    deliveringOrientation = false
+                    defer { pendingOrientation = nil }
+                    return pendingOrientation
+                }
+                guard let latest, latest.stream == generation.load(ordering: .acquiring) else { return }
+                orientationChanged(latest.turns)
+            }
+        }
+    }
+
+    private func askForKeyframe() {
+        if keyframeRequests.shouldRequest() { requestKeyframe() }
     }
 
     private func show(_ data: Data, keyframe: Bool) {
@@ -97,12 +142,21 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
         let hasIDR = picture.contains { H264.type(of: $0) == H264.Unit.idr.rawValue }
         if waitingForKeyframe {
             guard hasIDR || keyframe, format != nil else {
-                requestKeyframe()
+                askForKeyframe()
                 return
             }
             waitingForKeyframe = false
         }
-        guard let format, !picture.isEmpty, let sample = Self.sample(H264.avcc(picture), format: format) else {
+        guard let format, !picture.isEmpty else { return }
+        guard let sample = Self.sample(H264.avcc(picture), format: format) else {
+            waitingForKeyframe = true
+            askForKeyframe()
+            return
+        }
+        guard renderer.isReadyForMoreMediaData else {
+            renderer.flush()
+            waitingForKeyframe = true
+            askForKeyframe()
             return
         }
         renderer.enqueue(sample)
@@ -125,11 +179,15 @@ nonisolated public final class VideoRenderer: @unchecked Sendable {
             }
         }
         guard status == noErr, let made else {
+            format = nil
+            waitingForKeyframe = true
+            askForKeyframe()
             log.warning("calls: the other side's video parameters did not read")
             return
         }
         if let format, CMFormatDescriptionEqual(format, otherFormatDescription: made) { return }
         format = made
+        waitingForKeyframe = true
     }
 
     /// One AVCC picture as a sample to show at once.

@@ -16,7 +16,10 @@ nonisolated enum TimelineLayoutEngine {
         let chunkCount = (sources.count + chunkSize - 1) / chunkSize
         let results = UnsafeMutableBufferPointer<BubbleLayout?>.allocate(capacity: sources.count)
         results.initialize(repeating: nil)
-        defer { results.deallocate() }
+        defer {
+            results.deinitialize()
+            results.deallocate()
+        }
         // Each chunk writes its own range, so sharing the buffer is race-free.
         nonisolated(unsafe) let base = results.baseAddress!
         DispatchQueue.concurrentPerform(iterations: chunkCount) { chunk in

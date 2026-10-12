@@ -136,16 +136,16 @@ private final class BenchmarkRun: NSObject {
             rows: TimelineRow.build(Array(paged.suffix(BenchmarkBackend.page))).count
         )
         let eventsWithFirstPage = await eventCosts(open: SyntheticChats.pagedChat, name: "Benchmark (paged)")
-        let pagingScroll = await scroll(speed: 5_000, duration: 8)
-        let pagingFlicks = await flicks()
+        let pagingScroll = await measured("PagedScroll") { await self.scroll(speed: 5_000, duration: 8) }
+        let pagingFlicks = await measured("PagedFlicks") { await self.flicks() }
 
         let full = backend.history(SyntheticChats.fullChat)
         let resident = full.count > HistoryBudget.standard.rows ? full.suffix(HistoryBudget.standard.rows * 3 / 4) : full[...]
         let openFullHistory = await open(SyntheticChats.fullChat, rows: TimelineRow.build(resident).count)
         await pause(.milliseconds(300))
         let timelineWidth = timeline?.bounds.width ?? 0
-        let fullScroll = await scroll(speed: 5_000, duration: 8)
-        let fullFlicks = await flicks()
+        let fullScroll = await measured("FullScroll") { await self.scroll(speed: 5_000, duration: 8) }
+        let fullFlicks = await measured("FullFlicks") { await self.flicks() }
         let jumps = measureJumps()
         // Paging can leave a bounded pane in an old archive window. Reopen
         // from the retained newest cache before measuring live arrivals, so
@@ -162,7 +162,7 @@ private final class BenchmarkRun: NSObject {
 
         let small = backend.history(SyntheticChats.smallChat)
         let openWarm = await open(SyntheticChats.smallChat, rows: TimelineRow.build(small).count)
-        let sidebarScroll = await scrollSidebar()
+        let sidebarScroll = await measured("SidebarScroll") { await self.scrollSidebar() }
 
         return BenchmarkReport(
             messageCount: full.count,
@@ -196,6 +196,12 @@ private final class BenchmarkRun: NSObject {
     }
 
     // MARK: Opening
+
+    private func measured(_ phase: StaticString, _ operation: () async -> BenchmarkReport.Scroll) async -> BenchmarkReport.Scroll {
+        let interval = Self.signposter.beginInterval(phase)
+        defer { Self.signposter.endInterval(phase, interval) }
+        return await operation()
+    }
 
     private func open(_ chat: String, rows: Int) async -> BenchmarkReport.Open {
         let interval = Self.signposter.beginInterval("Open")

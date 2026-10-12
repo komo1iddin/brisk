@@ -11,6 +11,9 @@ final class BenchmarkBackend: Backend {
     static let page = 60
 
     private var histories: [String: [MessageRecord]]
+    // The real backend queries an indexed archive off the UI thread. Do
+    // not charge each synthetic page or download a full main-thread scan.
+    private var positions: [String: [String: Int]] = [:]
     private let media: SyntheticMedia?
     /// Chats whose first answer is their whole history.
     private let unpaged: Set<String> = [SyntheticChats.fullChat]
@@ -28,6 +31,9 @@ final class BenchmarkBackend: Backend {
         ]
         self.media = media
         self.chatCount = chatCount
+        positions = histories.mapValues { history in
+            Dictionary(history.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+        }
     }
 
     func history(_ chat: String) -> [MessageRecord] {
@@ -52,13 +58,13 @@ final class BenchmarkBackend: Backend {
             switch query {
             case .newest: range = max(0, history.count - Self.page)..<history.count
             case .before(let message):
-                let end = history.firstIndex { $0.id == message } ?? 0
+                let end = positions[chat]?[message] ?? 0
                 range = max(0, end - Self.page)..<end
             case .after(let message):
-                let start = (history.firstIndex { $0.id == message } ?? -1) + 1
+                let start = (positions[chat]?[message] ?? -1) + 1
                 range = start..<min(history.count, start + Self.page)
             case .around(let message):
-                let middle = history.firstIndex { $0.id == message } ?? 0
+                let middle = positions[chat]?[message] ?? 0
                 range = max(0, middle - Self.page)..<min(history.count, middle + Self.page + 1)
             }
             pagesServed += 1
@@ -66,7 +72,7 @@ final class BenchmarkBackend: Backend {
                                  hasOlder: range.lowerBound > 0, hasNewer: range.upperBound < history.count, error: nil)])
         case let .loadChat(chat, before):
             let history = histories[chat] ?? []
-            let end = before.flatMap { key in history.firstIndex { $0.id == key.id } } ?? history.count
+            let end = before.flatMap { positions[chat]?[$0.id] } ?? history.count
             let start = unpaged.contains(chat) && before == nil ? 0 : max(0, end - Self.page)
             if before != nil { pagesServed += 1 }
             post([.messages(
@@ -82,7 +88,7 @@ final class BenchmarkBackend: Backend {
                 chat: chat, id: "sent-\(UUID().uuidString)", sender: SyntheticChats.ownID, senderName: nil,
                 fromMe: true, timestamp: nextTimestamp(in: chat), text: text
             )
-            histories[chat, default: []].append(message)
+            append(message, in: chat)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [deliver] in
                 MainActor.assumeIsolated {
                     deliver?([.messages(chat: chat, messages: [message], older: false, complete: false)])
@@ -102,7 +108,7 @@ final class BenchmarkBackend: Backend {
             chat: chat, id: "arrived-\(UUID().uuidString)", sender: "998900000001@s.whatsapp.net",
             senderName: "Dilnoza", fromMe: false, timestamp: nextTimestamp(in: chat), text: text
         )
-        histories[chat, default: []].append(message)
+        append(message, in: chat)
         deliver?([
             .messages(chat: chat, messages: [message], older: false, complete: false),
             .incoming(chat: chat, message: message),
@@ -113,10 +119,15 @@ final class BenchmarkBackend: Backend {
         max(Int64(Date().timeIntervalSince1970), (histories[chat]?.last?.timestamp ?? 0) + 1)
     }
 
+    private func append(_ message: MessageRecord, in chat: String) {
+        positions[chat, default: [:]][message.id] = histories[chat]?.count ?? 0
+        histories[chat, default: []].append(message)
+    }
+
     /// A download finishes a quarter of a second later with the made-up
     /// file of the message's kind, as the worker's `Event::Media` does.
     private func answerDownload(chat: String, message id: String, card: UInt32?) {
-        guard let media, let index = histories[chat]?.firstIndex(where: { $0.id == id }),
+        guard let media, let index = positions[chat]?[id],
               let record = histories[chat]?[index] else { return }
         let path: String? = switch record.content {
         case .image: media.photos[0].path

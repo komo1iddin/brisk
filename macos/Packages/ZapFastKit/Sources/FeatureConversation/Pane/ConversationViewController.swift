@@ -227,7 +227,7 @@ final class ConversationViewController: NSViewController {
                 messages: conversation.messages,
                 revision: conversation.messagesRevision,
                 changes: conversation.changes,
-                calls: model.calls.history.calls(in: chatID),
+                calls: model.calls.isAvailable ? model.calls.history.calls(in: chatID) : [],
                 fromStart: conversation.complete,
                 hasNewer: conversation.hasNewer,
                 isGroup: chat?.kind == .group,

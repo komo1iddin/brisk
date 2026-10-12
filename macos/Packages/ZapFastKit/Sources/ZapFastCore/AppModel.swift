@@ -333,7 +333,9 @@ public final class AppModel {
         let live = backend is LiveBackend
         self.calls = CallStore(
             service: calls ?? (live ? LiveCallService(account: accountID) : PreviewCallService()),
-            live: live, media: shared?.callMedia
+            live: live, media: shared?.callMedia,
+            // A service handed in is a test's; otherwise the build decides.
+            available: calls != nil || callsSupported()
         )
         self.calls.setLocked(appLock.isLocked)
         self.calls.onNotice = { [weak self] kind, text in self?.post(kind, text) }

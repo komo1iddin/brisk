@@ -8,6 +8,10 @@ import ZapFastBridge
 /// bridge decides the phases; this follows them.
 @Observable
 public final class CallStore {
+    /// This build places and answers calls. Calls are in development and need
+    /// the bridge's `calls` feature; without it the interface shows none: no
+    /// buttons, no call rows, no call window.
+    public let isAvailable: Bool
     /// The call, from the first ring to a moment after it ends.
     public private(set) var call: CallInfo?
     /// A second call ringing while `call` goes. Answering it ends `call`:
@@ -55,7 +59,8 @@ public final class CallStore {
     /// Locking requires an explicit camera action before capture can resume.
     @ObservationIgnored private var cameraPermitted = true
 
-    public init(service: CallService, live: Bool, media: CallMediaCoordinator? = nil) {
+    public init(service: CallService, live: Bool, media: CallMediaCoordinator? = nil, available: Bool = true) {
+        self.isAvailable = available
         self.service = service
         self.live = live
         self.media = media ?? (live ? .shared : CallMediaCoordinator())

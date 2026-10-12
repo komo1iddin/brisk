@@ -6,8 +6,14 @@
 #   make release    optimised build
 #   make sync       merge upstream and re-sync the bridge
 #   make check      no warnings in ZapFastKit, then its tests
+#
+# CALLS=1 (e.g. `make run CALLS=1`) builds with voice and video calls, which
+# are in development and left out of public builds.
 
 CONFIG      ?= Debug
+CALLS       ?= 0
+# Read by Scripts/build-bridge.sh, here and in the scheme's pre-action.
+export ZAPFAST_CALLS := $(CALLS)
 DERIVED     := Build/DerivedData
 APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
 # The bridge is built for Apple silicon only (Scripts/build-bridge.sh), so the

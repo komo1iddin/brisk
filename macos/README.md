@@ -526,6 +526,12 @@ make run      # build and open
 make test     # ZapFastKit unit tests
 ```
 
+Voice and video calls are in development and left out of normal builds:
+the bridge's `calls` Cargo feature is off, so the VoIP stack is not linked,
+and `CallStore.isAvailable` (from the bridge's `calls_supported`) hides
+the call buttons, the calls in the timeline and the call window.
+`make run CALLS=1` builds with them.
+
 Before merging, `make check` recompiles ZapFastKit, fails on any warning
 in its sources (some Swift 6 isolation errors are only warnings, and crash
 at run time), and runs the tests.

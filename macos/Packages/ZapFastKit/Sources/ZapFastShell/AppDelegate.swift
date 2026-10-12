@@ -130,7 +130,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let model else { return }
             self?.openChatWindow(chat, of: model)
         }
-        callWindows[account] = CallWindowController(model: model)
+        if model.calls.isAvailable {
+            callWindows[account] = CallWindowController(model: model)
+        }
     }
 
     /// A removed account's windows close.

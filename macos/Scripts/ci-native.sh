@@ -22,6 +22,9 @@ cargo test --locked --no-default-features --lib
     cargo fmt --all --check
     cargo clippy --locked --all-targets -- -D warnings
     cargo test --locked --lib
+    # Calls are off in public builds; their code must keep building.
+    cargo clippy --locked --all-targets --features calls -- -D warnings
+    cargo test --locked --lib --features calls
 )
 macos/Scripts/build-bridge.sh debug
 macos/Scripts/check-warnings.sh --disable-sandbox --jobs "${NATIVE_BUILD_JOBS:-2}"

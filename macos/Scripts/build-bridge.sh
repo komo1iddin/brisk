@@ -5,6 +5,9 @@
 #   macos/Packages/ZapFastKit/Sources/ZapFastBridge/Generated/*.swift  (UniFFI wrappers)
 #
 # Usage: build-bridge.sh [debug|release]   (default: debug, or $CONFIGURATION)
+#
+# ZAPFAST_CALLS=1 builds with the `calls` feature: voice and video calls,
+# which are in development and left out of public builds.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,6 +21,10 @@ case "$configuration" in
   debug)   profile="debug";   cargo_flags=() ;;
   release) profile="release"; cargo_flags=(--release) ;;
   *) echo "unknown configuration: $configuration" >&2; exit 64 ;;
+esac
+
+case "${ZAPFAST_CALLS:-0}" in
+  1|YES|yes|true) cargo_flags+=(--features calls); echo "▸ with calls" ;;
 esac
 
 # Match the app's deployment target so the static library links cleanly.

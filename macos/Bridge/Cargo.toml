@@ -30,11 +30,11 @@ fastframe-log = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 fastframe-theme = { git = "https://github.com/crmne/fastframe", tag = "v0.4.1" }
 # Upstream's emoji data, for its `:shortcode` completion.
 emojis = "0.9"
-# Calls. Upstream links whatsapp-rust without its VoIP stack; naming the same
-# git revision here unifies the two, so the bridge adds the `voip` features
-# (MLOW, libopus for peers that speak standard Opus, the UDP relay) without
-# touching upstream's manifest. Keep the revision equal to upstream's.
-whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "f7468ae2920a2b0aedbd0848cf121de56a07f93c", default-features = false, features = ["voip"] }
+# The same git revision as upstream's, which unifies the two. With the
+# `calls` feature the bridge adds whatsapp-rust's `voip` features (MLOW,
+# libopus for peers that speak standard Opus, the UDP relay) without touching
+# upstream's manifest. Keep the revision equal to upstream's.
+whatsapp-rust = { git = "https://github.com/oxidezap/whatsapp-rust", rev = "f7468ae2920a2b0aedbd0848cf121de56a07f93c", default-features = false }
 tokio = { version = "1", features = ["rt", "time"] }
 # The call history's own store, encrypted as upstream's archive is: the
 # same SQLCipher build and a key in the keychain.
@@ -45,6 +45,13 @@ apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 zeroize = "1"
 getrandom = "0.4"
 sha2 = "0.11"
+
+[features]
+# Voice and video calls are in development and left out of public builds:
+# without this feature the VoIP stack is not linked, `CallCenter` places and
+# answers nothing, and the interface shows no calls (`calls_supported`).
+# `make CALLS=1` builds with them.
+calls = ["whatsapp-rust/voip"]
 
 [workspace]
 members = [".", "uniffi-bindgen"]

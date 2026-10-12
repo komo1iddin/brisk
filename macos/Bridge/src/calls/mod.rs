@@ -16,9 +16,22 @@
 //!
 //! Video crosses as H.264 access units (see [`video`]). Group calls are
 //! voice only; a third call is left to ring on the phone.
+//!
+//! Calls are in development and need the `calls` feature. Without it the
+//! VoIP stack is not linked and [`session_off`] stands in: the same
+//! [`CallCenter`] to Swift, which places and answers nothing, and
+//! [`calls_supported`] tells the interface to show no calls at all.
 
+// Without `calls`, only the types Swift sees and the history's move are used
+// from these two; the call log and the phases serve the live session alone.
+#[cfg_attr(not(feature = "calls"), allow(dead_code))]
 mod history;
+#[cfg_attr(not(feature = "calls"), allow(dead_code))]
 mod phase;
+#[cfg(feature = "calls")]
+mod session;
+#[cfg(not(feature = "calls"))]
+#[path = "session_off.rs"]
 mod session;
 mod video;
 
@@ -105,6 +118,7 @@ pub(crate) fn install() {
         if !zapfast::backend::set_client_hook(Box::new(|account, client| {
             // The one hook upstream allows: the link module shares the client.
             crate::link::made(account.as_str(), &client);
+            #[cfg(feature = "calls")]
             center_for(account.as_str()).center.link(client);
         })) {
             log::warn!("calls: another client hook is installed; calls are off");
@@ -194,8 +208,13 @@ impl CallCenter {
     }
 }
 
+/// A build without calls opens none, so it makes no keychain key for one.
+#[cfg(not(feature = "calls"))]
+pub(crate) fn open_log(_account: &str, _state: &std::path::Path) {}
+
 /// Opens an account's call history in its state folder. Without it calls
 /// still work; they are only not remembered.
+#[cfg(feature = "calls")]
 pub(crate) fn open_log(account: &str, state: &std::path::Path) {
     let center = center_for(account);
     match history::CallLog::open(&state.join("calls.db")) {
@@ -218,6 +237,12 @@ pub(crate) fn adopt_history(old_folder: &std::path::Path, account_folder: &std::
         Ok(false) => {}
         Err(error) => log::warn!("calls: a set-aside call history was not brought back: {error:#}"),
     }
+}
+
+/// Whether this build places and answers calls: the `calls` feature.
+#[uniffi::export]
+pub fn calls_supported() -> bool {
+    cfg!(feature = "calls")
 }
 
 /// Frames per second the camera is encoded at, for Swift.

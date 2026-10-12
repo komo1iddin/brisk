@@ -18,11 +18,7 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 |---|---|---|---|---|
 | accesskit | 0.24.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-0BSD](#license-text-a21c914647d33e48cb4d213dfb0749dbb45491514da9d3a8ffc4763cf456217d), [LICENSE-APACHE](#license-text-1bc86297d03201537284dc3f7bc105c8ab7b053b3372d96ab935bc54acc7a430), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
-| aead | 0.5.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-b38f573d5bc805e32f92fa8772ad44f1330a7de85022d133b2cd3d17424f8c22) |
-| aead | 0.6.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-1aed52f3af3d324c69b767f0f9effd9955c48011306f46fd388d703b8e6455bc) |
-| aes | 0.8.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-33e996382660b2bac31ae8ec48e5dc8ddf44e52ddce0612457301404c9a29111) |
 | aes | 0.9.3 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-fc794e17e5ea939c06f1fd8b390a080d28cf5161abfc21926608649a288c8674) |
-| aes-gcm | 0.11.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-1038b7737a0a04bd9268bbb8d17ee4e13c9bb3cf36f39da46c3a1818c798aa20) |
 | ahash | 0.8.12 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-d03325792f3dbc2674fb489cc812dc0e792f4c627a660275ebabe1d9a229de62) |
 | aho-corasick | 1.1.5 | Unlicense OR MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYING](#license-text-65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066), [LICENSE-MIT](#license-text-154c1af2b38e25e5c18613dfe352eed29b0863cb39e494007822cdeb39150ac5) |
 | anstream | 1.0.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-4498464c2864825d7bb4c83e2ac4e9dbb533d49964fbf218c24f8d44ee4e87a9) |
@@ -37,11 +33,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | askama_derive | 0.16.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-c90195db3742100b498b8a1ead374ebe855b82fe2188897ebfe0c9d92e727ba9), [LICENSE-MIT](#license-text-e7ab3b0039caee14c36a6ef5dd8cfce9022837c1fa595cde5eb104fb766e84db) |
 | askama_macros | 0.16.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-c90195db3742100b498b8a1ead374ebe855b82fe2188897ebfe0c9d92e727ba9), [LICENSE-MIT](#license-text-e7ab3b0039caee14c36a6ef5dd8cfce9022837c1fa595cde5eb104fb766e84db) |
 | askama_parser | 0.16.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-c90195db3742100b498b8a1ead374ebe855b82fe2188897ebfe0c9d92e727ba9), [LICENSE-MIT](#license-text-e7ab3b0039caee14c36a6ef5dd8cfce9022837c1fa595cde5eb104fb766e84db), [LICENSE.md](#license-text-f28a7318e7647d073669b7fe8386f085eaa9781201cb8af9f07e8bde68bea39e) |
-| asn1-rs | 0.6.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| asn1-rs | 0.7.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| asn1-rs-derive | 0.5.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| asn1-rs-derive | 0.6.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| asn1-rs-impl | 0.2.0 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | async-channel | 2.5.0 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | async-lock | 3.4.2 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | async-trait | 0.1.92 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
@@ -50,10 +41,8 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | base64 | 0.22.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-6a8da4c78c729176907b068222cc6e8e612b09c7345628c98cbceb22c0f06979) |
 | base64 | 0.23.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-2ff8d973431258f88429889a3a2358d66b167bd3e64764ec88f531293518dda5) |
 | basic-toml | 0.1.10 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
-| bit-vec | 0.9.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-7e1b38c60796dd9949d6f26bd124e353a4a709b70e90810e2608f30195454da0), [LICENSE-MIT](#license-text-4c4e6eed8b86b56fa8f22056ff64bbaae60df3fd0a0101a289729b4477bae1d4) |
 | bitflags | 1.3.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-14435fbcd271e2783f721b57b7bf4f6502c1379249a4300e0e5bb774686c2d90) |
 | bitflags | 2.13.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-14435fbcd271e2783f721b57b7bf4f6502c1379249a4300e0e5bb774686c2d90) |
-| block-buffer | 0.10.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-5ff5253f2cb9347c4b3b1c8ecc5057c4b534ae21fab479f8ac77409bb6d6efa4) |
 | block-buffer | 0.12.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-775a3e20a9af7160992745230472e424f6a82c1ea17801107e5375bebd431db6) |
 | block-padding | 0.4.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-775a3e20a9af7160992745230472e424f6a82c1ea17801107e5375bebd431db6) |
 | block2 | 0.6.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
@@ -64,8 +53,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | buffa-codegen | 0.9.2 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-be7032ba717661728063c7224821b31d9bcb215e6ca665ffa5b9fa055632e809) |
 | buffa-descriptor | 0.9.2 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | bumpalo | 3.20.3 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-5662394bebb1a815b411eb4e101a251b1c3118b9ad44e6f305cedcebfaa2522f) |
-| bytecheck | 0.8.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-75114f300a13994eaf147b93a628116ecd1bb2a3a948e3244ca5737062ed2e7f) |
-| bytecheck_derive | 0.8.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-6cb29bf78c6e512c65df670da014b3e1ee04a1db1f0adffd8147c21e25696241) |
 | bytemuck | 1.25.2 | Zlib OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-0e3cbff251c122b9dc79d8193e04f631640c3dbaa90faaae9a439ebf8cda96cb), [LICENSE-MIT](#license-text-dfbd1c2a36dcf9af64e31f070485c57a51961a2767ed0a48541ec065a9c3a5f1), [LICENSE-ZLIB](#license-text-943f36fd309fb5ea67a82f577433f4ed3bc877e5b00f9b874e2f8b7f72bf0bdc) |
 | bytemuck_derive | 1.12.0 | Zlib OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-0e3cbff251c122b9dc79d8193e04f631640c3dbaa90faaae9a439ebf8cda96cb), [LICENSE-MIT](#license-text-dfbd1c2a36dcf9af64e31f070485c57a51961a2767ed0a48541ec065a9c3a5f1), [LICENSE-ZLIB](#license-text-943f36fd309fb5ea67a82f577433f4ed3bc877e5b00f9b874e2f8b7f72bf0bdc) |
 | byteorder | 1.5.0 | Unlicense OR MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYING](#license-text-65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066), [LICENSE-MIT](#license-text-154c1af2b38e25e5c18613dfe352eed29b0863cb39e494007822cdeb39150ac5) |
@@ -77,12 +64,10 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | castaway | 0.2.4 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-936b4d7e9de4afbdb3781543c0edc9d0d884bab93eb8ebeeb3f85b0e196bf33e) |
 | cbc | 0.2.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-f3bd9e2e7745e49db37c28033e4da290df8cf528aa21369d6861699804c5e5dd) |
 | cc | 1.4.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-84e1bbfebd74e4196cfa0ea5cf58e677aa24b47c6661adbb19fb07920d089d1d) |
-| ccm | 0.5.0 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-a6d96dff735a59b9677ddc5d9abd02b2add5632f2c2cce5d3c9e990f4f4fdcad) |
 | cfg-if | 1.0.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-84e1bbfebd74e4196cfa0ea5cf58e677aa24b47c6661adbb19fb07920d089d1d) |
 | cfg_aliases | 0.2.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-48513346d335b96c01a79e3c0fe39260efd5df89157d3660dbb471d5811272f9) |
 | chacha20 | 0.10.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-1038b7737a0a04bd9268bbb8d17ee4e13c9bb3cf36f39da46c3a1818c798aa20) |
 | chrono | 0.4.45 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE.txt](#license-text-ce4a94c006fa5d157d196768fdba0b21d26f58e5599e8fccfa9ea374433e4ece) |
-| cipher | 0.4.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-92f01fc7ca904e16f13e27d4897e507b5446e42516bb7efacc4c5ed189008c31) |
 | cipher | 0.5.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-28afb21f14a032a5639ae9995094d1946e7c5b593eb5d1e935f0c5af5eb03e69) |
 | clap | 4.6.6 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-4498464c2864825d7bb4c83e2ac4e9dbb533d49964fbf218c24f8d44ee4e87a9) |
 | clap_builder | 4.6.6 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-4498464c2864825d7bb4c83e2ac4e9dbb533d49964fbf218c24f8d44ee4e87a9) |
@@ -102,15 +87,11 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | coreaudio-rs | 0.14.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-fdd1c2117bcf8157d1d013d0953c0a7e6e5fab73df9e36773cd77634428568eb) |
 | cpal | 0.17.3 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b) |
 | cpubits | 0.1.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-34a493355890ad703595a715cc2dde4524fcf11c2df8b2f28dbe6ee7ffde8826) |
-| cpufeatures | 0.2.17 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-6334e52844d698f528b923f406aeb5bc3a2c6da77916c3b79f1662622fcde897) |
 | cpufeatures | 0.3.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-ea753cf1e3ec3e02b9f8fdb7876d2a82e881209eb54fdb0df52997e3a14e40d7) |
-| crc32c | 0.6.8 | Apache-2.0/MIT | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | crc32fast | 1.5.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-9599127e421e16595d107a20935532cdb97ff570fbb0b06ed3aa67b04d0185a2) |
 | crossbeam-utils | 0.8.22 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-5a7d13c6710cdec29e74eb3172b80712049c34099ab7259661ada051fc90777b) |
-| crypto-common | 0.1.7 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-692b1604961dd580cfcde8cc33d2c587f5f6349b00c449662194fb1586e850c5) |
 | crypto-common | 0.2.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-dec912e37f888cf7a524f9f132c5bbb07dc13e90b026e0eab25697e74a08ddbb) |
 | ctr | 0.10.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-f3bd9e2e7745e49db37c28033e4da290df8cf528aa21369d6861699804c5e5dd) |
-| ctr | 0.9.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-f3bd9e2e7745e49db37c28033e4da290df8cf528aa21369d6861699804c5e5dd) |
 | ctutils | 0.4.2 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-44924708b16974ac3a1df266da789724ab84c27a875364aab7c1b2b06d54bf3f) |
 | curve25519-dalek | 5.0.0 | BSD-3-Clause | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-db7e563b03fa70fa9998fbcae9b432057b7430740a58672c9a8df17af6e078d7) |
 | darling | 0.21.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
@@ -120,19 +101,15 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | darling_macro | 0.21.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
 | darling_macro | 0.24.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
 | dasp_sample | 0.11.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| data-encoding | 2.11.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-9db9de9edfd0ae7c1a5ac724191c0899dc218273f62c717e004ef037501646c2) |
 | data-url | 0.3.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-7a8093fb4a93f23e2bc9081b53b6187ea14a1c9303e513184726d8cdcbfa418a) |
 | defmt | 1.1.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-7e1b38c60796dd9949d6f26bd124e353a4a709b70e90810e2608f30195454da0), [LICENSE-MIT](#license-text-2710a622a896bba67356913d4d0492cab5465f61b2ecce6d880aeb483834fb50) |
 | defmt-macros | 1.1.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-7e1b38c60796dd9949d6f26bd124e353a4a709b70e90810e2608f30195454da0), [LICENSE-MIT](#license-text-2710a622a896bba67356913d4d0492cab5465f61b2ecce6d880aeb483834fb50) |
 | defmt-parser | 1.0.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| der-parser | 10.0.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| der-parser | 9.0.0 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
 | deranged | 0.5.8 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-Apache](#license-text-b4839ecf405b5fa4a20f234ae6b686ab7f245e7eec8eb634174b833ea86a4653), [LICENSE-MIT](#license-text-1b66e3be6894b377a3b48201fbe33aab04c6a214f09309100a532b70ed497687) |
 | diesel | 2.3.12 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
 | diesel_derives | 2.3.9 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
 | diesel_migrations | 2.3.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
 | diesel_table_macro_syntax | 0.3.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
-| digest | 0.10.7 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-9c5127ab88e8f55b26f7846eefbe1f582b9c2c596c65bfbb9a622b0c6f678d13) |
 | digest | 0.11.3 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-c8d7f4fd612a2da8e6688d4f93aa4cf298d6423fd86df22d9db03935e56abcd6) |
 | directories | 6.0.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-74f1c9127a52df2c3a97824a7e7ac7eace026839599009a64c0a24ad7cd460e3), [LICENSE-MIT](#license-text-533e8a72a5904b85bb3f1468358ecc7e2722185811115f9dc9f949b9b3d3b179) |
 | dirs-sys | 0.5.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-74f1c9127a52df2c3a97824a7e7ac7eace026839599009a64c0a24ad7cd460e3), [LICENSE-MIT](#license-text-f25a5b606859d4fa98c044a5a958de63a12f2f3718306df7f1a0d27fc49b7f7a) |
@@ -181,7 +158,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | futures-sink | 0.3.34 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-27480f391bd92f66f0261466abd9456bcd58a7d8552955af6d2acc051acec5af), [LICENSE-MIT](#license-text-b420d8add23b5cf7663f17f012b06a4c16b722c5dd8fb049b285417214b5702e) |
 | futures-task | 0.3.34 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-27480f391bd92f66f0261466abd9456bcd58a7d8552955af6d2acc051acec5af), [LICENSE-MIT](#license-text-b420d8add23b5cf7663f17f012b06a4c16b722c5dd8fb049b285417214b5702e) |
 | futures-util | 0.3.34 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-27480f391bd92f66f0261466abd9456bcd58a7d8552955af6d2acc051acec5af), [LICENSE-MIT](#license-text-b420d8add23b5cf7663f17f012b06a4c16b722c5dd8fb049b285417214b5702e) |
-| generic-array | 0.14.7 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-ad4fcfaf8d5b12b97409c137a03d4a4e4b21024c65c54f976cc3b609c1bd5b0f) |
 | getrandom | 0.2.17 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e7330bf53074b4a9c5896f4a03d782be7f163381e45923d5e2369fe194a19f99), [LICENSE-MIT](#license-text-478d530cbce79fc122b1a7c067ad706b000ef79ae914a4d060195f0f23b4a50d) |
 | getrandom | 0.4.3 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e7330bf53074b4a9c5896f4a03d782be7f163381e45923d5e2369fe194a19f99), [LICENSE-MIT](#license-text-94b1870d380ccf537d5bdfda2de882965c9afb814acc375cb1b47fc1a0014ee3) |
 | ghash | 0.6.0 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-1038b7737a0a04bd9268bbb8d17ee4e13c9bb3cf36f39da46c3a1818c798aa20) |
@@ -197,7 +173,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | heck | 0.5.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-033a9383ff21d1e4811d98dd2e0081b0ba0d9c9a31d6c7ba9e63e3488479bf29) |
 | hex | 0.4.3 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-9dde4a6ad496606322ae0b61b70dc7123fa231be543caa0896d567e34d20fbf8) |
 | hkdf | 0.13.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-2ab57d98da8310e83d38b9e53f97187cefb44b21917f7ccb4b78aa191854b717) |
-| hmac | 0.12.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-9c5127ab88e8f55b26f7846eefbe1f582b9c2c596c65bfbb9a622b0c6f678d13) |
 | hmac | 0.13.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-9c5127ab88e8f55b26f7846eefbe1f582b9c2c596c65bfbb9a622b0c6f678d13) |
 | http | 1.5.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-881c9fe2d29b216aac4499364653fda35310c7212321b54dc4f8af51fa1d5d36), [LICENSE-MIT](#license-text-f47894ff9c86dc7e364e3c161a13b4b7414da6192b91d0eccf0161f944f753e5) |
 | http-body | 1.1.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-57f841bc9767b5b843e0c0c471bd50a95ddb00f13b1f4a2c6d6f57a7dbfdc1f3) |
@@ -222,7 +197,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | imagesize | 0.13.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-46404bc95dfc3527e97f148fdb0cfdea6a983b4ce65d628f9dca6b9d7bec1418) |
 | include-po | 0.2.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-ecc3be8e5b205a00662fc4c94eca1818bfdb4dbe505ad4efb8fdddad5975bbbe) |
 | indexmap | 2.14.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-4f2ac128e429d9646bf481baaa120eb561234f980503d337c710c06d0af6bbf9) |
-| inout | 0.1.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-71366a4092ad07b6fc29c4aa94ceeac8b892f7a24fcdedf8df7cba8112cdc15b) |
 | inout | 0.2.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-13ec53eb1d4da14c52f193cbd1263d856ff39a7755e6d782ad2ab30e4d1154de) |
 | ipnet | 2.12.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-9d8e882729a53481b83a5fba9da762bec38a289be159690c607a5375778331ee), [LICENSE-MIT](#license-text-c935506fff2ef821003680006758f03bd869f1ae051b11c5879a0c24b0c07ecf) |
 | is_terminal_polyfill | 1.70.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-4498464c2864825d7bb4c83e2ac4e9dbb533d49964fbf218c24f8d44ee4e87a9) |
@@ -248,9 +222,7 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | lru-slab | 0.1.3 | MIT OR Apache-2.0 OR Zlib | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-c9cf4d18fd9d2ab3fb30d39facfe8cff8ff8354950e2de5c864707e6c80a2764), [LICENSE-ZLIB](#license-text-cebce11166dcba4336442c8d748df16c004b436c49b40b30721e59f221bae058) |
 | mac-notification-sys | 0.6.15 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | mach2 | 0.5.0 | BSD-2-Clause OR MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-BSD](#license-text-d5652808cd243d91a66041cdde30e1f173dbb6940635a05941011179edde9b40), [LICENSE-MIT](#license-text-917d5dc3470e527b8be458c7ce07949ce2eab9e414c54532f9680c4bd5f61230) |
-| md-5 | 0.10.6 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-4031faf6212ee74481b2597dc84fb61568d6a732480c3efdf317f2ac83d330b4) |
 | memchr | 2.8.3 | Unlicense OR MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYING](#license-text-65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066), [LICENSE-MIT](#license-text-154c1af2b38e25e5c18613dfe352eed29b0863cb39e494007822cdeb39150ac5) |
-| memoffset | 0.9.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-3234ac55816264ee7b6c7ee27efd61cf0a1fe775806870e3d9b4c41ea73c5cb1) |
 | migrations_internals | 2.3.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
 | migrations_macros | 2.3.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-70ec04d793737c59c317ff5236aefde1d2061a0e716abcfad106ad03742fee36), [LICENSE-MIT](#license-text-7c2afaa7b02f0ca1e50aa09a646d552087d57a49d6510d8a98b866db097c1eb4) |
 | mime | 0.3.17 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-a302dc760d97dc623f8549327a3db1793dd22efc5cce07ec583c278c50b4c3b7) |
@@ -261,10 +233,7 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | mio | 1.2.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-c804065b0956d00a65ce119456ec48ee456f5446b904b07ee85225ba5a88ce41) |
 | moxcms | 0.8.1 | BSD-3-Clause OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE.md](#license-text-836a9c1227c6446925bee567ecfbcd4620780b4cc020c2c6019ba4b8d1295520), [LICENSE.md](#license-text-2aa92cada6431e75615e3fe6cb1a9082c98f777d48ae1c087c0da0e37f7b8bff) |
 | mp4 | 0.14.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-fbd5bc4849335a9e45100d9c71cad4d44e0cdeeb6a16556e6c3e988ac09ddbec) |
-| munge | 0.4.7 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-76e5968f85842714c6a059f78ebf6d3615f0a79e41d0bb115f7ea807508bc41b) |
-| munge_macro | 0.4.7 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-76e5968f85842714c6a059f78ebf6d3615f0a79e41d0bb115f7ea807508bc41b) |
 | nasm-rs | 0.3.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-8d1f81ea4e87111d557b185d58d996e7bcb974c19c364197fffd4e814fd9b6fa) |
-| nix | 0.31.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-b9b039b5058cfe9680025ca12f8591df832666baef9f469ea8ba24e73a7fee60) |
 | nohash-hasher | 0.2.0 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-53df29ad4e7273c8137bdc76bc49436b6eb3c011e0f82cc3581b61ef998177ef) |
 | nom | 7.1.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-e9f8a16f9ed6671fc411c5eb0d6c663b2da3d5ba0a4591ef0409688842903397) |
 | nom | 8.0.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-e9f8a16f9ed6671fc411c5eb0d6c663b2da3d5ba0a4591ef0409688842903397) |
@@ -284,8 +253,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | objc2-encode | 4.1.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | objc2-foundation | 0.3.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | ogg | 0.9.2 | BSD-3-Clause | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-352e146c781826436ee50b178d0296264ca6f3d02e1f0173afc9af1977c9f819) |
-| oid-registry | 0.7.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| oid-registry | 0.8.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | open | 5.4.4 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE.md](#license-text-c3ca23514163a6fe592466d3a6c4dd28ba8998dc1f012916ebf64bdb7764c1d4) |
 | openh264 | 0.9.8 | BSD-2-Clause | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
@@ -298,8 +265,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | parking | 2.2.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652), [LICENSE-THIRD-PARTY](#license-text-c43e20176655c7a74c12af7470b65065fac4c81cfd511c69520fcc7f738a3f91) |
 | parking_lot | 0.12.5 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-8d1f81ea4e87111d557b185d58d996e7bcb974c19c364197fffd4e814fd9b6fa) |
 | parking_lot_core | 0.9.12 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-8d1f81ea4e87111d557b185d58d996e7bcb974c19c364197fffd4e814fd9b6fa) |
-| pem | 3.0.6 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE.md](#license-text-fd270b8c59ed37680ea2106f920afe52ebc4d276d2377283f8b13276b36c09bd) |
-| pem | 4.0.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE.md](#license-text-fd270b8c59ed37680ea2106f920afe52ebc4d276d2377283f8b13276b36c09bd) |
 | peniko | 0.6.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-0e297345cbd90f056157ad7bfc614d4bf5d13ff0d9e978711f261e17c70ff876) |
 | percent-encoding | 2.3.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-7a8093fb4a93f23e2bc9081b53b6187ea14a1c9303e513184726d8cdcbfa418a) |
 | phf | 0.11.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-ec5d7c32366268f1c8c110c2db8dc745dadc8f35a99a44c6ec3c7ed31b61413a) |
@@ -324,8 +289,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | prettyplease | 0.3.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | profiling | 1.0.18 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| ptr_meta | 0.3.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e) |
-| ptr_meta_derive | 0.3.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e) |
 | pxfm | 0.1.30 | BSD-3-Clause OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE.md](#license-text-836a9c1227c6446925bee567ecfbcd4620780b4cc020c2c6019ba4b8d1295520), [LICENSE.md](#license-text-2aa92cada6431e75615e3fe6cb1a9082c98f777d48ae1c087c0da0e37f7b8bff) |
 | quick-error | 2.0.1 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-cf798811e9a07bf36e8acfec6e72984b6e010f9c1477df4d08324db6cdf84bf7) |
 | quinn | 0.11.12 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-05fa1ba3228aab8d2bf637f286d7579ed76256c1dab3fa955c2489b920ffeb35) |
@@ -333,38 +296,27 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | quinn-udp | 0.5.15 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-05fa1ba3228aab8d2bf637f286d7579ed76256c1dab3fa955c2489b920ffeb35) |
 | quote | 1.0.47 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | r2d2 | 0.8.10 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-cfa4cdf91ae4bdc520cda7784f20617a85fe15d575de18758b49923772046278) |
-| rancor | 0.1.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-75114f300a13994eaf147b93a628116ecd1bb2a3a948e3244ca5737062ed2e7f) |
 | rand | 0.10.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-2411d70acb18e15ac32f7aace439a5c2725b8d0074510caf651d4c270d7c05aa), [LICENSE-APACHE](#license-text-fee4d7ce394c9161daabd2797e22d8d5ed80ea3c0f4524b242ab22582d2cc412), [LICENSE-MIT](#license-text-cc367a7134c2b07d995a2f8dea591094a1d100e49c68513f729fdf3eaf580a21) |
 | rand | 0.8.8 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-2411d70acb18e15ac32f7aace439a5c2725b8d0074510caf651d4c270d7c05aa), [LICENSE-APACHE](#license-text-fee4d7ce394c9161daabd2797e22d8d5ed80ea3c0f4524b242ab22582d2cc412), [LICENSE-MIT](#license-text-cc367a7134c2b07d995a2f8dea591094a1d100e49c68513f729fdf3eaf580a21) |
 | rand_core | 0.10.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-c9027c55c9307b0cc5252b75c7bb74bb8fbf7270c881fa3a0a745ef742568156), [LICENSE-APACHE](#license-text-179c83ef07a51414e7fb13941958470bbd43c072efbe9635951ebcd7583ae5d5), [LICENSE-MIT](#license-text-704f0e5f1c8486094f9b08e23ff0955c895dcee8d7de7390beafcad46b5dc4d5) |
 | rand_core | 0.6.4 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-2411d70acb18e15ac32f7aace439a5c2725b8d0074510caf651d4c270d7c05aa), [LICENSE-APACHE](#license-text-179c83ef07a51414e7fb13941958470bbd43c072efbe9635951ebcd7583ae5d5), [LICENSE-MIT](#license-text-cc367a7134c2b07d995a2f8dea591094a1d100e49c68513f729fdf3eaf580a21) |
 | rand_pcg | 0.10.2 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-2411d70acb18e15ac32f7aace439a5c2725b8d0074510caf651d4c270d7c05aa), [LICENSE-APACHE](#license-text-179c83ef07a51414e7fb13941958470bbd43c072efbe9635951ebcd7583ae5d5), [LICENSE-MIT](#license-text-c3df7fccc8e579715eba93d78aece4158a11d95de9d2103b3827fdf2a89a95a2) |
 | raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE.md](#license-text-4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe), [LICENSE-MIT.md](#license-text-aa69fda6dd940f9fd2a7dcd6154bfc6f8e17f582794baf366e81004b01cc7f85), [LICENSE-ZLIB.md](#license-text-81976b4834c3cbdd402a84b6592c03d5c3cecfc9f904c1d8baeae55ccbadf684) |
-| rcgen | 0.14.10 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-acce84ab5a3a9cf7d12402e67ab27b916a7c28fe6bf5be92b5d21bb3a088715f) |
 | read-fonts | 0.41.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-af2a770a058a22db4ef962be857b6ba70358537a932404d1e56a6e6ad7ad39aa), [LICENSE-MIT](#license-text-f03893164caafcc4f7c4767c3c0dd7c0763b84debde761ad80ea8af0e3af5d00) |
 | regex | 1.13.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-14435fbcd271e2783f721b57b7bf4f6502c1379249a4300e0e5bb774686c2d90) |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-14435fbcd271e2783f721b57b7bf4f6502c1379249a4300e0e5bb774686c2d90) |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-14435fbcd271e2783f721b57b7bf4f6502c1379249a4300e0e5bb774686c2d90), [LICENSE-UNICODE](#license-text-ea8df489e83b7674d5c9d50c320bec3b15d2e2eeb7a3a8879a666d91e5640c16) |
-| rend | 0.5.4 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e) |
 | reqwest | 0.12.28 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-5c3866f31ed28362d86aa475660b5bc4d8f064188261fbbfa421fab5da09198c), [LICENSE-MIT](#license-text-54987d63f26601410d0ef10b12769e0bf0e5889a2798eea03ea786cdbc1e65a5) |
 | resvg | 0.45.1 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe), [LICENSE-MIT](#license-text-bf23df5f4fa14a2383ef410e7a90baa5b5eefe27fb3131971c207d6a7c05ba6c) |
 | rfd | 0.17.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-1a6dd9555214dc748e8b80dbfa3432092e210b3068f79c6ce763c390685e4cba), [LICENSE](#license-text-28f22dc50ebc112e7ca38753ed797b71a90747230fcebebd339a5cc6c695961e) |
 | rgb | 0.8.53 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-c7d50fa44b04ace83f809e5a5ccb5e51e5c4e192d18de7dd230c1af8753eeeb1) |
 | ring | 0.17.14 | Apache-2.0 AND ISC | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-edb9c6dbff4676b90e729ffdb6c9239076a2e01b3bb8aadf080bdc7a682296da), [LICENSE-BoringSSL](#license-text-473867fcf89f75954018ee72124015779a1b9ca0d1a33328f2ddcf538690c067), [LICENSE-other-bits](#license-text-07414b6c33f30acfd5e0dda512e77ddbeb9f8a37290568fd056a01a0b50244c1), [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-740a360e4d9c99a258a4a870097a4641af896babd62ca7ab2a2c6de4d5ada151), [LICENSE](#license-text-f1954d2b51ee6ac825defdc6ee947930241269d40ad6082b9d9e758613ce7b61) |
-| rkyv | 0.8.18 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e) |
-| rkyv_derive | 0.8.18 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e), [LICENSE](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | rodio | 0.22.2 | MIT OR Apache-2.0 | git+https://github.com/RustAudio/rodio?rev=e89e685d326a684b298c5138adf94caa49e5568c#e89e685d326a684b298c5138adf94caa49e5568c | [LICENSE-APACHE](#license-text-4bf96504d6e83ce5c6fc7167f1795d9ceaa68e70ab86bc5d08ab93184262bbbe), [LICENSE-MIT](#license-text-f43e81c5c4afa71a0475f055a33d0354f4e56b747e8432f73bed63ab6d9b7706) |
 | roxmltree | 0.20.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-92f2a160c78f21187374d5c315addf57b70e80b286976b66baa62da60f6ca032) |
-| rtc-crypto | 0.21.0 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| rtc-datachannel | 0.21.0-beta.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| rtc-dtls | 0.21.0-beta.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| rtc-sctp | 0.21.0-beta.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
-| rtc-shared | 0.21.0-beta.2 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
 | rtrb | 0.3.5 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | rusqlite | 0.40.2 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-6061b8ea5b16d94a796c9837aadc73a8e72a11b3045c98d3a0712d2a0fef84ac) |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-8d1f81ea4e87111d557b185d58d996e7bcb974c19c364197fffd4e814fd9b6fa) |
-| rusticata-macros | 4.1.0 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
 | rustix | 1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYRIGHT](#license-text-fde2a68c47d279384c0113efbc29bb43e263dd4cb33137c87365b0218a11d6aa), [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-Apache-2.0_WITH_LLVM-exception](#license-text-2f213ec6b1355dc841dc489c9e7ce1dddd07611df474efcf61b8a960797398e9), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | rustls | 0.23.45 | Apache-2.0 OR ISC OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-ISC](#license-text-af6da3f3f6b4929e02f81fd890835fd6d70ffddae12a8d735c0d7f294ac5ffd7), [LICENSE-MIT](#license-text-a3320aa8d192a02cc2c9f31ebcceb861d71b737acdff1397d0d8a49361e86e73) |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-430e912c26cec30cdf52f4367b6d15dd3f898d2a19db349a62a9f3095ca98a5b), [LICENSE-MIT](#license-text-c5e7f780f961f850c7ac6e80e29b6aa3e5c3a503677eb7b7a9826fc6d735eb2e) |
@@ -372,7 +324,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | rustversion | 1.0.23 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-BOOST](#license-text-8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b) |
 | same-file | 1.0.6 | Unlicense/MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYING](#license-text-65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066), [LICENSE-MIT](#license-text-739620ea44ad8f99e96ea272e583b63a7d44a83a71250d7550b2544ea6b49fbf) |
-| sansio | 1.0.1 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-6c20917694e80c18e344457d73162f5484985e05f443e0db92d960d6e83630c5) |
 | scheduled-thread-pool | 0.2.7 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-33728737930cd0a8d9ece33c326c6648a19eae8452a3f5010c64521d905a5530) |
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-1a6aa2616e74056910aa02ac3a764d45c1b5309eac53768153ad2119637c95cb) |
 | scroll | 0.12.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-7169bf6a03b539ebf1e6e88945778037a35d8208d35064afaba6b4ba598d0247) |
@@ -388,7 +339,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | serde_json | 1.0.151 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | serde_spanned | 1.1.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-4498464c2864825d7bb4c83e2ac4e9dbb533d49964fbf218c24f8d44ee4e87a9) |
 | serde_urlencoded | 0.7.1 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-b5dae953242620882b4803d63538e87d69fd3ea38efed9754bfa9253bd03da41) |
-| sha1 | 0.10.7 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-4031faf6212ee74481b2597dc84fb61568d6a732480c3efdf317f2ac83d330b4) |
 | sha1 | 0.11.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-535a6aa345e8622e7a5cfd384e0c812d67f9c8f8f49f8b8369565fcb98c547fe) |
 | sha2 | 0.11.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-535a6aa345e8622e7a5cfd384e0c812d67f9c8f8f49f8b8369565fcb98c547fe) |
 | shlex | 2.0.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-a759ce38c686a2042f62a0a6b8ea01781e3447726dcb68f4bb8b9f199feff12e), [LICENSE-MIT](#license-text-cc5ba5589dfb7bbc1545df0cd433427aac08b1cdf3484161d6785996317b8c3c) |
@@ -408,7 +358,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | static_assertions | 1.1.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-95a6a71a30f39d33a1fe6c03a52d1b57f0d1d43305a9137780a0c616231b4a52) |
 | strict-num | 0.1.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-d6629d8c4e7d87512172a48572f7eefdab4dc38c7cce40ac2362fd766bd7b279) |
 | strsim | 0.11.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-8fd8980cab8977a58aecdb4c48857aa6b70a64250cc923b3eeb0ecd903c51def) |
-| substring | 1.4.5 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-695546eaa4b06e1a70c5d92eec183f4108dd416224c5c7eed3d0303423596993) |
 | subtle | 2.6.1 | BSD-3-Clause | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-24fa06d8eae3c3ba93e1f863f0640ef57c8996f4bece3e14c3d29c5efb7c0089) |
 | svgtypes | 0.15.3 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-0b3a181cccee1c281218857e56a4bbb3709f795f1353150002db51a8704bc1c5) |
 | symphonia | 0.5.5 | MPL-2.0 | registry+https://github.com/rust-lang/crates.io-index | No license text found in package |
@@ -511,16 +460,12 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | winnow | 1.0.4 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-MIT](#license-text-8793aa4141de4b16b6fdd5f7eb3d30e78ccd6fcb13292202f11a9050c0da7f5d) |
 | writeable | 0.6.4 | Unicode-3.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cde87abe221f413fede55ded0f17985f37b8fdc23e5f6cba9a3955437facb3ae) |
 | x25519-dalek | 3.0.0 | BSD-3-Clause | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-f7183775eea50f974ee99591ef2111e7ed5022b68c2ac51bc955268f9de2bfd8) |
-| x509-parser | 0.16.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
-| x509-parser | 0.18.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea) |
 | xmlwriter | 0.1.0 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-772abf07e583b3f252e0eaa82d4115507f9e548f2e3d51de87f72a4b642924f1) |
-| yasna | 0.6.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-02273814a856eceb5006b5e1b6548cb2d5b3102b7640259cddabbd087302af16) |
 | yoke | 0.8.3 | Unicode-3.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cde87abe221f413fede55ded0f17985f37b8fdc23e5f6cba9a3955437facb3ae) |
 | yoke-derive | 0.8.2 | Unicode-3.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cde87abe221f413fede55ded0f17985f37b8fdc23e5f6cba9a3955437facb3ae) |
 | zapfast | 0.19.0 | MIT | This repository | [LICENSE](#license-text-30acb00631f28be722de344bedf1bc1f32cfb08dc49599283b475d7de9e009ea) |
 | zapfast-bridge | 0.1.0 | MIT | This repository | [LICENSE](#license-text-30acb00631f28be722de344bedf1bc1f32cfb08dc49599283b475d7de9e009ea) |
 | zerocopy | 0.8.56 | BSD-2-Clause OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-98ed0ad9db8a72957b9c45941fe2ed31933a3beacbd193e662df483d0643a13d), [LICENSE-BSD](#license-text-47248d1ec833e0771ddacb65f2cf9978785f4a9976b5b0b69d1e33c60a50be55), [LICENSE-MIT](#license-text-a03d4daa4f46496a592dbf6734f5ee16ed52f1eb7a56ae4648d609ebf0efd0b7) |
-| zerocopy-derive | 0.8.56 | BSD-2-Clause OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-98ed0ad9db8a72957b9c45941fe2ed31933a3beacbd193e662df483d0643a13d), [LICENSE-BSD](#license-text-47248d1ec833e0771ddacb65f2cf9978785f4a9976b5b0b69d1e33c60a50be55), [LICENSE-MIT](#license-text-a03d4daa4f46496a592dbf6734f5ee16ed52f1eb7a56ae4648d609ebf0efd0b7) |
 | zerofrom | 0.1.8 | Unicode-3.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cde87abe221f413fede55ded0f17985f37b8fdc23e5f6cba9a3955437facb3ae) |
 | zerofrom-derive | 0.1.7 | Unicode-3.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cde87abe221f413fede55ded0f17985f37b8fdc23e5f6cba9a3955437facb3ae) |
 | zeroize | 1.9.0 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-836ed921bbad486c21fe437f1f565aef73cf20f242f7344eae04b01ed53a2d57) |
@@ -540,18 +485,6 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 |---|---|---|---|
 | [lottie-ios](https://github.com/airbnb/lottie-ios/tree/f4db77d7feacba0c2360b84a40c38a6ce8ff399d) | 4.6.1 / f4db77d7feacba0c2360b84a40c38a6ce8ff399d | Apache-2.0 | [LICENSE](#license-text-e30c792a915a306bb12bc7b75392f529e9581789c6e46e01358cc4690f505cab), [LICENSE.md](#license-text-708a5824a7733d7d0ecb3848b00bc1c60627412f24e9fe48afe9d9cc709c1f74) |
 | [phonenumberkit](https://github.com/PhoneNumberKit/PhoneNumberKit/tree/faf1703e6fc71c699e911ff0e306c58ad7c756c0) | 5.0.11 / faf1703e6fc71c699e911ff0e306c58ad7c756c0 | MIT | [LICENSE](#license-text-985e456d1e904cba2dd9c541623c5f7e23d799507b11606bc51fa7d36ce3fc17) |
-
-## License text 02273814a856eceb5006b5e1b6548cb2d5b3102b7640259cddabbd087302af16
-
-```text
-Copyright (c) 2016 Masaki Hara
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
 
 ## License text 0331c26405bf44d471436c6b1e5b9a1898faa5fadc0c6471ff216e10814132e0
 
@@ -1419,37 +1352,6 @@ freely, subject to the following restrictions:
    misrepresented as being the original software.
 
 3. This notice may not be removed or altered from any source distribution.
-```
-
-## License text 1aed52f3af3d324c69b767f0f9effd9955c48011306f46fd388d703b8e6455bc
-
-```text
-Copyright (c) 2019-2026 The RustCrypto Project Developers
-Copyright (c) 2019 MobileCoin, LLC
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text 1b0258c48739a24ea7c8e4e45fd32862666ea416630cdae24179b2d64ef742e3
@@ -3481,30 +3383,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## License text 3234ac55816264ee7b6c7ee27efd61cf0a1fe775806870e3d9b4c41ea73c5cb1
-
-```text
-Copyright (c) 2017 Gilad Naaman
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
 ## License text 328c1bf38359194663e48090b0cf944f2037e7f18b474f77245b63c50a83002c
 
 ```text
@@ -3585,36 +3463,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## License text 33e996382660b2bac31ae8ec48e5dc8ddf44e52ddce0612457301404c9a29111
-
-```text
-Copyright (c) 2018 Artyom Pavlov
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text 33ed9a8ecf556f161ec5d7e8761712f404d082bf9eeb8f6085d43517b5938be4
@@ -3918,38 +3766,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## License text 4031faf6212ee74481b2597dc84fb61568d6a732480c3efdf317f2ac83d330b4
-
-```text
-Copyright (c) 2006-2009 Graydon Hoare
-Copyright (c) 2009-2013 Mozilla Foundation
-Copyright (c) 2016 Artyom Pavlov
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text 40fa3316ba3262118acdeab7deb6406bf42b3f3a65598b8ab4ceb25659f8db17
@@ -5128,36 +4944,6 @@ Apache License
    END OF TERMS AND CONDITIONS
 ```
 
-## License text 4c4e6eed8b86b56fa8f22056ff64bbaae60df3fd0a0101a289729b4477bae1d4
-
-```text
-Copyright (c) 2023 The Rust Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 4d83b119f786daf6af23876c0861ffb53f624b6086424c511e608b2025370a2d
 
 ```text
@@ -5748,36 +5534,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## License text 5ff5253f2cb9347c4b3b1c8ecc5057c4b534ae21fab479f8ac77409bb6d6efa4
-
-```text
-Copyright (c) 2018-2019 The RustCrypto Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 603c83c4c200b7a9119c10f2e9f793d7f67a7b982682fd86a646f167a5e96efb
 
 ```text
@@ -6116,36 +5872,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## License text 6334e52844d698f528b923f406aeb5bc3a2c6da77916c3b79f1662622fcde897
-
-```text
-Copyright (c) 2020-2025 The RustCrypto Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066
 
 ```text
@@ -6386,62 +6112,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## License text 692b1604961dd580cfcde8cc33d2c587f5f6349b00c449662194fb1586e850c5
-
-```text
-Copyright (c) 2021 RustCrypto Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
-## License text 695546eaa4b06e1a70c5d92eec183f4108dd416224c5c7eed3d0303423596993
-
-```text
-MIT License
-
-Copyright (c) 2021 Anders Evensen
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
 ## License text 6a8da4c78c729176907b068222cc6e8e612b09c7345628c98cbceb22c0f06979
 
 ```text
@@ -6492,44 +6162,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## License text 6c20917694e80c18e344457d73162f5484985e05f443e0db92d960d6e83630c5
-
-```text
-MIT License
-
-Copyright (c) 2021 WebRTC.rs
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-## License text 6cb29bf78c6e512c65df670da014b3e1ee04a1db1f0adffd8147c21e25696241
-
-```text
-Copyright 2020 David Koloski
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text 6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a
@@ -7005,37 +6637,6 @@ Apache License
    limitations under the License.
 ```
 
-## License text 71366a4092ad07b6fc29c4aa94ceeac8b892f7a24fcdedf8df7cba8112cdc15b
-
-```text
-Copyright (c) 2022 The RustCrypto Project Developers
-Copyright (c) 2022 Artyom Pavlov
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 7169bf6a03b539ebf1e6e88945778037a35d8208d35064afaba6b4ba598d0247
 
 ```text
@@ -7355,18 +6956,6 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
    of your accepting any such warranty or additional liability.
 ```
 
-## License text 75114f300a13994eaf147b93a628116ecd1bb2a3a948e3244ca5737062ed2e7f
-
-```text
-Copyright 2023 David Koloski
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 76c0e37c107dd35a99628d1c9817a685668b89d1c2a465d0d898bacd7eb94475
 
 ```text
@@ -7412,18 +7001,6 @@ Except as otherwise noted (below and/or in individual files), Rust is
 licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
 <http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
-```
-
-## License text 76e5968f85842714c6a059f78ebf6d3615f0a79e41d0bb115f7ea807508bc41b
-
-```text
-Copyright 2024 David Koloski
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text 772abf07e583b3f252e0eaa82d4115507f9e548f2e3d51de87f72a4b642924f1
@@ -8949,70 +8526,10 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-## License text 9206df1d7be3fb30bcb3e920853805f4984858318d245297209268fac172d5ea
-
-```text
-Copyright (c) 2017 Pierre Chifflier
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## License text 92c666480f818e051a4c16f0d8d29d1cc47fc5abaa6e89c681e5024dd6291e7c
 
 ```text
 Copyright (c) Ulrik Sverdrup "bluss" 2015-2023
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
-## License text 92f01fc7ca904e16f13e27d4897e507b5446e42516bb7efacc4c5ed189008c31
-
-```text
-Copyright (c) 2016-2020 RustCrypto Developers
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -9945,33 +9462,6 @@ Apache License
    limitations under the License.
 ```
 
-## License text 9db9de9edfd0ae7c1a5ac724191c0899dc218273f62c717e004ef037501646c2
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2015-2020 Julien Cretin
-Copyright (c) 2017-2020 Google Inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
 ## License text 9dde4a6ad496606322ae0b61b70dc7123fa231be543caa0896d567e34d20fbf8
 
 ```text
@@ -10228,18 +9718,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## License text a427dbea98ffc849b4d8368d97211afdfef816e5c34090e7024a4787299f0e2e
-
-```text
-Copyright 2021 David Koloski
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
-
 ## License text a4a408831dba19c5b8f1ef185ea215ca9fb7c56933d71cc740e2a5efbc8e3b66
 
 ```text
@@ -10262,36 +9740,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## License text a6d96dff735a59b9677ddc5d9abd02b2add5632f2c2cce5d3c9e990f4f4fdcad
-
-```text
-Copyright (c) 2020 The RustCrypto Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text a759ce38c686a2042f62a0a6b8ea01781e3447726dcb68f4bb8b9f199feff12e
@@ -10395,225 +9843,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## License text acce84ab5a3a9cf7d12402e67ab27b916a7c28fe6bf5be92b5d21bb3a088715f
-
-```text
-Copyright (c) 2019-2026 est31 <MTest31@outlook.com> and contributors
-
-Licensed under MIT or Apache License 2.0,
-at your option.
-
-The full list of contributors can be obtained by looking
-at the VCS log (originally, this crate was git versioned,
-there you can do "git shortlog -sn" for this task).
-
-MIT License
------------
-
-The MIT License (MIT)
-
-Copyright (c) 2019-2026 est31 <MTest31@outlook.com> and contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-
-Apache License, version 2.0
----------------------------
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
-
-   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
-
-   1. Definitions.
-
-      "License" shall mean the terms and conditions for use, reproduction,
-      and distribution as defined by Sections 1 through 9 of this document.
-
-      "Licensor" shall mean the copyright owner or entity authorized by
-      the copyright owner that is granting the License.
-
-      "Legal Entity" shall mean the union of the acting entity and all
-      other entities that control, are controlled by, or are under common
-      control with that entity. For the purposes of this definition,
-      "control" means (i) the power, direct or indirect, to cause the
-      direction or management of such entity, whether by contract or
-      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-      outstanding shares, or (iii) beneficial ownership of such entity.
-
-      "You" (or "Your") shall mean an individual or Legal Entity
-      exercising permissions granted by this License.
-
-      "Source" form shall mean the preferred form for making modifications,
-      including but not limited to software source code, documentation
-      source, and configuration files.
-
-      "Object" form shall mean any form resulting from mechanical
-      transformation or translation of a Source form, including but
-      not limited to compiled object code, generated documentation,
-      and conversions to other media types.
-
-      "Work" shall mean the work of authorship, whether in Source or
-      Object form, made available under the License, as indicated by a
-      copyright notice that is included in or attached to the work
-      (an example is provided in the Appendix below).
-
-      "Derivative Works" shall mean any work, whether in Source or Object
-      form, that is based on (or derived from) the Work and for which the
-      editorial revisions, annotations, elaborations, or other modifications
-      represent, as a whole, an original work of authorship. For the purposes
-      of this License, Derivative Works shall not include works that remain
-      separable from, or merely link (or bind by name) to the interfaces of,
-      the Work and Derivative Works thereof.
-
-      "Contribution" shall mean any work of authorship, including
-      the original version of the Work and any modifications or additions
-      to that Work or Derivative Works thereof, that is intentionally
-      submitted to Licensor for inclusion in the Work by the copyright owner
-      or by an individual or Legal Entity authorized to submit on behalf of
-      the copyright owner. For the purposes of this definition, "submitted"
-      means any form of electronic, verbal, or written communication sent
-      to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code control systems,
-      and issue tracking systems that are managed by, or on behalf of, the
-      Licensor for the purpose of discussing and improving the Work, but
-      excluding communication that is conspicuously marked or otherwise
-      designated in writing by the copyright owner as "Not a Contribution."
-
-      "Contributor" shall mean Licensor and any individual or Legal Entity
-      on behalf of whom a Contribution has been received by Licensor and
-      subsequently incorporated within the Work.
-
-   2. Grant of Copyright License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      copyright license to reproduce, prepare Derivative Works of,
-      publicly display, publicly perform, sublicense, and distribute the
-      Work and such Derivative Works in Source or Object form.
-
-   3. Grant of Patent License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      (except as stated in this section) patent license to make, have made,
-      use, offer to sell, sell, import, and otherwise transfer the Work,
-      where such license applies only to those patent claims licensable
-      by such Contributor that are necessarily infringed by their
-      Contribution(s) alone or by combination of their Contribution(s)
-      with the Work to which such Contribution(s) was submitted. If You
-      institute patent litigation against any entity (including a
-      cross-claim or counterclaim in a lawsuit) alleging that the Work
-      or a Contribution incorporated within the Work constitutes direct
-      or contributory patent infringement, then any patent licenses
-      granted to You under this License for that Work shall terminate
-      as of the date such litigation is filed.
-
-   4. Redistribution. You may reproduce and distribute copies of the
-      Work or Derivative Works thereof in any medium, with or without
-      modifications, and in Source or Object form, provided that You
-      meet the following conditions:
-
-      (a) You must give any other recipients of the Work or
-          Derivative Works a copy of this License; and
-
-      (b) You must cause any modified files to carry prominent notices
-          stating that You changed the files; and
-
-      (c) You must retain, in the Source form of any Derivative Works
-          that You distribute, all copyright, patent, trademark, and
-          attribution notices from the Source form of the Work,
-          excluding those notices that do not pertain to any part of
-          the Derivative Works; and
-
-      (d) If the Work includes a "NOTICE" text file as part of its
-          distribution, then any Derivative Works that You distribute must
-          include a readable copy of the attribution notices contained
-          within such NOTICE file, excluding those notices that do not
-          pertain to any part of the Derivative Works, in at least one
-          of the following places: within a NOTICE text file distributed
-          as part of the Derivative Works; within the Source form or
-          documentation, if provided along with the Derivative Works; or,
-          within a display generated by the Derivative Works, if and
-          wherever such third-party notices normally appear. The contents
-          of the NOTICE file are for informational purposes only and
-          do not modify the License. You may add Your own attribution
-          notices within Derivative Works that You distribute, alongside
-          or as an addendum to the NOTICE text from the Work, provided
-          that such additional attribution notices cannot be construed
-          as modifying the License.
-
-      You may add Your own copyright statement to Your modifications and
-      may provide additional or different license terms and conditions
-      for use, reproduction, or distribution of Your modifications, or
-      for any such Derivative Works as a whole, provided Your use,
-      reproduction, and distribution of the Work otherwise complies with
-      the conditions stated in this License.
-
-   5. Submission of Contributions. Unless You explicitly state otherwise,
-      any Contribution intentionally submitted for inclusion in the Work
-      by You to the Licensor shall be under the terms and conditions of
-      this License, without any additional terms or conditions.
-      Notwithstanding the above, nothing herein shall supersede or modify
-      the terms of any separate license agreement you may have executed
-      with Licensor regarding such Contributions.
-
-   6. Trademarks. This License does not grant permission to use the trade
-      names, trademarks, service marks, or product names of the Licensor,
-      except as required for reasonable and customary use in describing the
-      origin of the Work and reproducing the content of the NOTICE file.
-
-   7. Disclaimer of Warranty. Unless required by applicable law or
-      agreed to in writing, Licensor provides the Work (and each
-      Contributor provides its Contributions) on an "AS IS" BASIS,
-      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-      implied, including, without limitation, any warranties or conditions
-      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-      PARTICULAR PURPOSE. You are solely responsible for determining the
-      appropriateness of using or redistributing the Work and assume any
-      risks associated with Your exercise of permissions under this License.
-
-   8. Limitation of Liability. In no event and under no legal theory,
-      whether in tort (including negligence), contract, or otherwise,
-      unless required by applicable law (such as deliberate and grossly
-      negligent acts) or agreed to in writing, shall any Contributor be
-      liable to You for damages, including any direct, indirect, special,
-      incidental, or consequential damages of any character arising as a
-      result of this License or out of the use or inability to use the
-      Work (including but not limited to damages for loss of goodwill,
-      work stoppage, computer failure or malfunction, or any and all
-      other commercial damages or losses), even if such Contributor
-      has been advised of the possibility of such damages.
-
-   9. Accepting Warranty or Additional Liability. While redistributing
-      the Work or Derivative Works thereof, You may choose to offer,
-      and charge a fee for, acceptance of support, warranty, indemnity,
-      or other liability obligations and/or rights consistent with this
-      License. However, in accepting such obligations, You may act only
-      on Your own behalf and on Your sole responsibility, not on behalf
-      of any other Contributor, and only if You agree to indemnify,
-      defend, and hold each Contributor harmless for any liability
-      incurred by, or claims asserted against, such Contributor by reason
-      of your accepting any such warranty or additional liability.
-
-   END OF TERMS AND CONDITIONS
 ```
 
 ## License text acddfb05f07ab0048f60a6080856befa9a37cd2f2e4aaef35bd3fe5cba145b62
@@ -10820,32 +10049,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-```
-
-## License text ad4fcfaf8d5b12b97409c137a03d4a4e4b21024c65c54f976cc3b609c1bd5b0f
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2015 Bartłomiej Kamiński
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
 
 ## License text ae9791f02f2bbe0ce17b434753af97be6e5284b6f8e9f22db3c1f0f11b2e015a
@@ -11414,37 +10617,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The MIT License (MIT)
 
 Copyright (c) 2024 Elastio Software Inc
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
-## License text b38f573d5bc805e32f92fa8772ad44f1330a7de85022d133b2cd3d17424f8c22
-
-```text
-Copyright (c) 2019 The RustCrypto Project Developers
-Copyright (c) 2019 MobileCoin, LLC
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -12263,32 +11435,6 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-```
-
-## License text b9b039b5058cfe9680025ca12f8591df832666baef9f469ea8ba24e73a7fee60
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2015 Carl Lerche + nix-rust Authors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
 ```
 
 ## License text b9e13ec4ee620a6d6b770f46d38418aa35092a429edef143acd47434627785d2
@@ -15994,32 +15140,6 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
-```
-
-## License text fd270b8c59ed37680ea2106f920afe52ebc4d276d2377283f8b13276b36c09bd
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2016 Jonathan Creekmore
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
 
 ## License text fdd1c2117bcf8157d1d013d0953c0a7e6e5fab73df9e36773cd77634428568eb

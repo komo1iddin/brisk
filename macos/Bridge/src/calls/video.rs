@@ -3,15 +3,19 @@
 //! Baseline with the parameter sets before each keyframe, as WhatsApp sends)
 //! and decodes what arrives; the bridge only passes the units along.
 
+#[cfg(feature = "calls")]
 use whatsapp_rust::async_channel;
+#[cfg(feature = "calls")]
 use whatsapp_rust::voip::{TimedVideoFrame, VideoFrame, VideoSource};
 
 /// Frames per second Swift encodes at, and so the RTP clock's step.
 pub const FRAME_RATE: u32 = 20;
 /// Encoded frames that may wait for the engine; a late frame is worse than
 /// a dropped one.
+#[cfg(feature = "calls")]
 const CAMERA_QUEUE: usize = 4;
 /// Received frames that may wait for Swift.
+#[cfg(feature = "calls")]
 pub const VIEW_QUEUE: usize = 8;
 
 /// One access unit from the other side.
@@ -25,6 +29,7 @@ pub struct VideoFrameInfo {
     pub orientation: u8,
 }
 
+#[cfg(feature = "calls")]
 impl From<VideoFrame> for VideoFrameInfo {
     fn from(frame: VideoFrame) -> Self {
         Self {
@@ -36,6 +41,7 @@ impl From<VideoFrame> for VideoFrameInfo {
 }
 
 /// Our camera, as the library reads it: units with their capture times.
+#[cfg(feature = "calls")]
 pub struct Camera {
     timed: async_channel::Receiver<TimedVideoFrame>,
     /// The untimed path the trait also asks for; nothing is ever sent on it.
@@ -43,6 +49,7 @@ pub struct Camera {
     _untimed_sender: async_channel::Sender<Vec<u8>>,
 }
 
+#[cfg(feature = "calls")]
 impl Camera {
     /// The camera, and where Swift's encoded units go into it.
     pub fn new() -> (Self, async_channel::Sender<TimedVideoFrame>) {
@@ -59,6 +66,7 @@ impl Camera {
     }
 }
 
+#[cfg(feature = "calls")]
 impl VideoSource for Camera {
     fn frames(&self) -> async_channel::Receiver<Vec<u8>> {
         self.untimed.clone()
@@ -74,6 +82,7 @@ impl VideoSource for Camera {
 }
 
 /// A unit Swift encoded, captured at `timestamp` on the 90 kHz clock.
+#[cfg(feature = "calls")]
 pub fn timed(data: Vec<u8>, timestamp: u32) -> TimedVideoFrame {
     TimedVideoFrame::builder()
         .data(data)

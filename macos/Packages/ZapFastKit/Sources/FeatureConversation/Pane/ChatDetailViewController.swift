@@ -282,7 +282,7 @@ public final class ChatDetailViewController: NSViewController {
     /// A person's chat, other than our own, can be called, and so can a
     /// group we are still in (with voice only).
     static func canCall(_ chat: ChatSummary?, model: AppModel) -> Bool {
-        guard let chat, !chat.isChannel else { return false }
+        guard model.calls.isAvailable, let chat, !chat.isChannel else { return false }
         switch chat.kind {
         case .direct: return !chat.readOnly && !model.session.isOurs(chat.id)
         case .group: return !chat.left

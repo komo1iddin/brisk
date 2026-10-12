@@ -79,10 +79,23 @@ class ReleaseChecks(unittest.TestCase):
         app = self.app()
         (app / "Contents/Resources/DEPENDENCY-LICENSES.md").unlink()
         def binary_tool(args, **kwargs):
-            return "arm64" if args[0] == "lipo" else "SwiftUI.framework AppKit.framework"
+            return "arm64 x86_64" if args[0] == "lipo" else "SwiftUI.framework AppKit.framework"
         with patch.object(bundle_check.subprocess, "check_output", side_effect=binary_tool):
             with self.assertRaisesRegex(SystemExit, "Missing bundled notice"):
                 bundle_check.validate(app)
+
+    def test_an_apple_silicon_only_bundle_is_rejected(self):
+        def binary_tool(args, **kwargs):
+            return "arm64" if args[0] == "lipo" else "SwiftUI.framework AppKit.framework"
+        with patch.object(bundle_check.subprocess, "check_output", side_effect=binary_tool):
+            with self.assertRaisesRegex(SystemExit, "x86_64"):
+                bundle_check.validate(self.app())
+
+    def test_a_universal_bundle_with_its_notices_passes(self):
+        def binary_tool(args, **kwargs):
+            return "x86_64 arm64" if args[0] == "lipo" else "SwiftUI.framework AppKit.framework"
+        with patch.object(bundle_check.subprocess, "check_output", side_effect=binary_tool):
+            bundle_check.validate(self.app())
 
 
 if __name__ == "__main__":

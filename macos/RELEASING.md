@@ -1,8 +1,9 @@
 # Native macOS builds and releases
 
 The native artifact is `com.komoliddin.ZapFastMac`, with the
-`com.komoliddin.ZapFastMac.Share` extension. It supports Apple Silicon and
-macOS 15 or later. The root egui binary is a different interface.
+`com.komoliddin.ZapFastMac.Share` extension. It is universal (Apple silicon
+and Intel) and needs macOS 15 or later. The Intel slice is built and checked
+but has not been run on an Intel Mac yet. The root egui binary is a different interface.
 
 `make ci` in `macos/` uses the same checks as the Native macOS workflow:
 engine-only tests and clippy, bridge tests and clippy, Swift tests, a fresh
@@ -13,7 +14,7 @@ The generated Xcode workspace receives the Swift package's committed pins.
 CI uses the [macos-26 arm64 runner](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 The inherited root CI checks remain alongside the native job.
 
-The build validator checks the bundle identifiers, arm64 slices, native
+The build validator checks the bundle identifiers, both architecture slices, native
 framework links, Share extension and bundled license resources. An unsigned
 CI build verifies compilation; it is not a distribution signature.
 
@@ -58,7 +59,7 @@ invalidates that review. No binary is uploaded by normal CI.
    service, staples and validates the ticket, then assesses Gatekeeper.
    The temporary signing keychain is deleted on exit.
 5. It prepares a **draft** GitHub release containing only the notarized
-   `ZapFast-native-macos-arm64-v<version>.zip` and SHA-256 checksums.
+   `ZapFast-native-macos-universal-v<version>.zip` and SHA-256 checksums.
    Review the notes and install/call/media behavior before publishing it.
 
 See [Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).

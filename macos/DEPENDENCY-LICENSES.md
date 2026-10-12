@@ -1,6 +1,7 @@
 # Native dependency licenses
 
-Generated from the locked arm64 macOS bridge dependency graph and Swift pins.
+Generated from the locked macOS bridge dependency graph (Apple silicon and Intel,
+default features, so without the calls in development) and Swift pins.
 The Rust graph includes transitive build dependencies. Available package license
 and notice files are retained below, including bundled codec/library notices.
 This inventory does not establish compatibility or resolve conflicting headers.
@@ -94,6 +95,7 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | ctr | 0.10.1 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-e8541ea93f027a6c2cf077362f74492bdf0bb8354f63029962d84f1c130937a4), [LICENSE-MIT](#license-text-f3bd9e2e7745e49db37c28033e4da290df8cf528aa21369d6861699804c5e5dd) |
 | ctutils | 0.4.2 | Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b), [LICENSE-MIT](#license-text-44924708b16974ac3a1df266da789724ab84c27a875364aab7c1b2b06d54bf3f) |
 | curve25519-dalek | 5.0.0 | BSD-3-Clause | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-db7e563b03fa70fa9998fbcae9b432057b7430740a58672c9a8df17af6e078d7) |
+| curve25519-dalek-derive | 0.1.1 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | darling | 0.21.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
 | darling | 0.24.1 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
 | darling_core | 0.21.3 | MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-cc8f3c8ab396de7fa549e3907319281cf13d0a4a456a2b0695c5b61d877dba68) |
@@ -323,6 +325,7 @@ the Pidgin sounds and other bundled assets. Dependency terms apply separately.
 | rustls-webpki | 0.103.15 | ISC | registry+https://github.com/rust-lang/crates.io-index | [LICENSE](#license-text-3ac27594ed56fd079c95a71f8beabc498c5b997ec31e91f4a18e59a5974adb2a) |
 | rustversion | 1.0.23 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-MIT](#license-text-30fefc3a7d6a0041541858293bcbea2dde4caa4c0a5802f996a7f7e8c0085652) |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-85ad950cce8752f716dbf49be95b2639172cb49f291336d57f1fdc9989e38179), [LICENSE-BOOST](#license-text-8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b) |
+| safe_arch | 1.2.0 | Zlib OR Apache-2.0 OR MIT | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE.md](#license-text-0e3cbff251c122b9dc79d8193e04f631640c3dbaa90faaae9a439ebf8cda96cb), [LICENSE-MIT.md](#license-text-fabef1fa74b3ea683e206fa84b300c73f222a1fb43ca4ab562464234bfb250a8), [LICENSE-ZLIB.md](#license-text-0faeb1ebed89f21baef8deb61dd9638a83d3051e6530003e41551d2b0d38e35c) |
 | same-file | 1.0.6 | Unlicense/MIT | registry+https://github.com/rust-lang/crates.io-index | [COPYING](#license-text-65314a6c96683f76f7495709bb0ddecb4eaa6fa244b28f23c4812ef8e5524066), [LICENSE-MIT](#license-text-739620ea44ad8f99e96ea272e583b63a7d44a83a71250d7550b2544ea6b49fbf) |
 | scheduled-thread-pool | 0.2.7 | MIT/Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a), [LICENSE-MIT](#license-text-33728737930cd0a8d9ece33c326c6648a19eae8452a3f5010c64521d905a5530) |
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index | [LICENSE-APACHE](#license-text-954f335b8baf5e1a5748b3a1bf6eeb2ec0b28ae19813f02063d64be005765a76), [LICENSE-MIT](#license-text-1a6aa2616e74056910aa02ac3a764d45c1b5309eac53768153ad2119637c95cb) |
@@ -802,6 +805,22 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+```
+
+## License text 0faeb1ebed89f21baef8deb61dd9638a83d3051e6530003e41551d2b0d38e35c
+
+```text
+Copyright (c) 2020 Daniel "Lokathor" Gee.
+
+This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.
 ```
 
 ## License text 1038b7737a0a04bd9268bbb8d17ee4e13c9bb3cf36f39da46c3a1818c798aa20
@@ -14705,6 +14724,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+```
+
+## License text fabef1fa74b3ea683e206fa84b300c73f222a1fb43ca4ab562464234bfb250a8
+
+```text
+MIT License
+
+Copyright (c) 2023 Daniel "Lokathor" Gee.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## License text fb72181dd02473b6e42749e14362ede6ba6202540dcc2ce98299ed9051fbde61

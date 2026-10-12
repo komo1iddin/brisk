@@ -16,6 +16,29 @@ ROOT = Path(__file__).resolve().parents[2]
 MAC = ROOT / "macos"
 
 
+# The app is universal: each slice may pull dependencies of its own.
+PLATFORMS = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+
+def bridge_metadata(platform):
+    return json.loads(subprocess.check_output([
+        "cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", platform,
+        "--manifest-path", str(MAC / "Bridge/Cargo.toml")
+    ]))
+
+
+def merged(metadatas):
+    """One graph with every package and dependency edge of the platforms'."""
+    packages, nodes = {}, {}
+    for metadata in metadatas:
+        for package in metadata["packages"]:
+            packages[package["id"]] = package
+        for node in metadata["resolve"]["nodes"]:
+            known = nodes.setdefault(node["id"], {"id": node["id"], "dependencies": []})
+            known["dependencies"] = sorted(set(known["dependencies"]) | set(node["dependencies"]))
+    return {"packages": list(packages.values()), "resolve": {"nodes": list(nodes.values())}}
+
+
 def generate(metadata):
     nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
     bridge = next(p["id"] for p in metadata["packages"] if p["name"] == "zapfast-bridge")
@@ -66,7 +89,8 @@ def generate(metadata):
         return ", ".join(dict.fromkeys(references)) or "No license text found in package"
 
     lines = ["# Native dependency licenses", "", 
-             "Generated from the locked arm64 macOS bridge dependency graph and Swift pins.",
+             "Generated from the locked macOS bridge dependency graph (Apple silicon and Intel,",
+             "default features, so without the calls in development) and Swift pins.",
              "The Rust graph includes transitive build dependencies. Available package license",
              "and notice files are retained below, including bundled codec/library notices.",
              "This inventory does not establish compatibility or resolve conflicting headers.", "",
@@ -103,10 +127,9 @@ def main():
     parser.add_argument("--metadata", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    metadata = json.loads(args.metadata.read_text()) if args.metadata else json.loads(subprocess.check_output([
-        "cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", "aarch64-apple-darwin",
-        "--manifest-path", str(MAC / "Bridge/Cargo.toml")
-    ]))
+    metadata = json.loads(args.metadata.read_text()) if args.metadata else merged(
+        bridge_metadata(platform) for platform in PLATFORMS
+    )
     text = generate(metadata)
     target = MAC / "DEPENDENCY-LICENSES.md"
     if args.check:

@@ -526,6 +526,11 @@ make run      # build and open
 make test     # ZapFastKit unit tests
 ```
 
+`make` and `make run` build for Apple silicon only, which is quick.
+`make release` builds a universal app for Apple silicon and Intel; it needs
+`rustup target add x86_64-apple-darwin` once. The Intel slice is built and
+checked but has not been run on an Intel Mac yet.
+
 Voice and video calls are in development and left out of normal builds:
 the bridge's `calls` Cargo feature is off, so the VoIP stack is not linked,
 and `CallStore.isAvailable` (from the bridge's `calls_supported`) hides

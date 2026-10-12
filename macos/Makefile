@@ -3,7 +3,7 @@
 #   make            bridge + project + build (Debug)
 #   make run        build and open the app
 #   make test       unit tests of ZapFastKit
-#   make release    optimised build
+#   make release    optimised universal build (Apple silicon and Intel)
 #   make sync       merge upstream and re-sync the bridge
 #   make check      no warnings in ZapFastKit, then its tests
 #
@@ -16,9 +16,12 @@ CALLS       ?= 0
 export ZAPFAST_CALLS := $(CALLS)
 DERIVED     := Build/DerivedData
 APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
-# The bridge is built for Apple silicon only (Scripts/build-bridge.sh), so the
-# app is too; Release otherwise builds an Intel slice that cannot link.
-XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'platform=macOS,arch=arm64' -derivedDataPath $(DERIVED) ARCHS=arm64
+# The slices to build: Apple silicon for everyday work, and Intel too for a
+# release. Scripts/build-bridge.sh builds the bridge for the same ones, here
+# and in the scheme's pre-action, so they always link.
+ARCHS       ?= arm64
+export ZAPFAST_ARCHS := $(ARCHS)
+XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'generic/platform=macOS' -derivedDataPath $(DERIVED) ARCHS="$(ARCHS)" ONLY_ACTIVE_ARCH=NO
 
 .PHONY: all bridge project build run test release sync footprint clean check ci
 
@@ -40,7 +43,7 @@ test: bridge
 	cd Packages/ZapFastKit && xcodebuild test -scheme ZapFastKit -destination 'platform=macOS,arch=arm64' -derivedDataPath ../../$(DERIVED) -quiet
 
 release:
-	$(MAKE) build CONFIG=Release
+	$(MAKE) build CONFIG=Release ARCHS="arm64 x86_64"
 
 # The same engine, bridge, native tests and unsigned Release checks as CI.
 ci:

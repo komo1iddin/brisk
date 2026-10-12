@@ -69,13 +69,13 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           ditto -x -k macos/Build/native-unsigned.zip macos/Build/release
-          bash macos/Scripts/sign-native.sh "$PWD/macos/Build/release/ZapFast.app" "$PWD/macos/Build/ZapFast-native-macos-arm64-${GITHUB_REF_NAME}.zip"
+          bash macos/Scripts/sign-native.sh "$PWD/macos/Build/release/ZapFast.app" "$PWD/macos/Build/ZapFast-native-macos-universal-${GITHUB_REF_NAME}.zip"
       - name: Checksums and draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd macos/Build
-          zip="ZapFast-native-macos-arm64-${GITHUB_REF_NAME}.zip"
+          zip="ZapFast-native-macos-universal-${GITHUB_REF_NAME}.zip"
           shasum -a 256 "$zip" > checksums.txt
           flags=()
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi

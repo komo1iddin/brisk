@@ -36,6 +36,8 @@ macos/Scripts/check-warnings.sh --disable-sandbox --jobs "${NATIVE_BUILD_JOBS:-2
 python3 macos/Scripts/license-inventory.py --check
 # Every string in the catalog has its translations.
 python3 macos/Scripts/update-strings.py --check
+# Releases are universal: Apple silicon and Intel.
+export ZAPFAST_ARCHS="arm64 x86_64"
 macos/Scripts/build-bridge.sh release
 (
     cd macos
@@ -45,9 +47,9 @@ macos/Scripts/build-bridge.sh release
     mkdir -p "$resolved"
     cp Packages/ZapFastKit/Package.resolved "$resolved/Package.resolved"
     xcodebuild -project ZapFast.xcodeproj -scheme ZapFast \
-        -destination 'platform=macOS,arch=arm64' -derivedDataPath Build/DerivedData \
+        -destination 'generic/platform=macOS' -derivedDataPath Build/DerivedData \
         -configuration Release -disableAutomaticPackageResolution \
-        -onlyUsePackageVersionsFromResolvedFile ARCHS=arm64 \
+        -onlyUsePackageVersionsFromResolvedFile ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
         CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= build -quiet
 )
 app="$root/macos/Build/DerivedData/Build/Products/Release/ZapFast.app"

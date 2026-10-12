@@ -41,7 +41,7 @@ struct PollResultsSheet: View {
     }
 
     private var poll: (String, [String], PollSummary)? {
-        guard let message = model.conversations.conversation(key.chat).message(key.message),
+        guard let message = model.loadedMessage(chat: key.chat, id: key.message),
               case let .poll(question, options, state) = message.content else { return nil }
         return (question, options, state)
     }

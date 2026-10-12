@@ -30,12 +30,12 @@ struct MediaViewerView: View {
     @State private var hoveringStage = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var conversation: Conversation { model.conversations.conversation(chatID) }
+    private var conversation: Conversation { model.mediaViewerConversation }
     private var items: [MessageRecord] { MediaGallery.items(in: conversation.messages) }
 
     private var current: MessageRecord? {
         let id = currentID ?? model.mediaViewer?.message
-        return items.first { $0.id == id }
+        return items.first { $0.id == id } ?? model.mediaViewerMessage.flatMap { $0.id == id ? $0 : nil }
     }
 
     private var index: Int? {
@@ -49,11 +49,13 @@ struct MediaViewerView: View {
             Divider()
             ZStack {
                 if showingGrid {
-                    MediaGrid(items: items, model: model, complete: conversation.complete) { message in
+                    MediaGrid(items: items, model: model, complete: conversation.complete, hasNewer: conversation.hasNewer) { message in
                         select(message.id)
                         withAnimation(.zf(reduceMotion)) { showingGrid = false }
                     } loadOlder: {
-                        model.loadOlder(in: chatID)
+                        model.loadOlderMedia(in: chatID)
+                    } loadNewer: {
+                        model.loadNewerMedia(in: chatID)
                     }
                     .transition(.opacity)
                 } else if let current {
@@ -85,19 +87,23 @@ struct MediaViewerView: View {
             if MediaViewerScript.steps != nil { print("script: showing \(id ?? "nothing")") }
             #endif
         }
-        #if DEBUG
         .onChange(of: showingGrid) { _, grid in
+            if !grid { model.focusMedia() }
+            #if DEBUG
             if MediaViewerScript.steps != nil { print("script: grid \(grid)") }
+            #endif
         }
-        #endif
         .onChange(of: items.map(\.id)) { old, new in
             // The one shown was deleted: show its neighbour, or close.
             guard let id = currentID, !new.contains(id) else { return }
+            // Paging can evict the displayed item. Only its deletion clears
+            // the single record retained by the viewer.
+            if model.mediaViewerMessage?.id == id { return }
             let position = old.firstIndex(of: id) ?? 0
             if new.isEmpty {
                 model.closeMediaViewer()
             } else {
-                currentID = new[min(position, new.count - 1)]
+                select(new[min(position, new.count - 1)])
             }
         }
         .onDisappear { player.pause() }
@@ -254,10 +260,10 @@ struct MediaViewerView: View {
     /// Chevrons at the stage's edges while the pointer is over it.
     private var navigation: some View {
         HStack {
-            chevron("chevron.left", enabled: (index ?? 0) > 0) { step(-1) }
+            chevron("chevron.left", enabled: index.map { $0 > 0 || !conversation.complete } ?? false) { step(-1) }
                 .help("Previous (←)")
             Spacer()
-            chevron("chevron.right", enabled: (index ?? items.count) < items.count - 1) { step(1) }
+            chevron("chevron.right", enabled: index.map { $0 < items.count - 1 || conversation.hasNewer } ?? false) { step(1) }
                 .help("Next (→)")
         }
         .padding(.horizontal, Metrics.m)
@@ -311,10 +317,12 @@ struct MediaViewerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if !showingGrid {
-                MediaStrip(items: items, current: current?.id, model: model, complete: conversation.complete) { id in
+                MediaStrip(items: items, current: current?.id, model: model, complete: conversation.complete, hasNewer: conversation.hasNewer) { id in
                     select(id)
                 } loadOlder: {
-                    model.loadOlder(in: chatID)
+                    model.loadOlderMedia(in: chatID)
+                } loadNewer: {
+                    model.loadNewerMedia(in: chatID)
                 }
                 .frame(maxWidth: 720)
                 .layoutPriority(1)
@@ -358,13 +366,19 @@ struct MediaViewerView: View {
     private func select(_ id: String) {
         guard id != current?.id else { return }
         currentID = id
+        model.selectMedia(id)
     }
 
     private func step(_ offset: Int) {
-        guard let index, items.indices.contains(index + offset) else { return }
+        guard let index else { return }
+        guard items.indices.contains(index + offset) else {
+            if offset < 0 { model.loadOlderMedia(in: chatID) }
+            else { model.loadNewerMedia(in: chatID) }
+            return
+        }
         select(items[index + offset].id)
         // The strip's start is where older media is asked for.
-        if index + offset == 0, !conversation.complete { model.loadOlder(in: chatID) }
+        if index + offset == 0, !conversation.complete { model.loadOlderMedia(in: chatID) }
     }
 
     /// Starts a video, stops one left, and fetches what is not here yet.
@@ -594,8 +608,10 @@ private struct MediaStrip: View {
     let current: String?
     let model: AppModel
     let complete: Bool
+    let hasNewer: Bool
     let select: (String) -> Void
     let loadOlder: () -> Void
+    let loadNewer: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -629,6 +645,10 @@ private struct MediaStrip: View {
                             .id(message.id)
                             .animation(.snappy(duration: 0.2), value: selected)
                     }
+                    if hasNewer {
+                        Button("Load Newer Media", action: loadNewer)
+                            .font(.caption)
+                    }
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, Metrics.s)
@@ -647,14 +667,20 @@ private struct MediaGrid: View {
     let items: [MessageRecord]
     let model: AppModel
     let complete: Bool
+    let hasNewer: Bool
     let open: (MessageRecord) -> Void
     let loadOlder: () -> Void
+    let loadNewer: () -> Void
 
     private let columns = [GridItem(.adaptive(minimum: 120, maximum: 180), spacing: 3)]
 
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 3, pinnedViews: [.sectionHeaders]) {
+                if hasNewer {
+                    Button("Load Newer Media", action: loadNewer)
+                        .padding(Metrics.s)
+                }
                 ForEach(MediaGallery.months(of: items), id: \.month) { group in
                     Section {
                         ForEach(group.items.reversed(), id: \.id) { message in

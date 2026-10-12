@@ -79,6 +79,10 @@ extension AppModel {
             return
         }
         conversations.markFetchingPhone(message.chat)
+        for reader in timelineReaders.values where reader.chat == message.chat
+            && reader.store.loadedMessage(chat: message.chat, id: message.id) != nil {
+            reader.store.markFetchingPhone(message.chat)
+        }
         phoneHistory.asking(message.chat, holding: conversation.messages.count)
         backend.send(.reloadHistory(chat: message.chat, message: message.id))
         post(.info, String(localized: "Requesting earlier messages from your phone"))

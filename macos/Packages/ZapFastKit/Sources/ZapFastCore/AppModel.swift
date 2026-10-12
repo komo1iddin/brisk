@@ -361,7 +361,19 @@ public final class AppModel {
     @ObservationIgnored var previewsAsked: Set<MessageKey> = []
 
     /// A photo or video open in the media viewer over the chat.
-    public var mediaViewer: MediaViewerRequest?
+    public var mediaViewer: MediaViewerRequest? {
+        didSet {
+            guard mediaViewer != oldValue else { return }
+            mediaViewerMessage = mediaViewer.flatMap { loadedMessage(chat: $0.chat, id: $0.message) }
+            if let reader = mediaViewerReader { closeTimelineReader(reader) }
+            mediaViewerReader = mediaViewer.map { openTimelineReader($0.chat, containing: $0.message) }
+        }
+    }
+    /// Its grid pages independently of the conversation underneath.
+    var mediaViewerReader: TimelineReader?
+    /// One explicitly viewed record survives gallery paging. It is released
+    /// on close and receives edits, downloads and deletion events.
+    public internal(set) var mediaViewerMessage: MessageRecord?
 
     // MARK: Lifecycle
 

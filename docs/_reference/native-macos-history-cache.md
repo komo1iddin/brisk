@@ -23,6 +23,14 @@ instead of appending distant live messages across a gap. Failed reads keep
 the current window and clear loading state. Stale replies, closed panes,
 chat clearing and unlinking cannot restore retired windows.
 
+Message info, poll results, interactive choices and quoted-message previews
+resolve records in the open panes, including older windows outside the
+newest cache. The media viewer has its own bounded gallery with backward
+and forward paging. It retains just the explicitly viewed record while
+the gallery pages away; downloads, edits, revocation and deletion update
+that record, and closing the viewer releases it and its gallery reader.
+This one active record is additional to the gallery budget.
+
 Selection keeps IDs, order and capabilities rather than copies of message
 bodies. Copy, Share and Forward can read evicted selections from this
 account's archive. Missing records are omitted, reads run off the main

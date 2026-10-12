@@ -136,7 +136,7 @@ final class ConversationViewController: NSViewController {
         newest.rootView = AnyView(NewestMessageIsland(pane: pane) { [weak self] in self?.timeline.perform(.bottom) }.chatStyle(chatID, model: model))
         // A new composer for each chat, as the SwiftUI view made one.
         bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model, pane: pane).id(chatID).chatStyle(chatID, model: model))
-        searchBar.rootView = AnyView(ChatSearchBar(chatID: chatID, model: model).id(chatID).chatStyle(chatID, model: model))
+        searchBar.rootView = AnyView(ChatSearchBar(chatID: chatID, model: model, reader: reader).id(chatID).chatStyle(chatID, model: model))
     }
 
     /// The timeline scrolls under the title bar and under the composer, its

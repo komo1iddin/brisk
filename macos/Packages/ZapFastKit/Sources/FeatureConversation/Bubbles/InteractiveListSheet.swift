@@ -59,7 +59,7 @@ struct InteractiveListSheet: View {
     }
 
     private var message: MessageRecord? {
-        model.conversations.conversation(request.key.chat).message(request.key.message)
+        model.loadedMessage(chat: request.key.chat, id: request.key.message)
     }
 
     private var button: InteractiveButtonInfo? {

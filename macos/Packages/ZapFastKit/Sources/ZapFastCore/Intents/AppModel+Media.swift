@@ -216,10 +216,42 @@ extension AppModel {
         guard MediaGallery.kind(of: message) != nil else { return }
         video.stop()
         mediaViewer = MediaViewerRequest(chat: message.chat, message: message.id)
+        mediaViewerMessage = message
     }
 
     public func closeMediaViewer() {
         mediaViewer = nil
+    }
+
+    public var mediaViewerConversation: Conversation {
+        mediaViewerReader?.conversation ?? Conversation()
+    }
+
+    public func loadOlderMedia(in chat: String) {
+        guard let reader = mediaViewerReader, reader.chat == chat else { return }
+        reader.store.retentionAnchor = reader.conversation.messages.first?.id
+        loadOlder(in: reader)
+    }
+
+    public func loadNewerMedia(in chat: String) {
+        guard let reader = mediaViewerReader, reader.chat == chat else { return }
+        reader.store.retentionAnchor = reader.conversation.messages.last?.id
+        loadNewer(in: reader)
+    }
+
+    public func selectMedia(_ id: String) {
+        guard let request = mediaViewer, let message = loadedMessage(chat: request.chat, id: id),
+              MediaGallery.kind(of: message) != nil else { return }
+        mediaViewerMessage = message
+        mediaViewerReader?.store.retentionAnchor = id
+    }
+
+    /// Return from All Media to the viewed record even if grid paging has
+    /// evicted it from the gallery window.
+    public func focusMedia() {
+        guard let reader = mediaViewerReader, let message = mediaViewerMessage,
+              reader.store.loadedMessage(chat: reader.chat, id: message.id) == nil else { return }
+        readWindow(.around(message: message.id), in: reader)
     }
 
     public func showReactionPicker(for message: MessageRecord) {

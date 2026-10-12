@@ -171,7 +171,7 @@ private struct QuoteView: View {
 
     var body: some View {
         let preview = QuotePreview.named(
-            quoted, original: quoted.id.isEmpty ? nil : model.conversations.conversation(chat).message(quoted.id),
+            quoted, original: quoted.id.isEmpty ? nil : model.loadedMessage(chat: chat, id: quoted.id),
             name: { model.chats.displayName($0) }
         )
         let size = TimelineText.bodyFonts(scale: scale).name.pointSize

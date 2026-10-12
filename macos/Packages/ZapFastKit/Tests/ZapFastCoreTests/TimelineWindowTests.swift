@@ -155,4 +155,111 @@ struct TimelineWindowTests {
         store.applyWindow(chat: "fixture", messages: rows(120..<130), query: .after(message: "m119"), hasOlder: true, hasNewer: false)
         #expect(store.conversation("fixture").complete)
     }
+
+    @Test func oldPaneActionsResolveLiveRecordsOutsideTheNewestCache() throws {
+        let (model, backend) = model()
+        model.apply(.chats(chats: [ChatSummary(
+            id: "fixture", name: "Synthetic chat", groupSubjectKnown: true, kind: .direct,
+            lastActivity: 1, unread: 0, markedUnread: false, archived: false, pinned: false, pinnedAt: 0,
+            mutedUntil: nil, last: nil, favorite: false, favoritePosition: 0, participants: [],
+            readOnly: false, left: false, infoLocked: nil, admin: false, locked: false,
+            ephemeralExpiration: nil, labels: [], hasCustomSound: false, isChannel: false,
+            looksUnread: false, phone: nil)]))
+        model.apply(.link(state: .connected))
+        model.apply(.messages(chat: "fixture", messages: rows(100..<160), older: false, complete: false))
+        let reader = model.openTimelineReader("fixture")
+        var old = rows(0..<40)
+        old[10].fromMe = true
+        old[10].status = .delivered
+        old[11].content = .poll(question: "Synthetic poll", options: ["A", "B"], state: PollSummary(
+            selectable: 1, counts: [0, 0], selected: [], voters: 0, canVote: true,
+            historyComplete: true, refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []))
+        old[12].content = .interactive(text: "Synthetic list", card: InteractiveCardInfo(
+            body: "Choose", buttons: [InteractiveButtonInfo(label: "Options", url: nil, action: .select(options: [
+                InteractiveOptionInfo(section: "Fixture", title: "A", description: "")
+            ]))], image: nil, needsPhone: false, carousel: [], thumbnail: nil))
+        model.readWindow(.around(message: "m10"), in: reader)
+        try answer(model, reader, messages: old)
+        #expect(model.conversations.conversation("fixture").message("m10") == nil)
+        let info = try #require(model.loadedMessage(chat: "fixture", id: "m10"))
+        model.showInfo(info)
+        #expect(model.messageInfo == MessageKey(chat: "fixture", message: "m10"))
+        model.showChoices(try #require(model.loadedMessage(chat: "fixture", id: "m12")), button: 0)
+        #expect(model.interactiveList?.key.message == "m12")
+        if case .poll? = model.loadedMessage(chat: "fixture", id: "m11")?.content {} else { Issue.record("Old poll missing") }
+        var read = info
+        read.status = .read
+        read.readAt = 200
+        model.apply(.messageUpdated(message: read))
+        #expect(model.loadedMessage(chat: "fixture", id: "m10")?.readAt == 200)
+        model.reloadHistory(before: read)
+        #expect(reader.conversation.fetchingPhone)
+        #expect(backend.sent.last == .reloadHistory(chat: "fixture", message: "m10"))
+        model.apply(.messageDeleted(chat: "fixture", id: "m11"))
+        #expect(model.loadedMessage(chat: "fixture", id: "m11") == nil)
+        model.closeTimelineReader(reader)
+        #expect(model.loadedMessage(chat: "fixture", id: "m10") == nil)
+    }
+
+    @Test func mediaPagesBothWaysWithoutMovingTheOldPaneAndReleasesItsReader() throws {
+        let (model, _) = model()
+        model.apply(.messages(chat: "fixture", messages: rows(200..<260), older: false, complete: false))
+        let pane = model.openTimelineReader("fixture")
+        var old = rows(100..<160)
+        old[10].content = .image(caption: "Synthetic photo", media: MediaInfo(
+            mime: "image/jpeg", size: 1, width: 10, height: 10, path: nil))
+        model.readWindow(.around(message: "m110"), in: pane)
+        try answer(model, pane, messages: old)
+        model.openMediaViewer(old[10])
+        let viewer = try #require(model.mediaViewerReader)
+        #expect(viewer !== pane && viewer.conversation.message("m110") != nil)
+        model.loadOlderMedia(in: "fixture")
+        #expect(viewer.pending?.1 == .before(message: "m100"))
+        try answer(model, viewer, messages: rows(40..<100))
+        #expect(pane.conversation.messages.first?.id == "m100")
+        model.loadNewerMedia(in: "fixture")
+        #expect(viewer.pending?.1 == .after(message: "m159"))
+        try answer(model, viewer, messages: rows(160..<220), newer: false)
+        #expect(!model.mediaViewerConversation.hasNewer)
+        model.closeMediaViewer()
+        #expect(model.mediaViewerMessage == nil && model.mediaViewerReader == nil)
+        #expect(model.timelineReaders.count == 1 && model.timelineReaders[pane.id] === pane)
+    }
+
+    @Test func theViewedPhotoSurvivesBoundedGalleryEvictionAndStillReceivesUpdates() throws {
+        let (model, _) = model()
+        var initial = rows(2_000..<2_060)
+        initial[0].content = .image(caption: "Synthetic photo", media: MediaInfo(
+            mime: "image/jpeg", size: 1, width: 10, height: 10, path: nil))
+        model.apply(.messages(chat: "fixture", messages: initial, older: false, complete: false))
+        model.openMediaViewer(initial[0])
+        let viewer = try #require(model.mediaViewerReader)
+        var upper = 2_000
+        for _ in 0..<5 {
+            model.loadOlderMedia(in: "fixture")
+            try answer(model, viewer, messages: rows((upper - 300)..<upper))
+            upper -= 300
+            #expect(viewer.conversation.messages.count <= HistoryBudget.standard.rows)
+            #expect(viewer.conversation.retainedBytes <= HistoryBudget.standard.bytes)
+        }
+        #expect(viewer.conversation.messages.first?.id == "m500")
+        #expect(viewer.conversation.message("m2000") == nil)
+        #expect(model.mediaViewerMessage?.id == "m2000")
+        model.apply(.messages(chat: "fixture", messages: rows(2_060..<3_360), older: false, complete: false))
+        #expect(model.conversations.conversation("fixture").message("m2000") == nil)
+        model.apply(.media(chat: "fixture", message: "m2000", card: nil, path: "/tmp/synthetic.jpg", error: nil))
+        var edited = initial[0]
+        edited.edited = true
+        model.apply(.messageUpdated(message: edited))
+        #expect(model.mediaViewerMessage?.mediaURL?.path == "/tmp/synthetic.jpg")
+        #expect(model.mediaViewerMessage?.edited == true)
+        model.focusMedia()
+        #expect(viewer.pending?.1 == .around(message: "m2000"))
+        try answer(model, viewer, messages: initial)
+        #expect(viewer.conversation.message("m2000") != nil)
+        model.apply(.messageDeleted(chat: "fixture", id: "m2000"))
+        #expect(model.mediaViewerMessage == nil)
+        model.closeMediaViewer()
+        #expect(model.timelineReaders.isEmpty)
+    }
 }

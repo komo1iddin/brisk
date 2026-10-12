@@ -18,15 +18,28 @@ public final class TimelineReader {
 }
 
 extension AppModel {
-    func loadedMessage(chat: String, id: String) -> MessageRecord? {
+    /// A loaded row can live in an older pane or media window rather than
+    /// the newest cache. No archive read or unbounded history load occurs.
+    public func loadedMessage(chat: String, id: String) -> MessageRecord? {
+        if let message = mediaViewerMessage, message.chat == chat, message.id == id { return message }
         if let selectionReader, let reader = timelineReaders[selectionReader], reader.chat == chat,
            let message = reader.store.loadedMessage(chat: chat, id: id) { return message }
         return timelineReaders.values.lazy.filter { $0.chat == chat }.compactMap { $0.store.loadedMessage(chat: chat, id: id) }.first
             ?? conversations.loadedMessage(chat: chat, id: id)
     }
 
-    public func openTimelineReader(_ chat: String) -> TimelineReader {
-        let reader = TimelineReader(chat: chat, conversation: conversations.conversation(chat))
+    func loadedConversation(chat: String, containing id: String) -> Conversation {
+        if let selectionReader, let reader = timelineReaders[selectionReader], reader.chat == chat,
+           reader.store.loadedMessage(chat: chat, id: id) != nil { return reader.conversation }
+        if let reader = timelineReaders.values.first(where: {
+            $0.chat == chat && $0.store.loadedMessage(chat: chat, id: id) != nil
+        }) { return reader.conversation }
+        return conversations.conversation(chat)
+    }
+
+    public func openTimelineReader(_ chat: String, containing id: String? = nil) -> TimelineReader {
+        let seed = id.map { loadedConversation(chat: chat, containing: $0) } ?? conversations.conversation(chat)
+        let reader = TimelineReader(chat: chat, conversation: seed)
         timelineReaders[reader.id] = reader
         if let key = pendingJump, key.chat == chat, reader.conversation.message(key.message) == nil {
             readWindow(.around(message: key.message), in: reader)
@@ -112,6 +125,25 @@ extension AppModel {
     }
 
     func applyTimelineEvent(_ event: BridgeEvent) {
+        if let current = mediaViewerMessage {
+            switch event {
+            case let .messageUpdated(message) where message.chat == current.chat && message.id == current.id:
+                mediaViewerMessage = MediaGallery.kind(of: message) == nil ? nil : message.keepingMediaPath(of: current)
+            case let .messages(chat, messages, _, _) where chat == current.chat:
+                if let message = messages.first(where: { $0.id == current.id }) {
+                    mediaViewerMessage = MediaGallery.kind(of: message) == nil ? nil : message.keepingMediaPath(of: current)
+                }
+            case let .media(chat, id, card, path?, _) where chat == current.chat && id == current.id:
+                mediaViewerMessage?.setMediaPath(path, card: card.map(Int.init))
+            case let .messageDeleted(chat, id) where chat == current.chat && id == current.id:
+                mediaViewerMessage = nil
+            case let .chatCleared(chat, through) where chat == current.chat && current.timestamp <= through:
+                closeMediaViewer()
+            case .chatRemoved(let chat) where chat == current.chat: closeMediaViewer()
+            case .link(.loggedOut): closeMediaViewer()
+            default: break
+            }
+        }
         for reader in timelineReaders.values {
             let chat = reader.chat
             switch event {

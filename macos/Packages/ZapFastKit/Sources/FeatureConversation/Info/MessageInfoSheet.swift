@@ -16,7 +16,7 @@ struct MessageInfoSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.m) {
             Text("Message Info").font(.headline)
-            if let message = model.conversations.conversation(key.chat).message(key.message) {
+            if let message = model.loadedMessage(chat: key.chat, id: key.message) {
                 Preview(message: message, model: model)
                 if model.chats.chat(key.chat)?.kind == .group {
                     GroupReceipts(receipts: model.receipts, model: model)

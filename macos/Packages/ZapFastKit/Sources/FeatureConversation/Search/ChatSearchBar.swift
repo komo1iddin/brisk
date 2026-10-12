@@ -17,6 +17,7 @@ import ZapFastSharedUI
 struct ChatSearchBar: View {
     let chatID: String
     let model: AppModel
+    let reader: TimelineReader
     @State private var focusRequest = 0
     @State private var choosingDay = false
     /// The kinds of message show as chips under the bar.
@@ -233,7 +234,7 @@ struct ChatSearchBar: View {
         }
         if chat.kind == .group {
             var known = Set(everyone.map(\.id))
-            for message in model.conversations.conversation(chatID).messages.reversed()
+            for message in reader.conversation.messages.reversed()
             where !message.fromMe && known.insert(message.sender).inserted {
                 let name = model.chats.displayName(message.sender, hint: message.senderName)
                 everyone.append(SearchPerson(id: message.sender, name: name, sender: .person(message.sender)))
@@ -256,7 +257,7 @@ struct ChatSearchBar: View {
             // number alone does not.
             model.chats.displayName(
                 id,
-                hint: model.conversations.conversation(chatID).messages.last { $0.sender == id }?.senderName
+                hint: reader.conversation.messages.last { $0.sender == id }?.senderName
             )
         }
     }

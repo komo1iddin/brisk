@@ -88,6 +88,7 @@ private final class BenchmarkRun: NSObject {
     private var windowActivity: [String: BenchmarkReport.WindowActivity] = [:]
     private var resizeBatchMainThreadMs = 0.0
     private var resizeBatchProcessCPUms = 0.0
+    private let resizeHoldMs = max(0, ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_RESIZE_HOLD_MS"].flatMap(Double.init) ?? 0)
 
     init(model: AppModel, backend: BenchmarkBackend) {
         self.model = model
@@ -98,6 +99,9 @@ private final class BenchmarkRun: NSObject {
         model.start()
         await waitUntil { self.model.isLinked && self.mainWindow() != nil }
         window = mainWindow()
+        // A subprocess can inherit a different Space from the front app.
+        // Keep ordinary timings at the normal level, on the active Space.
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         if ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_FLOATING"] == "1" {
             // Diagnostic profiling on a desktop covered by another app.
             // This mode is excluded from ordinary A/B timings.
@@ -106,6 +110,7 @@ private final class BenchmarkRun: NSObject {
             window.orderFrontRegardless()
         }
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
         NSApp.activate()
         let width = ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_WINDOW_WIDTH"].flatMap(Double.init) ?? 1100
         window.setFrame(NSRect(x: 60, y: 60, width: width, height: 740), display: true)
@@ -177,6 +182,7 @@ private final class BenchmarkRun: NSObject {
             jumpToOffsetMs: .init(jumps),
             eventsWithFullHistory: eventsWithFullHistory,
             resizeStepMs: .init(resize),
+            resizeHoldMs: resizeHoldMs,
             openFirstPageWarm: openWarm,
             memoryFootprintMB: Self.memoryFootprintMB,
             pagingFlicks: pagingFlicks,
@@ -556,6 +562,13 @@ private final class BenchmarkRun: NSObject {
             // A turn of the run loop, as between the frames of a drag.
             await pause(.milliseconds(16))
             if let table = timeline { integrity.add(audit(table), at: .resize) }
+        }
+        // A held final width must finish its useful reflow, unlike a burst
+        // that immediately returns to the already-measured original width.
+        if resizeHoldMs > 0 {
+            await pause(.seconds(resizeHoldMs / 1000))
+            checkWindow("ResizeHold")
+            if let table = timeline { integrity.add(audit(table), at: .rest) }
         }
         window.setFrame(original, display: true)
         await pause(.milliseconds(100))

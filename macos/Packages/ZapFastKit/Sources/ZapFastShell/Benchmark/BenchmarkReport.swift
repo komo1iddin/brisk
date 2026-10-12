@@ -119,6 +119,8 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     var eventsWithFullHistory: EventCost
     /// One window-width step of 8 points each, with every row loaded.
     var resizeStepMs: Distribution
+    /// Optional final-width pause inside the resize CPU interval.
+    var resizeHoldMs = 0.0
     /// Another one-page chat, opened once the conversation view has been
     /// built before: what opening costs without first-use setup.
     var openFirstPageWarm: Open

@@ -217,6 +217,9 @@ extension AppModel {
         video.stop()
         mediaViewer = MediaViewerRequest(chat: message.chat, message: message.id)
         mediaViewerMessage = message
+        if let reader = mediaViewerReader, reader.store.loadedMessage(chat: message.chat, id: message.id) == nil {
+            readWindow(.around(message: message.id), in: reader)
+        }
     }
 
     public func closeMediaViewer() {

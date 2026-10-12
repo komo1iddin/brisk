@@ -103,6 +103,7 @@ extension AppModel {
 
     public func showInfo(_ message: MessageRecord) {
         guard canShowInfo(message) else { return }
+        messageInfoMessage = message
         messageInfo = MessageKey(chat: message.chat, message: message.id)
     }
 

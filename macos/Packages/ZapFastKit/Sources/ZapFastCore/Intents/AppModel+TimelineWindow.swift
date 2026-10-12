@@ -21,6 +21,7 @@ extension AppModel {
     /// A loaded row can live in an older pane or media window rather than
     /// the newest cache. No archive read or unbounded history load occurs.
     public func loadedMessage(chat: String, id: String) -> MessageRecord? {
+        if let message = messageInfoMessage, message.chat == chat, message.id == id { return message }
         if let message = mediaViewerMessage, message.chat == chat, message.id == id { return message }
         if let selectionReader, let reader = timelineReaders[selectionReader], reader.chat == chat,
            let message = reader.store.loadedMessage(chat: chat, id: id) { return message }
@@ -125,6 +126,23 @@ extension AppModel {
     }
 
     func applyTimelineEvent(_ event: BridgeEvent) {
+        if let current = messageInfoMessage {
+            switch event {
+            case let .messageUpdated(message) where message.chat == current.chat && message.id == current.id:
+                messageInfoMessage = message.keepingMediaPath(of: current)
+            case let .messages(chat, messages, _, _) where chat == current.chat:
+                if let message = messages.first(where: { $0.id == current.id }) {
+                    messageInfoMessage = message.keepingMediaPath(of: current)
+                }
+            case let .media(chat, id, card, path?, _) where chat == current.chat && id == current.id:
+                messageInfoMessage?.setMediaPath(path, card: card.map(Int.init))
+            case let .messageDeleted(chat, id) where chat == current.chat && id == current.id: messageInfo = nil
+            case let .chatCleared(chat, through) where chat == current.chat && current.timestamp <= through: messageInfo = nil
+            case .chatRemoved(let chat) where chat == current.chat: messageInfo = nil
+            case .link(.loggedOut): messageInfo = nil
+            default: break
+            }
+        }
         if let current = mediaViewerMessage {
             switch event {
             case let .messageUpdated(message) where message.chat == current.chat && message.id == current.id:

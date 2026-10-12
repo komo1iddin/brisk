@@ -32,6 +32,11 @@ that record. If it disappears while outside the gallery window, the viewer
 selects an available neighbour or closes an empty gallery. Closing the viewer
 releases it and its gallery reader.
 This one active record is additional to the gallery budget.
+Opening media from outside all caches loads a bounded window around it.
+Message info retains its one inspected record across gallery closure and
+keeps receiving receipt, download and deletion updates. Closing the sheet
+releases it. These explicit records and newer reply/edit state survive a
+partial chat clear that only removes earlier messages.
 
 Selection keeps IDs, order and capabilities rather than copies of message
 bodies. Copy, Share and Forward can read evicted selections from this

@@ -187,8 +187,13 @@ public final class AppModel {
     /// The message whose "Message info" sheet is open. A group message's
     /// receipts are followed while it is.
     public var messageInfo: MessageKey? {
-        didSet { if messageInfo != oldValue { followReceipts() } }
+        didSet {
+            messageInfoMessage = messageInfo.flatMap { loadedMessage(chat: $0.chat, id: $0.message) }
+            if messageInfo != oldValue { followReceipts() }
+        }
     }
+    /// One explicitly inspected record survives closing a media reader.
+    var messageInfoMessage: MessageRecord?
     /// The receipts of the group message `messageInfo` shows, once they came.
     public internal(set) var receipts: MessageReceiptsInfo?
 

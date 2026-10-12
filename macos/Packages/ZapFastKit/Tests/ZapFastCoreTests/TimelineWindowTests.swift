@@ -197,6 +197,7 @@ struct TimelineWindowTests {
         #expect(backend.sent.last == .reloadHistory(chat: "fixture", message: "m10"))
         model.apply(.messageDeleted(chat: "fixture", id: "m11"))
         #expect(model.loadedMessage(chat: "fixture", id: "m11") == nil)
+        model.messageInfo = nil
         model.closeTimelineReader(reader)
         #expect(model.loadedMessage(chat: "fixture", id: "m10") == nil)
     }
@@ -261,5 +262,50 @@ struct TimelineWindowTests {
         #expect(model.mediaViewerMessage == nil)
         model.closeMediaViewer()
         #expect(model.timelineReaders.isEmpty)
+    }
+
+    @Test func openingArchivedMediaLoadsItsContextAndInfoSurvivesClosingTheViewer() throws {
+        let (model, _) = model()
+        model.apply(.messages(chat: "fixture", messages: rows(100..<160), older: false, complete: false))
+        var photo = rows(0..<1)[0]
+        photo.fromMe = true
+        photo.status = .delivered
+        photo.content = .image(caption: "Synthetic archive photo", media: MediaInfo(
+            mime: "image/jpeg", size: 1, width: 10, height: 10, path: nil))
+        model.openMediaViewer(photo)
+        let viewer = try #require(model.mediaViewerReader)
+        #expect(viewer.pending?.1 == .around(message: photo.id))
+        try answer(model, viewer, messages: [photo])
+        model.closeMediaViewer()
+        model.showInfo(photo)
+        #expect(model.timelineReaders.isEmpty)
+        #expect(model.loadedMessage(chat: "fixture", id: photo.id)?.status == .delivered)
+        model.apply(.media(chat: "fixture", message: photo.id, card: nil, path: "/tmp/synthetic-info.jpg", error: nil))
+        #expect(model.loadedMessage(chat: "fixture", id: photo.id)?.mediaURL?.path == "/tmp/synthetic-info.jpg")
+        photo.status = .read
+        photo.readAt = 200
+        model.apply(.messageUpdated(message: photo))
+        #expect(model.loadedMessage(chat: "fixture", id: photo.id)?.readAt == 200)
+        model.apply(.messageDeleted(chat: "fixture", id: photo.id))
+        #expect(model.messageInfo == nil && model.messageInfoMessage == nil)
+        #expect(model.loadedMessage(chat: "fixture", id: photo.id) == nil)
+    }
+
+    @Test func aPartialClearPreservesNewerExplicitActionsOutsideTheCache() {
+        let (model, _) = model()
+        model.selectedChatID = "fixture"
+        var message = rows(100..<101)[0]
+        message.fromMe = true
+        message.status = .delivered
+        model.reply(to: message)
+        model.editing["fixture"] = message
+        model.showInfo(message)
+        model.apply(.chatCleared(chat: "fixture", through: 50))
+        #expect(model.replyingTo["fixture"]?.id == message.id)
+        #expect(model.editing["fixture"]?.id == message.id)
+        #expect(model.messageInfoMessage?.id == message.id)
+        model.apply(.chatCleared(chat: "fixture", through: 100))
+        #expect(model.replyingTo["fixture"] == nil && model.editing["fixture"] == nil)
+        #expect(model.messageInfo == nil && model.messageInfoMessage == nil)
     }
 }

@@ -227,18 +227,17 @@ extension AppModel {
         chats.setDraft("", for: chat)
         if chat != selectedChatID { forgetComposer(of: chat) }
         search.dropHits(in: chat, through: through)
-        let remaining = conversations.conversation(chat)
-        if let message = editing[chat], remaining.message(message.id) == nil {
+        if let message = editing[chat], message.timestamp <= through {
             editing[chat] = nil
             textBeforeEdit[chat] = nil
             mentionsBeforeEdit[chat] = nil
             composerText[chat] = ""
             composerMentions[chat] = nil
         }
-        if let message = replyingTo[chat], remaining.message(message.id) == nil {
+        if let message = replyingTo[chat], message.timestamp <= through {
             replyingTo[chat] = nil
         }
-        if let key = messageInfo, key.chat == chat, remaining.message(key.message) == nil {
+        if let key = messageInfo, key.chat == chat, loadedMessage(chat: chat, id: key.message) == nil {
             messageInfo = nil
         }
     }

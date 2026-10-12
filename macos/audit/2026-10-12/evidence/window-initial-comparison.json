@@ -1,0 +1,76 @@
+{
+  "baselineCommit": "3d79c6c",
+  "binarySHA256": {
+    "A": "7cdde8ccb0ddc3ac0b66cc6162b787b900c9a0de85caa2375d54b149a3ec4643",
+    "B": "97dd3eab17e384e2028b8520bf98b18451179af9711e2e27ffd54de491740eb9"
+  },
+  "candidateSource": "c3566c9",
+  "limitations": [
+    "Exploratory completed runs before controlling display sleep; excluded from the authoritative final table.",
+    "A subsequent attempt timed out when display callbacks stopped; no incomplete result was counted."
+  ],
+  "runs": [
+    {
+      "binary": "A",
+      "count": 50000,
+      "elapsedSeconds": 46.16,
+      "json": "window-50000-A-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 687.8,
+      "sampledPeakResidentMB": 856.66,
+      "samples": 849
+    },
+    {
+      "binary": "B",
+      "count": 50000,
+      "elapsedSeconds": 43.71,
+      "json": "window-50000-B-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 220.08,
+      "sampledPeakResidentMB": 291.33,
+      "samples": 808
+    },
+    {
+      "binary": "B",
+      "count": 50000,
+      "elapsedSeconds": 43.39,
+      "json": "window-50000-B-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 224.2,
+      "sampledPeakResidentMB": 267.02,
+      "samples": 798
+    },
+    {
+      "binary": "A",
+      "count": 50000,
+      "elapsedSeconds": 45.49,
+      "json": "window-50000-A-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 671.02,
+      "sampledPeakResidentMB": 836.92,
+      "samples": 842
+    },
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 43.27,
+      "json": "window-10000-A-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 243.3,
+      "sampledPeakResidentMB": 353.09,
+      "samples": 802
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.21,
+      "json": "window-10000-B-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 158.11,
+      "sampledPeakResidentMB": 240.56,
+      "samples": 802
+    }
+  ],
+  "sampling": "proc_pid_rusage V2, own launched PID only, 50 ms; includes synthetic source fixtures",
+  "sequence": "50k AB, BA; 10k AB, BA"
+}

@@ -1,0 +1,84 @@
+{
+  "benchmarkedImplementation": "aa910d9722ad8145a11c29ec9be181f45ac3d0d1",
+  "coverageLimits": [
+    "macOS arm64 native app built and tested; no Windows/Linux host runtime tests.",
+    "No original WhatsApp comparison, physical microphone/camera call or live network stress in this step."
+  ],
+  "date": "2026-10-12T04:37:57.030595+00:00",
+  "finalReleaseSHA256": "7e50c1ef49d715c50647b49f72f647b5d15b86dc492df9ea3d0fee590cfb8511",
+  "licenseInventory": "PASS",
+  "native": {
+    "bundle": "macos/Scripts/check-native-bundle.py",
+    "command": "swift test --no-parallel --force-resolved-versions",
+    "exitCodes": {
+      "bundle": 0,
+      "release": 0,
+      "tests": 0,
+      "warnings": 0
+    },
+    "focusedWindowTests": 15,
+    "modules": {
+      "Calls": 2,
+      "Chats": 8,
+      "Conversation": 85,
+      "Core": 471
+    },
+    "passed": 566,
+    "release": "xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination platform=macOS,arch=arm64 -derivedDataPath Build/DerivedData ARCHS=arm64 -configuration Release build -quiet",
+    "scopeNote": "Final explicit media/Message Info context and partial-clear changes were validated by 566 native tests, the warning gate, Release build and bundle check. Performance runs used aa910d9; later explicit-action changes are not exercised by these scenarios. Hidden-layout profiling used ecfa2e7.",
+    "warningGate": "macos/Scripts/check-warnings.sh (touches own Swift sources and recompiles tests)"
+  },
+  "nativeScriptTestsPassed": 5,
+  "pinsUnchanged": true,
+  "privacy": "Temporary synthetic fixtures only. No personal archive rows, contact data, exported user logs or real calls read. Profiler raw traces and environment metadata excluded.",
+  "rust": {
+    "allFeatureIntegrationPassed": [
+      7,
+      2
+    ],
+    "allFeatureLibrary": {
+      "ignored": 8,
+      "passed": 1142
+    },
+    "bridgePassed": 48,
+    "commands": [
+      "cargo fmt --all --check",
+      "cargo clippy --locked --all-targets -- -D warnings",
+      "cargo clippy --locked --all-targets --all-features -- -D warnings",
+      "cargo test --locked --all-targets",
+      "cargo test --locked --all-targets --all-features",
+      "cargo clippy --locked --no-default-features --lib -- -D warnings",
+      "cargo test --locked --no-default-features --lib",
+      "RUSTDOCFLAGS='-D warnings' cargo doc --locked --all-features --no-deps",
+      "cargo clippy --locked --all-targets -- -D warnings (macos/Bridge)",
+      "cargo test --locked --lib (macos/Bridge)"
+    ],
+    "defaultIntegrationPassed": [
+      5,
+      2
+    ],
+    "defaultLibrary": {
+      "ignored": 8,
+      "passed": 1142
+    },
+    "engineOnlyLibrary": {
+      "ignored": 8,
+      "passed": 560
+    },
+    "exitCodes": {
+      "bridge-clippy": 0,
+      "bridge-test": 0,
+      "clippy-all": 0,
+      "clippy-default": 0,
+      "doc": 0,
+      "engine-clippy": 0,
+      "engine-test": 0,
+      "fmt": 0,
+      "test-all": 0,
+      "test-default": 0,
+      "test-default-sandbox": 101
+    },
+    "initialSandboxFailure": "Six localhost socket fixtures could not bind in the restricted run; final default/all-feature checks passed with local socket access."
+  },
+  "validatedImplementation": "1b77d3a3f0b7f865846bb5b43f5db3b57566cc17"
+}

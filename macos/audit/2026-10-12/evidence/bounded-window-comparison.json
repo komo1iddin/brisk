@@ -1,0 +1,93 @@
+{
+  "baselineCommit": "3d79c6c",
+  "binarySHA256": {
+    "A": "7cdde8ccb0ddc3ac0b66cc6162b787b900c9a0de85caa2375d54b149a3ec4643",
+    "B": "1f8412269b5dc0d99cd72ee8d38ff68717e3f7c903532c4d691142c2ac2cf426"
+  },
+  "candidateSource": "aa910d9722ad8145a11c29ec9be181f45ac3d0d1",
+  "displayAssertion": "temporary caffeinate -u -d -t 600; no floating mode",
+  "runs": [
+    {
+      "binary": "A",
+      "count": 50000,
+      "elapsedSeconds": 45.68,
+      "json": "bounded-window-50000-A-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 673.99,
+      "sampledPeakResidentMB": 859.47,
+      "samples": 847
+    },
+    {
+      "binary": "B",
+      "count": 50000,
+      "elapsedSeconds": 43.81,
+      "json": "bounded-window-50000-B-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 225.22,
+      "sampledPeakResidentMB": 294.28,
+      "samples": 814
+    },
+    {
+      "binary": "B",
+      "count": 50000,
+      "elapsedSeconds": 43.29,
+      "json": "bounded-window-50000-B-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 206.81,
+      "sampledPeakResidentMB": 306.23,
+      "samples": 806
+    },
+    {
+      "binary": "A",
+      "count": 50000,
+      "elapsedSeconds": 45.4,
+      "json": "bounded-window-50000-A-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 672.92,
+      "sampledPeakResidentMB": 890.34,
+      "samples": 842
+    },
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 43.38,
+      "json": "bounded-window-10000-A-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 244.42,
+      "sampledPeakResidentMB": 337.92,
+      "samples": 803
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.35,
+      "json": "bounded-window-10000-B-1.json",
+      "repeat": 1,
+      "sampledPeakFootprintMB": 173.53,
+      "sampledPeakResidentMB": 255.8,
+      "samples": 802
+    },
+    {
+      "binary": "B",
+      "count": 10000,
+      "elapsedSeconds": 43.27,
+      "json": "bounded-window-10000-B-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 178.16,
+      "sampledPeakResidentMB": 262.52,
+      "samples": 803
+    },
+    {
+      "binary": "A",
+      "count": 10000,
+      "elapsedSeconds": 43.34,
+      "json": "bounded-window-10000-A-2.json",
+      "repeat": 2,
+      "sampledPeakFootprintMB": 247.14,
+      "sampledPeakResidentMB": 319.52,
+      "samples": 803
+    }
+  ],
+  "sampling": "proc_pid_rusage V2, own launched PID only, 50 ms; includes synthetic source fixtures",
+  "sequence": "50k AB, BA; 10k AB, BA"
+}

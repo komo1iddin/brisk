@@ -1,0 +1,14 @@
+{
+  "candidateCommit": "c3566c9",
+  "scenario": "synthetic 50000 source messages",
+  "completedIntervalCounts": {
+    "Open": 1,
+    "Idle": 15,
+    "Presence": 15,
+    "Elsewhere": 15,
+    "Here": 15
+  },
+  "diagnostic": "Excluded run: the main thread was idle in the event loop and no Frame/ResizeStep interval fired. Later own-window diagnostics reported a screen but an occluded window. A temporary caffeinate -u -d assertion woke the display and resumed CADisplayLink callbacks. All authoritative A/B runs kept that temporary assertion active.",
+  "privacy": "Only own synthetic target, whitelisted environment, no TOC export; raw trace and sample removed.",
+  "resolution": "Display sleep, rather than a scrolling CPU loop. No permanent power settings changed."
+}

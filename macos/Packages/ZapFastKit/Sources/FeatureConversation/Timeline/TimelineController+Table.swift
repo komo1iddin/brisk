@@ -186,6 +186,10 @@ extension TimelineController {
         false
     }
 
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        tableView.makeView(withIdentifier: TimelineRowView.identifier, owner: nil) as? TimelineRowView ?? TimelineRowView()
+    }
+
     /// A row that scrolled away stops what plays in it.
     func tableView(_ tableView: NSTableView, didRemove rowView: NSTableRowView, forRow row: Int) {
         for case let cell as BubbleCell in rowView.subviews { cell.leftScreen() }

@@ -202,6 +202,31 @@ final class RowMeasurer {
     }
 }
 
+/// Message selection and highlights are drawn by the cells. The row is
+/// only a transparent container; drawing its background into a bitmap on
+/// each reuse spends time and memory on pixels the wallpaper already owns.
+final class TimelineRowView: NSTableRowView {
+    static let identifier = NSUserInterfaceItemIdentifier("TimelineRow")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        identifier = Self.identifier
+        wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var isOpaque: Bool { false }
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.contents = nil
+        layer?.backgroundColor = nil
+    }
+}
+
 /// The message table. Text laid over a bubble must take the first click,
 /// which a table otherwise keeps for row selection.
 final class TimelineTableView: NSTableView {

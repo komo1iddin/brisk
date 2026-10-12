@@ -34,6 +34,13 @@ struct TimelineRunLayoutTests {
         #expect(reused.bubbleSize == original.bubbleSize)
         #expect(reused.rowHeight == original.rowHeight)
         #expect(!reused.tail && reused.avatar == nil)
+        let view = BubbleView(frame: CGRect(origin: .zero, size: original.bubbleSize))
+        view.configure(original, messageID: message.id)
+        let body = try #require(view.layer?.sublayers?.compactMap { $0 as? TextLayer }.first)
+        body.displayIfNeeded()
+        #expect(!body.needsDisplay())
+        view.configure(reused, messageID: message.id)
+        #expect(!body.needsDisplay(), "A run's tail/avatar change retains the body's rasterized text")
         let ended = try layout(source)
         #expect(ended.body?.string === original.body?.string)
         #expect(ended.tail && (ended.avatar != nil) == isGroup)
@@ -42,9 +49,14 @@ struct TimelineRunLayoutTests {
         var edited = source
         edited.text = "Different synthetic text"
         let changed = try layout(edited)
+        view.configure(changed, messageID: message.id)
+        #expect(body.needsDisplay(), "An edit still redraws the body")
+        body.displayIfNeeded()
         #expect(changed.body?.string !== original.body?.string)
         #expect(changed.body?.string.string.contains("Different synthetic text") == true)
         let narrow = try layout(edited, limit: 180)
+        view.configure(narrow, messageID: message.id)
+        #expect(body.needsDisplay(), "A narrower reflow still redraws the body")
         #expect(narrow.widthLimit == 180)
         #expect(narrow.body?.string !== changed.body?.string)
     }

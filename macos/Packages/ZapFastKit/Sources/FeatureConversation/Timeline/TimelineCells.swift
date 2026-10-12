@@ -16,6 +16,9 @@ final class ChipCell: NSView {
     private let text = TextLayer()
     private var title: NSAttributedString?
     private var colors: BubbleColors?
+    private var chipSize = CGSize.zero
+    private(set) var rowHeight: CGFloat = 0
+    private var backingColorSpace: NSColorSpace?
 
     /// The chip's size and the row's height for a title. The day floating
     /// over the timeline is larger than the separators it stands in for.
@@ -66,10 +69,12 @@ final class ChipCell: NSView {
         let measured = Self.measure(title, large: large)
         self.title = measured.text
         self.colors = colors
+        chipSize = measured.chip
+        rowHeight = measured.rowHeight
         let pad = Self.padding(large: large)
         text.piece = TextPiece(string: measured.text, rect: CGRect(
             origin: CGPoint(x: pad.across, y: pad.down),
-            size: TimelineText.size(measured.text)
+            size: CGSize(width: measured.chip.width - pad.across * 2, height: measured.chip.height - pad.down * 2)
         ))
         setAccessibilityLabel(title)
         setAccessibilityRole(isHeader ? NSAccessibility.Role(rawValue: "AXHeading") : .staticText)
@@ -91,10 +96,7 @@ final class ChipCell: NSView {
     }
 
     private func placeChip() {
-        guard let title else { return }
-        let size = TimelineText.size(title)
-        let pad = Self.padding(large: large)
-        let chipSize = CGSize(width: size.width + pad.across * 2, height: size.height + pad.down * 2)
+        guard title != nil else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         chip.frame = CGRect(
@@ -126,7 +128,12 @@ final class ChipCell: NSView {
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
-        text.contentsScale = window?.backingScaleFactor ?? 2
+        guard let window else { return }
+        let scale = window.backingScaleFactor
+        let colorChanged = backingColorSpace != window.colorSpace
+        backingColorSpace = window.colorSpace
+        guard text.contentsScale != scale || colorChanged else { return }
+        text.contentsScale = scale
         text.setNeedsDisplay()
     }
 
@@ -164,6 +171,9 @@ final class HostingCell: NSTableCellView {
         super.init(frame: .zero)
         self.identifier = identifier
         host.sizingOptions = []
+        // The table owns row geometry and the viewport's toolbar/composer
+        // insets. Window safe areas must not re-inset or remeasure a row.
+        host.safeAreaRegions = []
         // Sized by its mask, not constraints of its own: constraints in
         // scrolled cells send each reuse through the window's layout pass.
         host.autoresizingMask = [.width, .height]

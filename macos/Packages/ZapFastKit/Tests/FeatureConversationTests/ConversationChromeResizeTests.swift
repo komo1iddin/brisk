@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 import ZapFastBridge
 @testable import ZapFastCore
@@ -107,5 +108,79 @@ struct ConversationChromeResizeTests {
         #expect(overlay.hitTest(.zero) == nil)
         model.apply([.messages(chat: "synthetic", messages: [message], older: false, complete: true)])
         try await wait { overlay.isHidden }
+    }
+
+    @Test func closedSearchDefersLayoutAndReopensAtTheResizedWidth() async throws {
+        let (model, detail, window) = fixture()
+        defer { window.close() }
+        let pane = try #require(detail.children.first as? ConversationViewController)
+        let search = try #require(pane.view.subviews.compactMap { $0 as? ResizeHostingView }.last)
+        #expect(search.isHidden)
+        window.setContentSize(CGSize(width: 1100, height: 600))
+        detail.view.layoutSubtreeIfNeeded()
+        model.openChatSearch(in: "synthetic")
+        try await wait { !search.isHidden }
+        detail.view.layoutSubtreeIfNeeded()
+        #expect(search.frame.width == pane.view.bounds.width)
+        #expect(search.frame.height > 0)
+        #expect(search.frame.minY == pane.view.safeAreaInsets.top)
+        model.closeChatSearch()
+        try await wait { search.isHidden }
+        model.openChatSearch(in: "synthetic")
+        try await wait { !search.isHidden }
+        detail.view.layoutSubtreeIfNeeded()
+        #expect(search.frame.height > 0)
+    }
+
+    @Test func hostedRowsAndFixedOverlayUseTableAndPaneGeometry() throws {
+        let cell = HostingCell(identifier: NSUserInterfaceItemIdentifier("fixture"))
+        cell.show(Text("Synthetic hosted row"))
+        let host = try #require(cell.subviews.first as? NSHostingView<AnyView>)
+        #expect(host.safeAreaRegions.isEmpty && host.sizingOptions.isEmpty)
+        for width in [CGFloat(300), 794, 1000] {
+            cell.frame.size = CGSize(width: width, height: 100)
+            #expect(host.frame == cell.bounds)
+        }
+        let (_, detail, window) = fixture()
+        defer { window.close() }
+        let pane = try #require(detail.children.first as? ConversationViewController)
+        let newest = try #require(pane.view.subviews.compactMap { $0 as? IslandHostingView }.first)
+        #expect(newest.safeAreaRegions.isEmpty)
+        let size = newest.frame.size
+        let trailing = pane.view.bounds.maxX - newest.frame.maxX
+        window.setContentSize(CGSize(width: 1100, height: 600))
+        detail.view.layoutSubtreeIfNeeded()
+        #expect(newest.frame.size == size)
+        #expect(pane.view.bounds.maxX - newest.frame.maxX == trailing)
+    }
+
+    @Test func chipResizeAndUnchangedBackingKeepTheirMeasuredText() throws {
+        let chip = ChipCell(frame: CGRect(x: 0, y: 0, width: 400, height: 60))
+        chip.large = true
+        chip.configure(title: "Synthetic day", isHeader: true, colors: BubbleColors(.standard))
+        let window = NSWindow(contentRect: chip.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = chip
+        defer { window.close() }
+        chip.viewDidChangeBackingProperties()
+        let drawing = try #require(chip.layer?.sublayers?.first)
+        let text = try #require(drawing.sublayers?.first as? TextLayer)
+        let height = chip.rowHeight
+        text.displayIfNeeded()
+        let shape = drawing.frame.size
+        chip.frame.size.width = 900
+        #expect(drawing.frame.size == shape && abs(drawing.frame.midX - 450) <= 0.5)
+        #expect(chip.rowHeight == height && !text.needsDisplay())
+        chip.viewDidChangeBackingProperties()
+        #expect(!text.needsDisplay())
+        text.contentsScale = window.backingScaleFactor / 2
+        chip.viewDidChangeBackingProperties()
+        #expect(text.contentsScale == window.backingScaleFactor && text.needsDisplay())
+        text.displayIfNeeded()
+        window.colorSpace = .adobeRGB1998
+        chip.viewDidChangeBackingProperties()
+        #expect(text.needsDisplay(), "A colour-space change still redraws at the same scale")
+        chip.configure(title: "A much longer synthetic day label", isHeader: true, colors: BubbleColors(.standard))
+        #expect(drawing.frame.width > shape.width)
     }
 }

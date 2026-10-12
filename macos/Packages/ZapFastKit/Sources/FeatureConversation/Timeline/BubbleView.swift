@@ -28,6 +28,7 @@ final class BubbleView: NSView {
     private var overBody = false
     private var overPicture = false
     private var pictureRest: Task<Void, Never>?
+    private var backingColorSpace: NSColorSpace?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -60,6 +61,8 @@ final class BubbleView: NSView {
     override var wantsUpdateLayer: Bool { true }
 
     func configure(_ layout: BubbleLayout, messageID: String, mediaScope: [String] = ["preview"]) {
+        let bodyChanged = body.piece?.string !== layout.body?.string
+            || body.piece?.rect.size != layout.body?.rect.size
         bubbleLayout = layout
         if let picture = layout.picture {
             let view = install(&pictureView, frame: picture.frame) { PictureView() }
@@ -101,7 +104,9 @@ final class BubbleView: NSView {
         body.frame = layout.body?.rect ?? .zero
         CATransaction.commit()
         chrome.setNeedsDisplay()
-        body.setNeedsDisplay()
+        // Tail/avatar/footer changes can retain the measured body. Moving
+        // that same text does not require rasterizing its glyphs again.
+        if bodyChanged { body.setNeedsDisplay() }
         overBody = false
         bodyHover?.cancel()
         // Another layout: whatever was marked is measured again.
@@ -245,11 +250,17 @@ final class BubbleView: NSView {
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
-        let scale = window?.backingScaleFactor ?? 2
-        chrome.contentsScale = scale
-        body.contentsScale = scale
-        chrome.setNeedsDisplay()
-        body.setNeedsDisplay()
+        // Removing a reused row from the window does not discard its
+        // bitmap. A different display must still redraw, including a
+        // colour-space change at the same scale.
+        guard let window else { return }
+        let scale = window.backingScaleFactor
+        let colorChanged = backingColorSpace != window.colorSpace
+        backingColorSpace = window.colorSpace
+        for layer in [chrome, body] where layer.contentsScale != scale || colorChanged {
+            layer.contentsScale = scale
+            layer.setNeedsDisplay()
+        }
     }
 
     func showBodyText(_ view: BodyTextView) {

@@ -76,7 +76,9 @@ final class ConversationViewController: NSViewController {
             view.addSubview(island)
         }
         overlay.sizingOptions = []
+        overlay.safeAreaRegions = []
         newest.sizingOptions = []
+        newest.safeAreaRegions = []
         // Only the button itself, while it shows, takes the pointer: the
         // 34-point circle in the middle of the island.
         newest.passesThrough = { [pane] point in
@@ -91,6 +93,7 @@ final class ConversationViewController: NSViewController {
         bottomBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.sizingOptions = [.intrinsicContentSize]
         searchBar.safeAreaRegions = []
+        searchBar.isHidden = true
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -198,6 +201,7 @@ final class ConversationViewController: NSViewController {
         }
         guard searching != pane.searching else { return }
         pane.searching = searching
+        searchBar.isHidden = !searching
         view.needsLayout = true
     }
 

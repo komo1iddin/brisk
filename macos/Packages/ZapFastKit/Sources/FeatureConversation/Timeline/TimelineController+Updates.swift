@@ -82,7 +82,13 @@ extension TimelineController {
             self.revision = revision
             let old = self.messages
             self.messages = messages
-            if old.first?.id != messages.first?.id || old.last?.id != messages.last?.id {
+            let delta = previousRevision.flatMap {
+                TimelineMutation.resolve(changes, after: $0, through: revision, previousCount: old.count, count: messages.count)
+            }
+            // A validated journal preserves all old IDs on an append or
+            // in-place update. Prune only when a window was replaced or
+            // records removed, rather than copying both caches per arrival.
+            if delta == nil {
                 let ids = Set(messages.map(\.id))
                 bubbleLayouts = bubbleLayouts.filter { ids.contains($0.key) }
                 hostedHeights = hostedHeights.filter { ids.contains($0.key) }
@@ -92,17 +98,18 @@ extension TimelineController {
             // or two in place: those rows alone are made again, not all of
             // them, which cost a frame or more in a long chat each time. A
             // message that arrives adds its own rows after the others.
-            if !rebuilds, !items.isEmpty, !preparing, let previousRevision,
-               let delta = TimelineMutation.resolve(changes, after: previousRevision, through: revision,
-                                                    previousCount: old.count, count: messages.count),
+            if !rebuilds, !items.isEmpty, !preparing, let delta,
                messages.count - old.count <= backgroundThreshold {
-                refresh(delta.filter { $0 < old.count }.map { messages[$0] })
-                if messages.count > old.count, let last = old.last { append(messages[old.count...], after: last) }
+                let edited = delta.filter { $0 < old.count }.map { messages[$0] }
+                if messages.count > old.count, let last = old.last {
+                    append(messages[old.count...], after: last, edited: edited)
+                } else {
+                    refresh(edited)
+                }
             } else if !rebuilds, let edited = editedInPlace(from: old, to: messages) {
                 refresh(edited)
             } else if !rebuilds, let change = appended(from: old, to: messages) {
-                refresh(change.edited)
-                append(change.arrived, after: change.last)
+                append(change.arrived, after: change.last, edited: change.edited)
             } else {
                 rebuilds = true
             }
@@ -165,17 +172,11 @@ extension TimelineController {
     /// the list is added to in place rather than compared with a new one:
     /// in a long chat that copying and comparing was most of a message's
     /// cost.
-    func append(_ arrived: Slice<MessageHistory>, after last: MessageRecord) {
+    func append(_ arrived: Slice<MessageHistory>, after last: MessageRecord, edited: [MessageRecord] = []) {
         let rows = TimelineRow.build([last] + Array(arrived), unread: unread)
         guard let lastRow = rows.firstIndex(where: { $0.id == last.id }) else {
             rebuild()
             return
-        }
-        // The last message ends its run no more when the first to arrive
-        // continues it: its row loses the sender's photo and the tail.
-        if case let .message(_, _, endsRun) = rows[lastRow], let index = itemIndex[last.id],
-           case let .message(message, startsRun, ended)? = items[index].row, ended != endsRun {
-            refresh(rows: [(index, .message(message, startsRun: startsRun, endsRun: endsRun))])
         }
         let resolved = resolve(Array(rows[(lastRow + 1)...]))
         let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
@@ -188,10 +189,22 @@ extension TimelineController {
         let anchor = follow ? nil : readingAnchor()
         let start = items.count
         let before = clip.bounds.minY
-        plans += resolved
-        items += added
-        for (offset, item) in added.enumerated() { itemIndex[item.id] = start + offset }
-        tableView.insertRows(at: IndexSet(integersIn: start..<items.count), withAnimation: [])
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0
+            tableView.beginUpdates()
+            refresh(edited, preservePosition: false)
+            // The former last row loses its tail/avatar when the run continues.
+            // Update it with the insertion and restore the scroll position once.
+            if case let .message(_, _, endsRun) = rows[lastRow], let index = itemIndex[last.id],
+               case let .message(message, startsRun, ended)? = items[index].row, ended != endsRun {
+                refresh(rows: [(index, .message(message, startsRun: startsRun, endsRun: endsRun))], preservePosition: false)
+            }
+            plans += resolved
+            items += added
+            for (offset, item) in added.enumerated() { itemIndex[item.id] = start + offset }
+            tableView.insertRows(at: IndexSet(integersIn: start..<items.count), withAnimation: [])
+            tableView.endUpdates()
+        }
         if follow {
             scrollToBottom()
             animateArrival(rows: start..<items.count, shift: clip.bounds.minY - before)
@@ -209,7 +222,7 @@ extension TimelineController {
 
     /// Makes the rows of `edited` again, where they are, and tells the table
     /// of those that changed; the reader stays where they were.
-    private func refresh(_ edited: [MessageRecord]) {
+    private func refresh(_ edited: [MessageRecord], preservePosition: Bool = true) {
         var rows: [(index: Int, row: TimelineRow)] = []
         // Messages whose picture changed (a document's page preview came):
         // the quotes of them show it too.
@@ -227,16 +240,16 @@ extension TimelineController {
                 rows.append((index, .message(message, startsRun: startsRun, endsRun: endsRun)))
             }
         }
-        refresh(rows: rows)
+        refresh(rows: rows, preservePosition: preservePosition)
     }
 
     /// Makes these rows again, in place.
-    private func refresh(rows: [(index: Int, row: TimelineRow)]) {
+    private func refresh(rows: [(index: Int, row: TimelineRow)], preservePosition: Bool = true) {
         guard !rows.isEmpty else { return }
         let limit = widthLimit > 0 ? widthLimit : currentWidthLimit()
         let resolved = resolve(rows.map(\.row))
         let follow = followsBottom
-        let anchor = follow ? nil : readingAnchor()
+        let anchor = preservePosition && !follow ? readingAnchor() : nil
         var changed = IndexSet()
         var resized = IndexSet()
         for ((index, _), plan) in zip(rows, resolved) {
@@ -252,6 +265,7 @@ extension TimelineController {
         guard !changed.isEmpty else { return }
         // The same rows in the same places: the index holds.
         reload(changed, resized: resized)
+        guard preservePosition else { return }
         if follow {
             scrollToBottom()
         } else if let anchor, !resized.isEmpty {
@@ -400,8 +414,23 @@ extension TimelineController {
             chipHeights[title] = height
             return .chip(id: id, title: title, isDay: isDay, height: height)
         case let .bubble(row, source):
-            if let cached = bubbleLayouts[source.id], cached.source == source, cached.layout.widthLimit == limit {
-                return .bubble(row, cached.layout)
+            if let cached = bubbleLayouts[source.id], cached.layout.widthLimit == limit {
+                if cached.source == source { return .bubble(row, cached.layout) }
+                // A continuing run changes only its former last bubble's
+                // tail and avatar. Those do not affect text or media size.
+                // Keep immutable measured parts instead of typesetting it
+                // again for each arrival. Every other source field must match.
+                var previous = cached.source
+                previous.endsRun = source.endsRun
+                previous.avatarName = source.avatarName
+                if previous == source {
+                    var parts = cached.layout.parts
+                    parts.tail = source.endsRun && !parts.bare
+                    parts.avatar = source.avatarName.map { .init(personID: source.senderID, name: $0) }
+                    let layout = BubbleLayout(parts)
+                    bubbleLayouts[source.id] = (source, layout)
+                    return .bubble(row, layout)
+                }
             }
             let layout = TimelineLayoutEngine.layout(for: source, widthLimit: limit)
             bubbleLayouts[source.id] = (source, layout)

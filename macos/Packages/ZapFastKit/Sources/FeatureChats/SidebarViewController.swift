@@ -38,9 +38,9 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
     private lazy var tableScroll = table.makeScrollView()
     private let searchField = NSSearchField()
     private let searchBar = NSView()
-    private let results = NSHostingView(rootView: AnyView(EmptyView()))
-    private let empty = PassiveHostingView(rootView: AnyView(EmptyView()))
-    private let sync = NSHostingView(rootView: AnyView(EmptyView()))
+    private let results = SidebarHostingView(layoutName: "SidebarResultsLayout")
+    private let empty = SidebarHostingView(layoutName: "SidebarEmptyLayout", passive: true)
+    private let sync = SidebarHostingView(layoutName: "SidebarSyncLayout")
     private let presenters = PassiveHostingView(rootView: AnyView(EmptyView()))
     private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
     private lazy var accountsMenu = model.hub.map { AccountsMenu(hub: $0) }
@@ -311,8 +311,8 @@ public final class SidebarViewController: NSViewController, NSSearchFieldDelegat
         let below = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - bottom))
         tableScroll.frame = below
         let content = CGRect(x: 0, y: top, width: bounds.width, height: max(0, below.height - top))
-        results.frame = content
-        empty.frame = content
+        if !results.isHidden { results.frame = content }
+        if !empty.isHidden { empty.frame = content }
         presenters.frame = CGRect(x: 0, y: top, width: 1, height: 1)
     }
 

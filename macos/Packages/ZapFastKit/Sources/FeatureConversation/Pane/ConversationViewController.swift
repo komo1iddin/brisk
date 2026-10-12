@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import OSLog
 import SwiftUI
 import ZapFastBridge
 import ZapFastCore
@@ -39,7 +40,7 @@ final class ConversationViewController: NSViewController {
     private var reader: TimelineReader
     private let timeline = TimelineController()
     private let pane = ConversationPaneState()
-    private let overlay = IslandHostingView(rootView: AnyView(EmptyView()))
+    private let overlay = ResizeHostingView(layoutName: "EmptyOverlayLayout", passive: true)
     private let newest = IslandHostingView(rootView: AnyView(EmptyView()))
     private let bottomBar = ResizeHostingView(layoutName: "ComposerLayout")
     /// The chat's search, over the top of the timeline. It sizes itself:
@@ -76,8 +77,6 @@ final class ConversationViewController: NSViewController {
         }
         overlay.sizingOptions = []
         newest.sizingOptions = []
-        // A picture only: clicks and scrolling go to the timeline under it.
-        overlay.passesThrough = { _ in true }
         // Only the button itself, while it shows, takes the pointer: the
         // 34-point circle in the middle of the island.
         newest.passesThrough = { [pane] point in
@@ -136,11 +135,22 @@ final class ConversationViewController: NSViewController {
     private func showIslands() {
         let chatID = chatID
         let model = model
-        overlay.rootView = AnyView(ConversationOverlay(pane: pane).chatStyle(chatID, model: model))
+        showOverlay(force: true)
         newest.rootView = AnyView(NewestMessageIsland(pane: pane) { [weak self] in self?.timeline.perform(.bottom) }.chatStyle(chatID, model: model))
         // A new composer for each chat, as the SwiftUI view made one.
         bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model, pane: pane).id(chatID).chatStyle(chatID, model: model))
         searchBar.rootView = AnyView(ChatSearchBar(chatID: chatID, model: model, reader: reader).id(chatID).chatStyle(chatID, model: model))
+    }
+
+    private func showOverlay(force: Bool = false) {
+        let hidden = !pane.empty && !pane.loadingOlder
+        guard force || overlay.isHidden != hidden else { return }
+        // Remove the delayed spinner when hidden. The next load starts a
+        // fresh task, even if its previous state was deferred off screen.
+        overlay.rootView = hidden ? AnyView(EmptyView())
+            : AnyView(ConversationOverlay(pane: pane).chatStyle(chatID, model: model))
+        overlay.isHidden = hidden
+        view.needsLayout = true
     }
 
     /// The timeline scrolls under the title bar and under the composer, its
@@ -160,7 +170,7 @@ final class ConversationViewController: NSViewController {
         let soft = (bar * BottomBandView.share).rounded()
         bottomBand.frame = CGRect(x: 0, y: max(0, bounds.height - soft), width: bounds.width, height: min(bounds.height, soft))
         bottomBand.isHidden = bar == 0
-        overlay.frame = frame
+        if !overlay.isHidden { overlay.frame = frame }
         let size = NewestMessageIsland.size
         // In the microphone's column, just above the composer: the island is
         // 8 points wider than its button on each side.
@@ -235,6 +245,7 @@ final class ConversationViewController: NSViewController {
         if pane.empty != inputs.empty { pane.empty = inputs.empty }
         if pane.loadingOlder != inputs.loadingOlder { pane.loadingOlder = inputs.loadingOlder }
         if pane.closedChat != inputs.closedChat { pane.closedChat = inputs.closedChat }
+        showOverlay()
 
         if inputs.style.theme.key != titleBandTheme {
             titleBandTheme = inputs.style.theme.key
@@ -432,7 +443,14 @@ final class BottomBandView: NSVisualEffectView {
 /// A SwiftUI island over or under the timeline that lets the pointer
 /// through where `passesThrough` says, in its own flipped coordinates.
 final class IslandHostingView: NSHostingView<AnyView> {
+    private static let signposter = OSSignposter(subsystem: "ZapFast", category: .pointsOfInterest)
     var passesThrough: (NSPoint) -> Bool = { _ in false }
+
+    override func layout() {
+        let interval = Self.signposter.beginInterval("OverlayLayout")
+        super.layout()
+        Self.signposter.endInterval("OverlayLayout", interval)
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let superview else { return nil }

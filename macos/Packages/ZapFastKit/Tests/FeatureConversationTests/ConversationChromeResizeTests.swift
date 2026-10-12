@@ -69,7 +69,7 @@ struct ConversationChromeResizeTests {
         let (model, detail, window) = fixture()
         defer { window.close() }
         let pane = try #require(detail.children.first as? ConversationViewController)
-        let islands = pane.view.subviews.compactMap { $0 as? ResizeHostingView }
+        let islands = Array(pane.view.subviews.compactMap { $0 as? ResizeHostingView }.suffix(2))
         #expect(islands.count == 2 && islands.allSatisfy { $0.safeAreaRegions.isEmpty })
         let composer = try #require(islands.first)
         let height = composer.frame.height
@@ -81,5 +81,31 @@ struct ConversationChromeResizeTests {
         model.openChatSearch(in: "synthetic")
         detail.view.layoutSubtreeIfNeeded()
         #expect(composer.frame.maxY == pane.view.bounds.maxY)
+    }
+
+    @Test func emptyOverlayDefersResizeAndReturnsAtTheCurrentSize() async throws {
+        let (model, detail, window) = fixture()
+        defer { window.close() }
+        let pane = try #require(detail.children.first as? ConversationViewController)
+        let overlay = try #require(pane.view.subviews.compactMap { $0 as? ResizeHostingView }.first)
+        let message = MessageRecord(id: "fixture", chat: "synthetic", sender: "sender", senderName: nil,
+            fromMe: false, timestamp: 1, content: .text(text: "Synthetic fixture", preview: nil), status: .none,
+            deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false, mentions: [],
+            forwarded: false, thumbnail: nil, summary: "")
+        model.apply([.messages(chat: "synthetic", messages: [message], older: false, complete: true)])
+        try await wait { overlay.isHidden }
+        let before = overlay.frame
+        window.setContentSize(CGSize(width: 900, height: 600))
+        detail.view.layoutSubtreeIfNeeded()
+        #expect(overlay.frame == before)
+        model.apply([.chatCleared(chat: "synthetic", through: .max)])
+        try await wait { !overlay.isHidden }
+        detail.view.layoutSubtreeIfNeeded()
+        #expect(overlay.frame.width == pane.view.bounds.width)
+        let composer = try #require(pane.view.subviews.compactMap { $0 as? ResizeHostingView }.dropFirst().first)
+        #expect(overlay.frame.maxY == composer.frame.minY)
+        #expect(overlay.hitTest(.zero) == nil)
+        model.apply([.messages(chat: "synthetic", messages: [message], older: false, complete: true)])
+        try await wait { overlay.isHidden }
     }
 }

@@ -62,6 +62,14 @@ updates account for only changed records. Timeline layouts and hosted row
 heights are pruned to the current window, so traversing an archive does not
 leave old text layouts retained indefinitely.
 
+The validated revision journal keeps existing layout caches on ordinary
+arrivals and in-place updates. Replaced windows and deletions prune them,
+including deletions inside unchanged window edges. A continuing message run
+reuses its former last bubble's immutable measured text when only the tail
+and avatar change. Changes to content, styling or width still measure anew.
+Coalesced edits and appended rows share one table update and restore the
+reading position once.
+
 A width-only resize keeps the vertical position without forcing a nested
 layout pass. Narrower bubble widths reflow on the background layout scheduler
 and restore the reading anchor. Live resize defers that reflow until the drag
@@ -74,6 +82,12 @@ skip window-driven layout work and schedule deferred content layout on reveal. T
 search islands use AppKit's insets without repeating SwiftUI window
 safe-area geometry calculations. Passive layout signposts contain role
 names only, without chat or message identifiers.
+
+The empty/loading overlay and hidden sidebar results and empty state also
+defer resize work until shown. Revealing them schedules layout at the current
+bounds. Removing a loading overlay resets its delayed spinner, so a later
+history request starts a fresh delay. The newest-message button retains its
+existing transition.
 
 These limits bound retained message payloads, not total process memory.
 SQLite/FFI batches, decoded media, view layers, active jobs, explicit action

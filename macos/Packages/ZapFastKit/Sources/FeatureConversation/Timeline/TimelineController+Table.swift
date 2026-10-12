@@ -34,18 +34,35 @@ extension TimelineController {
 
     private func checkWidth() {
         let limit = currentWidthLimit()
+        widthRelayoutTask?.cancel()
+        widthRelayoutTask = nil
         guard !items.isEmpty, limit != widthLimit else { return }
         if scrollView.inLiveResize {
             // Rows keep their layout during the drag; bubbles stay against
             // their edge.
             relayoutAfterLiveResize = true
         } else {
-            prepare(limit: limit)
+            // Split-view and programmatic window animations do not set
+            // inLiveResize. Measuring the whole window for every intermediate
+            // width kept all layout workers busy, only to cancel their work.
+            widthRelayoutTask = Task { [weak self] in
+                do { try await Task.sleep(for: .milliseconds(80)) }
+                catch { return }
+                guard !Task.isCancelled, let self else { return }
+                self.widthRelayoutTask = nil
+                let limit = self.currentWidthLimit()
+                guard !self.items.isEmpty, limit != self.widthLimit else { return }
+                if self.scrollView.inLiveResize { self.relayoutAfterLiveResize = true }
+                else { self.prepare(limit: limit) }
+            }
         }
     }
 
     func liveResizeEnded() {
-        guard relayoutAfterLiveResize else { return }
+        let scheduled = widthRelayoutTask != nil
+        widthRelayoutTask?.cancel()
+        widthRelayoutTask = nil
+        guard relayoutAfterLiveResize || scheduled else { return }
         relayoutAfterLiveResize = false
         let limit = currentWidthLimit()
         if limit != widthLimit { prepare(limit: limit) }

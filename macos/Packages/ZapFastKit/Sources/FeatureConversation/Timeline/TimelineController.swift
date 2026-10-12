@@ -157,6 +157,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var reactionTarget: MessageKey?
     var namesChanged = false
     var widthCheckScheduled = false
+    var widthRelayoutTask: Task<Void, Never>?
     var reachTopScheduled = false
     var relayoutAfterLiveResize = false
     var observers: [NSObjectProtocol] = []
@@ -247,6 +248,7 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     }
 
     isolated deinit {
+        widthRelayoutTask?.cancel()
         layoutCancellation.cancel()
         layoutTask?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)

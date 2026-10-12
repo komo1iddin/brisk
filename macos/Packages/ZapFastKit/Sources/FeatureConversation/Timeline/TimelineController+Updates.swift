@@ -40,6 +40,8 @@ extension TimelineController {
             observeReactionTarget()
         }
         if chatID != self.chatID || isGroup != self.isGroup {
+            widthRelayoutTask?.cancel()
+            widthRelayoutTask = nil
             self.chatID = chatID
             self.isGroup = isGroup
             self.revision = nil

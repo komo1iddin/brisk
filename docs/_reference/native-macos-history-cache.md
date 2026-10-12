@@ -76,6 +76,10 @@ and restore the reading anchor. Live resize defers that reflow until the drag
 ends. Height and composer-inset changes preserve the bottom when following
 new messages. The composer's fading blur uses an AppKit material and layer
 mask, avoiding a full-width SwiftUI material layout during resize.
+Split-view and programmatic width changes settle for 80 ms before measuring
+the final bubble width. Intermediate changes cancel the pending request;
+returning to the measured width avoids a reflow. Ending live resize flushes
+pending width work immediately. The visible reading anchor survives reflow.
 Invisible wallpaper and the hidden no-chat placeholder keep their frames
 until shown, when they catch up to the pane's bounds. Hidden hosting views
 skip window-driven layout work and schedule deferred content layout on reveal. The composer and

@@ -95,6 +95,15 @@ private final class BenchmarkRun: NSObject {
         model.start()
         await waitUntil { self.model.isLinked && self.mainWindow() != nil }
         window = mainWindow()
+        if ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_FLOATING"] == "1" {
+            // Diagnostic profiling on a desktop covered by another app.
+            // This mode is excluded from ordinary A/B timings.
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            window.level = .floating
+            window.orderFrontRegardless()
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
         window.setFrame(NSRect(x: 60, y: 60, width: 1100, height: 740), display: true)
         // A pointer resting on the window makes hover views in the rows it
         // crosses, which varied results from run to run; runs leave it out
@@ -297,6 +306,8 @@ private final class BenchmarkRun: NSObject {
         duration: Double,
         direction: @escaping (Double) -> Double = { _ in -1 }
     ) async -> BenchmarkReport.Scroll {
+        print("BENCHMARK_SCROLL_START rows=\(timeline?.numberOfRows ?? -1) visible=\(window.occlusionState.contains(.visible)) screen=\(window.screen != nil)")
+        fflush(stdout)
         self.speed = speed
         self.direction = direction
         self.duration = duration
@@ -351,6 +362,8 @@ private final class BenchmarkRun: NSObject {
             budgets.append(frameBudget)
             elapsed += delta
         } else {
+            print("BENCHMARK_SCROLL_FIRST_FRAME rows=\(timeline?.numberOfRows ?? -1)")
+            fflush(stdout)
             delta = frameBudget
         }
         lastTimestamp = link.timestamp

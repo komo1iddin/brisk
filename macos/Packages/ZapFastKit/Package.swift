@@ -164,5 +164,10 @@ let package = Package(
             dependencies: ["FeatureCalls", "ZapFastCore"],
             swiftSettings: uiSettings
         ),
+        .testTarget(
+            name: "ZapFastShellTests",
+            dependencies: ["ZapFastShell"],
+            swiftSettings: uiSettings
+        ),
     ]
 )

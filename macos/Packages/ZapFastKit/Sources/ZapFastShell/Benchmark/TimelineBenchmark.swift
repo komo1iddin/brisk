@@ -88,6 +88,9 @@ private final class BenchmarkRun: NSObject {
     private var windowActivity: [String: BenchmarkReport.WindowActivity] = [:]
     private var resizeBatchMainThreadMs = 0.0
     private var resizeBatchProcessCPUms = 0.0
+    private var resizeSamples: [BenchmarkReport.ResizeSample] = []
+    private let resizeScenario = ResizeScenario(requestedRounds: ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_RESIZE_ROUNDS"])
+    private weak var cachedTimeline: NSTableView?
     private let resizeHoldMs = max(0, ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_RESIZE_HOLD_MS"].flatMap(Double.init) ?? 0)
 
     init(model: AppModel, backend: BenchmarkBackend) {
@@ -191,7 +194,9 @@ private final class BenchmarkRun: NSObject {
             integrity: integrity,
             windowActivity: windowActivity,
             resizeBatchMainThreadMs: resizeBatchMainThreadMs,
-            resizeBatchProcessCPUms: resizeBatchProcessCPUms
+            resizeBatchProcessCPUms: resizeBatchProcessCPUms,
+            resizeSamples: resizeSamples,
+            resizeRounds: resizeScenario.rounds
         )
     }
 
@@ -338,6 +343,8 @@ private final class BenchmarkRun: NSObject {
         work = []
         let rowsAtStart = timeline?.numberOfRows ?? 0
         let pagesAtStart = backend.pagesServed
+        let mainCPU = Self.mainThreadCPU()
+        let processCPU = Self.processCPU()
 
         await withCheckedContinuation { continuation in
             self.continuation = continuation
@@ -346,6 +353,8 @@ private final class BenchmarkRun: NSObject {
             link.add(to: .main, forMode: .common)
             self.link = link
         }
+        let mainThreadMs = Self.mainThreadCPU() - mainCPU
+        let processCPUms = Self.processCPU() - processCPU
         await pause(.milliseconds(300))
         if let table = timeline { integrity.add(audit(table), at: .rest) }
 
@@ -368,7 +377,9 @@ private final class BenchmarkRun: NSObject {
             frameWorkMs: .init(work.map { $0 * 1000 }),
             frameIntervalMs: .init(intervals.map { $0 * 1000 }),
             hitches: hitches,
-            hitchTimeRatioMsPerSecond: elapsed > 0 ? hitchTime * 1000 / elapsed : 0
+            hitchTimeRatioMsPerSecond: elapsed > 0 ? hitchTime * 1000 / elapsed : 0,
+            mainThreadMs: mainThreadMs,
+            processCPUms: processCPUms
         )
     }
 
@@ -543,42 +554,50 @@ private final class BenchmarkRun: NSObject {
         await pause(.milliseconds(500))
         let burst = Self.signposter.beginInterval("ResizeBurst")
         let mainCPU = Self.mainThreadCPU()
-        let processCPU = Double(clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID)) / 1_000_000
+        let processCPU = Self.processCPU()
         defer {
             resizeBatchMainThreadMs = Self.mainThreadCPU() - mainCPU
-            resizeBatchProcessCPUms = Double(clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID)) / 1_000_000 - processCPU
+            resizeBatchProcessCPUms = Self.processCPU() - processCPU
             Self.signposter.endInterval("ResizeBurst", burst)
         }
         let original = window.frame
         var steps: [Double] = []
-        for index in 1...10 {
-            checkWindow("Resize")
-            let interval = Self.signposter.beginInterval("ResizeStep")
-            let start = CACurrentMediaTime()
-            var frame = original
-            frame.size.width -= CGFloat(index * 8)
-            window.setFrame(frame, display: true)
-            window.contentView?.layoutSubtreeIfNeeded()
-            window.displayIfNeeded()
-            CATransaction.flush()
-            steps.append((CACurrentMediaTime() - start) * 1000)
-            Self.signposter.endInterval("ResizeStep", interval)
-            checkWindow("Resize")
-            if let table = timeline { integrity.add(audit(table), at: .resize) }
-            // A turn of the run loop, as between the frames of a drag.
-            await pause(.milliseconds(16))
-            if let table = timeline { integrity.add(audit(table), at: .resize) }
-        }
-        // A held final width must finish its useful reflow, unlike a burst
-        // that immediately returns to the already-measured original width.
-        if resizeHoldMs > 0 {
-            await pause(.seconds(resizeHoldMs / 1000))
-            checkWindow("ResizeHold")
+        for round in 1...resizeScenario.rounds {
+            for index in 1...ResizeScenario.steps {
+                checkWindow("Resize")
+                let interval = Self.signposter.beginInterval("ResizeStep")
+                let start = CACurrentMediaTime()
+                let stepMainCPU = Self.mainThreadCPU()
+                let stepProcessCPU = Self.processCPU()
+                var frame = original
+                frame.size.width -= CGFloat(index * ResizeScenario.pointsPerStep)
+                window.setFrame(frame, display: true)
+                window.contentView?.layoutSubtreeIfNeeded()
+                window.displayIfNeeded()
+                CATransaction.flush()
+                let wallMs = (CACurrentMediaTime() - start) * 1000
+                resizeSamples.append(.init(round: round, step: index, windowWidth: frame.width, wallMs: wallMs,
+                                           mainThreadMs: Self.mainThreadCPU() - stepMainCPU,
+                                           processCPUms: Self.processCPU() - stepProcessCPU))
+                steps.append(wallMs)
+                Self.signposter.endInterval("ResizeStep", interval)
+                checkWindow("Resize")
+                if let table = timeline { integrity.add(audit(table), at: .resize) }
+                // A turn of the run loop, as between the frames of a drag.
+                await pause(.milliseconds(16))
+                if let table = timeline { integrity.add(audit(table), at: .resize) }
+            }
+            // A held final width must finish its useful reflow, unlike a burst
+            // that immediately returns to the already-measured original width.
+            if resizeHoldMs > 0 {
+                await pause(.seconds(resizeHoldMs / 1000))
+                checkWindow("ResizeHold")
+                if let table = timeline { integrity.add(audit(table), at: .rest) }
+            }
+            window.setFrame(original, display: true)
+            await pause(.milliseconds(100))
             if let table = timeline { integrity.add(audit(table), at: .rest) }
         }
-        window.setFrame(original, display: true)
-        await pause(.milliseconds(100))
-        if let table = timeline { integrity.add(audit(table), at: .rest) }
         return steps
     }
 
@@ -596,7 +615,13 @@ private final class BenchmarkRun: NSObject {
 
     /// The open chat's message table.
     private var timeline: NSTableView? {
-        window?.contentView.flatMap(Self.findTimeline)
+        if let cachedTimeline, cachedTimeline.window === window { return cachedTimeline }
+        cachedTimeline = window?.contentView.flatMap(Self.findTimeline)
+        return cachedTimeline
+    }
+
+    private static func processCPU() -> Double {
+        Double(clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID)) / 1_000_000
     }
 
     private static func findTimeline(in view: NSView) -> NSTableView? {

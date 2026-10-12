@@ -56,6 +56,19 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
         /// Apple's hitch metric: milliseconds of hitch per second of scrolling.
         /// Under 5 is "good", over 10 is "bad".
         var hitchTimeRatioMsPerSecond: Double
+        /// CPU over the display-link run, including work between frames.
+        /// Excludes the final 300 ms settling pause. Absent in older reports.
+        var mainThreadMs: Double? = nil
+        var processCPUms: Double? = nil
+    }
+
+    struct ResizeSample: Codable, Sendable {
+        var round: Int
+        var step: Int
+        var windowWidth: Double
+        var wallMs: Double
+        var mainThreadMs: Double
+        var processCPUms: Double
     }
 
     /// Main-thread CPU time an event costs, less an idle baseline.
@@ -134,6 +147,10 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     var windowActivity: [String: WindowActivity] = [:]
     var resizeBatchMainThreadMs: Double = 0
     var resizeBatchProcessCPUms: Double = 0
+    /// Raw steps distinguish scheduling delays from CPU work. Ten steps
+    /// make the current p95 equal to the maximum; repeated rounds do not.
+    var resizeSamples: [ResizeSample]? = nil
+    var resizeRounds: Int? = nil
 
     var summary: String {
         func ms(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }

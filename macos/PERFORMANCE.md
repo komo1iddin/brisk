@@ -16,9 +16,18 @@ open -n -a Build/DerivedData/Build/Products/Release/ZapFast.app --env ZAPFAST_BE
 The report lands in `~/Library/Caches/<bundle id>/benchmarks/`. Things
 that decide whether two numbers can be compared:
 
-- **Launch through LaunchServices** (`open`), as above: the app is then
-  active and focused, as a person uses it. Launching the binary directly
-  gives other numbers.
+- **Verify activity and visibility.** Launch through LaunchServices (`open`),
+  or activate an isolated synthetic child before measurement. Every recorded
+  `windowActivity` check must be active and visible, with nominal thermal
+  state. Exclude the whole run if those conditions fail. Profiling and
+  floating-window diagnostics are separate from unprofiled A/B timings.
+- **Use enough resize samples.** `ZAPFAST_BENCHMARK_RESIZE_ROUNDS=4`
+  repeats the same ten 8 pt steps, restoring the width between rounds.
+  The default remains one round. With only ten samples the current p95 is
+  the maximum. `resizeSamples` records wall, main-thread and process CPU
+  for each step; batch CPU includes run-loop pauses and width restoration.
+  Scroll CPU fields cover the display-link run, before its final settling
+  pause, and include work outside the timed frame callback.
 - **Compare A/B, alternating.** Results depend a lot on what else the Mac
   is doing. Build the old commit in a worktree, copy both `.app`s aside,
   and run old, new, old, new, at least three times each. The first run

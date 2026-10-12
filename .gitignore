@@ -14,3 +14,6 @@
 /packaging/flatpak/flatpak-cargo-generator.py
 /.flatpak-builder/
 /build-dir/
+
+# Local audit runs and their evidence stay out of the repository.
+/macos/audit/

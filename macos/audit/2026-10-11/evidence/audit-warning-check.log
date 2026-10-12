@@ -1,2 +1,0 @@
-[WORKSPACE]/macos/Packages/ZapFastKit/Sources/FeatureConversation/Info/ChatInfoPanel.swift:140:29: warning: Storing a closure in '@Entry var dismissInfo' may invalidate dependents on every update because closures may not be comparable. (from macro 'Entry ')
-[WORKSPACE]/macos/Packages/ZapFastKit/Sources/ZapFastShell/Debug/DebugCommands.swift:613:29: warning: use '#selector' instead of explicitly constructing a 'Selector'

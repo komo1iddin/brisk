@@ -132,7 +132,7 @@ extension AppModel {
 
     /// Upstream plays the next voice message of a run by itself.
     func continueVoice(after key: MessageKey) {
-        let messages = conversations.conversation(key.chat).messages
+        let messages = actionMessages(in: key.chat, containing: key.message)
         guard let index = messages.firstIndex(where: { $0.id == key.message }),
               messages.indices.contains(index + 1) else { return }
         let next = messages[index + 1]
@@ -244,7 +244,7 @@ extension AppModel {
     /// Deletes the message the person confirmed, if it is still here.
     public func performDeletion(_ deletion: MessageDeletion) {
         messageDeletion = nil
-        guard let message = conversations.conversation(deletion.key.chat).message(deletion.key.message) else { return }
+        guard let message = loadedMessage(chat: deletion.key.chat, id: deletion.key.message) else { return }
         if deletion.forEveryone {
             guard canRevoke(message) else { return }
             deleteForEveryone(message)

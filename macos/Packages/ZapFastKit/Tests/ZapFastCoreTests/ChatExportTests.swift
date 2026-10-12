@@ -11,6 +11,9 @@ private final class FakeReader: ChatReaderProtocol, @unchecked Sendable {
 
     init(_ messages: [MessageRecord]) { self.messages = messages }
 
+    func message(chat: String, id: String) throws -> MessageRecord? { messages.first { $0.chat == chat && $0.id == id } }
+    func selectedIds(chat: String, ids: [String]) throws -> [String] { messages.filter { $0.chat == chat && ids.contains($0.id) }.map(\.id) }
+
     func census(chat: String) throws -> ChatCensus {
         ChatCensus(messages: UInt64(messages.count), oldest: messages.first?.timestamp, media: [])
     }

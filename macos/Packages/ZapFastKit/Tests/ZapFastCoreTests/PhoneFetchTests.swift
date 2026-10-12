@@ -163,6 +163,8 @@ struct PhoneFetchTests {
     private final class Reader: ChatReaderProtocol, @unchecked Sendable {
         let census: ChatCensus
         init(_ census: ChatCensus) { self.census = census }
+        func message(chat: String, id: String) throws -> MessageRecord? { nil }
+        func selectedIds(chat: String, ids: [String]) throws -> [String] { [] }
         func census(chat: String) throws -> ChatCensus { census }
         func page(chat: String, before: PageKey?, limit: UInt32) throws -> [MessageRecord] { [] }
     }

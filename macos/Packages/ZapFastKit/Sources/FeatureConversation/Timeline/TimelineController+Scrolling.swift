@@ -7,7 +7,7 @@ extension TimelineController {
     var clip: NSClipView { scrollView.contentView }
 
     var isAtBottom: Bool {
-        clip.bounds.maxY >= tableView.bounds.height - edgeSlack
+        !hasNewer && clip.bounds.maxY >= tableView.bounds.height - edgeSlack
     }
 
     /// Where the timeline goes in its pane, the room left at its top for
@@ -70,7 +70,9 @@ extension TimelineController {
     func perform(_ kind: TimelineScroll) {
         switch kind {
         case .bottom:
-            scrollToBottom(animated: true)
+            followsBottom = true
+            if hasNewer { onWantNewest() }
+            else { scrollToBottom(animated: true) }
         case .top:
             scroll(toY: -clip.contentInsets.top)
         case .pageUp, .pageDown:
@@ -166,7 +168,7 @@ extension TimelineController {
     /// the next turn: this can run inside a SwiftUI update.
     func report() {
         if followsBottom { newBelow = 0 }
-        let state = ScrollState(atBottom: followsBottom, newBelow: newBelow)
+        let state = ScrollState(atBottom: followsBottom && !hasNewer, newBelow: newBelow)
         guard state != reported else { return }
         reported = state
         let onScrollState = onScrollState
@@ -178,7 +180,17 @@ extension TimelineController {
         // A page hung from a name or photo goes with what scrolls away.
         if senderPopover?.isShown == true { senderPopover?.close() }
         followsBottom = isAtBottom
+        onReadingAnchor(readingAnchor()?.id, followsBottom)
         report()
+        if hasNewer, tableView.bounds.height - clip.bounds.maxY < prefetchDistance,
+           !items.isEmpty, !reachBottomScheduled {
+            reachBottomScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.reachBottomScheduled = false
+                self.onReachBottom()
+            }
+        }
         guard clip.bounds.minY + clip.contentInsets.top < prefetchDistance, !items.isEmpty, !reachTopScheduled else {
             return
         }

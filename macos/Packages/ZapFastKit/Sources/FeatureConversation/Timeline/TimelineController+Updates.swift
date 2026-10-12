@@ -46,11 +46,11 @@ extension TimelineController {
             senderPopover?.close()
             hideFloatingDay(immediately: true)
             setItems([])
-            // Layouts and heights stay, keyed by message: going back to a
-            // chat read a moment ago measures nothing again. Only their
-            // number is bounded.
-            if bubbleLayouts.count > 8_000 { bubbleLayouts = [:] }
-            if hostedHeights.count > 3_000 { hostedHeights = [:] }
+            // A new pane window owns its layouts; old chat payloads and
+            // measured heights must not outlive its bounded records.
+            bubbleLayouts.removeAll()
+            hostedHeights.removeAll()
+            chipHeights.removeAll()
             generation += 1
             layoutCancellation.cancel()
             layoutTask?.cancel()
@@ -82,6 +82,12 @@ extension TimelineController {
             self.revision = revision
             let old = self.messages
             self.messages = messages
+            if old.first?.id != messages.first?.id || old.last?.id != messages.last?.id {
+                let ids = Set(messages.map(\.id))
+                bubbleLayouts = bubbleLayouts.filter { ids.contains($0.key) }
+                hostedHeights = hostedHeights.filter { ids.contains($0.key) }
+                chipHeights.removeAll()
+            }
             // A download, a receipt, a reaction or an edit changes a message
             // or two in place: those rows alone are made again, not all of
             // them, which cost a frame or more in a long chat each time. A

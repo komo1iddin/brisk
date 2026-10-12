@@ -73,7 +73,7 @@ extension AppModel {
     public func reloadHistory(before message: MessageRecord) {
         guard canReloadHistory(message) else { return }
         let conversation = conversations.conversation(message.chat)
-        guard conversation.message(message.id) != nil else { return }
+        guard loadedMessage(chat: message.chat, id: message.id) != nil else { return }
         guard !conversation.fetchingPhone else {
             post(.info, String(localized: "History is already being requested for this chat"))
             return

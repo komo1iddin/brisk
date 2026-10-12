@@ -153,16 +153,18 @@ struct SelectionBar: View {
             .help("Copy the selected messages")
 
             let share = model.shareableSelection
-            ShareMenuButton {
-                (share.files as [Any]) + (share.text.map { [$0 as Any] } ?? [])
-            } label: {
+            ShareMenuButton(loadingItems: {
+                let prepared = model.selectionNeedsArchive ? await model.archivedSelectionShare() : share
+                guard let prepared else { return [] }
+                return (prepared.files as [Any]) + (prepared.text.map { [$0 as Any] } ?? [])
+            }) {
                 Label("Share…", systemImage: "square.and.arrow.up")
                     .labelStyle(.iconOnly)
                     .frame(width: 22, height: 22)
             }
             .selectionButton()
-            .disabled(share.isEmpty)
-            .help(share.isEmpty ? "Download the selected files to share them" : "Share the selected messages")
+            .disabled(share.isEmpty && !model.selectionNeedsArchive)
+            .help(share.isEmpty && !model.selectionNeedsArchive ? "Download the selected files to share them" : "Share the selected messages")
 
             Button {
                 confirmingDelete = true

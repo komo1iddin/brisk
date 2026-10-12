@@ -2589,6 +2589,7 @@ impl App {
                     self.toast_error(error);
                 }
             }
+            Event::MessageWindow { .. } => {} // Requested only by native panes.
             Event::MessageUpdated(message) => {
                 let message = *message;
                 if let Some(conversation) = self.conversations.get_mut(&message.chat)

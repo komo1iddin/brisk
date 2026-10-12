@@ -94,6 +94,10 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     }
 
     var messageCount: Int
+    var residentMessages: Int
+    var retainedRecordBytes: Int
+    /// Whole process at the active large chat, including synthetic source data.
+    var activeChatFootprintMB: Double
     var machine: String
     var system: String
     var configuration: String

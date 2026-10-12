@@ -36,6 +36,7 @@ final class ConversationPaneState {
 final class ConversationViewController: NSViewController {
     let model: AppModel
     private(set) var chatID: String
+    private var reader: TimelineReader
     private let timeline = TimelineController()
     private let pane = ConversationPaneState()
     private let overlay = IslandHostingView(rootView: AnyView(EmptyView()))
@@ -54,9 +55,12 @@ final class ConversationViewController: NSViewController {
     init(chatID: String, model: AppModel, onInfoRequest: @escaping (InfoRequest) -> Void) {
         self.chatID = chatID
         self.model = model
+        self.reader = model.openTimelineReader(chatID)
         super.init(nibName: nil, bundle: nil)
         timeline.onInfoRequest = onInfoRequest
     }
+
+    isolated deinit { model.closeTimelineReader(reader) }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -114,6 +118,8 @@ final class ConversationViewController: NSViewController {
             dissolve.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             view.layer?.add(dissolve, forKey: "chatSwitch")
         }
+        model.closeTimelineReader(reader)
+        reader = model.openTimelineReader(chatID)
         self.chatID = chatID
         pane.scroll = .init()
         observeTimeline()
@@ -127,7 +133,7 @@ final class ConversationViewController: NSViewController {
         let chatID = chatID
         let model = model
         overlay.rootView = AnyView(ConversationOverlay(pane: pane).chatStyle(chatID, model: model))
-        newest.rootView = AnyView(NewestMessageIsland(pane: pane) { model.scrollTimeline(.bottom) }.chatStyle(chatID, model: model))
+        newest.rootView = AnyView(NewestMessageIsland(pane: pane) { [weak self] in self?.timeline.perform(.bottom) }.chatStyle(chatID, model: model))
         // A new composer for each chat, as the SwiftUI view made one.
         bottomBar.rootView = AnyView(ConversationBottomBar(chatID: chatID, model: model, pane: pane).id(chatID).chatStyle(chatID, model: model))
         searchBar.rootView = AnyView(ChatSearchBar(chatID: chatID, model: model).id(chatID).chatStyle(chatID, model: model))
@@ -192,8 +198,9 @@ final class ConversationViewController: NSViewController {
         let model = model
         let chatID = chatID
         let pane = pane
+        let reader = reader
         let inputs = withObservationTracking {
-            let conversation = model.conversations.conversation(chatID)
+            let conversation = reader.conversation
             let chat = model.chats.chat(chatID)
             return (
                 closedChat: chat.flatMap { $0.canSend ? nil : $0.withoutActivity },
@@ -204,6 +211,7 @@ final class ConversationViewController: NSViewController {
                 changes: conversation.changes,
                 calls: model.calls.history.calls(in: chatID),
                 fromStart: conversation.complete,
+                hasNewer: conversation.hasNewer,
                 isGroup: chat?.kind == .group,
                 style: TimelineStyle(theme: model.chatTheme(for: chatID), textScale: model.preferences.textScale),
                 unread: model.unreadDivider?.chat == chatID ? model.unreadDivider : nil,
@@ -228,6 +236,13 @@ final class ConversationViewController: NSViewController {
             titleBandTheme = inputs.style.theme.key
             titleBand.setWallpaper(inputs.style.theme.wallpaper)
         }
+        model.ensureJump(inputs.jump, in: reader)
+        timeline.onReachBottom = { model.loadNewer(in: reader) }
+        timeline.onWantNewest = { model.newest(in: reader) }
+        timeline.onReadingAnchor = { model.reading(reader, anchor: $0, followsNewest: $1) }
+        let reachedEnd = timeline.hasNewer && !inputs.hasNewer && timeline.messages.last?.id == inputs.messages.last?.id
+        timeline.hasNewer = inputs.hasNewer
+        if reachedEnd { timeline.followsBottom = timeline.isAtBottom }
         timeline.update(
             chatID: chatID,
             messages: inputs.messages,
@@ -241,7 +256,7 @@ final class ConversationViewController: NSViewController {
             unread: inputs.unread,
             jump: inputs.jump,
             scrollRequest: inputs.scroll,
-            onReachTop: { model.loadOlder(in: chatID) },
+            onReachTop: { model.loadOlder(in: reader) },
             onScrollState: { pane.scroll = $0 }
         )
     }
@@ -332,7 +347,6 @@ final class TitleBandView: NSView {
         veil.frame = bounds
         hairline.frame = CGRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
         CATransaction.commit()
-        updateColors()
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -383,42 +397,32 @@ final class TitleBandView: NSView {
 /// at a hard line, as in WhatsApp. It begins about the middle of the field
 /// and strengthens downward. A system material under a gradient mask: the
 /// blur is the window server's, with the least tint a material has.
-final class BottomBandView: NSHostingView<BottomBlur> {
-    /// How much of the composer's height the blur covers, from its foot.
+final class BottomBandView: NSVisualEffectView {
     static let share: CGFloat = 0.62
+    private let fade = CAGradientLayer()
 
     init() {
-        super.init(rootView: BottomBlur())
-        sizingOptions = []
+        super.init(frame: .zero)
+        material = .hudWindow
+        blendingMode = .withinWindow
+        state = .followsWindowActiveState
+        wantsLayer = true
+        fade.colors = [0.0, 0.12, 0.5, 1.0].map { NSColor.black.withAlphaComponent($0).cgColor }
+        fade.locations = [0, 0.3, 0.65, 1]
+        fade.startPoint = CGPoint(x: 0.5, y: 0)
+        fade.endPoint = CGPoint(x: 0.5, y: 1)
+        fade.actions = ["bounds": NSNull(), "position": NSNull()]
+        layer?.mask = fade
     }
-
-    @available(*, unavailable)
-    required init(rootView: BottomBlur) { fatalError("not used") }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
-
-    /// A picture only: the composer and the timeline take the pointer.
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
-struct BottomBlur: View {
-    var body: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .black.opacity(0), location: 0),
-                        .init(color: .black.opacity(0.12), location: 0.3),
-                        .init(color: .black.opacity(0.5), location: 0.65),
-                        .init(color: .black, location: 1),
-                    ],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
-            .allowsHitTesting(false)
+    override var isFlipped: Bool { true }
+    override func layout() {
+        super.layout()
+        fade.frame = bounds
     }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// A SwiftUI island over or under the timeline that lets the pointer

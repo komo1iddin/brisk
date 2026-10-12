@@ -18,6 +18,26 @@ use crate::types::{
     StickerCropInfo,
 };
 
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum MessageWindowQuery {
+    Newest,
+    Before { message: String },
+    After { message: String },
+    Around { message: String },
+}
+
+impl From<MessageWindowQuery> for zapfast::archive::message_window::WindowQuery {
+    fn from(query: MessageWindowQuery) -> Self {
+        use zapfast::archive::message_window::WindowQuery as Q;
+        match query {
+            MessageWindowQuery::Newest => Q::Newest,
+            MessageWindowQuery::Before { message } => Q::Before(message),
+            MessageWindowQuery::After { message } => Q::After(message),
+            MessageWindowQuery::Around { message } => Q::Around(message),
+        }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCommand {
     // Link
@@ -54,6 +74,11 @@ pub enum BridgeCommand {
 
     // Reading
     /// Archived messages before `before`, or the newest page.
+    LoadMessageWindow {
+        chat: String,
+        request: String,
+        query: MessageWindowQuery,
+    },
     LoadChat {
         chat: String,
         before: Option<PageKey>,
@@ -452,6 +477,15 @@ impl BridgeCommand {
                 Command::SetDownloadFolder(path.map(std::path::PathBuf::from))
             }
 
+            Self::LoadMessageWindow {
+                chat,
+                request,
+                query,
+            } => Command::LoadMessageWindow {
+                chat,
+                request,
+                query: query.into(),
+            },
             Self::LoadChat { chat, before } => Command::LoadChat {
                 chat,
                 before: before.map(Into::into),

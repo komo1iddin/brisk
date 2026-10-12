@@ -51,6 +51,7 @@ mod phone_address;
 mod poll_history;
 mod polls;
 mod presence_subscribe;
+mod transcript_window;
 mod wrapped;
 use wrapped::{base_of, is_hd_copy, lottie_inner};
 mod sticker_pace;
@@ -741,6 +742,7 @@ enum WithheldPage {
     Page(ChatId, Option<super::PageKey>),
     /// `Command::LoadUntil`.
     Until(ChatId, String, super::PageKey),
+    Window(ChatId, String, crate::archive::message_window::WindowQuery),
 }
 
 /// A failed attempt cannot settle any earlier attempt whose reply was lost.
@@ -1877,6 +1879,9 @@ impl Worker {
             match page {
                 WithheldPage::Page(chat, before) => self.send_page(&chat, before),
                 WithheldPage::Until(chat, id, before) => self.load_until(chat, id, before),
+                WithheldPage::Window(chat, request, query) => {
+                    self.load_message_window(chat, request, query)
+                }
             }
         }
     }
@@ -4655,6 +4660,11 @@ impl Worker {
                 }
             }
             Command::LoadChat { chat, before } => self.load_chat(chat, before),
+            Command::LoadMessageWindow {
+                chat,
+                request,
+                query,
+            } => self.load_message_window(chat, request, query),
             Command::FetchOlder { chat, explicit } => self.fetch_older(chat, explicit),
             Command::ReloadHistory { chat, message } => self.reload_history(chat, message),
             Command::LoadUntil { chat, id, before } => self.load_until(chat, id, before),

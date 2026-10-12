@@ -110,7 +110,8 @@ struct ConversationMergeTests {
     }
 
     @Test func indexedUpdatesSurvivePrependReorderDeletionAndDuplicateDelivery() {
-        let store = ConversationStore()
+        let store = ConversationStore(inactiveChatLimit: 8, inactiveRowLimit: 100_000,
+                                      historyBudget: HistoryBudget(rows: 100_000, bytes: 1_000_000_000))
         store.protect(["c"])
         let original = (0..<10_000).map { message("\($0)", at: Int64($0)) }
         store.applyMessages(chat: "c", messages: original, older: false, complete: false)

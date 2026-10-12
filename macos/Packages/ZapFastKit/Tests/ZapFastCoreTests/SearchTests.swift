@@ -37,8 +37,14 @@ struct SearchTests {
         )
     }
 
-    private func loadUntilCount(_ backend: PreviewBackend) -> Int {
-        backend.sent.count { if case .loadUntil = $0 { true } else { false } }
+    private func windowReadCount(_ backend: PreviewBackend) -> Int {
+        backend.sent.count { if case .loadMessageWindow = $0 { true } else { false } }
+    }
+
+    private func answerWindow(_ model: AppModel, messages: [MessageRecord], error: String? = nil) {
+        guard let request = model.defaultWindowRequests[chat]?.0 else { Issue.record("Missing archive request"); return }
+        model.apply([.messageWindow(chat: chat, request: request, messages: messages,
+                                    hasOlder: true, hasNewer: true, error: error)])
     }
 
     // MARK: Jumping to a message
@@ -51,7 +57,7 @@ struct SearchTests {
 
         #expect(model.jump?.key == MessageKey(chat: chat, message: "a"))
         #expect(model.highlighted == MessageKey(chat: chat, message: "a"))
-        #expect(loadUntilCount(backend) == 0)
+        #expect(windowReadCount(backend) == 0)
     }
 
     @Test func jumpAboveTheLoadedPageAsksTheArchiveOnceThenScrolls() {
@@ -61,11 +67,11 @@ struct SearchTests {
 
         model.reveal(MessageKey(chat: chat, message: "a"))
         #expect(model.jump == nil)
-        #expect(backend.sent.last == .loadUntil(chat: chat, message: "a", before: PageKey(timestamp: 50, id: "m")))
+        #expect(model.defaultWindowRequests[chat]?.1 == .around(message: "a"))
 
-        model.apply([.messages(chat: chat, messages: [message("a", at: 1), message("k", at: 20)], older: true, complete: false)])
+        answerWindow(model, messages: [message("a", at: 1), message("k", at: 20)])
         #expect(model.jump?.key.message == "a")
-        #expect(loadUntilCount(backend) == 1)
+        #expect(windowReadCount(backend) == 1)
     }
 
     @Test func jumpIntoAChatNotYetOpenWaitsForItsFirstPage() {
@@ -74,10 +80,10 @@ struct SearchTests {
         model.reveal(MessageKey(chat: chat, message: "a"))
         #expect(model.selectedChatID == chat)
         #expect(backend.sent.contains(.loadChat(chat: chat, before: nil)))
-        #expect(loadUntilCount(backend) == 0)
+        #expect(windowReadCount(backend) == 0)
 
         model.apply([.messages(chat: chat, messages: [message("m", at: 50)], older: false, complete: false)])
-        #expect(loadUntilCount(backend) == 1)
+        #expect(windowReadCount(backend) == 1)
     }
 
     @Test func aMessageTheArchiveLacksEndsTheJumpWithoutAskingAgain() {
@@ -87,11 +93,11 @@ struct SearchTests {
         model.reveal(MessageKey(chat: chat, message: "gone"))
 
         // Upstream answers an unknown message with an empty older page.
-        model.apply([.messages(chat: chat, messages: [], older: true, complete: false)])
+        answerWindow(model, messages: [], error: "This message is not stored on this computer")
         model.apply([.messages(chat: chat, messages: [message("n", at: 60)], older: false, complete: false)])
 
         #expect(model.jump == nil)
-        #expect(loadUntilCount(backend) == 1)
+        #expect(windowReadCount(backend) == 1)
     }
 
     @Test func openingAnotherChatDropsAPendingJump() {
@@ -101,23 +107,23 @@ struct SearchTests {
         model.reveal(MessageKey(chat: chat, message: "a"))
 
         model.selectedChatID = "other@s.whatsapp.net"
-        model.apply([.messages(chat: chat, messages: [message("a", at: 1)], older: true, complete: false)])
+        answerWindow(model, messages: [message("a", at: 1)])
 
         #expect(model.jump == nil)
-        #expect(loadUntilCount(backend) == 1)
+        #expect(windowReadCount(backend) == 1)
     }
 
     @Test func clickingAQuoteJumpsToTheQuotedMessage() {
-        let (model, backend) = model()
+        let (model, _) = model()
         model.selectedChatID = chat
         var reply = message("r", at: 60)
         reply.quoted = QuotedMessage(id: "a", sender: "a@s.whatsapp.net", senderName: nil, summary: "hello", mentions: [])
         model.apply([.messages(chat: chat, messages: [message("m", at: 50), reply], older: false, complete: false)])
 
         model.showQuoted(in: reply)
-        #expect(backend.sent.last == .loadUntil(chat: chat, message: "a", before: PageKey(timestamp: 50, id: "m")))
+        #expect(model.defaultWindowRequests[chat]?.1 == .around(message: "a"))
 
-        model.apply([.messages(chat: chat, messages: [message("a", at: 1)], older: true, complete: false)])
+        answerWindow(model, messages: [message("a", at: 1)])
         #expect(model.jump?.key == MessageKey(chat: chat, message: "a"))
         #expect(model.highlighted == MessageKey(chat: chat, message: "a"))
     }

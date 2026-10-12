@@ -46,6 +46,24 @@ final class BenchmarkBackend: Backend {
 
     func send(_ command: BridgeCommand) {
         switch command {
+        case let .loadMessageWindow(chat, request, query):
+            let history = histories[chat] ?? []
+            let range: Range<Int>
+            switch query {
+            case .newest: range = max(0, history.count - Self.page)..<history.count
+            case .before(let message):
+                let end = history.firstIndex { $0.id == message } ?? 0
+                range = max(0, end - Self.page)..<end
+            case .after(let message):
+                let start = (history.firstIndex { $0.id == message } ?? -1) + 1
+                range = start..<min(history.count, start + Self.page)
+            case .around(let message):
+                let middle = history.firstIndex { $0.id == message } ?? 0
+                range = max(0, middle - Self.page)..<min(history.count, middle + Self.page + 1)
+            }
+            pagesServed += 1
+            post([.messageWindow(chat: chat, request: request, messages: Array(history[range]),
+                                 hasOlder: range.lowerBound > 0, hasNewer: range.upperBound < history.count, error: nil)])
         case let .loadChat(chat, before):
             let history = histories[chat] ?? []
             let end = before.flatMap { key in history.firstIndex { $0.id == key.id } } ?? history.count

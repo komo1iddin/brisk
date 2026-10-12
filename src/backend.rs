@@ -216,6 +216,12 @@ pub enum Command {
         chat: ChatId,
         before: Option<PageKey>,
     },
+    /// Reads a bounded transcript window for an independent native pane.
+    LoadMessageWindow {
+        chat: ChatId,
+        request: String,
+        query: crate::archive::message_window::WindowQuery,
+    },
     /// Requests messages before the archive's earliest message. `explicit`
     /// marks a request the reader made by scrolling to the top: only those
     /// report a phone that did not answer, since automatic requests (short
@@ -825,6 +831,15 @@ pub enum Event {
         messages: Vec<Message>,
         older: bool,
         complete: bool,
+    },
+    /// Answer to a native pane's archive read, including both paging edges.
+    MessageWindow {
+        chat: ChatId,
+        request: String,
+        messages: Vec<Message>,
+        has_older: bool,
+        has_newer: bool,
+        error: Option<String>,
     },
     MessageUpdated(Box<Message>),
     /// Files selected for the composer.

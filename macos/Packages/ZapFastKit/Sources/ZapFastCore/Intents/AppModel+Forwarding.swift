@@ -24,6 +24,11 @@ extension AppModel {
     /// Starts selecting with this message ("Select", or ⌘-click).
     public func select(_ message: MessageRecord) {
         guard canSelect(message) else { return }
+        if selection?.chat != message.chat {
+            selectionMetadata.removeAll()
+            selectionReader = timelineReaders.values.first { $0.chat == message.chat && $0.conversation.message(message.id) != nil }?.id
+        }
+        captureSelection([message])
         if selection?.chat == message.chat {
             toggleSelected(message)
         } else {
@@ -35,6 +40,7 @@ extension AppModel {
     /// forward arrives as it was sent; the last one out ends selecting.
     public func toggleSelected(_ message: MessageRecord) {
         guard var current = selection, current.chat == message.chat, canSelect(message) else { return }
+        captureSelection([message])
         if current.ids.contains(message.id) {
             current.ids.removeAll { $0 == message.id }
         } else {
@@ -49,10 +55,15 @@ extension AppModel {
     /// this one joins.
     public func selectRange(to message: MessageRecord) {
         guard var current = selection, current.chat == message.chat else { return select(message) }
-        let messages = conversations.conversation(message.chat).messages
+        let messages = actionMessages(in: message.chat, containing: message.id)
         guard let from = messages.firstIndex(where: { $0.id == current.anchor }),
-              let to = messages.firstIndex(where: { $0.id == message.id }) else { return toggleSelected(message) }
-        let range = messages[min(from, to)...max(from, to)].filter(canSelect).map(\.id)
+              let to = messages.firstIndex(where: { $0.id == message.id }) else {
+            extendArchivedSelection(current, to: message)
+            return
+        }
+        let picked = messages[min(from, to)...max(from, to)].filter(canSelect)
+        captureSelection(picked)
+        let range = picked.map(\.id)
         current.ids = inChatOrder(Array(Set(current.ids).union(range)), chat: message.chat)
         current.anchor = message.id
         selection = current
@@ -74,10 +85,18 @@ extension AppModel {
     /// as it was.
     public func sweep(_ sweep: MessageSweep, to message: MessageRecord) {
         guard sweep.chat == message.chat else { return }
-        let messages = conversations.conversation(sweep.chat).messages
-        guard let from = messages.firstIndex(where: { $0.id == sweep.anchor }),
-              let to = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        let covered = Set(messages[min(from, to)...max(from, to)].filter(canSelect).map(\.id))
+        let messages = actionMessages(in: sweep.chat, containing: message.id)
+        let covered: Set<String>
+        if let from = messages.firstIndex(where: { $0.id == sweep.anchor }),
+           let to = messages.firstIndex(where: { $0.id == message.id }) {
+            let picked = messages[min(from, to)...max(from, to)].filter(canSelect)
+            captureSelection(picked)
+            covered = Set(picked.map(\.id))
+        } else if let anchor = selectionMetadata[sweep.anchor]?.order {
+            let lower = min(anchor, message.order), upper = max(anchor, message.order)
+            captureSelection(messages.filter { $0.order >= lower && $0.order <= upper })
+            covered = Set(selectionMetadata.filter { $0.value.order >= lower && $0.value.order <= upper }.keys)
+        } else { return }
         let ids = inChatOrder(Array(sweep.adds ? sweep.base.union(covered) : sweep.base.subtracting(covered)), chat: sweep.chat)
         guard selection?.ids != ids else { return }
         selection = ids.isEmpty ? nil : MessageSelection(chat: sweep.chat, ids: ids, anchor: sweep.anchor)
@@ -90,16 +109,33 @@ extension AppModel {
     /// The selected messages that can be forwarded, oldest first.
     public var forwardableSelection: [String] {
         guard let selection else { return [] }
-        let conversation = conversations.conversation(selection.chat)
-        return selection.ids.filter { id in conversation.message(id).map(canForward) ?? false }
+        return selection.ids.filter { id in
+            selectionMetadata[id]?.forwardable ?? loadedMessage(chat: selection.chat, id: id).map(canForward) ?? false
+        }
     }
 
     public func forwardSelection() {
         guard let chat = selection?.chat else { return }
         let ids = forwardableSelection
         guard !ids.isEmpty else { return }
-        selection = nil
-        forwarding = ForwardRequest(chat: chat, messages: ids)
+        if selectionNeedsArchive {
+            let chosen = selection
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    let reader = try await backend.openChatReader()
+                    let ordered = try await Self.orderedSelection(reader, chat: chat, ids: ids)
+                    guard selection == chosen, !appLock.isLocked, !ordered.isEmpty else { return }
+                    selection = nil
+                    forwarding = ForwardRequest(chat: chat, messages: ordered)
+                } catch {
+                    if selection == chosen { post(.error, String(localized: "Could not read the selected messages")) }
+                }
+            }
+        } else {
+            selection = nil
+            forwarding = ForwardRequest(chat: chat, messages: ids)
+        }
     }
 
     /// Deletes the selected messages here, after the person confirmed.
@@ -114,13 +150,21 @@ extension AppModel {
     /// The selected messages, in chat order.
     private var selectedMessages: [MessageRecord] {
         guard let selection else { return [] }
-        let conversation = conversations.conversation(selection.chat)
-        return inChatOrder(selection.ids, chat: selection.chat).compactMap(conversation.message)
+        return inChatOrder(selection.ids, chat: selection.chat).compactMap { loadedMessage(chat: selection.chat, id: $0) }
     }
 
     /// Copies the selection as the phone does, with who wrote each message
     /// and when once there are several; selecting ends.
-    public func copySelection(to write: (String) -> Void) {
+    public func copySelection(to write: @escaping (String) -> Void) {
+        if selectionNeedsArchive {
+            Task { [weak self] in
+                guard let self, let share = await archivedSelectionShare(copyAll: true), let text = share.text else { return }
+                write(text)
+                selection = nil
+                post(.info, String(localized: "Copied"))
+            }
+            return
+        }
         let messages = selectedMessages
         guard !messages.isEmpty else { return }
         write(transcript(of: messages))
@@ -152,8 +196,16 @@ extension AppModel {
     }
 
     private func inChatOrder(_ ids: [String], chat: String) -> [String] {
-        let wanted = Set(ids)
-        return conversations.conversation(chat).messages.map(\.id).filter(wanted.contains)
+        let loaded = actionMessages(in: chat)
+        captureSelection(loaded)
+        let positions = Dictionary(loaded.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return ids.enumerated().sorted {
+            let a = selectionMetadata[$0.element]?.order
+            let b = selectionMetadata[$1.element]?.order
+            if let a, let b, a != b { return a < b }
+            if let a = positions[$0.element], let b = positions[$1.element] { return a < b }
+            return $0.offset < $1.offset
+        }.map(\.element)
     }
 
     // MARK: Intents: forwarding

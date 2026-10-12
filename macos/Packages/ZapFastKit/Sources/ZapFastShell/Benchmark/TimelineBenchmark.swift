@@ -8,7 +8,8 @@ import ZapFastCore
 /// `--benchmark` runs the real window (sidebar, conversation, composer) on
 /// made-up chats instead of the linked account, measures the message
 /// timeline, prints a report and quits. `ZAPFAST_BENCHMARK_COUNT` sets how
-/// many messages the fully loaded chat holds (default 2,000).
+/// many messages the source fixture holds (default 2,000). The active
+/// pane retains only its budgeted window of that history.
 ///
 /// Build Release for numbers worth comparing:
 /// `make release`, then run `ZapFast.app/Contents/MacOS/ZapFast --benchmark`.
@@ -121,13 +122,24 @@ private final class BenchmarkRun: NSObject {
         let pagingFlicks = await flicks()
 
         let full = backend.history(SyntheticChats.fullChat)
-        let openFullHistory = await open(SyntheticChats.fullChat, rows: TimelineRow.build(full).count)
+        let resident = full.count > HistoryBudget.standard.rows ? full.suffix(HistoryBudget.standard.rows * 3 / 4) : full[...]
+        let openFullHistory = await open(SyntheticChats.fullChat, rows: TimelineRow.build(resident).count)
         await pause(.milliseconds(300))
         let timelineWidth = timeline?.bounds.width ?? 0
         let fullScroll = await scroll(speed: 5_000, duration: 8)
         let fullFlicks = await flicks()
         let jumps = measureJumps()
+        // Paging can leave a bounded pane in an old archive window. Reopen
+        // from the retained newest cache before measuring live arrivals, so
+        // the Here samples exercise visible row updates rather than ignored
+        // out-of-window deliveries. Setup is outside the measured samples.
+        model.selectedChatID = nil
+        await pause(.milliseconds(50))
+        let warmRows = TimelineRow.build(model.conversations.conversation(SyntheticChats.fullChat).messages).count
+        _ = await open(SyntheticChats.fullChat, rows: warmRows)
         let eventsWithFullHistory = await eventCosts(open: SyntheticChats.fullChat, name: "Benchmark (full)")
+        let activeFootprint = Self.memoryFootprintMB
+        let retained = model.conversations.conversation(SyntheticChats.fullChat)
         let resize = await measureResize()
 
         let small = backend.history(SyntheticChats.smallChat)
@@ -136,6 +148,9 @@ private final class BenchmarkRun: NSObject {
 
         return BenchmarkReport(
             messageCount: full.count,
+            residentMessages: retained.messages.count,
+            retainedRecordBytes: retained.retainedBytes,
+            activeChatFootprintMB: activeFootprint,
             machine: Self.machine,
             system: ProcessInfo.processInfo.operatingSystemVersionString,
             configuration: Self.configuration,

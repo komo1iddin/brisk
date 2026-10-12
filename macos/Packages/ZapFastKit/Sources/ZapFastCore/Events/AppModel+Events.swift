@@ -17,7 +17,10 @@ extension AppModel {
     }
 
     func apply(_ event: BridgeEvent) {
+        applyTimelineEvent(event)
         switch event {
+        case let .messageWindow(chat, request, messages, hasOlder, hasNewer, error):
+            applyWindow(chat: chat, request: request, messages: messages, hasOlder: hasOlder, hasNewer: hasNewer, error: error)
         case .link(let state):
             applyLink(state)
         case let .me(id, lid, name, about):
@@ -37,6 +40,7 @@ extension AppModel {
                 markRead(chat.id)
             }
         case .chatRemoved(let chat):
+            defaultWindowRequests[chat] = nil
             // The composer goes first, so closing the chat saves no draft for it.
             forgetComposer(of: chat)
             keptUnread.remove(chat)
@@ -47,6 +51,7 @@ extension AppModel {
             if chatConfirmation?.chat == chat { chatConfirmation = nil }
             notifier?.clear(chat: chat)
         case let .chatCleared(chat, through):
+            defaultWindowRequests[chat] = nil
             applyCleared(chat, through: through)
         case .drafts(let drafts):
             chats.replaceDrafts(drafts)
@@ -60,6 +65,9 @@ extension AppModel {
             if !older { followForwards(messages) }
             if older, phoneFetch?.chat == chat { phoneFetch?.olderArrived(count: messages.count) }
         case .messageUpdated(let message):
+            if selection?.chat == message.chat, selectionMetadata[message.id] != nil {
+                selectionMetadata[message.id] = SelectionMetadata(order: message.order, forwardable: canForward(message))
+            }
             conversations.applyUpdated(message)
             followForwards([message])
         case let .messageDeleted(chat, id):
@@ -142,7 +150,7 @@ extension AppModel {
             if videoWanted == key {
                 videoWanted = nil
                 if path != nil, error == nil, isOpen(chat), !appLock.isLocked,
-                   let record = conversations.conversation(chat).message(message) {
+                   let record = loadedMessage(chat: chat, id: message) {
                     playVideo(record)
                 }
             }
@@ -183,7 +191,7 @@ extension AppModel {
             if !voice.isEmpty { unsentVoice = UnsentVoice(chat: chat, samples: voice) }
             // So does the reply, which must be cancelled to send a voice
             // message whose quote is gone.
-            if let quoting, replyingTo[chat] == nil, let message = conversations.conversation(chat).message(quoting) {
+            if let quoting, replyingTo[chat] == nil, let message = loadedMessage(chat: chat, id: quoting) {
                 replyingTo[chat] = message
             }
             if chat == selectedChatID {
@@ -259,6 +267,11 @@ extension AppModel {
             calls.reset()
             chats.clear()
             conversations.clear()
+            defaultWindowRequests.removeAll()
+            for reader in timelineReaders.values {
+                reader.pending = nil
+                reader.store.clear()
+            }
             phoneHistory.clear()
             goneMedia.clear()
             search.clear()

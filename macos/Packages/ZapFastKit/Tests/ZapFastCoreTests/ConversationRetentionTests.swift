@@ -21,7 +21,8 @@ struct ConversationRetentionTests {
             let chat = "inactive-\(index)"
             store.applyMessages(chat: chat, messages: rows(chat, count: 3_000), older: false, complete: true)
         }
-        #expect(store.conversation("open").messages.count == 15_000)
+        #expect(store.conversation("open").messages.count <= HistoryBudget.standard.rows)
+        #expect(!store.conversation("open").complete)
         let inactive = (0..<50).map { store.conversation("inactive-\($0)") }
         #expect(inactive.reduce(0) { $0 + $1.messages.count } <= 12_000)
         #expect(inactive.count { !$0.messages.isEmpty } <= 8)

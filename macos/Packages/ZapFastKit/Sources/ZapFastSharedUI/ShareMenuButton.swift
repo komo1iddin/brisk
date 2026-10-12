@@ -6,6 +6,8 @@ import SwiftUI
 /// The items are read when it is clicked.
 public struct ShareMenuButton<Label: View>: View {
     private let items: () -> [Any]
+    private var loadingItems: (() async -> [Any])?
+    @State private var loading = false
     private let label: Label
     @State private var anchor = ShareAnchor()
 
@@ -14,8 +16,24 @@ public struct ShareMenuButton<Label: View>: View {
         self.label = label()
     }
 
+    public init(loadingItems: @escaping () async -> [Any], @ViewBuilder label: () -> Label) {
+        self.items = { [] }
+        self.loadingItems = loadingItems
+        self.label = label()
+    }
+
     public var body: some View {
-        Button { anchor.show(items()) } label: { label }
+        Button {
+            if let loadingItems {
+                loading = true
+                Task { @MainActor in
+                    let prepared = await loadingItems()
+                    loading = false
+                    anchor.show(prepared)
+                }
+            } else { anchor.show(items()) }
+        } label: { label }
+            .disabled(loading)
             .background(ShareAnchorView(anchor: anchor))
     }
 }
@@ -25,7 +43,7 @@ final class ShareAnchor {
     weak var view: NSView?
 
     func show(_ items: [Any]) {
-        guard let view, !items.isEmpty else { return }
+        guard let view, view.window?.isVisible == true, !items.isEmpty else { return }
         NSSharingServicePicker(items: items).show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
     }
 }

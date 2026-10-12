@@ -11,6 +11,13 @@ public struct Conversation: Equatable, Sendable {
     /// The first page was requested.
     public internal(set) var requested = false
     public internal(set) var loadingOlder = false
+    /// Archived rows were evicted from the newer edge of this window.
+    public internal(set) var hasNewer = false
+    public internal(set) var loadingNewer = false
+    /// Conservative retained record cost, excluding decoded media and views.
+    public internal(set) var retainedBytes = 0
+    /// A single record exceeds the payload budget, retained for readability.
+    public internal(set) var oversizedMessage = false
     /// A phone-history request is running.
     public internal(set) var fetchingPhone = false
     /// The phone has nothing older either.
@@ -156,6 +163,9 @@ public final class ConversationStore {
     @ObservationIgnored private var recency: [String: UInt64] = [:]
     @ObservationIgnored private var clock: UInt64 = 0
     @ObservationIgnored private var memoryPressure: DispatchSourceMemoryPressure?
+    @ObservationIgnored private var costs: [String: [String: (MessageRecord, Int)]] = [:]
+    @ObservationIgnored var retentionAnchor: String?
+    private let historyBudget: HistoryBudget
     private let inactiveChatLimit: Int
     private let inactiveRowLimit: Int
     /// Who is typing, per chat, and who is online. Views read one chat's
@@ -187,7 +197,8 @@ public final class ConversationStore {
 
     public convenience init() { self.init(inactiveChatLimit: 8, inactiveRowLimit: 12_000) }
 
-    init(inactiveChatLimit: Int, inactiveRowLimit: Int) {
+    init(inactiveChatLimit: Int, inactiveRowLimit: Int, historyBudget: HistoryBudget = .standard) {
+        self.historyBudget = historyBudget
         self.inactiveChatLimit = max(0, inactiveChatLimit)
         self.inactiveRowLimit = max(0, inactiveRowLimit)
         let pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
@@ -227,6 +238,7 @@ public final class ConversationStore {
             slot.value = Conversation(revision: slot.value.revision &+ 1, messagesRevision: slot.value.messagesRevision &+ 1)
             known.remove(chat)
             messagePositions[chat] = nil
+            costs[chat] = nil
             recency[chat] = nil
         }
     }
@@ -252,6 +264,13 @@ public final class ConversationStore {
         return slot(chat).value
     }
 
+    /// Uses the store-owned index while observing this conversation's slot.
+    func loadedMessage(chat: String, id: String) -> MessageRecord? {
+        let messages = slot(chat).value.messages
+        guard let index = messagePositions[chat]?.index(id), index < messages.count else { return nil }
+        return messages[index]
+    }
+
     /// A message's download, while one is running or after it failed.
     public func download(_ key: MessageKey) -> DownloadState? {
         downloadSlot(key).value
@@ -273,7 +292,7 @@ public final class ConversationStore {
 
     /// Changes one chat's conversation and bumps its revision, and its
     /// messages' revision when `messages` says they may have changed.
-    private func update(_ chat: String, messages: Bool = true, _ change: (inout Conversation) -> Void) {
+    private func update(_ chat: String, messages: Bool = true, keepOldest: Bool = false, _ change: (inout Conversation) -> Void) {
         let slot = slot(chat)
         var conversation = slot.value
         let previousCount = conversation.messages.count
@@ -281,6 +300,7 @@ public final class ConversationStore {
         change(&conversation)
         conversation.revision &+= 1
         if messages {
+            enforceBudget(chat, conversation: &conversation, previousCount: previousCount, keepOldest: keepOldest)
             conversation.messagesRevision &+= 1
             if let indexes = conversation.incremental {
                 conversation.changes.append(ConversationDelta(revision: conversation.messagesRevision,
@@ -302,6 +322,118 @@ public final class ConversationStore {
         known.insert(chat)
         touch(chat)
         trimInactive()
+    }
+
+
+    private func enforceBudget(_ chat: String, conversation: inout Conversation, previousCount: Int, keepOldest: Bool) {
+        // The common receipt/edit/append path touches only changed records.
+        if let incremental = conversation.incremental, conversation.messages.count <= historyBudget.rows {
+            var used = conversation.retainedBytes
+            let changed = Set(incremental).union(previousCount..<conversation.messages.count)
+            for index in changed {
+                let record = conversation.messages[index]
+                used -= costs[chat]?[record.id]?.1 ?? 0
+                let cost = HistoryBudget.cost(record)
+                costs[chat, default: [:]][record.id] = (record, cost)
+                used += cost
+            }
+            if used <= historyBudget.bytes {
+                conversation.retainedBytes = used
+                conversation.oversizedMessage = false
+                return
+            }
+        }
+        let originalCount = conversation.messages.count
+        var rows = conversation.messages
+        let sourceFirst = rows.first?.id
+        let sourceLast = rows.last?.id
+        var lower = 0
+        if rows.count > historyBudget.rows {
+            // Leave headroom instead of rebuilding the table on every arrival
+            // at the cap. Keep the visible anchor when the reader is away.
+            let target = max(1, historyBudget.rows * 3 / 4)
+            if let retentionAnchor, let anchor = rows.firstIndex(where: { $0.id == retentionAnchor }) {
+                lower = min(max(0, anchor - target / 2), rows.count - target)
+            } else { lower = keepOldest ? 0 : rows.count - target }
+            rows = MessageHistory(rows[lower..<(lower + target)])
+        }
+        let oldCosts = costs[chat, default: [:]]
+        var nextCosts: [String: (MessageRecord, Int)] = [:]
+        var used = 0
+        var retained: [MessageRecord] = []
+        // Start at the edge being read; drop the opposite edge first.
+        let anchor = retentionAnchor.flatMap { id in rows.firstIndex { $0.id == id } }
+        let ordered: [MessageRecord]
+        if let anchor {
+            // Keep a contiguous interval around the viewport, including an
+            // oversized anchor rather than silently removing its contents.
+            var indexes = [anchor]
+            var distance = 1
+            while indexes.count < rows.count {
+                if anchor - distance >= 0 { indexes.append(anchor - distance) }
+                if anchor + distance < rows.count { indexes.append(anchor + distance) }
+                distance += 1
+            }
+            ordered = indexes.map { rows[$0] }
+        } else { ordered = keepOldest ? Array(rows) : Array(rows.reversed()) }
+        for record in ordered {
+            let cached = oldCosts[record.id]
+            let cost = cached?.0 == record ? cached!.1 : HistoryBudget.cost(record)
+            if !retained.isEmpty, used + cost > historyBudget.bytes { break }
+            retained.append(record)
+            nextCosts[record.id] = (record, cost)
+            used += cost
+        }
+        if retained.count != originalCount {
+            let ids = Set(retained.map(\.id))
+            conversation.messages = MessageHistory(rows.filter { ids.contains($0.id) })
+            conversation.incremental = nil
+            if conversation.messages.first?.id != sourceFirst { conversation.complete = false }
+            if conversation.messages.last?.id != sourceLast { conversation.hasNewer = true }
+        }
+        conversation.retainedBytes = used
+        conversation.oversizedMessage = used > historyBudget.bytes
+        costs[chat] = nextCosts
+    }
+
+    func markLoadingNewer(_ chat: String) {
+        update(chat, messages: false) { $0.loadingNewer = true }
+    }
+
+    func applyWindow(chat: String, messages: [MessageRecord], query: MessageWindowQuery,
+                     hasOlder: Bool, hasNewer: Bool) {
+        switch query {
+        case .around(let message): retentionAnchor = message
+        case .newest: retentionAnchor = nil
+        case .before, .after: break
+        }
+        let before: Bool = if case .before = query { true } else { false }
+        update(chat, keepOldest: before) { conversation in
+            switch query {
+            case .newest, .around: conversation.messages = MessageHistory(messages)
+            case .before: conversation.merge(messages, older: true)
+            case .after: conversation.merge(messages, older: false, positions: messagePositions[chat])
+            }
+            switch query {
+            case .before: conversation.complete = !hasOlder
+            case .after: conversation.hasNewer = hasNewer
+            case .newest, .around:
+                conversation.complete = !hasOlder
+                conversation.hasNewer = hasNewer
+            }
+            conversation.loadingOlder = false
+            conversation.loadingNewer = false
+            conversation.requested = true
+        }
+    }
+
+    func cancelWindowRead(_ chat: String) {
+        update(chat, messages: false) { $0.loadingOlder = false; $0.loadingNewer = false }
+    }
+
+    func seed(chat: String, from conversation: Conversation) {
+        update(chat) { $0 = conversation; $0.incremental = nil; $0.loadingOlder = false; $0.loadingNewer = false }
+        protect([chat])
     }
 
     private func setDownload(_ key: MessageKey, _ state: DownloadState?) {
@@ -330,7 +462,7 @@ public final class ConversationStore {
     @discardableResult
     func applyMessages(chat: String, messages: [MessageRecord], older: Bool, complete: Bool) -> Bool {
         var bare = false
-        update(chat) { conversation in
+        update(chat, keepOldest: older) { conversation in
             let wasEmpty = conversation.messages.isEmpty
             conversation.merge(messages, older: older, positions: messagePositions[chat])
             conversation.requested = true
@@ -346,7 +478,7 @@ public final class ConversationStore {
     }
 
     func applyUpdated(_ message: MessageRecord) {
-        guard known.contains(message.chat) else { return }
+        guard known.contains(message.chat), slot(message.chat).value.message(message.id) != nil else { return }
         update(message.chat) { $0.merge([message], older: false, positions: messagePositions[message.chat]) }
     }
 
@@ -363,6 +495,8 @@ public final class ConversationStore {
             conversation.complete = true
             conversation.phoneExhausted = true
             conversation.loadingOlder = false
+            conversation.loadingNewer = false
+            conversation.hasNewer = false
         }
         let conversation = slot(chat).value
         for (key, slot) in downloadSlots where key.chat == chat && slot.value != nil {
@@ -420,6 +554,7 @@ public final class ConversationStore {
 
     /// Readers of the chat see it empty; the slot stays so they hear of it.
     func forget(_ chat: String) {
+        costs[chat] = nil
         if known.contains(chat) {
             update(chat) { $0 = Conversation(revision: $0.revision, messagesRevision: $0.messagesRevision) }
             known.remove(chat)
@@ -428,6 +563,7 @@ public final class ConversationStore {
     }
 
     func clear() {
+        costs.removeAll()
         for slot in slots.values {
             slot.value = Conversation(revision: slot.value.revision &+ 1, messagesRevision: slot.value.messagesRevision &+ 1)
         }

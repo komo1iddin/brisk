@@ -60,6 +60,8 @@ extension PhoneFetch {
 }
 
 private final class DemoReader: ChatReaderProtocol, @unchecked Sendable {
+    func message(chat: String, id: String) throws -> MessageRecord? { nil }
+    func selectedIds(chat: String, ids: [String]) throws -> [String] { [] }
     let census: ChatCensus
     init(_ census: ChatCensus) { self.census = census }
     func census(chat: String) throws -> ChatCensus { census }

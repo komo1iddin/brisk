@@ -106,6 +106,14 @@ pub enum BridgeEvent {
     },
     /// Messages in ascending order. `older` prepends; `complete` means the
     /// archive has nothing earlier.
+    MessageWindow {
+        chat: String,
+        request: String,
+        messages: Vec<MessageRecord>,
+        has_older: bool,
+        has_newer: bool,
+        error: Option<String>,
+    },
     Messages {
         chat: String,
         messages: Vec<MessageRecord>,
@@ -333,6 +341,21 @@ pub(crate) fn convert(event: Event) -> Option<BridgeEvent> {
                 .into_iter()
                 .map(|(chat, text)| Draft { chat, text })
                 .collect(),
+        }),
+        Event::MessageWindow {
+            chat,
+            request,
+            messages,
+            has_older,
+            has_newer,
+            error,
+        } => Some(B::MessageWindow {
+            chat,
+            request,
+            messages: messages.into_iter().map(Into::into).collect(),
+            has_older,
+            has_newer,
+            error,
         }),
         Event::Messages {
             chat,

@@ -41,7 +41,8 @@ struct MessageHistoryTests {
     }
 
     @Test func largeConversationSnapshotsKeepTheirOwnRevisionAndOrder() {
-        let store = ConversationStore()
+        let store = ConversationStore(inactiveChatLimit: 8, inactiveRowLimit: 100_000,
+                                      historyBudget: HistoryBudget(rows: 100_000, bytes: 1_000_000_000))
         store.protect(["fixture"])
         store.applyMessages(chat: "fixture", messages: (0..<50_000).map(message), older: false, complete: false)
         let snapshot = store.conversation("fixture")

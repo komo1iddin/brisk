@@ -13,6 +13,8 @@ import ZapFastBridge
 public final class AppModel {
     public let session: SessionStore
     public let chats: ChatStore
+    @ObservationIgnored var timelineReaders: [String: TimelineReader] = [:]
+    @ObservationIgnored var defaultWindowRequests: [String: (String, MessageWindowQuery)] = [:]
     public let conversations: ConversationStore
     public let avatars: AvatarStore
     public let preferences: Preferences
@@ -222,7 +224,15 @@ public final class AppModel {
     public var reactionTarget: MessageKey?
     /// Messages picked in the open chat (upstream's `selection`), for
     /// forwarding or deleting together.
-    public internal(set) var selection: MessageSelection?
+    @ObservationIgnored var selectionMetadata: [String: SelectionMetadata] = [:]
+    @ObservationIgnored var selectionReader: String?
+    @ObservationIgnored var selectionRangeRequest: UUID?
+    public internal(set) var selection: MessageSelection? {
+        didSet {
+            if selection != oldValue { selectionRangeRequest = nil }
+            if selection == nil { selectionMetadata.removeAll(); selectionReader = nil }
+        }
+    }
     /// A voice message the backend refused (offline, or its quote gone),
     /// kept for the composer to send again or discard, as upstream's
     /// `unsent_voice`. It lives until then, in memory only.

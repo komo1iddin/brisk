@@ -91,6 +91,27 @@ impl ChatReader {
 
 #[uniffi::export]
 impl ChatReader {
+    /// Reads one selected record; call off the main thread.
+    pub fn message(&self, chat: String, id: String) -> Result<Option<MessageRecord>, BridgeError> {
+        let archive = self.archive.lock().unwrap_or_else(|p| p.into_inner());
+        archive
+            .message(&chat, &id)
+            .map(|row| row.map(Into::into))
+            .map_err(|_| BridgeError::Archive {
+                message: "Could not read the selected message".into(),
+            })
+    }
+
+    /// Orders selected IDs by archive order without loading their bodies.
+    pub fn selected_ids(&self, chat: String, ids: Vec<String>) -> Result<Vec<String>, BridgeError> {
+        let archive = self.archive.lock().unwrap_or_else(|p| p.into_inner());
+        archive
+            .selected_message_ids(&chat, &ids)
+            .map_err(|_| BridgeError::Archive {
+                message: "Could not read the selection".into(),
+            })
+    }
+
     /// Up to `limit` messages of `chat` older than `before` (the newest ones
     /// when there is no boundary), oldest first. Passing the first message of
     /// the previous page as the boundary walks a chat back to its start; an
@@ -212,6 +233,34 @@ mod tests {
 
     fn ids(page: &[MessageRecord]) -> Vec<&str> {
         page.iter().map(|message| message.id.as_str()).collect()
+    }
+
+    #[test]
+    fn selected_records_use_archive_order_and_stay_account_local() {
+        let reader = reader_with(&[message("z", 100), message("a", 100), message("b", 200)]);
+        assert_eq!(
+            reader
+                .selected_ids(
+                    "chat@s.whatsapp.net".into(),
+                    vec!["b".into(), "missing".into(), "a".into(), "z".into()]
+                )
+                .unwrap(),
+            ["z", "a", "b"]
+        );
+        assert!(
+            reader
+                .message("other".into(), "a".into())
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            reader
+                .message("chat@s.whatsapp.net".into(), "a".into())
+                .unwrap()
+                .unwrap()
+                .id,
+            "a"
+        );
     }
 
     #[test]

@@ -10,6 +10,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use crate::model::{Chat, ChatKind, Contact, Content, Delivery, LastMessage, Message};
 
 pub mod chat_search;
+pub mod message_window;
 pub use chat_search::{ChatSearch, ChatSearchHits, SearchKind, SearchSender};
 mod drafts;
 mod encryption;

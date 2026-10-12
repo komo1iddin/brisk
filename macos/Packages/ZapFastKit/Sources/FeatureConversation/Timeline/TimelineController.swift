@@ -100,6 +100,11 @@ final class TimelineController: NSObject, NSTableViewDataSource, NSTableViewDele
     var drawsBubbles = ProcessInfo.processInfo.environment["ZAPFAST_SWIFTUI_ROWS"] == nil
     weak var model: AppModel?
     var onReachTop: () -> Void = {}
+    var onReachBottom: () -> Void = {}
+    var onWantNewest: () -> Void = {}
+    var onReadingAnchor: (String?, Bool) -> Void = { _, _ in }
+    var hasNewer = false
+    var reachBottomScheduled = false
     /// What a sender's page asks of the window (a dialog, a sheet).
     var onInfoRequest: (InfoRequest) -> Void = { _ in }
     /// The page of the person whose name or photo was clicked.

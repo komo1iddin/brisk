@@ -224,13 +224,16 @@ extension AppModel {
 
     public func reveal(_ key: MessageKey) {
         if selectedChatID != key.chat { selectedChatID = key.chat }
+        for reader in timelineReaders.values where reader.chat == key.chat && reader.conversation.message(key.message) == nil {
+            readWindow(.around(message: key.message), in: reader)
+        }
         pendingJump = key
         jumpAskedArchive = false
         continueJump()
     }
 
     /// Finishes a pending jump once its message is loaded, or asks the
-    /// archive for everything from it up to what is loaded. With no page
+    /// archive for a bounded window around it. With no page
     /// loaded yet, the first page is on its way and this runs again then.
     func continueJump() {
         guard let key = pendingJump else { return }
@@ -242,10 +245,13 @@ extension AppModel {
         } else if jumpAskedArchive, !conversation.loadingOlder {
             // The archive answered without it; the backend has said why.
             pendingJump = nil
-        } else if !jumpAskedArchive, !conversation.loadingOlder, let oldest = conversation.oldestKey {
+        } else if !jumpAskedArchive, !conversation.loadingOlder, conversation.oldestKey != nil {
             jumpAskedArchive = true
             conversations.markLoadingOlder(key.chat)
-            backend.send(.loadUntil(chat: key.chat, message: key.message, before: oldest))
+            let request = UUID().uuidString
+            let query = MessageWindowQuery.around(message: key.message)
+            defaultWindowRequests[key.chat] = (request, query)
+            backend.send(.loadMessageWindow(chat: key.chat, request: request, query: query))
         }
     }
 

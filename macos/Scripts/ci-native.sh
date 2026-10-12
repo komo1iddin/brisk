@@ -34,6 +34,8 @@ macos/Scripts/check-warnings.sh --disable-sandbox --jobs "${NATIVE_BUILD_JOBS:-2
     swift test --no-parallel --disable-sandbox --force-resolved-versions --jobs "${NATIVE_BUILD_JOBS:-2}"
 )
 python3 macos/Scripts/license-inventory.py --check
+# Every string in the catalog has its translations.
+python3 macos/Scripts/update-strings.py --check
 macos/Scripts/build-bridge.sh release
 (
     cd macos

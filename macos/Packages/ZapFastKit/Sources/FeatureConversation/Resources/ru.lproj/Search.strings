@@ -1,0 +1,47 @@
+/* The search over the top of an open chat. Keys are read by
+   Search/SearchText.swift; the words live here, not in the code. */
+
+/* The field */
+"search.prompt" = "Поиск";
+"search.prompt.people" = "Кто отправил?";
+"search.clear" = "Очистить";
+"search.you" = "Вы";
+
+/* The count of matches */
+"search.counter %lld %lld" = "%1$lld из %2$lld";
+"search.count %lld" = "Найдено: %lld";
+"search.count.more %lld" = "Найдено: %lld+";
+"search.none" = "Нет результатов";
+"search.searching" = "Поиск";
+
+/* The bar's buttons */
+"search.older" = "Более раннее совпадение (↑ или Return)";
+"search.newer" = "Более позднее совпадение (↓ или Shift-Return)";
+"search.sender" = "Поиск по отправителю";
+"search.kind" = "Поиск по типу";
+"search.calendar" = "Перейти к дате";
+"search.close" = "Закрыть поиск (Esc)";
+"search.filter.remove" = "Убрать этот фильтр";
+
+/* Kinds of message */
+"search.kind.any" = "Все";
+"search.kind.photos" = "Фото";
+"search.kind.videos" = "Видео";
+"search.kind.gifs" = "GIF";
+"search.kind.files" = "Файлы";
+"search.kind.links" = "Ссылки";
+"search.kind.voice" = "Голосовые";
+"search.kind.music" = "Музыка";
+
+/* The list of matches and of people */
+"search.list.more %lld %lld" = "Показаны %1$lld самых новых из %2$lld совпадений. ↑ и ↓ переходят по всем.";
+"search.list.truncated" = "Слишком много совпадений, чтобы перейти по всем. Добавьте слово или фильтр, чтобы сузить поиск.";
+"search.people.none" = "Никого с таким именем";
+
+/* The calendar */
+"search.calendar.previous" = "Предыдущий месяц";
+"search.calendar.next" = "Следующий месяц";
+"search.calendar.goto" = "Перейти к дню";
+"search.calendar.filter" = "Искать в этом дне";
+"search.calendar.every" = "Искать во все дни";
+"search.calendar.empty" = "В этот день сообщений нет";

@@ -532,6 +532,16 @@ and `CallStore.isAvailable` (from the bridge's `calls_supported`) hides
 the call buttons, the calls in the timeline and the call window.
 `make run CALLS=1` builds with them.
 
+The interface's words live in one string catalog,
+`App/Resources/Localizable.xcstrings`, in the app's main bundle, where
+SwiftUI literals and `String(localized:)` look by default. Xcode does not
+extract a local package's strings into the app's catalog, so
+`Scripts/update-strings.py` asks the compiler for every key and adds new
+ones (`--import ru=FILE` merges translations, `--check` lists what is
+untranslated). The in-chat search keeps its own `Search.strings` table in
+FeatureConversation. English and Russian are complete; macOS picks the
+language, per app in System Settings › General › Language & Region.
+
 Before merging, `make check` recompiles ZapFastKit, fails on any warning
 in its sources (some Swift 6 isolation errors are only warnings, and crash
 at run time), and runs the tests.

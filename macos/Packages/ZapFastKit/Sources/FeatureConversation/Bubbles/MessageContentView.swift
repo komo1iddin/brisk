@@ -49,7 +49,7 @@ struct MessageContentView: View {
         case let .liveLocation(latitude, longitude, accuracy, speed, _, ended, updated):
             LocationContent(
                 message: message, latitude: latitude, longitude: longitude,
-                title: String(localized: ended ? "Live location ended" : "Live location"),
+                title: ended ? String(localized: "Live location ended") : String(localized: "Live location"),
                 detail: LocationContent.liveDetail(updated: updated, speed: speed, accuracy: accuracy),
                 live: !ended, model: model, version: updated, inset: captionInset
             )

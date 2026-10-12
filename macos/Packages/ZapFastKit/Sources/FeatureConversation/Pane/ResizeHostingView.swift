@@ -15,7 +15,17 @@ final class ResizeHostingView: NSHostingView<AnyView> {
         self.passive = passive
     }
 
+    override var isHidden: Bool {
+        didSet {
+            if oldValue && !isHidden { needsLayout = true }
+        }
+    }
+
     override func layout() {
+        // Window safe-area notifications can ask hidden hosting views to
+        // lay out even with unchanged frames. Unhiding schedules a fresh
+        // pass, so deferred SwiftUI content catches up before it is shown.
+        guard !isHidden else { return }
         let interval = Self.signposter.beginInterval(layoutName)
         super.layout()
         Self.signposter.endInterval(layoutName, interval)

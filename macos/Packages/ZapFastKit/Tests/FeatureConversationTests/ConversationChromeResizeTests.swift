@@ -52,6 +52,19 @@ struct ConversationChromeResizeTests {
         #expect(placeholder.frame.size == detail.view.bounds.size)
     }
 
+    @Test func revealingAHiddenIslandSchedulesItsDeferredLayout() {
+        let host = ResizeHostingView(layoutName: "PlaceholderLayout", passive: true)
+        host.isHidden = true
+        host.frame = CGRect(x: 0, y: 0, width: 400, height: 300)
+        host.layoutSubtreeIfNeeded()
+        host.needsLayout = false
+        host.isHidden = false
+        #expect(host.needsLayout)
+        host.layoutSubtreeIfNeeded()
+        #expect(!host.needsLayout)
+        #expect(host.hitTest(.zero) == nil)
+    }
+
     @Test func composerAndSearchUseTheirAppKitInsetsAcrossWidthChanges() throws {
         let (model, detail, window) = fixture()
         defer { window.close() }

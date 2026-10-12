@@ -85,6 +85,9 @@ private final class BenchmarkRun: NSObject {
     private let model: AppModel
     private let backend: BenchmarkBackend
     private var window: NSWindow!
+    private var windowActivity: [String: BenchmarkReport.WindowActivity] = [:]
+    private var resizeBatchMainThreadMs = 0.0
+    private var resizeBatchProcessCPUms = 0.0
 
     init(model: AppModel, backend: BenchmarkBackend) {
         self.model = model
@@ -104,7 +107,8 @@ private final class BenchmarkRun: NSObject {
         }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate()
-        window.setFrame(NSRect(x: 60, y: 60, width: 1100, height: 740), display: true)
+        let width = ProcessInfo.processInfo.environment["ZAPFAST_BENCHMARK_WINDOW_WIDTH"].flatMap(Double.init) ?? 1100
+        window.setFrame(NSRect(x: 60, y: 60, width: width, height: 740), display: true)
         // A pointer resting on the window makes hover views in the rows it
         // crosses, which varied results from run to run; runs leave it out
         // unless `ZAPFAST_BENCHMARK_POINTER=1`. `=over` puts the window
@@ -178,7 +182,10 @@ private final class BenchmarkRun: NSObject {
             pagingFlicks: pagingFlicks,
             fullFlicks: fullFlicks,
             sidebarScroll: sidebarScroll,
-            integrity: integrity
+            integrity: integrity,
+            windowActivity: windowActivity,
+            resizeBatchMainThreadMs: resizeBatchMainThreadMs,
+            resizeBatchProcessCPUms: resizeBatchProcessCPUms
         )
     }
 
@@ -354,6 +361,7 @@ private final class BenchmarkRun: NSObject {
     }
 
     @objc private func step(_ link: CADisplayLink) {
+        checkWindow("Scroll")
         let frameBudget = link.targetTimestamp - link.timestamp
         let delta: Double
         if lastTimestamp > 0 {
@@ -424,16 +432,22 @@ private final class BenchmarkRun: NSObject {
     /// thread's CPU time from the event until the window has had time to
     /// update, less the same wait with no event.
     private func eventCosts(open: String, name: String) async -> BenchmarkReport.EventCost {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
         let samples = 15
         let settle = Duration.milliseconds(80)
         // Each sample is a signpost, to find it in a trace.
         func sample(_ name: StaticString = "Event", _ event: () -> Void) async -> Double {
+            let phase = "Events.\(eventRound).\(name)"
+            checkWindow(phase)
             let interval = Self.signposter.beginInterval(name)
             let cpu = Self.mainThreadCPU()
             event()
             await pause(settle)
             Self.signposter.endInterval(name, interval)
-            return Self.mainThreadCPU() - cpu
+            let cost = Self.mainThreadCPU() - cpu
+            checkWindow(phase)
+            return cost
         }
 
         await pause(.milliseconds(300))
@@ -510,9 +524,23 @@ private final class BenchmarkRun: NSObject {
     /// Narrows the window 8 points at a time, as a resize drag does, and
     /// times each step through layout, drawing and the commit.
     private func measureResize() async -> [Double] {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+        // Measure resize after the last arrival's spring has finished.
+        // Both builds use the same settling time outside timed intervals.
+        await pause(.milliseconds(500))
+        let burst = Self.signposter.beginInterval("ResizeBurst")
+        let mainCPU = Self.mainThreadCPU()
+        let processCPU = Double(clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID)) / 1_000_000
+        defer {
+            resizeBatchMainThreadMs = Self.mainThreadCPU() - mainCPU
+            resizeBatchProcessCPUms = Double(clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID)) / 1_000_000 - processCPU
+            Self.signposter.endInterval("ResizeBurst", burst)
+        }
         let original = window.frame
         var steps: [Double] = []
         for index in 1...10 {
+            checkWindow("Resize")
             let interval = Self.signposter.beginInterval("ResizeStep")
             let start = CACurrentMediaTime()
             var frame = original
@@ -523,6 +551,7 @@ private final class BenchmarkRun: NSObject {
             CATransaction.flush()
             steps.append((CACurrentMediaTime() - start) * 1000)
             Self.signposter.endInterval("ResizeStep", interval)
+            checkWindow("Resize")
             if let table = timeline { integrity.add(audit(table), at: .resize) }
             // A turn of the run loop, as between the frames of a drag.
             await pause(.milliseconds(16))
@@ -535,6 +564,16 @@ private final class BenchmarkRun: NSObject {
     }
 
     // MARK: Helpers
+
+    private func checkWindow(_ phase: String) {
+        var state = windowActivity[phase] ?? .init()
+        state.checks += 1
+        if !NSApp.isActive { state.inactive += 1 }
+        if !window.occlusionState.contains(.visible) { state.occluded += 1 }
+        let thermal = String(ProcessInfo.processInfo.thermalState.rawValue)
+        state.thermalStates[thermal, default: 0] += 1
+        windowActivity[phase] = state
+    }
 
     /// The open chat's message table.
     private var timeline: NSTableView? {

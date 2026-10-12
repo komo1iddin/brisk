@@ -2,6 +2,13 @@ import Foundation
 
 /// What one benchmark run measured. Times are milliseconds.
 nonisolated struct BenchmarkReport: Codable, Sendable {
+    /// Window state only, without titles, identities or user content.
+    struct WindowActivity: Codable, Sendable {
+        var checks = 0
+        var inactive = 0
+        var occluded = 0
+        var thermalStates: [String: Int] = [:]
+    }
     struct Distribution: Codable, Sendable {
         var p50: Double
         var p95: Double
@@ -122,6 +129,9 @@ nonisolated struct BenchmarkReport: Codable, Sendable {
     /// The chat list (200 chats) down and back up at 3,000 pt/s.
     var sidebarScroll: Scroll
     var integrity: Integrity
+    var windowActivity: [String: WindowActivity] = [:]
+    var resizeBatchMainThreadMs: Double = 0
+    var resizeBatchProcessCPUms: Double = 0
 
     var summary: String {
         func ms(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(2))) }

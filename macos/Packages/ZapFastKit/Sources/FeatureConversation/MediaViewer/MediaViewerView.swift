@@ -21,6 +21,7 @@ struct MediaViewerView: View {
     @Bindable var model: AppModel
 
     @State private var currentID: String?
+    @State private var previousItems: [String] = []
     @State private var showingGrid = false
     @State private var zoom = PhotoZoom()
     @State private var player = AVPlayer()
@@ -78,6 +79,7 @@ struct MediaViewerView: View {
         .background(EditorKeys(handle: handleKey))
         .onAppear {
             currentID = model.mediaViewer?.message
+            previousItems = items.map(\.id)
             prepare(current)
         }
         .onChange(of: current?.id) { _, id in
@@ -94,17 +96,13 @@ struct MediaViewerView: View {
             #endif
         }
         .onChange(of: items.map(\.id)) { old, new in
-            // The one shown was deleted: show its neighbour, or close.
-            guard let id = currentID, !new.contains(id) else { return }
-            // Paging can evict the displayed item. Only its deletion clears
-            // the single record retained by the viewer.
-            if model.mediaViewerMessage?.id == id { return }
-            let position = old.firstIndex(of: id) ?? 0
-            if new.isEmpty {
-                model.closeMediaViewer()
-            } else {
-                select(new[min(position, new.count - 1)])
-            }
+            previousItems = new
+            recoverSelection(previous: old, available: new)
+        }
+        .onChange(of: model.mediaViewerMessage?.id) { _, id in
+            // A deleted or revoked photo may already be outside the gallery
+            // window, so its removal need not change the gallery's IDs.
+            if id == nil { recoverSelection(previous: previousItems, available: items.map(\.id)) }
         }
         .onDisappear { player.pause() }
         .confirmationDialog(Text("Delete this photo or video?"), isPresented: $confirmingDelete) {
@@ -362,6 +360,14 @@ struct MediaViewerView: View {
     }
 
     // MARK: Actions
+
+    private func recoverSelection(previous: [String], available: [String]) {
+        guard model.mediaViewer != nil, let id = currentID, !available.contains(id),
+              model.mediaViewerMessage?.id != id else { return }
+        let position = previous.firstIndex(of: id) ?? 0
+        if available.isEmpty { model.closeMediaViewer() }
+        else { select(available[min(position, available.count - 1)]) }
+    }
 
     private func select(_ id: String) {
         guard id != current?.id else { return }

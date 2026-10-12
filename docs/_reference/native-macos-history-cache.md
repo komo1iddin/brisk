@@ -28,7 +28,9 @@ resolve records in the open panes, including older windows outside the
 newest cache. The media viewer has its own bounded gallery with backward
 and forward paging. It retains just the explicitly viewed record while
 the gallery pages away; downloads, edits, revocation and deletion update
-that record, and closing the viewer releases it and its gallery reader.
+that record. If it disappears while outside the gallery window, the viewer
+selects an available neighbour or closes an empty gallery. Closing the viewer
+releases it and its gallery reader.
 This one active record is additional to the gallery budget.
 
 Selection keeps IDs, order and capabilities rather than copies of message
@@ -62,7 +64,8 @@ ends. Height and composer-inset changes preserve the bottom when following
 new messages. The composer's fading blur uses an AppKit material and layer
 mask, avoiding a full-width SwiftUI material layout during resize.
 Invisible wallpaper and the hidden no-chat placeholder keep their frames
-until shown, when they catch up to the pane's bounds. The composer and
+until shown, when they catch up to the pane's bounds. Hidden hosting views
+skip window-driven layout work and schedule deferred content layout on reveal. The composer and
 search islands use AppKit's insets without repeating SwiftUI window
 safe-area geometry calculations. Passive layout signposts contain role
 names only, without chat or message identifiers.

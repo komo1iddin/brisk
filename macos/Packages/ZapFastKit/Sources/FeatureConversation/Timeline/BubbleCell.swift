@@ -552,10 +552,13 @@ final class BubbleCell: NSView {
         return frame.contains(point) ? self : nil
     }
 
-    /// The message's menu, from anywhere on its row: the bubble and the
-    /// space beside it (upstream #240).
+    /// The message's menu, only over the bubble itself: a right-click on
+    /// the empty space beside it opens nothing, as in WhatsApp. Parts of the
+    /// bubble without a menu of their own pass the click up to here.
     override func menu(for event: NSEvent) -> NSMenu? {
         guard let id = messageID else { return super.menu(for: event) }
+        let point = convert(event.locationInWindow, from: nil)
+        guard bubble.frame.contains(point) else { return nil }
         return delegate?.menu(forMessage: id, selection: nil)
     }
 

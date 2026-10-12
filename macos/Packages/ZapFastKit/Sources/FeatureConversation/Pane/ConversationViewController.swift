@@ -41,10 +41,10 @@ final class ConversationViewController: NSViewController {
     private let pane = ConversationPaneState()
     private let overlay = IslandHostingView(rootView: AnyView(EmptyView()))
     private let newest = IslandHostingView(rootView: AnyView(EmptyView()))
-    private let bottomBar = NSHostingView(rootView: AnyView(EmptyView()))
+    private let bottomBar = ResizeHostingView(layoutName: "ComposerLayout")
     /// The chat's search, over the top of the timeline. It sizes itself:
     /// the bar, and the list under it while that is open.
-    private let searchBar = NSHostingView(rootView: AnyView(EmptyView()))
+    private let searchBar = ResizeHostingView(layoutName: "SearchBarLayout")
     private let titleBand = TitleBandView()
     private let bottomBand = BottomBandView()
     private var observed = 0
@@ -86,8 +86,12 @@ final class ConversationViewController: NSViewController {
         }
         // The composer sizes itself; the timeline ends where it starts.
         bottomBar.sizingOptions = [.intrinsicContentSize]
+        // AppKit constrains these islands below the title bar and above the
+        // window edge. SwiftUI need not rebuild window safe-area geometry.
+        bottomBar.safeAreaRegions = []
         bottomBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.sizingOptions = [.intrinsicContentSize]
+        searchBar.safeAreaRegions = []
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),

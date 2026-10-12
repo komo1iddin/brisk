@@ -61,6 +61,11 @@ and restore the reading anchor. Live resize defers that reflow until the drag
 ends. Height and composer-inset changes preserve the bottom when following
 new messages. The composer's fading blur uses an AppKit material and layer
 mask, avoiding a full-width SwiftUI material layout during resize.
+Invisible wallpaper and the hidden no-chat placeholder keep their frames
+until shown, when they catch up to the pane's bounds. The composer and
+search islands use AppKit's insets without repeating SwiftUI window
+safe-area geometry calculations. Passive layout signposts contain role
+names only, without chat or message identifiers.
 
 These limits bound retained message payloads, not total process memory.
 SQLite/FFI batches, decoded media, view layers, active jobs, explicit action

@@ -40,8 +40,8 @@ public final class ChatDetailViewController: NSViewController {
 
     private var conversation: ConversationViewController?
     private let chrome = ConversationChrome()
-    private let wallpaper = PassiveHostingView(rootView: AnyView(EmptyView()))
-    private let placeholder = PassiveHostingView(rootView: AnyView(EmptyView()))
+    private let wallpaper = ResizeHostingView(layoutName: "WallpaperLayout", passive: true)
+    private let placeholder = ResizeHostingView(layoutName: "PlaceholderLayout", passive: true)
     private let presenters = PassiveHostingView(rootView: AnyView(EmptyView()))
     /// The fine line between the chat list and the chat.
     private let divider = HairlineView()
@@ -116,7 +116,8 @@ public final class ChatDetailViewController: NSViewController {
                         members: chat.kind == .group ? model.chats.participantNames(chat) : ""
                     )
                 },
-                title: title
+                title: title,
+                hasWallpaper: id.map { model.chatTheme(for: $0).hasWallpaper } ?? false
             )
         } onChange: { [weak self] in
             DispatchQueue.main.async {
@@ -127,6 +128,10 @@ public final class ChatDetailViewController: NSViewController {
             }
         }
         if state.id != chatID { show(state.id) }
+        if wallpaper.isHidden != !state.hasWallpaper {
+            wallpaper.isHidden = !state.hasWallpaper
+            view.needsLayout = true
+        }
         // Another chat is another value too.
         if state.chat != shownChat {
             shownChat = state.chat
@@ -179,9 +184,11 @@ public final class ChatDetailViewController: NSViewController {
             x: insets.left, y: 0,
             width: max(0, bounds.width - insets.left - insets.right), height: bounds.height
         )
-        wallpaper.frame = bounds
+        // Hidden SwiftUI islands still receive layout after a frame change.
+        // Their first visible pass catches up to the current geometry.
+        if !wallpaper.isHidden { wallpaper.frame = bounds }
         conversation?.view.frame = content
-        placeholder.frame = content
+        if !placeholder.isHidden { placeholder.frame = content }
         presenters.frame = CGRect(x: content.minX, y: 0, width: 1, height: 1)
         divider.frame = CGRect(x: content.minX, y: 0, width: HairlineView.thickness(in: view.window), height: bounds.height)
     }
@@ -195,7 +202,7 @@ public final class ChatDetailViewController: NSViewController {
         let item: NSToolbarItem
         switch identifier {
         case Self.headerItem:
-            let host = NSHostingView(rootView: AnyView(EmptyView()))
+            let host = ResizeHostingView(layoutName: "HeaderLayout")
             host.sizingOptions = [.intrinsicContentSize]
             header = host
             item = TitleToolbarItem(itemIdentifier: identifier)

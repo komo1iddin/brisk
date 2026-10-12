@@ -21,8 +21,13 @@ struct TimelineRowBackingTests {
         defer { window.close(); withExtendedLifetime(model) {} }
         controller.place(frame: CGRect(x: 0, y: 0, width: 760, height: 400), topInset: 20, bottomInset: 40)
         let messages = (0..<80).map { index in
-            MessageRecord(id: "m\(index)", chat: "fixture", sender: "sender", senderName: nil, fromMe: index % 2 == 0,
-                timestamp: Int64(index * 86_400), content: .text(text: "Synthetic row content", preview: nil),
+            let content: MessageContent = index % 8 == 0
+                ? .poll(question: "Synthetic poll", options: ["A", "B"], state: PollSummary(
+                    selectable: 1, counts: [0, 0], selected: [], voters: 0, canVote: false,
+                    historyComplete: true, refreshNeeded: false, refreshing: false, refreshFailed: false, votes: []))
+                : .text(text: "Synthetic row content", preview: nil)
+            return MessageRecord(id: "m\(index)", chat: "fixture", sender: "sender", senderName: nil, fromMe: index % 2 == 0,
+                timestamp: Int64(index * 86_400), content: content,
                 status: .none, deliveredAt: nil, readAt: nil, quoted: nil, reactions: [], edited: false,
                 mentions: [], forwarded: false, thumbnail: nil, summary: "")
         }
@@ -31,7 +36,7 @@ struct TimelineRowBackingTests {
         let deadline = ContinuousClock.now + .seconds(5)
         while controller.preparing, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
         try #require(!controller.preparing && !controller.items.isEmpty)
-        var bubbles = 0, chips = 0
+        var bubbles = 0, chips = 0, hosted = 0
         let standardRowRole = NSTableRowView().accessibilityRole()
         for width in [760.0, 900.0, 640.0] {
             controller.place(frame: CGRect(x: 0, y: 0, width: width, height: 400), topInset: 20, bottomInset: 40)
@@ -61,10 +66,15 @@ struct TimelineRowBackingTests {
                         #expect((bubble.layer?.backgroundColor?.alpha ?? 0) > 0)
                         bubble.setHighlighted(false, animated: false)
                     } else if cell is ChipCell { chips += 1 }
+                    else if cell is HostingCell {
+                        hosted += 1
+                        let host = try #require(cell.subviews.first)
+                        #expect(host.frame == cell.bounds)
+                    }
                 }
                 #expect(controller.tableView.selectedRowIndexes.isEmpty)
             }
         }
-        #expect(bubbles > 0 && chips > 0)
+        #expect(bubbles > 0 && chips > 0 && hosted > 0)
     }
 }

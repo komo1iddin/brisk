@@ -1,0 +1,13 @@
+{
+  "baselineBinarySHA256": "8fdfd3fcdbc0743e26319e8246e7ea9fa075402a8e786cf02de0a73613ad4063",
+  "bridge": "same verified XCFramework; isolated baseline scheme pre-action omitted",
+  "candidateBinarySHA256": "b6a6e00e27e69c715f02a49f1458fcda05908200ff62d962d8bface777fc2d96",
+  "candidateCommit": "86732e7d46065f467a45ce881dee04997a8932b9",
+  "harnessSHA256": {
+    "BenchmarkReport.swift": "7db3c5e91882f9ad748cfb91964a383e935790b1eb7f0070fe6b39d87e879199",
+    "TimelineBenchmark.swift": "347b5db647c13ca7ca47da91aadab77164ac4732c510a122e7cdf21f30495154"
+  },
+  "normalWindowLevel": true,
+  "productionBaselineCommit": "62f8b13",
+  "sameBenchmarkHarness": true
+}

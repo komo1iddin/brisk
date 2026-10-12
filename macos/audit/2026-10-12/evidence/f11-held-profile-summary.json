@@ -1,0 +1,2999 @@
+{
+  "binarySHA256": "b6a6e00e27e69c715f02a49f1458fcda05908200ff62d962d8bface777fc2d96",
+  "candidateCommit": "86732e7d46065f467a45ce881dee04997a8932b9",
+  "limitations": [
+    "Inclusive frames overlap and must not be summed.",
+    "Sampling and profiler overhead prevent direct comparison with unprofiled runs.",
+    "Only the synthetic benchmark PID was attached.",
+    "Raw trace and metadata excluded from repository evidence."
+  ],
+  "phases": {
+    "ComposerLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 10,
+      "sampledAllThreadCPUms": 21.0,
+      "sampledMainCPUms": 19.0,
+      "summedWallMs": 20.173,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "___NSViewLayout_block_invoke"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSWindow _oldPlaceWindow:fromServer:]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSView layoutSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a7b0d24"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "BenchmarkRun.measureResize()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "@objc ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSWindow(NSConstraintBasedLayoutInternal) _layoutViewTree]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "@objc NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a70020c"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSWindow _setFrameCommon:display:fromServer:]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a7b1890"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "_NSViewLayout"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a700234"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "__56-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "__36-[NSView _layoutSubtreeWithOldSize:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSView _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "closure #1 in NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "AG::Graph::UpdateStack::update()"
+        },
+        {
+          "sampledCPUms": 12.0,
+          "symbol": "ViewGraph.updateOutputs(at:)"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "specialized implicit closure #1 in closure #1 in closure #1 in Attribute.init<A>(_:)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "AG::Subgraph::update(unsigned int)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FocusBridge.preferencesDidChange(_:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "specialized update #1 () in ViewGraph.updateOutputs(async:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FocusBridge.updateDefaultKeyViewLoop()"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "NSHostingView.preferencesDidChange()"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FocusBridge.invalidateKeyViewLoop()"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "GraphHost.runTransaction()"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "AG::Graph::update_attribute(AG::data::ptr<AG::Node>, unsigned int)"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "AGGraphGetWeakValue"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "AG::Graph::value_ref(AG::AttributeID, unsigned int, AGSwiftMetadata const*, unsigned char&)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "FocusNavigationSequence.next()"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "FocusNavigationSequence.iterator(responder:start:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "closure #1 in ResponderNode.visitBaseFocusResponders(applying:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "MultiViewResponder.visit(applying:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "ResponderNode.focusNavigationCohort(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "ViewLayoutEngine.sizeThatFits(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "closure #1 in ViewLayoutEngine.sizeThatFits(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "specialized StackLayout.UnmanagedImplementation.placeChildren1(in:minorProposalForChild:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "RootGeometry.value.getter"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "LayoutProxy.dimensions(in:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "StackLayout.UnmanagedImplementation.resize(_:proposal:proxy:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "StackLayout.UnmanagedImplementation.placeChildren(in:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "LayoutEngineBox.sizeThatFits(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "GraphHost.flushTransactions()"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "StackLayout.UnmanagedImplementation.sizeChildrenGenerallyWithConcreteMajorProposal(in:minorProposalForChild:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "implicit closure #1 in closure #1 in closure #1 in Attribute.init<A>(_:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "protocol witness for ViewGraphRenderHost.renderDisplayList(_:asynchronously:time:nextTime:targetTimestamp:version:maxVersion:) in conformance ViewGraph"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ViewGraph.renderDisplayList(_:asynchronously:time:nextTime:targetTimestamp:version:maxVersion:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_conformsToProtocol2"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_conformsToProtocolMaybeInstantiateSuperclasses(swift::TargetMetadata<swift::InProcess> const*, swift::TargetProtocolDescriptor<swift::InProcess> const*, bool)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "dyld4::APIs::_dyld_find_protocol_conformance(void const*, void const*, void const*) const"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_bridgeObjectRetain"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ViewRendererHost.updateViewGraph<A>(body:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ViewGraph.responderNode.getter"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AGGraphGetValue"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "NSHostingView.responderNode.getter"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in NSHostingView.responderNode.getter"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "FocusNavigator.allItems.getter"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "StackLayout.UnmanagedImplementation.sizeChildrenUsingMajorAxisProposal(_:minorProposalForChild:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_PaddingLayout.sizeThatFits(in:context:child:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "protocol witness for UnaryLayout.sizeThatFits(in:context:child:) in conformance _PaddingLayout"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "0x238bea288"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "UnaryLayoutEngine.sizeThatFits(_:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "LayoutEngineBox.explicitAlignment(_:at:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "UnaryLayoutEngine.explicitAlignment(_:at:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in ViewLayoutEngine.explicitAlignment(_:at:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ViewDimensions.subscript.getter"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ViewLayoutEngine.explicitAlignment(_:at:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in closure #1 in ViewLayoutEngine.explicitAlignment(_:at:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "pthread_getspecific"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "protocol witness for static PreferenceKey.reduce(value:nextValue:) in conformance HostPreferencesKey"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "unsigned int tuple_getEnumTagSinglePayload<false, false>(swift::OpaqueValue const*, unsigned int, swift::TargetMetadata<swift::InProcess> const*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DynamicPreferenceCombiner.value.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "protocol witness for static PreferenceKey.reduce(value:nextValue:) in conformance ResponderCommandsKey"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "GraphHost.updatePreferences()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "specialized _NativeDictionary.merge<A, B>(_:isUnique:uniquingKeysWith:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "PreferenceValues.combine(with:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "outlined destroy of UTType?"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "outlined init with take of FocusItem?"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x23c861241"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "initializeWithTake for ClosedRange<>.Index"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DisplayList.ViewUpdater.Platform.updateState(_:item:size:state:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "getMethodNoSuper_nolock(objc_class*, objc_selector*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSViewUpdateConstraintsForFrameChange"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRenderDelegate.withMainThreadRender(wasAsync:_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DisplayList.ViewUpdater.Platform.updateGeometry(_:item:size:state:clipRectChanged:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in renderOnMainThread #1 () in ViewGraph.renderDisplayList(_:asynchronously:time:nextTime:targetTimestamp:version:maxVersion:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_objc_msgSend_uncached"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DisplayList.ViewUpdater.update(container:from:parentState:)"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_bridgeObjectRetain"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AGGraphGetValue"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "pthread_getspecific"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "unsigned int tuple_getEnumTagSinglePayload<false, false>(swift::OpaqueValue const*, unsigned int, swift::TargetMetadata<swift::InProcess> const*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x23c861241"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "getMethodNoSuper_nolock(objc_class*, objc_selector*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSAppearance _callCoreUIWithBlock:options:requireBezelTintColor:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSISEngine withBehaviors:performModifications:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift::RefCounts<swift::RefCountBitsT<(swift::RefCountInlinedness)1>>::incrementSlow(swift::RefCountBitsT<(swift::RefCountInlinedness)1>, unsigned int)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "__swift_memcpy124_8"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::resolve_offset(AG::AttributeID, AGSwiftMetadata const*, unsigned int) const"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x1bc90ec01"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "assignWithCopy for ContentResponderHelper"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "protocol witness for StatefulRule.updateValue() in conformance ShapeStyledResponderFilter<A>"
+        }
+      ]
+    },
+    "EmptyOverlayLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 0,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.0,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    },
+    "HeaderLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 10,
+      "sampledAllThreadCPUms": 1.0,
+      "sampledMainCPUms": 1.0,
+      "summedWallMs": 0.86,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "___NSViewLayout_block_invoke"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSWindow _oldPlaceWindow:fromServer:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView layoutSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater.updateGraph()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a7b0d24"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "BenchmarkRun.measureResize()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a60ea38"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphHost.setProposedSize(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "@objc ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSToolbarView layout]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater._updateViewGraph<A>(body:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "GraphHost.runTransaction()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Subgraph::update(unsigned int)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSWindow(NSConstraintBasedLayoutInternal) _layoutViewTree]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "@objc NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a70020c"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSWindow _setFrameCommon:display:fromServer:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a7b1890"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_NSViewLayout"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::Context::call_update()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a700234"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraph.setSize(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraph.updateOutputs(at:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "__56-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSToolbarItemViewer _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a60fce0"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::call_update()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in GraphHost.init(updateGroup:data:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "__36-[NSView _layoutSubtreeWithOldSize:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.updateGraph()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater.graphDidChange()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater.updateGraph<A>(body:)"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x19a60ea38"
+        }
+      ]
+    },
+    "Here": {
+      "focusedInclusiveFrames": [
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "specialized TimelineController.update<A>(chatID:messages:revision:changes:calls:fromStart:isGroup:model:style:unread:jump:scrollRequest:onReachTop:onScrollState:)"
+        },
+        {
+          "sampledCPUms": 49.0,
+          "symbol": "partial apply for closure #4 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 49.0,
+          "symbol": "closure #4 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "TimelineController.item(for:limit:)"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "closure #2 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 15.0,
+          "symbol": "ConversationStore.applyMessages(chat:messages:older:complete:)"
+        },
+        {
+          "sampledCPUms": 15.0,
+          "symbol": "specialized ConversationStore.update(_:messages:keepOldest:_:)"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "TimelineController.tableView(_:viewFor:row:)"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "specialized TimelineController.tableView(_:viewFor:row:)"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "@objc TimelineController.tableView(_:viewFor:row:)"
+        },
+        {
+          "sampledCPUms": 12.0,
+          "symbol": "TimelineController.refresh(rows:preservePosition:)"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "TimelineController.reload(_:resized:)"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "ConversationStore.enforceBudget(_:conversation:previousCount:keepOldest:)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "TimelineController.scrollToBottom(animated:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "ConversationStore.typing(in:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "TimelineController.resolve(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "closure #1 in TimelineController.resolve(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "partial apply for closure #1 in TimelineController.resolve(_:)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "_ContiguousArrayStorage.__deallocating_deinit"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in ConversationStore.applyMessages(chat:messages:older:complete:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "Conversation.merge(_:older:positions:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "specialized _ArrayBuffer._consumeAndCreateNew(bufferIsUnique:minimumCapacity:growForAppend:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in closure #1 in TimelineController.resolve(_:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "ConversationStore.conversation(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.animateArrival(rows:shift:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ConversationStore.trimInactive(all:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in ConversationStore.trimInactive(all:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.scrolled(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "@objc TimelineController.scrolled(_:)"
+        }
+      ],
+      "intervals": 15,
+      "sampledAllThreadCPUms": 242.0,
+      "sampledMainCPUms": 233.0,
+      "summedWallMs": 1285.821,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "ReceiveNextEventCommon"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "_DPSNextEvent"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "_BlockUntilNextEventMatchingListInMode"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "RunCurrentEventLoopInMode"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "static App.main()"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "specialized runApp(_:)"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "-[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "main"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "-[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "_DPSBlockUntilNextEventMatchingListInMode"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "start"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "_CFRunLoopRunSpecificWithOptions"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "static ZapFastApp.$main()"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "NSApplicationMain"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "-[NSApplication run]"
+        },
+        {
+          "sampledCPUms": 207.0,
+          "symbol": "runApp<A>(_:)"
+        },
+        {
+          "sampledCPUms": 202.0,
+          "symbol": "__CFRunLoopRun"
+        },
+        {
+          "sampledCPUms": 164.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 134.0,
+          "symbol": "partial apply for specialized thunk for @callee_guaranteed () -> (@out A, @error @owned Error)"
+        },
+        {
+          "sampledCPUms": 134.0,
+          "symbol": "specialized static MainActor.assumeIsolated<A>(_:file:line:)"
+        },
+        {
+          "sampledCPUms": 134.0,
+          "symbol": "specialized thunk for @callee_guaranteed () -> (@out A, @error @owned Error)"
+        },
+        {
+          "sampledCPUms": 134.0,
+          "symbol": "specialized closure #1 in static MainActor.assumeIsolated<A>(_:file:line:)"
+        },
+        {
+          "sampledCPUms": 125.0,
+          "symbol": "_dispatch_main_queue_callback_4CF"
+        },
+        {
+          "sampledCPUms": 125.0,
+          "symbol": "_dispatch_main_queue_drain"
+        },
+        {
+          "sampledCPUms": 125.0,
+          "symbol": "_dispatch_main_queue_drain.cold.6"
+        },
+        {
+          "sampledCPUms": 125.0,
+          "symbol": "__CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__"
+        },
+        {
+          "sampledCPUms": 124.0,
+          "symbol": "_dispatch_client_callout"
+        },
+        {
+          "sampledCPUms": 122.0,
+          "symbol": "_dispatch_call_block_and_release"
+        },
+        {
+          "sampledCPUms": 87.0,
+          "symbol": "closure #1 in closure #1 in closure #2 in implicit closure #1 in ConversationViewController.observeSearch()"
+        },
+        {
+          "sampledCPUms": 87.0,
+          "symbol": "partial apply for closure #1 in closure #1 in closure #2 in implicit closure #1 in ConversationViewController.observeTimeline()"
+        },
+        {
+          "sampledCPUms": 87.0,
+          "symbol": "partial apply for closure #1 in closure #2 in implicit closure #1 in ConversationViewController.observeTimeline()"
+        },
+        {
+          "sampledCPUms": 87.0,
+          "symbol": "closure #1 in closure #2 in implicit closure #1 in ConversationViewController.observeSearch()"
+        },
+        {
+          "sampledCPUms": 86.0,
+          "symbol": "ConversationViewController.observeTimeline()"
+        },
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "specialized TimelineController.update<A>(chatID:messages:revision:changes:calls:fromStart:isGroup:model:style:unread:jump:scrollRequest:onReachTop:onScrollState:)"
+        },
+        {
+          "sampledCPUms": 75.0,
+          "symbol": "UC::DriverCore::continueProcessing()"
+        },
+        {
+          "sampledCPUms": 74.0,
+          "symbol": "stepTransactionFlush"
+        },
+        {
+          "sampledCPUms": 74.0,
+          "symbol": "CA::Transaction::flush()"
+        },
+        {
+          "sampledCPUms": 74.0,
+          "symbol": "CA::Transaction::commit()"
+        },
+        {
+          "sampledCPUms": 74.0,
+          "symbol": "CA::Transaction::flush_as_runloop_observer(bool)"
+        },
+        {
+          "sampledCPUms": 51.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 49.0,
+          "symbol": "partial apply for closure #4 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 49.0,
+          "symbol": "closure #4 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 49.0,
+          "symbol": "thunk for @escaping @callee_guaranteed (@guaranteed NSAnimationContext) -> ()"
+        },
+        {
+          "sampledCPUms": 44.0,
+          "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__"
+        },
+        {
+          "sampledCPUms": 44.0,
+          "symbol": "__CFRunLoopDoSources0"
+        },
+        {
+          "sampledCPUms": 44.0,
+          "symbol": "__CFRunLoopDoSource0"
+        },
+        {
+          "sampledCPUms": 41.0,
+          "symbol": "CA::Transaction::run_commit_handlers(CATransactionPhase)"
+        },
+        {
+          "sampledCPUms": 41.0,
+          "symbol": "NSDisplayCycleFlush"
+        },
+        {
+          "sampledCPUms": 40.0,
+          "symbol": "NSDisplayCycleObserverInvoke"
+        },
+        {
+          "sampledCPUms": 38.0,
+          "symbol": "-[NSTableRowData endUpdates]"
+        },
+        {
+          "sampledCPUms": 38.0,
+          "symbol": "-[NSTableView _endUpdateWithTile:]"
+        },
+        {
+          "sampledCPUms": 38.0,
+          "symbol": "-[NSTableView endUpdates]"
+        },
+        {
+          "sampledCPUms": 36.0,
+          "symbol": "withObservationTracking<A>(_:onChange:)"
+        },
+        {
+          "sampledCPUms": 35.0,
+          "symbol": "-[NSTableRowData _updateVisibleViewsBasedOnUpdateItems]"
+        },
+        {
+          "sampledCPUms": 35.0,
+          "symbol": "partial apply for thunk for @callee_guaranteed () -> (@out A)"
+        },
+        {
+          "sampledCPUms": 35.0,
+          "symbol": "closure #1 in generateAccessList<A, B>(_:)"
+        },
+        {
+          "sampledCPUms": 35.0,
+          "symbol": "generateAccessList<A, B>(_:)"
+        },
+        {
+          "sampledCPUms": 32.0,
+          "symbol": "CA::Context::commit_transaction(CA::Transaction*, double, double*)"
+        },
+        {
+          "sampledCPUms": 31.0,
+          "symbol": "__CFMachPortPerform"
+        },
+        {
+          "sampledCPUms": 31.0,
+          "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__"
+        },
+        {
+          "sampledCPUms": 31.0,
+          "symbol": "__CFRunLoopDoSource1"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "closure #1 in AppModel.apply(_:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "BenchmarkRun.eventCosts(open:name:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "specialized sample #1 (_:_:) in BenchmarkRun.eventCosts(open:name:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "AppModel.apply(_:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "specialized EventStats.measure(_:_:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "closure #6 in AppModel.start(verbose:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "closure #4 in BenchmarkRun.eventCosts(open:name:)"
+        },
+        {
+          "sampledCPUms": 26.0,
+          "symbol": "BenchmarkBackend.inject(_:)"
+        },
+        {
+          "sampledCPUms": 24.0,
+          "symbol": "CA::Layer::display_if_needed(CA::Transaction*)"
+        },
+        {
+          "sampledCPUms": 23.0,
+          "symbol": "specialized Collection.map<A, B>(_:)"
+        },
+        {
+          "sampledCPUms": 22.0,
+          "symbol": "-[NSCoreTypesetter _stringDrawingCoreTextEngineWithOriginalString:rect:padding:graphicsContext:forceClipping:attributes:stringDrawingOptions:drawingContext:stringDrawingInterface:]"
+        },
+        {
+          "sampledCPUms": 22.0,
+          "symbol": "__NSStringDrawingEngine"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "-[NSTableRowData _addRowViewForVisibleRow:withPriorView:]"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "-[NSTableRowData _preparedRowViewForRow:storageHandler:]"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "__NSWindowGetDisplayCycleObserverForDisplay_block_invoke"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "-[NSWindow displayIfNeeded]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "partial apply for closure #1 in closure #2 in implicit closure #1 in SidebarViewController.observe()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "SidebarViewController.observe()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "closure #1 in closure #1 in closure #2 in implicit closure #1 in SidebarViewController.observe()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "closure #1 in closure #2 in implicit closure #1 in SidebarViewController.observe()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "partial apply for closure #1 in closure #1 in closure #2 in implicit closure #1 in SidebarViewController.observe()"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "TimelineController.item(for:limit:)"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "+[NSAppearance _performWithCurrentAppearance:usingBlock:]"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "-[NSView _buildLayerTree]"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "-[NSView _buildLayerTreeWithOwnLayerRequirement:someAncestorWantsLayer:singleLayerOut:layerArrayOut:]"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "NSViewBuildLayerTreeForDisplay"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "NSWindowUpdateLayerTree"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "static TimelineLayoutEngine.layout(for:widthLimit:)"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "closure #2 in TimelineController.append(_:after:edited:)"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "specialized static TimelineLayoutEngine.layout(for:widthLimit:)"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "thunk for @escaping @callee_guaranteed () -> ()"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "-[NSTableRowData _initializeRowView:atRow:]"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "ChatCell.observe()"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "-[CALayer _display]"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "objc_msgSend"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "objc_loadWeakRetained"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "specialized static Hasher._hash(seed:_:)"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "mach_msg2_trap"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "__kdebug_trace64"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "swift_bridgeObjectRetain"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "_xzm_xzone_malloc_tiny"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "AutoreleasePoolPage::add(objc_object*)"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "bool objc::DenseMapBase<objc::DenseMap<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>, DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>::LookupBucketFor<DisguisedPtr<objc_object>>(DisguisedPtr<objc_object> const&, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>> const*&) const"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "CA::AttrList::get(unsigned int, _CAValueType, void*) const"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "__xzm_xzone_free_to_freelist_chunk"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "_availability_version_check"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_bridgeObjectRelease"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__CF_IS_OBJC"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AnyKeyPath.hash(into:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_getObjectType"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "objc_autorelease"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift::Demangle::__runtime::Demangler::demangleOperator()"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_platform_memcmp"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "class_getMethodImplementation"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift_unknownObjectRelease"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "weak_entry_for_referent"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__munmap"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSArrayM objectAtIndex:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFStringFindWithOptionsAndLocale"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSViewDefersInvalidateFocus"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_TimeZoneICU.secondsFromGMT(for:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "SidebarRow.id.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "type metadata accessor for NSHostingView"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_AnyHashableBox.as<A>(type:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::update_main_refs(AG::AttributeID)::$_0::operator()(AG::data::ptr<AG::Node>) const"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFRelease"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "EnumerateOverlappingGlyphs(CGContext*, TFont const&, unsigned short const*, long, int, void (CFRange, bool) block_pointer)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "outlined copy of MessageContent"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TStorageRange::SetAdvance(long, CGSize)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "protocol witness for Actor.unownedExecutor.getter in conformance MainActor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift_task_isCurrentExecutor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "initializeWithCopy for ClosedRange<>.Index"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CALayerRetain"
+        }
+      ]
+    },
+    "OverlayLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 10,
+      "sampledAllThreadCPUms": 4.0,
+      "sampledMainCPUms": 4.0,
+      "summedWallMs": 3.961,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "___NSViewLayout_block_invoke"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSWindow _oldPlaceWindow:fromServer:]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSView layoutSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "ViewGraphRootValueUpdater.updateGraph()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "@objc ConversationViewController.loadView()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "0x19a7b0d24"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "BenchmarkRun.measureResize()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "ViewGraphRootValueUpdater._updateViewGraph<A>(body:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "GraphHost.runTransaction()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "AG::Subgraph::update(unsigned int)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSWindow(NSConstraintBasedLayoutInternal) _layoutViewTree]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "@objc NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "0x19a70020c"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "IslandHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSWindow _setFrameCommon:display:fromServer:]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "0x19a7b1890"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "AG::Graph::Context::call_update()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "0x19a700234"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "_NSViewLayout"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "ViewGraph.updateOutputs(at:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "__56-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "AG::Graph::call_update()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in GraphHost.init(updateGroup:data:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.updateGraph()"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "__36-[NSView _layoutSubtreeWithOldSize:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "-[NSView _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "ViewGraphRootValueUpdater.updateGraph<A>(body:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "NSDP_getComputedPropertyValue"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "NSHostingView.updateSafeArea()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "___CFBasicHashFindBucket_Linear"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSKeyValueDependencyInfo addDependencyInContext:onValueForKey:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFDictionaryGetValue"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView frame]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView(NSSafeAreas) computedSafeAreaInsets]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "__cons_NSDP_NSDPTypeEdgeInsets_block_invoke.417"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView(NSSafeAreas) _safeAreaInsetsForFrame:inSuperview:withAdaptivityAxis:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSHostingView.currentSafeAreaInsets.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSHostingView.updateSize()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraph.setProposedSize(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraph.setSize(_:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "specialized NSHostingView.viewGraph.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraphRootValueUpdater.graphDidChange()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSView(NSSafeAreasPrivate) _propagatedSafeAreaCornerInsetsForFrame:inSuperview:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSHostingView.currentSafeAreaCornerInsets.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DYLD-STUB$$type metadata accessor for MainActor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::propagate_dirty(AG::AttributeID)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSHostingView.updateTransform()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "ViewGraph.invalidateTransform()"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "___CFBasicHashFindBucket_Linear"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "specialized NSHostingView.viewGraph.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "DYLD-STUB$$type metadata accessor for MainActor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "AG::Graph::propagate_dirty(AG::AttributeID)"
+        }
+      ]
+    },
+    "PlaceholderLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 0,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.0,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    },
+    "ResizeBurst": {
+      "focusedInclusiveFrames": [
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "TimelineController.place(frame:topInset:bottomInset:)"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "specialized closure #1 in TimelineController.prepare(limit:restyled:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "TimelineController.install(limit:restyled:)"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "TimelineController.apply(_:restyled:)"
+        },
+        {
+          "sampledCPUms": 4.0,
+          "symbol": "closure #1 in TimelineController.checkWidth()"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "TimelineController.reload(_:resized:)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_ContiguousArrayStorage.__deallocating_deinit"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "closure #1 in TimelineController.reload(_:resized:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_ArrayBuffer.identity.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.prepare(limit:restyled:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.store(_:for:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "closure #1 in TimelineController.install(limit:restyled:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.item(for:limit:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "destroy for TimelineController.Item"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "TimelineController.scrollToBottom(animated:)"
+        }
+      ],
+      "intervals": 1,
+      "sampledAllThreadCPUms": 734.0,
+      "sampledMainCPUms": 171.0,
+      "summedWallMs": 732.287,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 163.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 161.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 150.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 150.0,
+          "symbol": "BenchmarkRun.measureResize()"
+        },
+        {
+          "sampledCPUms": 150.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 120.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 119.0,
+          "symbol": "-[NSWindow _setFrameCommon:display:fromServer:]"
+        },
+        {
+          "sampledCPUms": 119.0,
+          "symbol": "__56-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 119.0,
+          "symbol": "-[NSView layoutSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 119.0,
+          "symbol": "-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]"
+        },
+        {
+          "sampledCPUms": 117.0,
+          "symbol": "-[NSWindow(NSConstraintBasedLayoutInternal) _layoutViewTree]"
+        },
+        {
+          "sampledCPUms": 115.0,
+          "symbol": "-[NSWindow _oldPlaceWindow:fromServer:]"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "__36-[NSView _layoutSubtreeWithOldSize:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "-[NSView _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 95.0,
+          "symbol": "0x19a70020c"
+        },
+        {
+          "sampledCPUms": 95.0,
+          "symbol": "0x19a700234"
+        },
+        {
+          "sampledCPUms": 94.0,
+          "symbol": "___NSViewLayout_block_invoke"
+        },
+        {
+          "sampledCPUms": 94.0,
+          "symbol": "_NSViewLayout"
+        },
+        {
+          "sampledCPUms": 92.0,
+          "symbol": "0x19a7b0d24"
+        },
+        {
+          "sampledCPUms": 92.0,
+          "symbol": "0x19a7b1890"
+        },
+        {
+          "sampledCPUms": 51.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 48.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 48.0,
+          "symbol": "ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 39.0,
+          "symbol": "-[NSView setFrame:]"
+        },
+        {
+          "sampledCPUms": 36.0,
+          "symbol": "-[NSView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 34.0,
+          "symbol": "AG::Graph::UpdateStack::update()"
+        },
+        {
+          "sampledCPUms": 33.0,
+          "symbol": "CA::Transaction::flush()"
+        },
+        {
+          "sampledCPUms": 33.0,
+          "symbol": "CA::Transaction::commit()"
+        },
+        {
+          "sampledCPUms": 32.0,
+          "symbol": "AG::Subgraph::update(unsigned int)"
+        },
+        {
+          "sampledCPUms": 31.0,
+          "symbol": "-[NSToolbarView layout]"
+        },
+        {
+          "sampledCPUms": 29.0,
+          "symbol": "NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 29.0,
+          "symbol": "@objc NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 27.0,
+          "symbol": "closure #1 in NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 24.0,
+          "symbol": "@objc ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 24.0,
+          "symbol": "ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 23.0,
+          "symbol": "objc_msgSend"
+        },
+        {
+          "sampledCPUms": 22.0,
+          "symbol": "0x19a61b0a4"
+        },
+        {
+          "sampledCPUms": 22.0,
+          "symbol": "0x19a60c864"
+        },
+        {
+          "sampledCPUms": 22.0,
+          "symbol": "0x19a60c810"
+        },
+        {
+          "sampledCPUms": 21.0,
+          "symbol": "ViewGraph.updateOutputs(at:)"
+        },
+        {
+          "sampledCPUms": 21.0,
+          "symbol": "0x199a269ac"
+        },
+        {
+          "sampledCPUms": 21.0,
+          "symbol": "0x19a61e498"
+        },
+        {
+          "sampledCPUms": 21.0,
+          "symbol": "0x19a528a54"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "specialized implicit closure #1 in closure #1 in closure #1 in Attribute.init<A>(_:)"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "GraphHost.flushTransactions()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "-[NSView resizeWithOldSuperviewSize:]"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "CA::Context::commit_transaction(CA::Transaction*, double, double*)"
+        },
+        {
+          "sampledCPUms": 17.0,
+          "symbol": "-[NSThemeFrame setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "NSViewActuallyUpdateFrameFromLayoutEngine"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "CA::Transaction::run_commit_handlers(CATransactionPhase)"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "-[NSScrollView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "-[NSScrollView tile]"
+        },
+        {
+          "sampledCPUms": 14.0,
+          "symbol": "-[NSScrollView _tileWithoutRecursing]"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "GraphHost.runTransaction()"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "NSDisplayCycleFlush"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "NSDisplayCycleObserverInvoke"
+        },
+        {
+          "sampledCPUms": 12.0,
+          "symbol": "-[NSScrollView _update]"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "TimelineController.place(frame:topInset:bottomInset:)"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "closure #2 in ConversationViewController.loadView()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "ConversationViewController.placeTimeline()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "PaneView.layout()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "@objc PaneView.layout()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "-[NSScrollView _setContentViewFrame:]"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "HoverScrollView.tile()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "@objc SlimScroller.drawKnob()"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "-[NSClipView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "ReceiveNextEventCommon"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "_DPSBlockUntilNextEventMatchingListInMode"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "RunCurrentEventLoopInMode"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "runApp<A>(_:)"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "static ZapFastApp.$main()"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "start"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "NSApplicationMain"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "_DPSNextEvent"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "-[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "static App.main()"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "_BlockUntilNextEventMatchingListInMode"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "-[NSApplication run]"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "specialized runApp(_:)"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "main"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "_CFRunLoopRunSpecificWithOptions"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "-[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "__CFRunLoopRun"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "-[NSView _invalidateFocus]"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "__CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "___CFXRegistrationPost_block_invoke"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "_CFXNotificationPost"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "NSViewHierarchyNoteGeometryInWindowDidChange"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "_CFXRegistrationPost"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "__reusableDependencyContextForKey_block_invoke"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "-[NSView resizeSubviewsWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "NSDP_getComputedPropertyValue"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "FullWidthClipView.setFrameSize(_:)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "@objc FullWidthClipView.setFrameSize(_:)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "-[NSTableView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "AG::Graph::update_attribute(AG::data::ptr<AG::Node>, unsigned int)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "AGGraphGetWeakValue"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "AG::Graph::value_ref(AG::AttributeID, unsigned int, AGSwiftMetadata const*, unsigned char&)"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "FocusBridge.updateDefaultKeyViewLoop()"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "-[NSISEngine withBehaviors:performModifications:]"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 23.0,
+          "symbol": "objc_msgSend"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 5.0,
+          "symbol": "_platform_memmove"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "swift_retain"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "swift_bridgeObjectRetain"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "AGGraphGetValue"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "__CFStringHash"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "NSViewHierarchyInvalidateVisibleRect"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "getMethodNoSuper_nolock(objc_class*, objc_selector*)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "___CFBasicHashFindBucket_Linear"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "CA::Layer::writable_state(CA::Transaction*)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AG::Graph::propagate_dirty(AG::AttributeID)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AutoreleasePoolPage::releaseUntil(objc_object**)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "-[NSAppearance _callCoreUIWithBlock:options:requireBezelTintColor:]"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__CF_IS_OBJC"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__kdebug_trace64"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "objc_release"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_xzm_xzone_malloc_tiny"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "swift::MetadataCacheKey::operator==(swift::MetadataCacheKey const&) const"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSISEngine hasValue:forVariable:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSSetM countByEnumeratingWithState:objects:count:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSTableView(NSTableViewViewBased) _hasDelegateSupportOrArchivedViews]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "type metadata accessor for MainActor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "pthread_getspecific"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "unsigned int tuple_getEnumTagSinglePayload<false, false>(swift::OpaqueValue const*, unsigned int, swift::TargetMetadata<swift::InProcess> const*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x23c861241"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "objc_autorelease"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "cs_retain_count"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "GlassContainer.ResolvedStorage.Data.effect(for:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[_NSTrackingAreaAKManager invalidateCursorRectsForView:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "objc_setProperty_nonatomic_copy"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "+[NSFont _allowsDefaultFontSubstitution]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "mach_msg2_trap"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFBasicHashGetBucket"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSCFString retain]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSArrayM removeObjectsInRange:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift_unknownObjectRetain"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift::Demangle::__runtime::Demangler::demangleArchetype()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_ArrayBuffer.identity.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSDP_getComputedPropertyValue"
+        }
+      ]
+    },
+    "ResizeStep": {
+      "focusedInclusiveFrames": [
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "TimelineController.place(frame:topInset:bottomInset:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_ArrayBuffer.identity.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_ContiguousArrayStorage.__deallocating_deinit"
+        }
+      ],
+      "intervals": 10,
+      "sampledAllThreadCPUms": 137.0,
+      "sampledMainCPUms": 130.0,
+      "summedWallMs": 129.744,
+      "topInclusiveFrames": [
+        {
+          "sampledCPUms": 130.0,
+          "symbol": "closure #1 in static TimelineBenchmark.start(model:)"
+        },
+        {
+          "sampledCPUms": 130.0,
+          "symbol": "completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)"
+        },
+        {
+          "sampledCPUms": 130.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 130.0,
+          "symbol": "BenchmarkRun.measureResize()"
+        },
+        {
+          "sampledCPUms": 130.0,
+          "symbol": "BenchmarkRun.run()"
+        },
+        {
+          "sampledCPUms": 99.0,
+          "symbol": "-[NSWindow _setFrameCommon:display:fromServer:]"
+        },
+        {
+          "sampledCPUms": 99.0,
+          "symbol": "NSPerformVisuallyAtomicChange"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "__56-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "-[NSWindow(NSConstraintBasedLayoutInternal) _layoutViewTree]"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "-[NSView layoutSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 98.0,
+          "symbol": "-[NSView _layoutSubtreeIfNeededAndAllowTemporaryEngine:]"
+        },
+        {
+          "sampledCPUms": 97.0,
+          "symbol": "-[NSWindow _oldPlaceWindow:fromServer:]"
+        },
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "__36-[NSView _layoutSubtreeWithOldSize:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 82.0,
+          "symbol": "-[NSView _layoutSubtreeWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 81.0,
+          "symbol": "0x19a70020c"
+        },
+        {
+          "sampledCPUms": 81.0,
+          "symbol": "0x19a700234"
+        },
+        {
+          "sampledCPUms": 80.0,
+          "symbol": "___NSViewLayout_block_invoke"
+        },
+        {
+          "sampledCPUms": 80.0,
+          "symbol": "_NSViewLayout"
+        },
+        {
+          "sampledCPUms": 78.0,
+          "symbol": "0x19a7b0d24"
+        },
+        {
+          "sampledCPUms": 78.0,
+          "symbol": "0x19a7b1890"
+        },
+        {
+          "sampledCPUms": 42.0,
+          "symbol": "+[NSAnimationContext runAnimationGroup:]"
+        },
+        {
+          "sampledCPUms": 41.0,
+          "symbol": "closure #1 in ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 41.0,
+          "symbol": "ViewGraphRootValueUpdater.render(interval:updateDisplayList:targetTimestamp:)"
+        },
+        {
+          "sampledCPUms": 31.0,
+          "symbol": "-[NSView setFrame:]"
+        },
+        {
+          "sampledCPUms": 29.0,
+          "symbol": "AG::Graph::UpdateStack::update()"
+        },
+        {
+          "sampledCPUms": 28.0,
+          "symbol": "AG::Subgraph::update(unsigned int)"
+        },
+        {
+          "sampledCPUms": 28.0,
+          "symbol": "-[NSToolbarView layout]"
+        },
+        {
+          "sampledCPUms": 28.0,
+          "symbol": "CA::Transaction::flush()"
+        },
+        {
+          "sampledCPUms": 28.0,
+          "symbol": "CA::Transaction::commit()"
+        },
+        {
+          "sampledCPUms": 27.0,
+          "symbol": "-[NSView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 24.0,
+          "symbol": "NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 24.0,
+          "symbol": "@objc NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 23.0,
+          "symbol": "closure #1 in NSHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "@objc ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 20.0,
+          "symbol": "ResizeHostingView.layout()"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a61b0a4"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a60c864"
+        },
+        {
+          "sampledCPUms": 19.0,
+          "symbol": "0x19a60c810"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "ViewGraph.updateOutputs(at:)"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "specialized implicit closure #1 in closure #1 in closure #1 in Attribute.init<A>(_:)"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "objc_msgSend"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "0x199a269ac"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "0x19a61e498"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "GraphHost.flushTransactions()"
+        },
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "0x19a528a54"
+        },
+        {
+          "sampledCPUms": 16.0,
+          "symbol": "CA::Context::commit_transaction(CA::Transaction*, double, double*)"
+        },
+        {
+          "sampledCPUms": 15.0,
+          "symbol": "-[NSView resizeWithOldSuperviewSize:]"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "-[NSThemeFrame setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "NSViewActuallyUpdateFrameFromLayoutEngine"
+        },
+        {
+          "sampledCPUms": 13.0,
+          "symbol": "CA::Transaction::run_commit_handlers(CATransactionPhase)"
+        },
+        {
+          "sampledCPUms": 12.0,
+          "symbol": "-[NSScrollView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "-[NSScrollView tile]"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "-[NSScrollView _tileWithoutRecursing]"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "GraphHost.runTransaction()"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "NSDisplayCycleFlush"
+        },
+        {
+          "sampledCPUms": 11.0,
+          "symbol": "NSDisplayCycleObserverInvoke"
+        },
+        {
+          "sampledCPUms": 10.0,
+          "symbol": "-[NSScrollView _update]"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "TimelineController.place(frame:topInset:bottomInset:)"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "closure #2 in ConversationViewController.loadView()"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "ConversationViewController.placeTimeline()"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "PaneView.layout()"
+        },
+        {
+          "sampledCPUms": 9.0,
+          "symbol": "@objc PaneView.layout()"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "-[NSView _invalidateFocus]"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "NSViewHierarchyNoteGeometryInWindowDidChange"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "-[NSScrollView _setContentViewFrame:]"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "-[NSClipView setFrameSize:]"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "HoverScrollView.tile()"
+        },
+        {
+          "sampledCPUms": 8.0,
+          "symbol": "@objc SlimScroller.drawKnob()"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "__CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "___CFXRegistrationPost_block_invoke"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "_CFXNotificationPost"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "_CFXRegistrationPost"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "__reusableDependencyContextForKey_block_invoke"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "-[NSView resizeSubviewsWithOldSize:]"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "FocusBridge.updateDefaultKeyViewLoop()"
+        },
+        {
+          "sampledCPUms": 7.0,
+          "symbol": "-[NSISEngine withBehaviors:performModifications:]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "NSDP_getComputedPropertyValue"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "-[NSView layout]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FullWidthClipView.setFrameSize(_:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "@objc FullWidthClipView.setFrameSize(_:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "ViewGraphRootValueUpdater._updateViewGraph<A>(body:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "AG::Graph::update_attribute(AG::data::ptr<AG::Node>, unsigned int)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "AGGraphGetWeakValue"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "AG::Graph::value_ref(AG::AttributeID, unsigned int, AGSwiftMetadata const*, unsigned char&)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FocusBridge.preferencesDidChange(_:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "specialized update #1 () in ViewGraph.updateOutputs(async:)"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "NSHostingView.preferencesDidChange()"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "FocusBridge.invalidateKeyViewLoop()"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__45-[NSView updateConstraintsForSubtreeIfNeeded]_block_invoke_2"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "-[NSView _updateConstraintsForSubtreeIfNeededCollectingViewsWithInvalidBaselines:]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "-[NSView(NSConstraintBasedLayoutInternal) _withAutomaticEngineOptimizationDisabled:]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__82-[NSView _updateConstraintsForSubtreeIfNeededCollectingViewsWithInvalidBaselines:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__70-[NSView _updateConstraintsForLayoutCheckingDirtyBits:creatingEngine:]_block_invoke"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__45-[NSView updateConstraintsForSubtreeIfNeeded]_block_invoke"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "-[NSView _updateConstraintsForLayoutCheckingDirtyBits:creatingEngine:]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "-[NSView updateConstraintsForSubtreeIfNeeded]"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__NSWindowGetDisplayCycleObserverForUpdateStructuralRegions_block_invoke"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "CFSetApplyFunction"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "__CFSetApplyFunction_block_invoke"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "CFBasicHashApply"
+        }
+      ],
+      "topLeafFrames": [
+        {
+          "sampledCPUms": 18.0,
+          "symbol": "objc_msgSend"
+        },
+        {
+          "sampledCPUms": 6.0,
+          "symbol": "<deduplicated_symbol>"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "swift_bridgeObjectRetain"
+        },
+        {
+          "sampledCPUms": 3.0,
+          "symbol": "AGGraphGetValue"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "getMethodNoSuper_nolock(objc_class*, objc_selector*)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "___CFBasicHashFindBucket_Linear"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "CA::Layer::writable_state(CA::Transaction*)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AG::Graph::propagate_dirty(AG::AttributeID)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "AutoreleasePoolPage::releaseUntil(objc_object**)"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__CF_IS_OBJC"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_xzm_xzone_malloc_tiny"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "__CFStringHash"
+        },
+        {
+          "sampledCPUms": 2.0,
+          "symbol": "_platform_memmove"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSISEngine hasValue:forVariable:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSViewHierarchyInvalidateVisibleRect"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSSetM countByEnumeratingWithState:objects:count:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[NSTableView(NSTableViewViewBased) _hasDelegateSupportOrArchivedViews]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "type metadata accessor for MainActor"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "pthread_getspecific"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "unsigned int tuple_getEnumTagSinglePayload<false, false>(swift::OpaqueValue const*, unsigned int, swift::TargetMetadata<swift::InProcess> const*)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "0x23c861241"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "objc_autorelease"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "cs_retain_count"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "GlassContainer.ResolvedStorage.Data.effect(for:)"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift_retain"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[_NSTrackingAreaAKManager invalidateCursorRectsForView:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "objc_setProperty_nonatomic_copy"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "+[NSFont _allowsDefaultFontSubstitution]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "mach_msg2_trap"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFBasicHashGetBucket"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSCFString retain]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "-[__NSArrayM removeObjectsInRange:]"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift_unknownObjectRetain"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "swift::Demangle::__runtime::Demangler::demangleArchetype()"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_ArrayBuffer.identity.getter"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "NSDP_getComputedPropertyValue"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "malloc_type_zone_calloc"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "_DictionaryStorage.deinit"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "kevent_id"
+        },
+        {
+          "sampledCPUms": 1.0,
+          "symbol": "CFRunLoopTimerInvalidate"
+        }
+      ]
+    },
+    "SearchBarLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 10,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.151,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    },
+    "SidebarEmptyLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 0,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.0,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    },
+    "SidebarResultsLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 0,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.0,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    },
+    "SidebarSyncLayout": {
+      "focusedInclusiveFrames": [],
+      "intervals": 0,
+      "sampledAllThreadCPUms": 0.0,
+      "sampledMainCPUms": 0.0,
+      "summedWallMs": 0.0,
+      "topInclusiveFrames": [],
+      "topLeafFrames": []
+    }
+  },
+  "profiledResizeBatchMainThreadMs": 172.60608300000058,
+  "profiledResizeBatchProcessCPUms": 741.3009999999995,
+  "resizeHoldMs": 300,
+  "samplePeriodMs": 1,
+  "scenario": "synthetic 50000 source messages, 840 point window, Here, ResizeStep and full ResizeBurst with final narrow width held 300 ms",
+  "windowConditions": {
+    "Events.0.Elsewhere": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Here": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Idle": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Presence": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Elsewhere": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Here": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Idle": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Presence": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Resize": {
+      "checks": 20,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 20
+      }
+    },
+    "ResizeHold": {
+      "checks": 1,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 1
+      }
+    },
+    "Scroll": {
+      "checks": 3379,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 3379
+      }
+    }
+  },
+  "windowConditionsValid": true
+}

@@ -1,0 +1,74 @@
+{
+  "acceptedProfiles": [
+    {
+      "file": "f11-narrow-before-profile-summary.json",
+      "scenario": "baseline narrow transient; profiled stack evidence only",
+      "windowConditionsValid": true
+    },
+    {
+      "file": "f11-held-profile-summary.json",
+      "scenario": "candidate held final narrow width; profiled stack evidence only",
+      "windowConditionsValid": true
+    }
+  ],
+  "acceptedTimingSets": [
+    {
+      "inactive": 0,
+      "normalWindowLevel": true,
+      "occluded": 0,
+      "prefix": "f11-visible-",
+      "runs": 12,
+      "scenario": "transient 10 x 8 pt burst, immediate restore, 100 ms settle",
+      "windowChecks": 43694
+    },
+    {
+      "inactive": 0,
+      "normalWindowLevel": true,
+      "occluded": 0,
+      "prefix": "f11-held-",
+      "runs": 4,
+      "scenario": "10 x 8 pt burst; final narrow width held 300 ms, restore and 100 ms settle",
+      "windowChecks": 14530
+    }
+  ],
+  "diagnosticTimingSets": [
+    {
+      "prefix": "f11-window-",
+      "reason": "No activity/occlusion measurements; last arrival spring not settled before resize."
+    },
+    {
+      "prefix": "f11-repeat-",
+      "reason": "Same uncontrolled harness; host/visibility confounds, excluded from final comparisons."
+    }
+  ],
+  "profileLimitations": [
+    "Early baseline/candidate profiles are separate runs with no recorded window conditions; stack evidence only, no paired speed ratio.",
+    "f11-narrow-before-profile-summary.json has valid window checks but is profiled and must not be combined with unprofiled timing.",
+    "Timeline-category Layout signposts absent from points-of-interest interval export do not imply zero measurements."
+  ],
+  "rejectedProfile": [
+    {
+      "file": "f11-narrow-after-profile-summary.json",
+      "reason": "Inactive and occluded at every window check; timing excluded."
+    }
+  ],
+  "rejectedTimingRuns": [
+    {
+      "file": "f11-verified-840-50000-A-1.json",
+      "reason": "Inactive or occluded checks present; excluded from final timing comparison."
+    },
+    {
+      "file": "f11-verified-840-50000-B-1.json",
+      "reason": "Inactive or occluded checks present; excluded from final timing comparison."
+    },
+    {
+      "file": "f11-verified-840-50000-B-2.json",
+      "reason": "Inactive or occluded checks present; excluded from final timing comparison."
+    },
+    {
+      "file": "f11-verified-840-50000-A-2.json",
+      "reason": "Inactive or occluded checks present; excluded from final timing comparison."
+    }
+  ],
+  "scope": "Own synthetic benchmark PID only; no archive/user content or real call hardware/network."
+}

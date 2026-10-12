@@ -1,0 +1,304 @@
+{
+  "activeChatFootprintMB": 168.0948486328125,
+  "configuration": "Release",
+  "eventsWithFirstPage": {
+    "baselineMs": 0.102958000000001,
+    "messageElsewhereMs": {
+      "max": 15.591583000000014,
+      "p50": 6.986291999999992,
+      "p95": 9.101917000000014,
+      "p99": 15.591583000000014
+    },
+    "messageHereMs": {
+      "max": 19.507042000000013,
+      "p50": 14.403750000000002,
+      "p95": 16.285708000000056,
+      "p99": 19.507042000000013
+    },
+    "presenceElsewhereMs": {
+      "max": 0.4632499999999595,
+      "p50": 0.08370899999999892,
+      "p95": 0.12370900000001939,
+      "p99": 0.4632499999999595
+    },
+    "rows": 61
+  },
+  "eventsWithFullHistory": {
+    "baselineMs": 0.08845800000017334,
+    "messageElsewhereMs": {
+      "max": 8.628000000000611,
+      "p50": 6.3790419999986625,
+      "p95": 7.564624999999069,
+      "p99": 8.628000000000611
+    },
+    "messageHereMs": {
+      "max": 20.565542000000278,
+      "p50": 16.023583000000144,
+      "p95": 18.691208999998707,
+      "p99": 20.565542000000278
+    },
+    "presenceElsewhereMs": {
+      "max": 0.25675000000046566,
+      "p50": 0.10458399999879475,
+      "p95": 0.17766699999992852,
+      "p99": 0.25675000000046566
+    },
+    "rows": 902
+  },
+  "fullFlicks": {
+    "durationSeconds": 4.208333333372138,
+    "frameBudgetMs": 8.33333333331778,
+    "frameIntervalMs": {
+      "max": 23.499749950133264,
+      "p50": 8.333333302289248,
+      "p95": 8.33333341870457,
+      "p99": 9.833583375439048
+    },
+    "frameWorkMs": {
+      "max": 20.098999957554042,
+      "p50": 1.302374992519617,
+      "p95": 7.361249998211861,
+      "p99": 12.517708353698254
+    },
+    "frames": 499,
+    "hitchTimeRatioMsPerSecond": 11.731999990707983,
+    "hitches": 5,
+    "olderPagesLoaded": 0,
+    "rowsAtEnd": 902,
+    "rowsAtStart": 902,
+    "secondsAtTop": 0,
+    "speedPointsPerSecond": 7000
+  },
+  "fullScroll": {
+    "durationSeconds": 8,
+    "frameBudgetMs": 8.333333333090277,
+    "frameIntervalMs": {
+      "max": 25.000000023283064,
+      "p50": 8.333333302289248,
+      "p95": 8.33333341870457,
+      "p99": 18.509083427488804
+    },
+    "frameWorkMs": {
+      "max": 23.4985415590927,
+      "p50": 1.2347082374617457,
+      "p95": 9.175249957479537,
+      "p99": 17.246374976821244
+    },
+    "frames": 926,
+    "hitchTimeRatioMsPerSecond": 35.38025001762435,
+    "hitches": 29,
+    "olderPagesLoaded": 0,
+    "rowsAtEnd": 902,
+    "rowsAtStart": 902,
+    "secondsAtTop": 0,
+    "speedPointsPerSecond": 5000
+  },
+  "integrity": {
+    "badChecks": {},
+    "checks": 5807,
+    "kinds": {},
+    "misplacedRows": 0,
+    "missingRows": 0,
+    "rows": 35725
+  },
+  "jumpToOffsetMs": {
+    "max": 36.15900001022965,
+    "p50": 6.990749971009791,
+    "p95": 12.39466667175293,
+    "p99": 36.15900001022965
+  },
+  "machine": "Mac15,7",
+  "memoryFootprintMB": 175.6260986328125,
+  "messageCount": 50000,
+  "openFirstPage": {
+    "mainThreadMs": 141.058291,
+    "rows": 61,
+    "wallMs": 222.84108330495656
+  },
+  "openFirstPageWarm": {
+    "mainThreadMs": 43.85795800000051,
+    "rows": 61,
+    "wallMs": 52.12170840241015
+  },
+  "openFullHistory": {
+    "mainThreadMs": 205.2111249999998,
+    "rows": 902,
+    "wallMs": 245.87850004900247
+  },
+  "pagingFlicks": {
+    "durationSeconds": 4.200000000069849,
+    "frameBudgetMs": 8.333333333471924,
+    "frameIntervalMs": {
+      "max": 8.33333341870457,
+      "p50": 8.333333302289248,
+      "p95": 8.33333341870457,
+      "p99": 8.33333341870457
+    },
+    "frameWorkMs": {
+      "max": 9.236583369784057,
+      "p50": 1.291500055231154,
+      "p95": 6.6553333308547735,
+      "p99": 7.778333383612335
+    },
+    "frames": 504,
+    "hitchTimeRatioMsPerSecond": 0,
+    "hitches": 0,
+    "olderPagesLoaded": 0,
+    "rowsAtEnd": 978,
+    "rowsAtStart": 978,
+    "secondsAtTop": 0,
+    "speedPointsPerSecond": 7000
+  },
+  "pagingScroll": {
+    "durationSeconds": 8,
+    "frameBudgetMs": 8.333333333309003,
+    "frameIntervalMs": {
+      "max": 25.000000023283064,
+      "p50": 8.333333302289248,
+      "p95": 8.33333341870457,
+      "p99": 8.33333341870457
+    },
+    "frameWorkMs": {
+      "max": 11.710249935276806,
+      "p50": 1.3812500983476639,
+      "p95": 7.052249973639846,
+      "p99": 8.906291681341827
+    },
+    "frames": 957,
+    "hitchTimeRatioMsPerSecond": 3.367947938386351,
+    "hitches": 2,
+    "olderPagesLoaded": 15,
+    "rowsAtEnd": 978,
+    "rowsAtStart": 77,
+    "secondsAtTop": 0.058333333348855376,
+    "speedPointsPerSecond": 5000
+  },
+  "residentMessages": 915,
+  "resizeBatchMainThreadMs": 173.8017920000002,
+  "resizeBatchProcessCPUms": 3129.503999999999,
+  "resizeHoldMs": 300,
+  "resizeStepMs": {
+    "max": 26.815791614353657,
+    "p50": 10.310666635632515,
+    "p95": 26.815791614353657,
+    "p99": 26.815791614353657
+  },
+  "retainedRecordBytes": 1690770,
+  "sidebarScroll": {
+    "durationSeconds": 4,
+    "frameBudgetMs": 8.333333333333334,
+    "frameIntervalMs": {
+      "max": 8.33333341870457,
+      "p50": 8.333333302289248,
+      "p95": 8.33333341870457,
+      "p99": 8.33333341870457
+    },
+    "frameWorkMs": {
+      "max": 7.46666663326323,
+      "p50": 2.0692499820142984,
+      "p95": 5.963791627436876,
+      "p99": 6.40533328987658
+    },
+    "frames": 480,
+    "hitchTimeRatioMsPerSecond": 0,
+    "hitches": 0,
+    "olderPagesLoaded": 0,
+    "rowsAtEnd": 61,
+    "rowsAtStart": 61,
+    "secondsAtTop": 0.008333333302289248,
+    "speedPointsPerSecond": 3000
+  },
+  "system": "Version 27.0.1 (Build 26A434)",
+  "timelineWidth": 534.5,
+  "windowActivity": {
+    "Events.0.Elsewhere": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Here": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Idle": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.0.Presence": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Elsewhere": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Here": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Idle": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Events.1.Presence": {
+      "checks": 30,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 30
+      }
+    },
+    "Resize": {
+      "checks": 20,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 20
+      }
+    },
+    "ResizeHold": {
+      "checks": 1,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 1
+      }
+    },
+    "Scroll": {
+      "checks": 3371,
+      "inactive": 0,
+      "occluded": 0,
+      "thermalStates": {
+        "0": 3371
+      }
+    }
+  },
+  "windowSize": "840\u00d7740"
+}

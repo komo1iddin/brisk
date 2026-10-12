@@ -1,0 +1,207 @@
+{
+  "cases": {
+    "840-50000": {
+      "A": {
+        "metrics": {
+          "flickHitches": {
+            "median": 5.0,
+            "values": [
+              5,
+              5
+            ]
+          },
+          "flickP95ms": {
+            "median": 7.181,
+            "values": [
+              7.0,
+              7.361
+            ]
+          },
+          "hereP50ms": {
+            "median": 15.87,
+            "values": [
+              15.716,
+              16.024
+            ]
+          },
+          "hereP95ms": {
+            "median": 18.053,
+            "values": [
+              17.415,
+              18.691
+            ]
+          },
+          "peakFootprintMiB": {
+            "median": 219.025,
+            "values": [
+              221.19,
+              216.86
+            ]
+          },
+          "residentRecords": {
+            "median": 915.0,
+            "values": [
+              915,
+              915
+            ]
+          },
+          "resizeBatchMainThreadMs": {
+            "median": 163.155,
+            "values": [
+              152.508,
+              173.802
+            ]
+          },
+          "resizeBatchProcessCPUms": {
+            "median": 2999.44,
+            "values": [
+              2869.376,
+              3129.504
+            ]
+          },
+          "resizeP50ms": {
+            "median": 9.218,
+            "values": [
+              8.125,
+              10.311
+            ]
+          },
+          "resizeP95ms": {
+            "median": 25.955,
+            "values": [
+              25.095,
+              26.816
+            ]
+          },
+          "retainedRecordBytes": {
+            "median": 1690881.0,
+            "values": [
+              1690992,
+              1690770
+            ]
+          },
+          "scrollHitches": {
+            "median": 25.0,
+            "values": [
+              21,
+              29
+            ]
+          },
+          "scrollP95ms": {
+            "median": 8.992,
+            "values": [
+              8.809,
+              9.175
+            ]
+          }
+        },
+        "runs": 2
+      },
+      "B": {
+        "metrics": {
+          "flickHitches": {
+            "median": 3.5,
+            "values": [
+              6,
+              1
+            ]
+          },
+          "flickP95ms": {
+            "median": 6.714,
+            "values": [
+              6.434,
+              6.993
+            ]
+          },
+          "hereP50ms": {
+            "median": 7.979,
+            "values": [
+              10.781,
+              5.177
+            ]
+          },
+          "hereP95ms": {
+            "median": 15.455,
+            "values": [
+              15.401,
+              15.509
+            ]
+          },
+          "peakFootprintMiB": {
+            "median": 220.785,
+            "values": [
+              217.69,
+              223.88
+            ]
+          },
+          "residentRecords": {
+            "median": 915.0,
+            "values": [
+              915,
+              915
+            ]
+          },
+          "resizeBatchMainThreadMs": {
+            "median": 132.288,
+            "values": [
+              113.177,
+              151.399
+            ]
+          },
+          "resizeBatchProcessCPUms": {
+            "median": 732.327,
+            "values": [
+              703.279,
+              761.376
+            ]
+          },
+          "resizeP50ms": {
+            "median": 9.784,
+            "values": [
+              8.857,
+              10.711
+            ]
+          },
+          "resizeP95ms": {
+            "median": 18.805,
+            "values": [
+              12.813,
+              24.798
+            ]
+          },
+          "retainedRecordBytes": {
+            "median": 1690992.0,
+            "values": [
+              1690992,
+              1690992
+            ]
+          },
+          "scrollHitches": {
+            "median": 28.5,
+            "values": [
+              31,
+              26
+            ]
+          },
+          "scrollP95ms": {
+            "median": 8.778,
+            "values": [
+              9.06,
+              8.495
+            ]
+          }
+        },
+        "runs": 2
+      }
+    }
+  },
+  "comparison": "f11-held-comparison.json",
+  "integrity": {
+    "checks": 23238,
+    "misplacedRows": 0,
+    "missingRows": 0,
+    "rows": 143229
+  },
+  "invalidRuns": [],
+  "statistic": "Median of each run statistic. Values retained; percentiles are not pooled."
+}

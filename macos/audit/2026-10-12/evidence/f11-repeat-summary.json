@@ -1,0 +1,188 @@
+{
+  "comparison": "f11-repeat-comparison.json",
+  "integrity": {
+    "checks": 23230,
+    "misplacedRows": 0,
+    "missingRows": 0,
+    "rows": 143157
+  },
+  "statistic": "Median of each run statistic, with all run values retained. Not pooled percentiles.",
+  "summaries": {
+    "10000": {
+      "A": {
+        "metrics": {},
+        "runs": 0
+      },
+      "B": {
+        "metrics": {},
+        "runs": 0
+      }
+    },
+    "50000": {
+      "A": {
+        "metrics": {
+          "flickHitches": {
+            "median": 3.0,
+            "values": [
+              1,
+              5
+            ]
+          },
+          "flickP95ms": {
+            "median": 5.144,
+            "values": [
+              5.361,
+              4.928
+            ]
+          },
+          "hereP50ms": {
+            "median": 9.725,
+            "values": [
+              4.589,
+              14.862
+            ]
+          },
+          "hereP95ms": {
+            "median": 11.462,
+            "values": [
+              6.532,
+              16.392
+            ]
+          },
+          "peakFootprintMiB": {
+            "median": 217.035,
+            "values": [
+              223.88,
+              210.19
+            ]
+          },
+          "residentRecords": {
+            "median": 915.0,
+            "values": [
+              915,
+              915
+            ]
+          },
+          "resizeP50ms": {
+            "median": 10.57,
+            "values": [
+              9.589,
+              11.551
+            ]
+          },
+          "resizeP95ms": {
+            "median": 18.285,
+            "values": [
+              10.391,
+              26.179
+            ]
+          },
+          "retainedRecordBytes": {
+            "median": 1690992.0,
+            "values": [
+              1690992,
+              1690992
+            ]
+          },
+          "scrollHitches": {
+            "median": 17.0,
+            "values": [
+              13,
+              21
+            ]
+          },
+          "scrollP95ms": {
+            "median": 6.379,
+            "values": [
+              6.694,
+              6.063
+            ]
+          }
+        },
+        "runs": 2
+      },
+      "B": {
+        "metrics": {
+          "flickHitches": {
+            "median": 4.5,
+            "values": [
+              2,
+              7
+            ]
+          },
+          "flickP95ms": {
+            "median": 5.41,
+            "values": [
+              5.247,
+              5.572
+            ]
+          },
+          "hereP50ms": {
+            "median": 12.043,
+            "values": [
+              11.13,
+              12.955
+            ]
+          },
+          "hereP95ms": {
+            "median": 14.284,
+            "values": [
+              13.031,
+              15.538
+            ]
+          },
+          "peakFootprintMiB": {
+            "median": 212.215,
+            "values": [
+              209.84,
+              214.59
+            ]
+          },
+          "residentRecords": {
+            "median": 915.0,
+            "values": [
+              915,
+              915
+            ]
+          },
+          "resizeP50ms": {
+            "median": 8.729,
+            "values": [
+              8.572,
+              8.886
+            ]
+          },
+          "resizeP95ms": {
+            "median": 18.541,
+            "values": [
+              14.391,
+              22.692
+            ]
+          },
+          "retainedRecordBytes": {
+            "median": 1690992.0,
+            "values": [
+              1690992,
+              1690992
+            ]
+          },
+          "scrollHitches": {
+            "median": 21.5,
+            "values": [
+              11,
+              32
+            ]
+          },
+          "scrollP95ms": {
+            "median": 6.148,
+            "values": [
+              6.136,
+              6.16
+            ]
+          }
+        },
+        "runs": 2
+      }
+    }
+  }
+}

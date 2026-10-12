@@ -1,0 +1,36 @@
+{
+  "coverage": [
+    "arm64 macOS native fixtures, narrow reflow and height/inset resize, bounded paging, coalesced arrivals, cache eviction, hidden/reveal layout",
+    "Synthetic Release benchmark only; no real user archive, call hardware or network tests",
+    "No 120 Hz or official WhatsApp comparison measured"
+  ],
+  "licenseInventory": "current",
+  "native": {
+    "bundle": 0,
+    "release": 0,
+    "tests": 0,
+    "warnings": 0
+  },
+  "nativeTests": 575,
+  "releaseBinarySHA256": "b6a6e00e27e69c715f02a49f1458fcda05908200ff62d962d8bface777fc2d96",
+  "rust": {
+    "clippy-all": 0,
+    "clippy-default": 0,
+    "fmt": 0,
+    "rustdoc": 0,
+    "test-all": 0,
+    "test-default": 0
+  },
+  "scriptTests": {
+    "failed": 0,
+    "passed": 5
+  },
+  "testModuleCounts": {
+    "FeatureCallsTests": 2,
+    "FeatureChatsTests": 10,
+    "FeatureConversationTests": 92,
+    "ZapFastCoreTests": 471
+  },
+  "validatedImplementation": "86732e7d46065f467a45ce881dee04997a8932b9",
+  "warningGate": "All own Swift Sources/Tests forcibly rebuilt; no warning allowance; generated bridge excluded as in existing gate."
+}

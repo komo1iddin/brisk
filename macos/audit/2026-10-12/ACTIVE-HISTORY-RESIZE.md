@@ -1,6 +1,8 @@
 # Active chat memory va resize tekshiruvi
 
 Branch: `codex/native-audit-fixes`. Boshlang‘ich commit: `3d79c6c`.
+Bu oldingi F10/bounded-window bosqichi dalillari. Keyingi F11 CPU/reflow
+fixlari va nazoratli benchmarklar: [F11 CPU/resize](F11-CPU-RESIZE.md).
 Faqat sintetik fixture va benchmark ishlatildi. Shaxsiy archive, chatlar,
 kontaktlar yoki eski foydalanuvchi loglari o‘qilmadi.
 
@@ -85,7 +87,7 @@ Benchmark source fixture butun 10k/50k xabarni saqlaydi; resident pane budjeti
 shu source fixture hajmiga teng emas. Here event oldidan newest pane qayta
 warm/open qilinadi, tayyorlash timed interval tashqarisida. Demak bu bounded
 production workload taqqoslanishi, bir xil resident row sonidagi microbenchmark
-emas. `Here` 80 ms settle oynasidagi CPU’dan median idle CPU ayrilgan baho,
+emas. `Here` 80 ms settle oynasidagi main-thread CPU’dan median idle CPU ayrilgan baho,
 xabar yetib kelish latency’si emas. Resize: 10 ta 8-point width step, umumiy
 AppKit layout + display wall time. Scroll p95 frame callback’ning ish vaqti,
 GPU/presentation deadline kafolati emas.

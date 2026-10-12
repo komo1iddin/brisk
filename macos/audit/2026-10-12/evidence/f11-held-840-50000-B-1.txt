@@ -1,0 +1,50 @@
+BENCHMARK_SCROLL_START rows=77 visible=true screen=true
+BENCHMARK_SCROLL_FIRST_FRAME rows=77
+BENCHMARK_SCROLL_START rows=918 visible=true screen=true
+BENCHMARK_SCROLL_FIRST_FRAME rows=918
+BENCHMARK_SCROLL_START rows=902 visible=true screen=true
+BENCHMARK_SCROLL_FIRST_FRAME rows=902
+BENCHMARK_SCROLL_START rows=902 visible=true screen=true
+BENCHMARK_SCROLL_FIRST_FRAME rows=902
+BENCHMARK_SCROLL_START rows=61 visible=true screen=true
+BENCHMARK_SCROLL_FIRST_FRAME rows=61
+ZapFast timeline benchmark: 50000 messages on Mac15,7, Version 27.0.1 (Build 26A434), Release
+  Window 840×740, timeline 534 pt wide
+  Open (first page)     61 rows: 149,37 ms wall, 126,83 ms main thread
+  Events, first page    61 rows (idle baseline 0,08 ms subtracted)
+    presence elsewhere  p50 0,13  p95 0,20  p99 0,42  max 0,42
+    message elsewhere   p50 1,80  p95 4,35  p99 4,69  max 4,69
+    message here        p50 14,95  p95 15,75  p99 16,29  max 16,29
+  Scroll with paging    rows 77 → 918, 14 older pages, 955 frames in 8,00 s at 5000 pt/s, 0,07 s stuck at the top
+    frame work       p50 1,25  p95 6,92  p99 8,92  max 11,74
+    frame interval   p50 8,33  p95 8,33  p99 8,33  max 19,90  (budget 8,33)
+    hitches          5, 5,21 ms/s
+  Open (full history)   902 rows: 236,47 ms wall, 194,73 ms main thread
+  Scroll, full history  rows 902 → 902, 0 older pages, 923 frames in 8,00 s at 5000 pt/s, 0,00 s stuck at the top
+    frame work       p50 1,26  p95 9,06  p99 17,16  max 23,70
+    frame interval   p50 8,33  p95 8,33  p99 17,97  max 25,00  (budget 8,33)
+    hitches          31, 37,51 ms/s
+  Jump to offset        p50 6,29  p95 13,64  p99 31,14  max 31,14
+  Events, full history  902 rows (idle baseline 0,09 ms subtracted)
+    presence elsewhere  p50 0,17  p95 0,24  p99 0,30  max 0,30
+    message elsewhere   p50 5,92  p95 6,97  p99 7,11  max 7,11
+    message here        p50 10,78  p95 15,40  p99 16,06  max 16,06
+  Resize step (8 pt)    p50 8,86  p95 12,81  p99 12,81  max 12,81
+  Open again (warm)     61 rows: 43,96 ms wall, 42,32 ms main thread
+  Memory footprint      174,42 MB
+  Flicks, paged         rows 918 → 918, 0 older pages, 504 frames in 4,20 s at 7000 pt/s, 0,00 s stuck at the top
+    frame work       p50 1,27  p95 6,77  p99 7,87  max 10,24
+    frame interval   p50 8,33  p95 8,33  p99 8,33  max 8,33  (budget 8,33)
+    hitches          0, 0,00 ms/s
+  Flicks, full history  rows 902 → 902, 0 older pages, 498 frames in 4,20 s at 7000 pt/s, 0,00 s stuck at the top
+    frame work       p50 1,10  p95 6,43  p99 12,70  max 16,99
+    frame interval   p50 8,33  p95 8,33  p99 16,67  max 18,75  (budget 8,33)
+    hitches          6, 13,38 ms/s
+  Chat list scroll      rows 61 → 61, 0 older pages, 479 frames in 4,00 s at 3000 pt/s, 0,01 s stuck at the top
+    frame work       p50 2,01  p95 5,79  p99 6,47  max 8,22
+    frame interval   p50 8,33  p95 8,33  p99 8,33  max 20,83  (budget 8,33)
+    hitches          1, 3,12 ms/s
+  Integrity             5795 checks of 35707 rows: 0 misplaced, 0 missing
+        bad checks
+        kinds
+BENCHMARK_JSON [HOME]/Library/Caches/com.komoliddin.ZapFastMac/benchmarks/timeline-1791786920.json

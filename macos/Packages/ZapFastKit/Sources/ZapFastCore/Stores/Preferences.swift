@@ -117,7 +117,8 @@ public final class Preferences {
         didSet { defaults.set(menuAnimation, forKey: Key.menuAnimation) }
     }
 
-    /// The sound a message we send makes as it leaves, as in Telegram.
+    /// The sound a message we send makes as it leaves, as in Telegram;
+    /// none until chosen in Settings.
     public var sendSound: SendSoundStyle {
         didSet { defaults.set(sendSound.rawValue, forKey: Key.sendSoundStyle) }
     }
@@ -192,10 +193,7 @@ public final class Preferences {
         enterSends = defaults.bool(forKey: Key.enterSends)
         menuReactions = defaults.bool(forKey: Key.menuReactions)
         menuAnimation = defaults.bool(forKey: Key.menuAnimation)
-        // The first builds kept an on/off switch; off stays silent.
-        let wasOff = defaults.object(forKey: Key.sendSound) as? Bool == false
-        sendSound = defaults.string(forKey: Key.sendSoundStyle).flatMap(SendSoundStyle.init(rawValue:))
-            ?? (wasOff ? .none : .breath)
+        sendSound = defaults.string(forKey: Key.sendSoundStyle).flatMap(SendSoundStyle.init(rawValue:)) ?? .none
         downloadFolder = defaults.string(forKey: Key.downloadFolder)
         menuBarIcon = defaults.bool(forKey: Key.menuBarIcon)
         textScale = defaults.double(forKey: Key.textScale)
@@ -224,7 +222,6 @@ public final class Preferences {
         static let senderPhones = "senderPhones"
         static let recentEmoji = "recentEmoji"
         static let enterSends = "enterSends"
-        static let sendSound = "sendSound"
         static let menuReactions = "menuReactions"
         static let menuAnimation = "menuAnimation"
         static let sendSoundStyle = "sendSoundStyle"

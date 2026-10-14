@@ -526,7 +526,10 @@ make run      # build and open
 make test     # ZapFastKit unit tests
 ```
 
-`make` and `make run` build for Apple silicon only, which is quick.
+`make` and `make run` build for Apple silicon only, which is quick. They
+sign the app ad hoc unless `TEAM=<your Apple team id>` is given (or
+`ZAPFAST_TEAM` exported): a stable identity keeps the Keychain from asking
+for the archive key after every build.
 `make release` builds a universal app for Apple silicon and Intel; it needs
 `rustup target add x86_64-apple-darwin` once. The Intel slice is built and
 checked but has not been run on an Intel Mac yet.

@@ -21,6 +21,9 @@ APP         := $(DERIVED)/Build/Products/$(CONFIG)/ZapFast.app
 # and in the scheme's pre-action, so they always link.
 ARCHS       ?= arm64
 export ZAPFAST_ARCHS := $(ARCHS)
+# Your Apple team id, for a stable signing identity (see project.yml).
+TEAM        ?=
+export ZAPFAST_TEAM := $(TEAM)
 XCODEBUILD  := xcodebuild -project ZapFast.xcodeproj -scheme ZapFast -destination 'generic/platform=macOS' -derivedDataPath $(DERIVED) ARCHS="$(ARCHS)" ONLY_ACTIVE_ARCH=NO
 
 .PHONY: all bridge project build run test release sync footprint clean check ci

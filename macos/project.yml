@@ -14,9 +14,11 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    # Signing with a stable identity keeps the Keychain from asking again
-    # after every build for the archive key.
-    DEVELOPMENT_TEAM: 2DQJ3SL785
+    # Your Apple team, from the environment (`make run TEAM=XXXXXXXXXX`, or
+    # export ZAPFAST_TEAM). Signing with a stable identity keeps the Keychain
+    # from asking again after every build for the archive key; without one
+    # the build is signed ad hoc and runs, but each build is a new identity.
+    DEVELOPMENT_TEAM: ${ZAPFAST_TEAM}
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES

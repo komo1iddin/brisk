@@ -40,7 +40,7 @@ Goal: a clean, buildable, honest public repository.
 | ✅ | Public README and roadmap. |
 | 📋 | A final name, agreed with ZapFast's author, then the bundle identifier, targets and package names to match. |
 | 📋 | Contributing guide and issue templates. |
-| 📋 | Remove the hardcoded signing team from `project.yml` so anyone can build with their own. |
+| ✅ | No signing team in `project.yml`: `make run TEAM=…` or `ZAPFAST_TEAM` supplies yours. |
 | 📋 | Publish under the fork's own repository and remote, with upstream kept as `upstream`. |
 | 📋 | Make `Scripts/sync-upstream.sh` follow the linear-history policy instead of creating merge commits. |
 | 📋 | Replace the private AppKit selector still used for the window's edge effect with public API, or document why it stays. |

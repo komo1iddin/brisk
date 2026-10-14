@@ -258,8 +258,8 @@ You need Xcode 26 or later, [rustup](https://rustup.rs) and
 `brew install xcodegen cmake`.
 
 ```sh
-git clone https://github.com/<owner>/<repo>.git
-cd <repo>/macos
+git clone https://github.com/komo1iddin/brisk.git
+cd brisk/macos
 make run          # build and launch (Debug, Apple silicon)
 ```
 
